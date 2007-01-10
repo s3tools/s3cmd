@@ -1,5 +1,5 @@
 import logging
-from logging import debug, info, warn, error
+from logging import debug, info, warning, error
 import re
 
 class ConfigParser:
@@ -8,6 +8,7 @@ class ConfigParser:
 		self.parse_file(file, sections)
 	
 	def parse_file(self, file, sections = []):
+		info("ConfigParser: Reading file '%s'" % file)
 		if type(sections) != type([]):
 			sections = [sections]
 		in_our_section = True
@@ -33,6 +34,7 @@ class ConfigParser:
 				debug("ConfigParser: %s->%s" % (data["key"], data["value"]))
 				self.__setitem__(data["key"], data["value"])
 				continue
+			warning("Ignoring invalid line in '%s': %s" % (file, line))
 
 	def __getitem__(self, name):
 		return self.cfg[name]
@@ -44,8 +46,3 @@ class ConfigParser:
 		if self.cfg.has_key(name):
 			return self.cfg[name]
 		return default
-
-if __name__ == "__main__":
-	logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
-	parser = ConfigParser("/home/mludvig/.s3cfg")
-	print parser["access_key"]

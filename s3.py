@@ -38,6 +38,7 @@ class AwsConfig:
 		verbosity = cp.get("verbosity", "WARNING")
 		try:
 			AwsConfig.verbosity = logging._levelNames[verbosity]
+			print "verbosity set to "+verbosity
 		except KeyError:
 			error("AwsConfig: verbosity level '%s' is not valid" % verbosity)
 
@@ -161,8 +162,18 @@ def cmd_buckets_list_all(args):
 			bucket["Name"].ljust(maxlen),
 			)
 
+def cmd_buckets_list_all_all(args):
+	s3 = S3(AwsConfig())
+	response = s3.list_all_buckets()
+
+	for bucket in response["list"]:
+		cmd_bucket_list([bucket["Name"]])
+		print
+
+
 def cmd_bucket_list(args):
 	bucket = args[0]
+	print "Bucket '%s':" % bucket
 	s3 = S3(AwsConfig())
 	try:
 		response = s3.bucket_list(bucket)
@@ -191,30 +202,37 @@ def cmd_bucket_list(args):
 
 commands = {
 	"la" : ("List all buckets", cmd_buckets_list_all, 0),
+	"laa" : ("List all object in all buckets", cmd_buckets_list_all_all, 0),
 	"lb" : ("List objects in bucket", cmd_bucket_list, 1),
 #	"cb" : ("Create bucket", cmd_bucket_create, 1),
 #	"rb" : ("Remove bucket", cmd_bucket_remove, 1)
 	}
 
 if __name__ == '__main__':
+	if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.5:
+		sys.stderr.write("ERROR: Python 2.5 or higher required, sorry.\n")
+		exit(1)
+
+	default_verbosity = AwsConfig.verbosity
 	optparser = OptionParser()
 	optparser.set_defaults(config=os.getenv("HOME")+"/.s3cfg")
 	optparser.add_option("-c", "--config", dest="config", metavar="FILE", help="Config file name")
-	optparser.add_option("-d", "--debug", action="store_true", help="Enable debug output")
+	optparser.set_defaults(verbosity = default_verbosity)
+	optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output")
+	optparser.add_option("-v", "--verbose", dest="verbosity", action="store_const", const=logging.INFO, help="Enable verbose output")
 	(options, args) = optparser.parse_args()
 
 	## Some mucking with logging levels to enable 
-	## debugging output for config file parser on request
-	init_logging_level = logging.INFO
-	if options.debug: init_logging_level = logging.DEBUG
-	logging.basicConfig(level=init_logging_level, format='%(levelname)s: %(message)s')
+	## debugging/verbose output for config file parser on request
+	logging.basicConfig(level=options.verbosity, format='%(levelname)s: %(message)s')
 	
 	## Now finally parse the config file
 	AwsConfig(options.config)
 
-	## And again some logging level adjustments, argh.
-	if options.debug:
-		AwsConfig.verbosity = logging.DEBUG
+	## And again some logging level adjustments
+	## according to configfile and command line parameters
+	if options.verbosity != default_verbosity:
+		AwsConfig.verbosity = options.verbosity
 	logging.root.setLevel(AwsConfig.verbosity)
 
 	if len(args) < 1:
@@ -226,7 +244,7 @@ if __name__ == '__main__':
 		debug("Command: " + commands[command][0])
 		## We must do this lookup in extra step to 
 		## avoid catching all KeyError exceptions
-		## from inner functions here. 
+		## from inner functions.
 		cmd_func = commands[command][1]
 	except KeyError, e:
 		error("Invalid command: %s" % e)
