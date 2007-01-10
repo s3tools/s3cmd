@@ -1,2 +1,3 @@
+## Run 'svn propset svn:ignore -F .svnignore .' after you change this list
 *.pyc
 tst.*
