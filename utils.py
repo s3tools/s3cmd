@@ -1,5 +1,6 @@
 import time
 import re
+import elementtree.ElementTree as ET
 
 def parseNodes(nodes, xmlns = ""):
 	retval = []
@@ -25,6 +26,12 @@ def getNameSpace(element):
 		return ""
 	return re.compile("^(\{[^}]+\})").match(element.tag).groups()[0]
 
+def getListFromXml(xml, node):
+	tree = ET.fromstring(xml)
+	xmlns = getNameSpace(tree)
+	nodes = tree.findall('.//%s%s' % (xmlns, node))
+	return parseNodes(nodes, xmlns)
+	
 def dateS3toPython(date):
 	date = re.compile("\.\d\d\dZ").sub(".000Z", date)
 	return time.strptime(date, "%Y-%m-%dT%H:%M:%S.000Z")

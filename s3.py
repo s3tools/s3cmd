@@ -2,6 +2,7 @@
 
 import httplib2
 import sys
+import os
 import logging
 import time
 import base64
@@ -17,12 +18,28 @@ import elementtree.ElementTree as ET
 from utils import *
 from SortedDict import SortedDict
 from BidirMap import BidirMap
+from ConfigParser import ConfigParser
 
 class AwsConfig:
-	access_key = "<Put Your Access Key Here>"
-	secret_key = "<Put Your Secret Key Here>"
+	access_key = ""
+	secret_key = ""
 	host = "s3.amazonaws.com"
-	verbose = False
+	verbosity = logging.WARNING
+
+	def __init__(self, configfile = None):
+		if configfile:
+			self.read_config_file(configfile)
+
+	def read_config_file(self, configfile):
+		cp = ConfigParser(configfile)
+		AwsConfig.access_key = cp.get("access_key", AwsConfig.access_key)
+		AwsConfig.secret_key = cp.get("secret_key", AwsConfig.secret_key)
+		AwsConfig.host = cp.get("host", AwsConfig.host)
+		verbosity = cp.get("verbosity", "WARNING")
+		try:
+			AwsConfig.verbosity = logging._levelNames[verbosity]
+		except KeyError:
+			error("AwsConfig: verbosity level '%s' is not valid" % verbosity)
 
 class S3Error (Exception):
 	def __init__(self, response):
@@ -72,11 +89,13 @@ class S3:
 	def list_all_buckets(self):
 		request = self.create_request("LIST_ALL_BUCKETS")
 		response = self.send_request(request)
+		response["list"] = getListFromXml(response["data"], "Bucket")
 		return response
 	
 	def bucket_list(self, bucket):
 		request = self.create_request("BUCKET_LIST", bucket = bucket)
 		response = self.send_request(request)
+		response["list"] = getListFromXml(response["data"], "Contents")
 		return response
 
 	def create_request(self, operation, bucket = None, object = None, headers = None):
@@ -131,15 +150,12 @@ class S3:
 def cmd_buckets_list_all(args):
 	s3 = S3(AwsConfig())
 	response = s3.list_all_buckets()
-	tree = ET.fromstring(response["data"])
-	xmlns = getNameSpace(tree)
-	nodes = tree.findall('.//%sBucket' % xmlns)
-	buckets = parseNodes(nodes, xmlns)
+
 	maxlen = 0
-	for bucket in buckets:
+	for bucket in response["list"]:
 		if len(bucket["Name"]) > maxlen:
 			maxlen = len(bucket["Name"])
-	for bucket in buckets:
+	for bucket in response["list"]:
 		print "%s  %s" % (
 			formatDateTime(bucket["CreationDate"]),
 			bucket["Name"].ljust(maxlen),
@@ -151,20 +167,20 @@ def cmd_bucket_list(args):
 	try:
 		response = s3.bucket_list(bucket)
 	except S3Error, e:
-		if e.Code == "NoSuchBucket":
-			error("Bucket '%s' does not exist" % bucket)
+		codes = {
+			"NoSuchBucket" : "Bucket '%s' does not exist",
+			"AccessDenied" : "Access to bucket '%s' was denied",
+			}
+		if codes.has_key(e.Code):
+			error(codes[e.Code] % bucket)
 			return
 		else:
 			raise
-	tree = ET.fromstring(response["data"])
-	xmlns = getNameSpace(tree)
-	nodes = tree.findall('.//%sContents' % xmlns)
-	objects = parseNodes(nodes, xmlns)
 	maxlen = 0
-	for object in objects:
+	for object in response["list"]:
 		if len(object["Key"]) > maxlen:
 			maxlen = len(object["Key"])
-	for object in objects:
+	for object in response["list"]:
 		size, size_coeff = formatSize(object["Size"], True)
 		print "%s  %s%s  %s" % (
 			formatDateTime(object["LastModified"]),
@@ -174,33 +190,54 @@ def cmd_bucket_list(args):
 
 
 commands = {
-	"la" : ("List all buckets", cmd_buckets_list_all),
-	"lb" : ("List objects in bucket", cmd_bucket_list),
-#	"cb" : ("Create bucket", cmd_bucket_create),
-#	"rb" : ("Remove bucket", cmd_bucket_remove)
+	"la" : ("List all buckets", cmd_buckets_list_all, 0),
+	"lb" : ("List objects in bucket", cmd_bucket_list, 1),
+#	"cb" : ("Create bucket", cmd_bucket_create, 1),
+#	"rb" : ("Remove bucket", cmd_bucket_remove, 1)
 	}
 
 if __name__ == '__main__':
-	logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
-
 	optparser = OptionParser()
-	optparser.set_defaults(config="~/.s3fs.cfg")
+	optparser.set_defaults(config=os.getenv("HOME")+"/.s3cfg")
 	optparser.add_option("-c", "--config", dest="config", metavar="FILE", help="Config file name")
-	optparser.add_option("-d", "--debug", action="store_false", help="Enable debug output")
-	optparser.add_option("-v", "--verbose", action="store_false", help="Enable verbose output")
+	optparser.add_option("-d", "--debug", action="store_true", help="Enable debug output")
 	(options, args) = optparser.parse_args()
+
+	## Some mucking with logging levels to enable 
+	## debugging output for config file parser on request
+	init_logging_level = logging.INFO
+	if options.debug: init_logging_level = logging.DEBUG
+	logging.basicConfig(level=init_logging_level, format='%(levelname)s: %(message)s')
+	
+	## Now finally parse the config file
+	AwsConfig(options.config)
+
+	## And again some logging level adjustments, argh.
+	if options.debug:
+		AwsConfig.verbosity = logging.DEBUG
+	logging.root.setLevel(AwsConfig.verbosity)
 
 	if len(args) < 1:
 		error("Missing command. Please run with --help for more information.")
 		exit(1)
 
-	command = args[0]
-	args.remove(command)
+	command = args.pop(0)
 	try:
-		print commands[command][0]
-		commands[command][1](args)
+		debug("Command: " + commands[command][0])
+		## We must do this lookup in extra step to 
+		## avoid catching all KeyError exceptions
+		## from inner functions here. 
+		cmd_func = commands[command][1]
 	except KeyError, e:
 		error("Invalid command: %s" % e)
+		exit(1)
+
+	if len(args) < commands[command][2]:
+		error("Not enough paramters for command '%s'" % command)
+		exit(1)
+
+	try:
+		cmd_func(args)
 	except S3Error, e:
 		error("S3 error: " + str(e))
 
