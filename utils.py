@@ -48,7 +48,7 @@ def formatSize(size, human_readable = False):
 		coeffs = ['k', 'M', 'G', 'T']
 		coeff = ""
 		while size > 2048:
-			size /= 2048
+			size /= 1024
 			coeff = coeffs.pop(0)
 		return (size, coeff)
 	else:
@@ -56,3 +56,10 @@ def formatSize(size, human_readable = False):
 
 def formatDateTime(s3timestamp):
 	return time.strftime("%Y-%m-%d %H:%M", dateS3toPython(s3timestamp))
+
+def convertTupleListToDict(list):
+	retval = {}
+	for tuple in list:
+		retval[tuple[0]] = tuple[1]
+	return retval
+
