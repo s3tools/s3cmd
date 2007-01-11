@@ -31,6 +31,7 @@ class AwsConfig:
 	recv_chunk = 4096
 	human_readable_sizes = False
 	force = False
+	show_uri = False
 
 	def __init__(self, configfile = None):
 		if configfile:
@@ -52,14 +53,24 @@ class S3Error (Exception):
 	def __init__(self, response):
 		self.status = response["status"]
 		self.reason = response["reason"]
-		tree = ET.fromstring(response["data"])
-		for child in tree.getchildren():
-			if child.text != "":
-				debug(child.tag + ": " + repr(child.text))
-				self.__setattr__(child.tag, child.text)
+		debug("S3Error: %s (%s)" % (self.status, self.reason))
+		if response.has_key("headers"):
+			for header in response["headers"]:
+				debug("HttpHeader: %s: %s" % (header, response["headers"][header]))
+		if response.has_key("data"):
+			tree = ET.fromstring(response["data"])
+			for child in tree.getchildren():
+				if child.text != "":
+					debug("ErrorXML: " + child.tag + ": " + repr(child.text))
+					self.__setattr__(child.tag, child.text)
 
 	def __str__(self):
-		return "%d (%s): %s" % (self.status, self.reason, self.Code)
+		retval = "%d (%s)" % (self.status, self.reason)
+		try:
+			retval += (": %s" % self.Code)
+		except AttributeError:
+			pass
+		return retval
 
 class ParameterError(Exception):
 	pass
@@ -131,7 +142,7 @@ class S3:
 			file = open(filename, "r")
 			size = os.stat(filename)[ST_SIZE]
 		except IOError, e:
-			raise ParameterProblem("%s: %s" % (filename, e.strerror))
+			raise ParameterError("%s: %s" % (filename, e.strerror))
 		headers = SortedDict()
 		headers["content-length"] = size
 		request = self.create_request("OBJECT_PUT", bucket = bucket, object = object, headers = headers)
@@ -143,10 +154,15 @@ class S3:
 		try:
 			file = open(filename, "w")
 		except IOError, e:
-			raise ParameterProblem("%s: %s" % (filename, e.strerror))
+			raise ParameterError("%s: %s" % (filename, e.strerror))
 		request = self.create_request("OBJECT_GET", bucket = bucket, object = object)
 		response = self.recv_file(request, file)
 		response["size"] = int(response["headers"]["content-length"])
+		return response
+
+	def object_delete(self, bucket, object):
+		request = self.create_request("OBJECT_DELETE", bucket = bucket, object = object)
+		response = self.send_request(request)
 		return response
 
 	def create_request(self, operation, bucket = None, object = None, headers = None):
@@ -181,6 +197,7 @@ class S3:
 		http_response = conn.getresponse()
 		response["status"] = http_response.status
 		response["reason"] = http_response.reason
+		response["headers"] = convertTupleListToDict(http_response.getheaders())
 		response["data"] =  http_response.read()
 		conn.close()
 		if response["status"] < 200 or response["status"] > 299:
@@ -211,6 +228,7 @@ class S3:
 		http_response = conn.getresponse()
 		response["status"] = http_response.status
 		response["reason"] = http_response.reason
+		response["headers"] = convertTupleListToDict(http_response.getheaders())
 		response["data"] =  http_response.read()
 		conn.close()
 		if response["status"] < 200 or response["status"] > 299:
@@ -230,10 +248,10 @@ class S3:
 		http_response = conn.getresponse()
 		response["status"] = http_response.status
 		response["reason"] = http_response.reason
+		response["headers"] = convertTupleListToDict(http_response.getheaders())
 		if response["status"] < 200 or response["status"] > 299:
 			raise S3Error(response)
 
-		response["headers"] = convertTupleListToDict(http_response.getheaders())
 		md5=hashlib.new("md5")
 		size_left = size_total = int(response["headers"]["content-length"])
 		while (size_left > 0):
@@ -278,8 +296,17 @@ class S3:
 			raise ParameterError("Bucket name '%s' is too long (max 255 characters)" % bucket)
 		return True
 
+	def compose_uri(self, bucket, object = None):
+		if AwsConfig.show_uri:
+			uri = "s3://" + bucket
+			if object:
+				uri += "/"+object
+			return uri
+		else:
+			return object and object or bucket
+
 	def parse_s3_uri(self, uri):
-		match = re.compile("^s3://([^/]*)/*(.*)").match(uri)
+		match = re.compile("^s3://([^/]*)/?(.*)").match(uri)
 		if match:
 			return (True,) + match.groups()
 		else:
@@ -292,14 +319,10 @@ def cmd_buckets_list_all(args):
 	s3 = S3(AwsConfig())
 	response = s3.list_all_buckets()
 
-	maxlen = 0
-	for bucket in response["list"]:
-		if len(bucket["Name"]) > maxlen:
-			maxlen = len(bucket["Name"])
 	for bucket in response["list"]:
 		output("%s  %s" % (
 			formatDateTime(bucket["CreationDate"]),
-			bucket["Name"].ljust(maxlen),
+			s3.compose_uri(bucket["Name"]),
 			))
 
 def cmd_buckets_list_all_all(args):
@@ -312,9 +335,11 @@ def cmd_buckets_list_all_all(args):
 
 
 def cmd_bucket_list(args):
-	bucket = args[0]
-	output("Bucket '%s':" % bucket)
 	s3 = S3(AwsConfig())
+	isuri, bucket, object = s3.parse_s3_uri(args[0])
+	if not isuri:
+		bucket = args[0]
+	output("Bucket '%s':" % bucket)
 	try:
 		response = s3.bucket_list(bucket)
 	except S3Error, e:
@@ -323,21 +348,19 @@ def cmd_bucket_list(args):
 			return
 		else:
 			raise
-	maxlen = 0
-	for object in response["list"]:
-		if len(object["Key"]) > maxlen:
-			maxlen = len(object["Key"])
 	for object in response["list"]:
 		size, size_coeff = formatSize(object["Size"], AwsConfig.human_readable_sizes)
 		output("%s  %s%s  %s" % (
 			formatDateTime(object["LastModified"]),
 			str(size).rjust(8), size_coeff.ljust(1),
-			object["Key"].ljust(maxlen),
+			s3.compose_uri(bucket, object["Key"]),
 			))
 
 def cmd_bucket_create(args):
-	bucket = args[0]
 	s3 = S3(AwsConfig())
+	isuri, bucket, object = s3.parse_s3_uri(args[0])
+	if not isuri:
+		bucket = args[0]
 	try:
 		response = s3.bucket_create(bucket)
 	except S3Error, e:
@@ -349,8 +372,10 @@ def cmd_bucket_create(args):
 	output("Bucket '%s' created" % bucket)
 
 def cmd_bucket_delete(args):
-	bucket = args[0]
 	s3 = S3(AwsConfig())
+	isuri, bucket, object = s3.parse_s3_uri(args[0])
+	if not isuri:
+		bucket = args[0]
 	try:
 		response = s3.bucket_delete(bucket)
 	except S3Error, e:
@@ -387,21 +412,32 @@ def cmd_object_put(args):
 		else:
 			object_final = object
 		response = s3.object_put(file, bucket, object_final)
-		output("File '%s' stored as s3://%s/%s (%d bytes)" %
-			(file, bucket, object_final, response["size"]))
+		output("File '%s' stored as %s (%d bytes)" %
+			(file, s3.compose_uri(bucket, object_final), response["size"]))
 
 def cmd_object_get(args):
-	bucket = args.pop(0)
-	object = args.pop(0)
-	destination = args.pop(0)
+	s3 = S3(AwsConfig())
+	s3uri = args.pop(0)
+	isuri, bucket, object = s3.parse_s3_uri(s3uri)
+	if not isuri or not bucket or not object:
+		raise ParameterError("Expecting S3 object URI instead of '%s'" % s3uri)
+	destination = len(args) > 0 and args.pop(0) or object
 	if os.path.isdir(destination):
-		destination.append("/" + object)
+		destination += ("/" + object)
 	if not AwsConfig.force and os.path.exists(destination):
 		raise ParameterError("File %s already exists. Use --force to overwrite it" % destination)
-	s3 = S3(AwsConfig())
 	response = s3.object_get(destination, bucket, object)
-	output("Object s3://%s/%s saved as '%s' (%d bytes)" %
-		(bucket, object, destination, response["size"]))
+	output("Object %s saved as '%s' (%d bytes)" %
+		(s3uri, destination, response["size"]))
+
+def cmd_object_del(args):
+	s3 = S3(AwsConfig())
+	s3uri = args.pop(0)
+	isuri, bucket, object = s3.parse_s3_uri(s3uri)
+	if not isuri or not bucket or not object:
+		raise ParameterError("Expecting S3 object URI instead of '%s'" % s3uri)
+	response = s3.object_delete(bucket, object)
+	output("Object %s deleted" % s3uri)
 
 commands = {
 	"lb" : ("List all buckets", cmd_buckets_list_all, 0),
@@ -411,9 +447,9 @@ commands = {
 	"db" : ("Remove bucket", cmd_bucket_delete, 1),
 	"ls" : ("List objects in bucket", cmd_bucket_list, 1),
 	"la" : ("List all object in all buckets", cmd_buckets_list_all_all, 0),
-	"put": ("Put file(s) into a bucket", cmd_object_put, 2),
-	"get": ("Get file(s) from a bucket", cmd_object_get, 1),
-#	"del": ("Delete file(s) from a bucket", cmd_object_del, 1),
+	"put": ("Put file into bucket", cmd_object_put, 2),
+	"get": ("Get file from bucket", cmd_object_get, 1),
+	"del": ("Delete file from bucket", cmd_object_del, 1),
 	}
 
 if __name__ == '__main__':
@@ -432,6 +468,9 @@ if __name__ == '__main__':
 	optparser.add_option("-H", "--human-readable", dest="human_readable", action="store_true", help="Print sizes in human readable form")
 	optparser.set_defaults(force = False)
 	optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations")
+	optparser.set_defaults(show_uri = False)
+	optparser.add_option("-u", "--show-uri", dest="show_uri", action="store_true", help="Show complete S3 URI in listings")
+
 	(options, args) = optparser.parse_args()
 
 	## Some mucking with logging levels to enable 
@@ -450,6 +489,7 @@ if __name__ == '__main__':
 	## Update AwsConfig with other parameters
 	AwsConfig.human_readable_sizes = options.human_readable
 	AwsConfig.force = options.force
+	AwsConfig.show_uri = options.show_uri
 
 	if len(args) < 1:
 		error("Missing command. Please run with --help for more information.")
