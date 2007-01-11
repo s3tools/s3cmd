@@ -22,6 +22,7 @@ from BidirMap import BidirMap
 from ConfigParser import ConfigParser
 
 class AwsConfig:
+	parsed_files = []
 	access_key = ""
 	secret_key = ""
 	host = "s3.amazonaws.com"
@@ -45,6 +46,7 @@ class AwsConfig:
 			AwsConfig.verbosity = logging._levelNames[verbosity]
 		except KeyError:
 			error("AwsConfig: verbosity level '%s' is not valid" % verbosity)
+		AwsConfig.parsed_files.append(configfile)
 
 class S3Error (Exception):
 	def __init__(self, response):
@@ -200,9 +202,10 @@ class S3:
 			debug("SendFile: Sending %d bytes to the server" % len(data))
 			conn.send(data)
 			size_left -= len(data)
-			info("Sent %d bytes (%d %%)" % (
+			info("Sent %d bytes (%d %% of %d)" % (
 				(size_total - size_left),
-				(size_total - size_left) * 100 / size_total))
+				(size_total - size_left) * 100 / size_total,
+				size_total))
 		response = {}
 		http_response = conn.getresponse()
 		response["status"] = http_response.status
@@ -236,9 +239,10 @@ class S3:
 			debug("ReceiveFile: Writing %d bytes to file '%s'" % (len(data), file.name))
 			file.write(data)
 			size_left -= len(data)
-			info("Received %d bytes (%d %%)" % (
+			info("Received %d bytes (%d %% of %d)" % (
 				(size_total - size_left),
-				(size_total - size_left) * 100 / size_total))
+				(size_total - size_left) * 100 / size_total,
+				size_total))
 		conn.close()
 		if response["status"] < 200 or response["status"] > 299:
 			raise S3Error(response)
