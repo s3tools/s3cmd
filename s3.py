@@ -11,7 +11,7 @@ import hashlib
 import httplib
 
 from optparse import OptionParser
-from logging import debug, info, warn, error
+from logging import debug, info, warning, error
 from stat import ST_SIZE
 import elementtree.ElementTree as ET
 
@@ -126,7 +126,7 @@ class S3:
 
 	def object_put(self, filename, bucket, object):
 		if not os.path.isfile(filename):
-			raise ParameterProblem("%s is not a regular file" % filename)
+			raise ParameterError("%s is not a regular file" % filename)
 		try:
 			file = open(filename, "r")
 			size = os.stat(filename)[ST_SIZE]
@@ -146,6 +146,7 @@ class S3:
 			raise ParameterProblem("%s: %s" % (filename, e.strerror))
 		request = self.create_request("OBJECT_GET", bucket = bucket, object = object)
 		response = self.recv_file(request, file)
+		response["size"] = int(response["headers"]["content-length"])
 		return response
 
 	def create_request(self, operation, bucket = None, object = None, headers = None):
@@ -229,23 +230,32 @@ class S3:
 		http_response = conn.getresponse()
 		response["status"] = http_response.status
 		response["reason"] = http_response.reason
+		if response["status"] < 200 or response["status"] > 299:
+			raise S3Error(response)
+
 		response["headers"] = convertTupleListToDict(http_response.getheaders())
+		md5=hashlib.new("md5")
 		size_left = size_total = int(response["headers"]["content-length"])
-		info("Size appears to be %d bytes" % size_total)
 		while (size_left > 0):
 			this_chunk = size_left > AwsConfig.recv_chunk and AwsConfig.recv_chunk or size_left
 			debug("ReceiveFile: Receiving up to %d bytes from the server" % this_chunk)
 			data = http_response.read(this_chunk)
 			debug("ReceiveFile: Writing %d bytes to file '%s'" % (len(data), file.name))
 			file.write(data)
+			md5.update(data)
 			size_left -= len(data)
 			info("Received %d bytes (%d %% of %d)" % (
 				(size_total - size_left),
 				(size_total - size_left) * 100 / size_total,
 				size_total))
 		conn.close()
-		if response["status"] < 200 or response["status"] > 299:
-			raise S3Error(response)
+		response["md5"] = md5.hexdigest()
+		response["md5match"] = response["headers"]["etag"].find(response["md5"]) >= 0
+		debug("ReceiveFile: Computed MD5 = %s" % response["md5"])
+		if not response["md5match"]:
+			warning("MD5 signatures do not match: computed=%s, received=%s" % (
+				response["md5"], response["headers"]["etag"]))
+
 		return response
 
 	def sign_headers(self, method, resource, headers):
@@ -268,6 +278,12 @@ class S3:
 			raise ParameterError("Bucket name '%s' is too long (max 255 characters)" % bucket)
 		return True
 
+	def parse_s3_uri(self, uri):
+		match = re.compile("^s3://([^/]*)/*(.*)").match(uri)
+		if match:
+			return (True,) + match.groups()
+		else:
+			return (False, "", "")
 
 def output(message):
 	print message
@@ -315,7 +331,7 @@ def cmd_bucket_list(args):
 		size, size_coeff = formatSize(object["Size"], AwsConfig.human_readable_sizes)
 		output("%s  %s%s  %s" % (
 			formatDateTime(object["LastModified"]),
-			str(size).rjust(4), size_coeff.ljust(1),
+			str(size).rjust(8), size_coeff.ljust(1),
 			object["Key"].ljust(maxlen),
 			))
 
@@ -346,14 +362,33 @@ def cmd_bucket_delete(args):
 	output("Bucket '%s' removed" % bucket)
 
 def cmd_object_put(args):
-	bucket = args.pop()
-	files = args[:]
 	s3 = S3(AwsConfig())
+
+	s3uri = args.pop()
+	files = args[:]
+
+	isuri, bucket, object = s3.parse_s3_uri(s3uri)
+	if not isuri:
+		raise ParameterError("Expecting S3 URI instead of '%s'" % s3uri)
+
+	if len(files) > 1 and object != "" and not AwsConfig.force:
+		error("When uploading multiple files the last argument must")
+		error("be a S3 URI specifying just the bucket name")
+		error("WITHOUT object name!")
+		error("Alternatively use --force argument and the specified")
+		error("object name will be prefixed to all stored filanames.")
+		exit(1)
+
 	for file in files:
-		object = file
-		response = s3.object_put(file, bucket, file)
-		output("File '%s' stored as s3://%s/%s (%s bytes)" %
-			(file, bucket, object, response["size"]))
+		if len(files) > 1:
+			object_final = object + os.path.basename(file)
+		elif object == "":
+			object_final = os.path.basename(file)
+		else:
+			object_final = object
+		response = s3.object_put(file, bucket, object_final)
+		output("File '%s' stored as s3://%s/%s (%d bytes)" %
+			(file, bucket, object_final, response["size"]))
 
 def cmd_object_get(args):
 	bucket = args.pop(0)
@@ -364,7 +399,9 @@ def cmd_object_get(args):
 	if not AwsConfig.force and os.path.exists(destination):
 		raise ParameterError("File %s already exists. Use --force to overwrite it" % destination)
 	s3 = S3(AwsConfig())
-	s3.object_get(destination, bucket, object)
+	response = s3.object_get(destination, bucket, object)
+	output("Object s3://%s/%s saved as '%s' (%d bytes)" %
+		(bucket, object, destination, response["size"]))
 
 commands = {
 	"lb" : ("List all buckets", cmd_buckets_list_all, 0),
