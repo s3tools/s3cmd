@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+## Amazon S3 manager
+## Author: Michal Ludvig <michal@logix.cz>
+##         http://www.logix.cz/michal
+## License: GPL Version 2
+
 import httplib2
 import sys
 import os, os.path
@@ -16,10 +21,10 @@ from stat import ST_SIZE
 import elementtree.ElementTree as ET
 
 ## Our modules
-from utils import *
-from SortedDict import SortedDict
-from BidirMap import BidirMap
-from ConfigParser import ConfigParser
+from S3.utils import *
+from S3.SortedDict import SortedDict
+from S3.BidirMap import BidirMap
+from S3.ConfigParser import ConfigParser
 
 class AwsConfig:
 	parsed_files = []
