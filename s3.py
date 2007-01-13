@@ -21,7 +21,7 @@ from stat import ST_SIZE
 import elementtree.ElementTree as ET
 
 ## Our modules
-from S3.utils import *
+from S3.Utils import *
 from S3.SortedDict import SortedDict
 from S3.BidirMap import BidirMap
 from S3.ConfigParser import ConfigParser
