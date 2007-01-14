@@ -19,10 +19,21 @@ from S3.S3 import *
 def output(message):
 	print message
 
+def cmd_ls(args):
+	s3 = S3(AwsConfig())
+	bucket = None
+	if len(args) > 0:
+		isuri, bucket, object = s3.parse_s3_uri(args[0])
+		if not isuri:
+			bucket = args[0]
+	if bucket:
+		cmd_bucket_list(args)
+	else:
+		cmd_buckets_list_all(args)
+
 def cmd_buckets_list_all(args):
 	s3 = S3(AwsConfig())
 	response = s3.list_all_buckets()
-
 	for bucket in response["list"]:
 		output("%s  %s" % (
 			formatDateTime(bucket["CreationDate"]),
@@ -117,7 +128,7 @@ def cmd_object_put(args):
 			object_final = object
 		response = s3.object_put(file, bucket, object_final)
 		output("File '%s' stored as %s (%d bytes)" %
-			(file, s3.compose_uri(bucket, object_final), response["size"]))
+			(file, s3.compose_uri(bucket, object_final, force_uri = True), response["size"]))
 
 def cmd_object_get(args):
 	s3 = S3(AwsConfig())
@@ -144,12 +155,9 @@ def cmd_object_del(args):
 	output("Object %s deleted" % s3uri)
 
 commands = {
-	"lb" : ("List all buckets", cmd_buckets_list_all, 0),
-	"cb" : ("Create bucket", cmd_bucket_create, 1),
-	"mb" : ("Create bucket", cmd_bucket_create, 1),
+	"mb" : ("Make bucket", cmd_bucket_create, 1),
 	"rb" : ("Remove bucket", cmd_bucket_delete, 1),
-	"db" : ("Remove bucket", cmd_bucket_delete, 1),
-	"ls" : ("List objects in bucket", cmd_bucket_list, 1),
+	"ls" : ("List objects or buckets", cmd_ls, 0),
 	"la" : ("List all object in all buckets", cmd_buckets_list_all_all, 0),
 	"put": ("Put file into bucket", cmd_object_put, 2),
 	"get": ("Get file from bucket", cmd_object_get, 1),
@@ -174,6 +182,8 @@ if __name__ == '__main__':
 	optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations")
 	optparser.set_defaults(show_uri = False)
 	optparser.add_option("-u", "--show-uri", dest="show_uri", action="store_true", help="Show complete S3 URI in listings")
+	optparser.set_defaults(acl_public = False)
+	optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read by anyone")
 
 	(options, args) = optparser.parse_args()
 
@@ -194,6 +204,7 @@ if __name__ == '__main__':
 	AwsConfig.human_readable_sizes = options.human_readable
 	AwsConfig.force = options.force
 	AwsConfig.show_uri = options.show_uri
+	AwsConfig.acl_public = options.acl_public
 
 	if len(args) < 1:
 		error("Missing command. Please run with --help for more information.")

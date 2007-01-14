@@ -23,6 +23,7 @@ class AwsConfig:
 	human_readable_sizes = False
 	force = False
 	show_uri = False
+	acl_public = False
 
 	def __init__(self, configfile = None):
 		if configfile:
@@ -109,9 +110,11 @@ class S3:
 		response["list"] = getListFromXml(response["data"], "Bucket")
 		return response
 	
-	def bucket_list(self, bucket):
+	def bucket_list(self, bucket, prefix = None):
+		## TODO: use prefix if supplied
 		request = self.create_request("BUCKET_LIST", bucket = bucket)
 		response = self.send_request(request)
+		debug(response)
 		response["list"] = getListFromXml(response["data"], "Contents")
 		return response
 
@@ -136,6 +139,8 @@ class S3:
 			raise ParameterError("%s: %s" % (filename, e.strerror))
 		headers = SortedDict()
 		headers["content-length"] = size
+		if AwsConfig.acl_public:
+			headers["x-amz-acl"] = "public-read"
 		request = self.create_request("OBJECT_PUT", bucket = bucket, object = object, headers = headers)
 		response = self.send_file(request, file)
 		response["size"] = size
@@ -287,8 +292,8 @@ class S3:
 			raise ParameterError("Bucket name '%s' is too long (max 255 characters)" % bucket)
 		return True
 
-	def compose_uri(self, bucket, object = None):
-		if AwsConfig.show_uri:
+	def compose_uri(self, bucket, object = None, force_uri = False):
+		if AwsConfig.show_uri or force_uri:
 			uri = "s3://" + bucket
 			if object:
 				uri += "/"+object
