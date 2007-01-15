@@ -9,7 +9,8 @@ import sys
 import logging
 import time
 
-from optparse import OptionParser
+from copy import copy
+from optparse import OptionParser, Option, OptionValueError
 from logging import debug, info, warning, error
 import elementtree.ElementTree as ET
 
@@ -20,7 +21,7 @@ def output(message):
 	print message
 
 def cmd_ls(args):
-	s3 = S3(AwsConfig())
+	s3 = S3(Config())
 	bucket = None
 	if len(args) > 0:
 		isuri, bucket, object = s3.parse_s3_uri(args[0])
@@ -32,7 +33,7 @@ def cmd_ls(args):
 		cmd_buckets_list_all(args)
 
 def cmd_buckets_list_all(args):
-	s3 = S3(AwsConfig())
+	s3 = S3(Config())
 	response = s3.list_all_buckets()
 	for bucket in response["list"]:
 		output("%s  %s" % (
@@ -41,7 +42,7 @@ def cmd_buckets_list_all(args):
 			))
 
 def cmd_buckets_list_all_all(args):
-	s3 = S3(AwsConfig())
+	s3 = S3(Config())
 	response = s3.list_all_buckets()
 
 	for bucket in response["list"]:
@@ -50,7 +51,7 @@ def cmd_buckets_list_all_all(args):
 
 
 def cmd_bucket_list(args):
-	s3 = S3(AwsConfig())
+	s3 = S3(Config())
 	isuri, bucket, object = s3.parse_s3_uri(args[0])
 	if not isuri:
 		bucket = args[0]
@@ -64,7 +65,7 @@ def cmd_bucket_list(args):
 		else:
 			raise
 	for object in response["list"]:
-		size, size_coeff = formatSize(object["Size"], AwsConfig.human_readable_sizes)
+		size, size_coeff = formatSize(object["Size"], Config().human_readable_sizes)
 		output("%s  %s%s  %s" % (
 			formatDateTime(object["LastModified"]),
 			str(size).rjust(8), size_coeff.ljust(1),
@@ -72,7 +73,7 @@ def cmd_bucket_list(args):
 			))
 
 def cmd_bucket_create(args):
-	s3 = S3(AwsConfig())
+	s3 = S3(Config())
 	isuri, bucket, object = s3.parse_s3_uri(args[0])
 	if not isuri:
 		bucket = args[0]
@@ -87,7 +88,7 @@ def cmd_bucket_create(args):
 	output("Bucket '%s' created" % bucket)
 
 def cmd_bucket_delete(args):
-	s3 = S3(AwsConfig())
+	s3 = S3(Config())
 	isuri, bucket, object = s3.parse_s3_uri(args[0])
 	if not isuri:
 		bucket = args[0]
@@ -102,7 +103,7 @@ def cmd_bucket_delete(args):
 	output("Bucket '%s' removed" % bucket)
 
 def cmd_object_put(args):
-	s3 = S3(AwsConfig())
+	s3 = S3(Config())
 
 	s3uri = args.pop()
 	files = args[:]
@@ -111,7 +112,7 @@ def cmd_object_put(args):
 	if not isuri:
 		raise ParameterError("Expecting S3 URI instead of '%s'" % s3uri)
 
-	if len(files) > 1 and object != "" and not AwsConfig.force:
+	if len(files) > 1 and object != "" and not Config().force:
 		error("When uploading multiple files the last argument must")
 		error("be a S3 URI specifying just the bucket name")
 		error("WITHOUT object name!")
@@ -131,7 +132,7 @@ def cmd_object_put(args):
 			(file, s3.compose_uri(bucket, object_final, force_uri = True), response["size"]))
 
 def cmd_object_get(args):
-	s3 = S3(AwsConfig())
+	s3 = S3(Config())
 	s3uri = args.pop(0)
 	isuri, bucket, object = s3.parse_s3_uri(s3uri)
 	if not isuri or not bucket or not object:
@@ -139,14 +140,14 @@ def cmd_object_get(args):
 	destination = len(args) > 0 and args.pop(0) or object
 	if os.path.isdir(destination):
 		destination += ("/" + object)
-	if not AwsConfig.force and os.path.exists(destination):
+	if not Config().force and os.path.exists(destination):
 		raise ParameterError("File %s already exists. Use --force to overwrite it" % destination)
 	response = s3.object_get(destination, bucket, object)
 	output("Object %s saved as '%s' (%d bytes)" %
 		(s3uri, destination, response["size"]))
 
 def cmd_object_del(args):
-	s3 = S3(AwsConfig())
+	s3 = S3(Config())
 	s3uri = args.pop(0)
 	isuri, bucket, object = s3.parse_s3_uri(s3uri)
 	if not isuri or not bucket or not object:
@@ -164,26 +165,35 @@ commands = {
 	"del": ("Delete file from bucket", cmd_object_del, 1),
 	}
 
+class OptionMimeType(Option):
+	def check_mimetype(option, opt, value):
+		if re.compile("^[a-z0-9]+/[a-z0-9+\.-]+$", re.IGNORECASE).match(value):
+			return value
+		raise OptionValueError("option %s: invalid MIME-Type format: %r" % (opt, value))
+
+	TYPES = Option.TYPES + ("mimetype",)
+	TYPE_CHECKER = copy(Option.TYPE_CHECKER)
+	TYPE_CHECKER["mimetype"] = check_mimetype
+
 if __name__ == '__main__':
 	if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.5:
 		sys.stderr.write("ERROR: Python 2.5 or higher required, sorry.\n")
 		exit(1)
 
-	default_verbosity = AwsConfig.verbosity
-	optparser = OptionParser()
+	default_verbosity = Config().verbosity
+	optparser = OptionParser(option_class=OptionMimeType)
+	#optparser.disable_interspersed_args()
 	optparser.set_defaults(config=os.getenv("HOME")+"/.s3cfg")
-	optparser.add_option("-c", "--config", dest="config", metavar="FILE", help="Config file name")
+	optparser.add_option("-c", "--config", dest="config", metavar="FILE", help="Config file name. Defaults to %default")
 	optparser.set_defaults(verbosity = default_verbosity)
-	optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output")
-	optparser.add_option("-v", "--verbose", dest="verbosity", action="store_const", const=logging.INFO, help="Enable verbose output")
-	optparser.set_defaults(human_readable = False)
-	optparser.add_option("-H", "--human-readable", dest="human_readable", action="store_true", help="Print sizes in human readable form")
-	optparser.set_defaults(force = False)
-	optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations")
-	optparser.set_defaults(show_uri = False)
-	optparser.add_option("-u", "--show-uri", dest="show_uri", action="store_true", help="Show complete S3 URI in listings")
-	optparser.set_defaults(acl_public = False)
-	optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read by anyone")
+	optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output.")
+	optparser.add_option("-v", "--verbose", dest="verbosity", action="store_const", const=logging.INFO, help="Enable verbose output.")
+	optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form.")
+	optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations.")
+	optparser.add_option("-u", "--show-uri", dest="show_uri", action="store_true", help="Show complete S3 URI in listings.")
+	optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read by anyone.")
+	optparser.add_option("-m", "--mime-type", dest="default_mime_type", type="mimetype", metavar="MIME/TYPE", help="Default MIME-type to be set for objects stored.")
+	optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")
 
 	(options, args) = optparser.parse_args()
 
@@ -192,19 +202,23 @@ if __name__ == '__main__':
 	logging.basicConfig(level=options.verbosity, format='%(levelname)s: %(message)s')
 	
 	## Now finally parse the config file
-	AwsConfig(options.config)
+	Config(options.config)
 
 	## And again some logging level adjustments
 	## according to configfile and command line parameters
 	if options.verbosity != default_verbosity:
-		AwsConfig.verbosity = options.verbosity
-	logging.root.setLevel(AwsConfig.verbosity)
+		Config().verbosity = options.verbosity
+	logging.root.setLevel(Config().verbosity)
 
-	## Update AwsConfig with other parameters
-	AwsConfig.human_readable_sizes = options.human_readable
-	AwsConfig.force = options.force
-	AwsConfig.show_uri = options.show_uri
-	AwsConfig.acl_public = options.acl_public
+	## Update Config with other parameters
+	for parameter in (
+			"human_readable_sizes",
+			"force",
+			"show_uri",
+			"acl_public",):
+		if getattr(options, parameter) != None:
+			debug("Updating %s -> %s" % (parameter, getattr(options, parameter)))
+			setattr(Config, parameter, getattr(options, parameter))
 
 	if len(args) < 1:
 		error("Missing command. Please run with --help for more information.")

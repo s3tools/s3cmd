@@ -12,8 +12,9 @@ from SortedDict import SortedDict
 from BidirMap import BidirMap
 from ConfigParser import ConfigParser
 
-class AwsConfig:
-	parsed_files = []
+class Config(object):
+	_instance = None
+	_parsed_files = []
 	access_key = ""
 	secret_key = ""
 	host = "s3.amazonaws.com"
@@ -25,21 +26,61 @@ class AwsConfig:
 	show_uri = False
 	acl_public = False
 
+	## Creating a singleton
+	def __new__(self, configfile = None):
+		if self._instance is None:
+			self._instance = object.__new__(self)
+		return self._instance
+
 	def __init__(self, configfile = None):
 		if configfile:
 			self.read_config_file(configfile)
 
+	def option_list(self):
+		retval = []
+		for option in dir(self):
+			## Skip attributes that start with underscore or are not string, int or bool
+			option_type = type(getattr(Config, option))
+			if option.startswith("_") or \
+			   not (option_type in (
+			   		type("string"),	# str
+			        	type(42),	# int
+					type(True))):	# bool
+				continue
+			retval.append(option)
+		return retval
+
 	def read_config_file(self, configfile):
 		cp = ConfigParser(configfile)
-		AwsConfig.access_key = cp.get("access_key", AwsConfig.access_key)
-		AwsConfig.secret_key = cp.get("secret_key", AwsConfig.secret_key)
-		AwsConfig.host = cp.get("host", AwsConfig.host)
-		verbosity = cp.get("verbosity", "WARNING")
-		try:
-			AwsConfig.verbosity = logging._levelNames[verbosity]
-		except KeyError:
-			error("AwsConfig: verbosity level '%s' is not valid" % verbosity)
-		AwsConfig.parsed_files.append(configfile)
+		for option in self.option_list():
+			self.update_option(option, cp.get(option))
+		self._parsed_files.append(configfile)
+
+	def update_option(self, option, value):
+		if value is None:
+			return
+		#### Special treatment of some options
+		## verbosity must be known to "logging" module
+		if option == "verbosity":
+			try:
+				setattr(Config, "verbosity", logging._levelNames[value])
+			except KeyError:
+				error("Config: verbosity level '%s' is not valid" % value)
+		## allow yes/no, true/false, on/off and 1/0 for boolean options
+		elif type(getattr(Config, option)) is type(True):	# bool
+			if str(value).lower() in ("true", "yes", "on", "1"):
+				setattr(Config, option, True)
+			elif str(value).lower() in ("false", "no", "off", "0"):
+				setattr(Config, option, False)
+			else:
+				error("Config: value of option '%s' must be Yes or No, not '%s'" % (option, value))
+		elif type(getattr(Config, option)) is type(42):		# int
+			try:
+				setattr(Config, option, int(value))
+			except ValueError, e:
+				error("Config: value of option '%s' must be an integer, not '%s'" % (option, value))
+		else:							# string
+			setattr(Config, option, value)
 
 class S3Error (Exception):
 	def __init__(self, response):
@@ -139,7 +180,7 @@ class S3:
 			raise ParameterError("%s: %s" % (filename, e.strerror))
 		headers = SortedDict()
 		headers["content-length"] = size
-		if AwsConfig.acl_public:
+		if self.config.acl_public:
 			headers["x-amz-acl"] = "public-read"
 		request = self.create_request("OBJECT_PUT", bucket = bucket, object = object, headers = headers)
 		response = self.send_file(request, file)
@@ -211,8 +252,8 @@ class S3:
 		conn.endheaders()
 		size_left = size_total = headers.get("content-length")
 		while (size_left > 0):
-			debug("SendFile: Reading up to %d bytes from '%s'" % (AwsConfig.send_chunk, file.name))
-			data = file.read(AwsConfig.send_chunk)
+			debug("SendFile: Reading up to %d bytes from '%s'" % (self.config.send_chunk, file.name))
+			data = file.read(self.config.send_chunk)
 			debug("SendFile: Sending %d bytes to the server" % len(data))
 			conn.send(data)
 			size_left -= len(data)
@@ -251,7 +292,7 @@ class S3:
 		md5=hashlib.new("md5")
 		size_left = size_total = int(response["headers"]["content-length"])
 		while (size_left > 0):
-			this_chunk = size_left > AwsConfig.recv_chunk and AwsConfig.recv_chunk or size_left
+			this_chunk = size_left > self.config.recv_chunk and self.config.recv_chunk or size_left
 			debug("ReceiveFile: Receiving up to %d bytes from the server" % this_chunk)
 			data = http_response.read(this_chunk)
 			debug("ReceiveFile: Writing %d bytes to file '%s'" % (len(data), file.name))
@@ -293,7 +334,7 @@ class S3:
 		return True
 
 	def compose_uri(self, bucket, object = None, force_uri = False):
-		if AwsConfig.show_uri or force_uri:
+		if self.config.show_uri or force_uri:
 			uri = "s3://" + bucket
 			if object:
 				uri += "/"+object
