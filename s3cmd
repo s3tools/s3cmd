@@ -10,7 +10,7 @@ import logging
 import time
 
 from copy import copy
-from optparse import OptionParser, Option, OptionValueError
+from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
 from logging import debug, info, warning, error
 import elementtree.ElementTree as ET
 
@@ -56,8 +56,10 @@ def cmd_bucket_list(args):
 	if not isuri:
 		bucket = args[0]
 	output("Bucket '%s':" % bucket)
+	if object.endswith('*'):
+		object = object[:-1]
 	try:
-		response = s3.bucket_list(bucket)
+		response = s3.bucket_list(bucket, prefix = object)
 	except S3Error, e:
 		if S3.codes.has_key(e.Code):
 			error(S3.codes[e.Code] % bucket)
@@ -101,6 +103,9 @@ def cmd_bucket_delete(args):
 		else:
 			raise
 	output("Bucket '%s' removed" % bucket)
+
+def cmd_cp(args):
+	raise ParameterError("Not yet implemented")
 
 def cmd_object_put(args):
 	s3 = S3(Config())
@@ -156,14 +161,21 @@ def cmd_object_del(args):
 	output("Object %s deleted" % s3uri)
 
 commands = {
-	"mb" : ("Make bucket", cmd_bucket_create, 1),
-	"rb" : ("Remove bucket", cmd_bucket_delete, 1),
-	"ls" : ("List objects or buckets", cmd_ls, 0),
-	"la" : ("List all object in all buckets", cmd_buckets_list_all_all, 0),
-	"put": ("Put file into bucket", cmd_object_put, 2),
-	"get": ("Get file from bucket", cmd_object_get, 1),
-	"del": ("Delete file from bucket", cmd_object_del, 1),
+	"mb" : ("Make bucket", "s3://BUCKET", cmd_bucket_create, 1),
+	"rb" : ("Remove bucket", "s3://BUCKET", cmd_bucket_delete, 1),
+	"ls" : ("List objects or buckets", "[s3://BUCKET[/PREFIX]]", cmd_ls, 0),
+	"la" : ("List all object in all buckets", "", cmd_buckets_list_all_all, 0),
+	"cp" : ("Copy files to / from S3 bucket", "SRC DST", cmd_cp, 2),
+	"put": ("Put file into bucket", "FILE [FILE...] s3://BUCKET[/PREFIX]", cmd_object_put, 2),
+	"get": ("Get file from bucket", "s3://BUCKET/OBJECT LOCAL_FILE", cmd_object_get, 1),
+	"del": ("Delete file from bucket", "s3://BUCKET/OBJECT", cmd_object_del, 1),
 	}
+
+def format_commands(progname):
+	help = "Commands:\n"
+	for cmd in commands:
+		help += "  %s\n      %s %s %s\n" % (commands[cmd][0], progname, cmd, commands[cmd][1])
+	return help
 
 class OptionMimeType(Option):
 	def check_mimetype(option, opt, value):
@@ -175,13 +187,20 @@ class OptionMimeType(Option):
 	TYPE_CHECKER = copy(Option.TYPE_CHECKER)
 	TYPE_CHECKER["mimetype"] = check_mimetype
 
+class MyHelpFormatter(IndentedHelpFormatter):
+	def format_epilog(self, epilog):
+		if epilog:
+			return "\n" + epilog + "\n"
+		else:
+			return ""
+
 if __name__ == '__main__':
 	if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.5:
 		sys.stderr.write("ERROR: Python 2.5 or higher required, sorry.\n")
 		exit(1)
 
 	default_verbosity = Config().verbosity
-	optparser = OptionParser(option_class=OptionMimeType)
+	optparser = OptionParser(option_class=OptionMimeType, formatter=MyHelpFormatter())
 	#optparser.disable_interspersed_args()
 	optparser.set_defaults(config=os.getenv("HOME")+"/.s3cfg")
 	optparser.add_option("-c", "--config", dest="config", metavar="FILE", help="Config file name. Defaults to %default")
@@ -195,6 +214,9 @@ if __name__ == '__main__':
 	optparser.add_option("-m", "--mime-type", dest="default_mime_type", type="mimetype", metavar="MIME/TYPE", help="Default MIME-type to be set for objects stored.")
 	optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")
 
+	optparser.set_usage(optparser.usage + " COMMAND [parameters]")
+	optparser.set_description("""S3cmd is a tool to manage objects in Amazon S3 storage. It allows for making and removing "buckets" and uploading, downloading and removing "objects" from these buckets.""")
+	optparser.epilog = format_commands(optparser.get_prog_name())
 	(options, args) = optparser.parse_args()
 
 	## Some mucking with logging levels to enable 
@@ -230,12 +252,12 @@ if __name__ == '__main__':
 		## We must do this lookup in extra step to 
 		## avoid catching all KeyError exceptions
 		## from inner functions.
-		cmd_func = commands[command][1]
+		cmd_func = commands[command][2]
 	except KeyError, e:
 		error("Invalid command: %s" % e)
 		exit(1)
 
-	if len(args) < commands[command][2]:
+	if len(args) < commands[command][3]:
 		error("Not enough paramters for command '%s'" % command)
 		exit(1)
 

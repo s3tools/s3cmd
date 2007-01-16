@@ -153,7 +153,7 @@ class S3:
 	
 	def bucket_list(self, bucket, prefix = None):
 		## TODO: use prefix if supplied
-		request = self.create_request("BUCKET_LIST", bucket = bucket)
+		request = self.create_request("BUCKET_LIST", bucket = bucket, prefix = prefix)
 		response = self.send_request(request)
 		debug(response)
 		response["list"] = getListFromXml(response["data"], "Contents")
@@ -202,7 +202,7 @@ class S3:
 		response = self.send_request(request)
 		return response
 
-	def create_request(self, operation, bucket = None, object = None, headers = None):
+	def create_request(self, operation, bucket = None, object = None, headers = None, **params):
 		resource = "/"
 		if bucket:
 			resource += str(bucket)
@@ -223,6 +223,13 @@ class S3:
 		method_string = S3.http_methods.getkey(S3.operations[operation] & S3.http_methods["MASK"])
 		signature = self.sign_headers(method_string, resource, headers)
 		headers["Authorization"] = "AWS "+self.config.access_key+":"+signature
+		param_str = ""
+		for param in params:
+			if params[param] not in (None, ""):
+				param_str += "&%s=%s" % (param, params[param])
+		if param_str != "":
+			resource += "?" + param_str[1:]
+		debug("CreateRequest: resource=" + resource)
 		return (method_string, resource, headers)
 	
 	def send_request(self, request):
@@ -322,6 +329,7 @@ class S3:
 			if header.startswith("x-amz-"):
 				h += header+":"+str(headers[header])+"\n"
 		h += resource
+		debug("SignHeaders: " + repr(h))
 		return base64.encodestring(hmac.new(self.config.secret_key, h, hashlib.sha1).digest()).strip()
 
 	def check_bucket_name(self, bucket):
