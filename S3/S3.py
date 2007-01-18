@@ -10,7 +10,7 @@ from stat import ST_SIZE
 from Utils import *
 from SortedDict import SortedDict
 from BidirMap import BidirMap
-from ConfigParser import ConfigParser
+from Config import ConfigParser
 
 class Config(object):
 	_instance = None
