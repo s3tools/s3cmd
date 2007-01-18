@@ -16,6 +16,7 @@ import elementtree.ElementTree as ET
 
 ## Our modules
 from S3.S3 import *
+from S3.Config import Config
 
 def output(message):
 	print message

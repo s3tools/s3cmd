@@ -2,6 +2,76 @@ import logging
 from logging import debug, info, warning, error
 import re
 
+class Config(object):
+	_instance = None
+	_parsed_files = []
+	access_key = ""
+	secret_key = ""
+	host = "s3.amazonaws.com"
+	verbosity = logging.WARNING
+	send_chunk = 4096
+	recv_chunk = 4096
+	human_readable_sizes = False
+	force = False
+	show_uri = False
+	acl_public = False
+
+	## Creating a singleton
+	def __new__(self, configfile = None):
+		if self._instance is None:
+			self._instance = object.__new__(self)
+		return self._instance
+
+	def __init__(self, configfile = None):
+		if configfile:
+			self.read_config_file(configfile)
+
+	def option_list(self):
+		retval = []
+		for option in dir(self):
+			## Skip attributes that start with underscore or are not string, int or bool
+			option_type = type(getattr(Config, option))
+			if option.startswith("_") or \
+			   not (option_type in (
+			   		type("string"),	# str
+			        	type(42),	# int
+					type(True))):	# bool
+				continue
+			retval.append(option)
+		return retval
+
+	def read_config_file(self, configfile):
+		cp = ConfigParser(configfile)
+		for option in self.option_list():
+			self.update_option(option, cp.get(option))
+		self._parsed_files.append(configfile)
+
+	def update_option(self, option, value):
+		if value is None:
+			return
+		#### Special treatment of some options
+		## verbosity must be known to "logging" module
+		if option == "verbosity":
+			try:
+				setattr(Config, "verbosity", logging._levelNames[value])
+			except KeyError:
+				error("Config: verbosity level '%s' is not valid" % value)
+		## allow yes/no, true/false, on/off and 1/0 for boolean options
+		elif type(getattr(Config, option)) is type(True):	# bool
+			if str(value).lower() in ("true", "yes", "on", "1"):
+				setattr(Config, option, True)
+			elif str(value).lower() in ("false", "no", "off", "0"):
+				setattr(Config, option, False)
+			else:
+				error("Config: value of option '%s' must be Yes or No, not '%s'" % (option, value))
+		elif type(getattr(Config, option)) is type(42):		# int
+			try:
+				setattr(Config, option, int(value))
+			except ValueError, e:
+				error("Config: value of option '%s' must be an integer, not '%s'" % (option, value))
+		else:							# string
+			setattr(Config, option, value)
+
 class ConfigParser:
 	def __init__(self, file, sections = []):
 		self.cfg = {}
