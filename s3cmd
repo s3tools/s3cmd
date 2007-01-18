@@ -215,8 +215,13 @@ if __name__ == '__main__':
 	optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")
 
 	optparser.set_usage(optparser.usage + " COMMAND [parameters]")
-	optparser.set_description("""S3cmd is a tool to manage objects in Amazon S3 storage. It allows for making and removing "buckets" and uploading, downloading and removing "objects" from these buckets.""")
+	optparser.set_description('S3cmd is a tool to manage objects in '+
+		'Amazon S3 storage. It allows for making and removing '+
+		'"buckets" and uploading, downloading and removing '+
+		'"objects" from these buckets.')
 	optparser.epilog = format_commands(optparser.get_prog_name())
+	optparser.epilog += '\nSee program homepage for more information at\nhttp://www.logix.cz/michal/devel/s3tools\n'
+
 	(options, args) = optparser.parse_args()
 
 	## Some mucking with logging levels to enable 
