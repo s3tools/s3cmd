@@ -1,7 +1,14 @@
 from distutils.core import setup
+import os
+
+try:
+	os.unlink("MANIFEST")
+except:
+	pass
+
 setup(name = "s3cmd",
 	## Content description
-	version = "0.9.0a1",
+	version = "0.9.0",
 	packages = [ 'S3' ],
 	scripts = ['s3cmd'],
 
