@@ -11,6 +11,7 @@ setup(name = "s3cmd",
 	version = "0.9.0",
 	packages = [ 'S3' ],
 	scripts = ['s3cmd'],
+	data_files = [ ("share/s3cmd", [ "README" ]), ],
 
 	## Packaging details
 	author = "Michal Ludvig",
