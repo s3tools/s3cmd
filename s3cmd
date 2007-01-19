@@ -161,21 +161,66 @@ def cmd_object_del(args):
 	response = s3.object_delete(bucket, object)
 	output("Object %s deleted" % s3uri)
 
-commands = {
-	"mb" : ("Make bucket", "s3://BUCKET", cmd_bucket_create, 1),
-	"rb" : ("Remove bucket", "s3://BUCKET", cmd_bucket_delete, 1),
-	"ls" : ("List objects or buckets", "[s3://BUCKET[/PREFIX]]", cmd_ls, 0),
-	"la" : ("List all object in all buckets", "", cmd_buckets_list_all_all, 0),
-	"cp" : ("Copy files to / from S3 bucket", "SRC DST", cmd_cp, 2),
-	"put": ("Put file into bucket", "FILE [FILE...] s3://BUCKET[/PREFIX]", cmd_object_put, 2),
-	"get": ("Get file from bucket", "s3://BUCKET/OBJECT LOCAL_FILE", cmd_object_get, 1),
-	"del": ("Delete file from bucket", "s3://BUCKET/OBJECT", cmd_object_del, 1),
-	}
+def run_configure(config_file):
+	cfg = Config()
+	options = [
+		("access_key", "Access Key"),
+		("secret_key", "Secret Key"),
+		]
+	try:
+		while 1:
+			output("\nEnter new values or accept defaults in brackets with Enter.")
+			output("Refer to user manual for detailed description of all options.\n")
+			for option in options:
+				prompt = option[1]
+				try:
+					val = getattr(cfg, option[0])
+					if val not in (None, ""):
+						prompt += " [%s]" % val
+				except AttributeError:
+					pass
+
+				if len(option) >= 3:
+					output("%s" % option[2])
+
+				val = raw_input(prompt + ": ")
+				if val != "":
+					setattr(cfg, option[0], val)
+			output("\nNew settings:")
+			for option in options:
+				output("  %s: %s" % (option[1], getattr(cfg, option[0])))
+			val = raw_input("\nChange any setting? [y/N] ")
+			if not val.lower().startswith("y"):
+				break
+		f = open(config_file, "w")
+		cfg.dump_config(f)
+		f.close()
+		output("Configuration saved to '%s'" % config_file)
+
+	except (EOFError, KeyboardInterrupt):
+		output("\nConfiguration aborted. Changes were NOT saved.")
+		return
+	
+	except IOError, e:
+		error("Writing config file failed: %s: %s" % (config_file, e.strerror))
+		exit(1)
+
+commands = {}
+commands_list = [
+	{"cmd":"mb", "label":"Make bucket", "param":"s3://BUCKET", "func":cmd_bucket_create, "argc":1},
+	{"cmd":"rb", "label":"Remove bucket", "param":"s3://BUCKET", "func":cmd_bucket_delete, "argc":1},
+	{"cmd":"ls", "label":"List objects or buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_ls, "argc":0},
+	{"cmd":"la", "label":"List all object in all buckets", "param":"", "func":cmd_buckets_list_all_all, "argc":0},
+	{"cmd":"cp", "label":"Copy files to / from S3 bucket", "param":"SRC DST", "func":cmd_cp, "argc":2},
+	{"cmd":"put", "label":"Put file into bucket", "param":"FILE [FILE...] s3://BUCKET[/PREFIX]", "func":cmd_object_put, "argc":2},
+	{"cmd":"get", "label":"Get file from bucket", "param":"s3://BUCKET/OBJECT LOCAL_FILE", "func":cmd_object_get, "argc":1},
+	{"cmd":"del", "label":"Delete file from bucket", "param":"s3://BUCKET/OBJECT", "func":cmd_object_del, "argc":1},
+	]
 
 def format_commands(progname):
 	help = "Commands:\n"
-	for cmd in commands:
-		help += "  %s\n      %s %s %s\n" % (commands[cmd][0], progname, cmd, commands[cmd][1])
+	for cmd in commands_list:
+		help += "  %s\n      %s %s %s\n" % (cmd["label"], progname, cmd["cmd"], cmd["param"])
 	return help
 
 class OptionMimeType(Option):
@@ -200,6 +245,11 @@ if __name__ == '__main__':
 		sys.stderr.write("ERROR: Python 2.5 or higher required, sorry.\n")
 		exit(1)
 
+	## Populate "commands" from "commands_list"
+	for cmd in commands_list:
+		if cmd.has_key("cmd"):
+			commands[cmd["cmd"]] = cmd
+
 	default_verbosity = Config().verbosity
 	optparser = OptionParser(option_class=OptionMimeType, formatter=MyHelpFormatter())
 	#optparser.disable_interspersed_args()
@@ -214,6 +264,8 @@ if __name__ == '__main__':
 	optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read by anyone.")
 	optparser.add_option("-m", "--mime-type", dest="default_mime_type", type="mimetype", metavar="MIME/TYPE", help="Default MIME-type to be set for objects stored.")
 	optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")
+	optparser.add_option(      "--dump-config", dest="dump_config", action="store_true", help="Dump current configuration after parsin config files and command line options and exit.")
+	optparser.add_option(      "--configure", dest="run_configure", action="store_true", help="Invoke interactive (re)configuration tool.")
 
 	optparser.set_usage(optparser.usage + " COMMAND [parameters]")
 	optparser.set_description('S3cmd is a tool to manage objects in '+
@@ -230,23 +282,40 @@ if __name__ == '__main__':
 	logging.basicConfig(level=options.verbosity, format='%(levelname)s: %(message)s')
 	
 	## Now finally parse the config file
-	Config(options.config)
+	try:
+		cfg = Config(options.config)
+	except IOError, e:
+		if options.run_configure:
+			cfg = Config()
+		else:
+			error("%s: %s"  % (options.config, e.strerror))
+			error("Configuration file not available.")
+			error("Consider using --configure parameter to create one.")
+			exit(1)
 
 	## And again some logging level adjustments
 	## according to configfile and command line parameters
 	if options.verbosity != default_verbosity:
-		Config().verbosity = options.verbosity
-	logging.root.setLevel(Config().verbosity)
+		cfg.verbosity = options.verbosity
+	logging.root.setLevel(cfg.verbosity)
 
 	## Update Config with other parameters
-	for parameter in (
-			"human_readable_sizes",
-			"force",
-			"show_uri",
-			"acl_public",):
-		if getattr(options, parameter) != None:
-			debug("Updating %s -> %s" % (parameter, getattr(options, parameter)))
-			setattr(Config, parameter, getattr(options, parameter))
+	for option in cfg.option_list():
+		try:
+			if getattr(options, option) != None:
+				debug("Updating %s -> %s" % (option, getattr(options, option)))
+				cfg.update_option(option, getattr(options, option))
+		except AttributeError:
+			## Some Config() options are not settable from command line
+			pass
+
+	if options.dump_config:
+		cfg.dump_config(sys.stdout)
+		exit(0)
+
+	if options.run_configure:
+		run_configure(options.config)
+		exit(0)
 
 	if len(args) < 1:
 		error("Missing command. Please run with --help for more information.")
@@ -254,16 +323,16 @@ if __name__ == '__main__':
 
 	command = args.pop(0)
 	try:
-		debug("Command: " + commands[command][0])
+		debug("Command: " + commands[command]["cmd"])
 		## We must do this lookup in extra step to 
 		## avoid catching all KeyError exceptions
 		## from inner functions.
-		cmd_func = commands[command][2]
+		cmd_func = commands[command]["func"]
 	except KeyError, e:
 		error("Invalid command: %s" % e)
 		exit(1)
 
-	if len(args) < commands[command][3]:
+	if len(args) < commands[command]["argc"]:
 		error("Not enough paramters for command '%s'" % command)
 		exit(1)
 
