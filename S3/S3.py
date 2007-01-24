@@ -38,7 +38,7 @@ class S3Error (Exception):
 class ParameterError(Exception):
 	pass
 
-class S3:
+class S3(object):
 	http_methods = BidirMap(
 		GET = 0x01,
 		PUT = 0x02,
@@ -280,10 +280,21 @@ class S3:
 		else:
 			return object and object or bucket
 
-	def parse_s3_uri(self, uri):
+	def parse_uri(self, uri):
 		match = re.compile("^s3://([^/]*)/?(.*)").match(uri)
 		if match:
 			return (True,) + match.groups()
 		else:
 			return (False, "", "")
 
+	def is_uri(self, uri):
+		isuri, bucket, object = self.parse_uri(uri)
+		return isuri
+
+	def is_uri_bucket(self, uri):
+		isuri, bucket, object = self.parse_uri(uri)
+		return isuri and bool(bucket)
+
+	def is_uri_object(self, uri):
+		isuri, bucket, object = self.parse_uri(uri)
+		return isuri and bool(bucket) and bool(object)

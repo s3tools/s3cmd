@@ -25,7 +25,7 @@ def cmd_ls(args):
 	s3 = S3(Config())
 	bucket = None
 	if len(args) > 0:
-		isuri, bucket, object = s3.parse_s3_uri(args[0])
+		isuri, bucket, object = s3.parse_uri(args[0])
 		if not isuri:
 			bucket = args[0]
 	if bucket:
@@ -53,7 +53,7 @@ def cmd_buckets_list_all_all(args):
 
 def cmd_bucket_list(args):
 	s3 = S3(Config())
-	isuri, bucket, object = s3.parse_s3_uri(args[0])
+	isuri, bucket, object = s3.parse_uri(args[0])
 	if not isuri:
 		bucket = args[0]
 	output("Bucket '%s':" % bucket)
@@ -77,7 +77,7 @@ def cmd_bucket_list(args):
 
 def cmd_bucket_create(args):
 	s3 = S3(Config())
-	isuri, bucket, object = s3.parse_s3_uri(args[0])
+	isuri, bucket, object = s3.parse_uri(args[0])
 	if not isuri:
 		bucket = args[0]
 	try:
@@ -92,7 +92,7 @@ def cmd_bucket_create(args):
 
 def cmd_bucket_delete(args):
 	s3 = S3(Config())
-	isuri, bucket, object = s3.parse_s3_uri(args[0])
+	isuri, bucket, object = s3.parse_uri(args[0])
 	if not isuri:
 		bucket = args[0]
 	try:
@@ -106,7 +106,38 @@ def cmd_bucket_delete(args):
 	output("Bucket '%s' removed" % bucket)
 
 def cmd_cp(args):
-	raise ParameterError("Not yet implemented")
+	s3 = S3(Config())
+	xnor=lambda a, b:(a and b) or (not a and not b)
+	cp_remote_local = s3.is_uri(args[0])
+	arg_copy = args[:]
+	srcs = []
+	dest = []
+	index = 0
+	try:
+		while(xnor(cp_remote_local, s3.is_uri(arg_copy[index]))):
+			if cp_remote_local:
+				if not s3.is_uri_object(arg_copy[index]):
+					raise ParameterError("%s: source URI must include the object name!" % arg_copy[index])
+			else:
+				if not os.path.isfile(arg_copy[index]):
+					raise ParameterError("%s is not a regular file!" % arg_copy[index])
+			srcs.append(arg_copy[index])
+			index+=1
+		dest = arg_copy[index]
+		if len(arg_copy) > index+1:
+			raise ParameterError("Too many arguments for 'cp': %s" % (arg_copy[index + 1:]))
+	except IndexError, e:
+		raise ParameterError("Destination %s not set. See --help for details." % 
+			(cp_remote_local and "local directory" or "S3-URI"))
+	if cp_remote_local and not os.path.isdir(dest):
+		raise ParameterError("Destination path '%s' is not a directory." %
+			(dest))
+	## All checks done, now DO IT
+	if cp_remote_local:
+		for src in srcs:
+			cmd_object_get([src, dest])
+	else:
+		cmd_object_put(srcs + [dest])
 
 def cmd_object_put(args):
 	s3 = S3(Config())
@@ -114,7 +145,7 @@ def cmd_object_put(args):
 	s3uri = args.pop()
 	files = args[:]
 
-	isuri, bucket, object = s3.parse_s3_uri(s3uri)
+	isuri, bucket, object = s3.parse_uri(s3uri)
 	if not isuri:
 		raise ParameterError("Expecting S3 URI instead of '%s'" % s3uri)
 
@@ -140,7 +171,7 @@ def cmd_object_put(args):
 def cmd_object_get(args):
 	s3 = S3(Config())
 	s3uri = args.pop(0)
-	isuri, bucket, object = s3.parse_s3_uri(s3uri)
+	isuri, bucket, object = s3.parse_uri(s3uri)
 	if not isuri or not bucket or not object:
 		raise ParameterError("Expecting S3 object URI instead of '%s'" % s3uri)
 	destination = len(args) > 0 and args.pop(0) or object
@@ -155,7 +186,7 @@ def cmd_object_get(args):
 def cmd_object_del(args):
 	s3 = S3(Config())
 	s3uri = args.pop(0)
-	isuri, bucket, object = s3.parse_s3_uri(s3uri)
+	isuri, bucket, object = s3.parse_uri(s3uri)
 	if not isuri or not bucket or not object:
 		raise ParameterError("Expecting S3 object URI instead of '%s'" % s3uri)
 	response = s3.object_delete(bucket, object)
