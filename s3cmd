@@ -17,6 +17,7 @@ import elementtree.ElementTree as ET
 ## Our modules
 from S3.S3 import *
 from S3.Config import Config
+from S3.S3Uri import S3Uri
 
 def output(message):
 	print message
@@ -145,11 +146,11 @@ def cmd_object_put(args):
 	s3uri = args.pop()
 	files = args[:]
 
-	isuri, bucket, object = s3.parse_uri(s3uri)
-	if not isuri:
+	uri = S3Uri(s3uri)
+	if uri.type != "s3":
 		raise ParameterError("Expecting S3 URI instead of '%s'" % s3uri)
 
-	if len(files) > 1 and object != "" and not Config().force:
+	if len(files) > 1 and uri.object != "" and not Config().force:
 		error("When uploading multiple files the last argument must")
 		error("be a S3 URI specifying just the bucket name")
 		error("WITHOUT object name!")
@@ -158,15 +159,14 @@ def cmd_object_put(args):
 		exit(1)
 
 	for file in files:
-		if len(files) > 1:
-			object_final = object + os.path.basename(file)
-		elif object == "":
-			object_final = os.path.basename(file)
-		else:
-			object_final = object
-		response = s3.object_put(file, bucket, object_final)
+		s3uri_final = str(uri)
+		if len(files) > 1 or uri.object() == "":
+			s3uri_final += os.path.basename(file)
+
+		uri_final = S3Uri(s3uri_final)
+		response = s3.object_put_uri(file, uri_final)
 		output("File '%s' stored as %s (%d bytes)" %
-			(file, s3.compose_uri(bucket, object_final, force_uri = True), response["size"]))
+			(file, uri_final, response["size"]))
 
 def cmd_object_get(args):
 	s3 = S3(Config())

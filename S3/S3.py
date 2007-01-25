@@ -117,6 +117,11 @@ class S3(object):
 		response["size"] = size
 		return response
 
+	def object_put_uri(self, filename, uri):
+		if uri.type != "s3":
+			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
+		return self.object_put(filename, uri.bucket(), uri.object())
+
 	def object_get(self, filename, bucket, object):
 		try:
 			file = open(filename, "w")
