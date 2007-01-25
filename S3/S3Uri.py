@@ -1,3 +1,8 @@
+## Amazon S3 manager
+## Author: Michal Ludvig <michal@logix.cz>
+##         http://www.logix.cz/michal
+## License: GPL Version 2
+
 import re
 import sys
 from BidirMap import BidirMap
@@ -53,6 +58,10 @@ class S3UriS3(S3Uri):
 
 	def uri(self):
 		return "/".join(["s3:/", self._bucket, self._object])
+	
+	@staticmethod
+	def compose_uri(bucket, object = ""):
+		return "S3://%s/%s" % (bucket, object)
 
 class S3UriS3FS(S3Uri):
 	type = "s3fs"

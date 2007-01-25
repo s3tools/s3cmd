@@ -1,3 +1,8 @@
+## Amazon S3 manager
+## Author: Michal Ludvig <michal@logix.cz>
+##         http://www.logix.cz/michal
+## License: GPL Version 2
+
 import time
 import re
 import elementtree.ElementTree as ET

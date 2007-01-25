@@ -17,7 +17,7 @@ import elementtree.ElementTree as ET
 ## Our modules
 from S3.S3 import *
 from S3.Config import Config
-from S3.S3Uri import S3Uri
+from S3.S3Uri import *
 
 def output(message):
 	print message
@@ -69,7 +69,7 @@ def subcmd_bucket_list(s3, uri):
 		output("%s  %s%s  %s" % (
 			formatDateTime(object["LastModified"]),
 			str(size).rjust(8), size_coeff.ljust(1),
-			s3.compose_uri(bucket, object["Key"]),
+			uri.compose_uri(bucket, object["Key"]),
 			))
 
 def cmd_bucket_create(args):

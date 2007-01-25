@@ -1,4 +1,9 @@
-class BidirMap:
+## Amazon S3 manager
+## Author: Michal Ludvig <michal@logix.cz>
+##         http://www.logix.cz/michal
+## License: GPL Version 2
+
+class BidirMap(object):
 	def __init__(self, **map):
 		self.k2v = {}
 		self.v2k = {}

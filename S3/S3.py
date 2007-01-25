@@ -1,3 +1,8 @@
+## Amazon S3 manager
+## Author: Michal Ludvig <michal@logix.cz>
+##         http://www.logix.cz/michal
+## License: GPL Version 2
+
 import os, os.path
 import base64
 import hmac
@@ -75,6 +80,7 @@ class S3(object):
 	def __init__(self, config):
 		self.config = config
 
+	## Commands / Actions
 	def list_all_buckets(self):
 		request = self.create_request("LIST_ALL_BUCKETS")
 		response = self.send_request(request)
@@ -147,6 +153,7 @@ class S3(object):
 			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 		return self.object_delete(filename, uri.bucket(), uri.object())
 
+	## Low level methods
 	def create_request(self, operation, bucket = None, object = None, headers = None, **params):
 		resource = "/"
 		if bucket:
@@ -285,13 +292,4 @@ class S3(object):
 		if len(bucket) > 255:
 			raise ParameterError("Bucket name '%s' is too long (max 255 characters)" % bucket)
 		return True
-
-	def compose_uri(self, bucket, object = None, force_uri = False):
-		if self.config.show_uri or force_uri:
-			uri = "s3://" + bucket
-			if object:
-				uri += "/"+object
-			return uri
-		else:
-			return object and object or bucket
 

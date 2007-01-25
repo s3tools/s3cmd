@@ -1,4 +1,9 @@
-class SortedDictIterator:
+## Amazon S3 manager
+## Author: Michal Ludvig <michal@logix.cz>
+##         http://www.logix.cz/michal
+## License: GPL Version 2
+
+class SortedDictIterator(object):
 	def __init__(self, dict):
 		self.dict = dict
 		self.keys = dict.keys()

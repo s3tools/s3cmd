@@ -1,3 +1,8 @@
+## Amazon S3 manager
+## Author: Michal Ludvig <michal@logix.cz>
+##         http://www.logix.cz/michal
+## License: GPL Version 2
+
 import logging
 from logging import debug, info, warning, error
 import re
