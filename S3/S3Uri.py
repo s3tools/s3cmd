@@ -30,7 +30,7 @@ class S3Uri(object):
 	
 class S3UriS3(S3Uri):
 	type = "s3"
-	_re = re.compile("^s3://([^/]*)/?(.*)")
+	_re = re.compile("^s3://([^/]+)/?(.*)")
 	def __init__(self, string):
 		match = self._re.match(string)
 		if not match:
@@ -45,6 +45,12 @@ class S3UriS3(S3Uri):
 	def object(self):
 		return self._object
 	
+	def has_bucket(self):
+		return bool(self._bucket)
+
+	def has_object(self):
+		return bool(self._object)
+
 	def uri(self):
 		return "/".join(["s3:/", self._bucket, self._object])
 

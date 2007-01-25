@@ -24,39 +24,35 @@ def output(message):
 
 def cmd_ls(args):
 	s3 = S3(Config())
-	bucket = None
 	if len(args) > 0:
-		isuri, bucket, object = s3.parse_uri(args[0])
-		if not isuri:
-			bucket = args[0]
-	if bucket:
-		cmd_bucket_list(args)
-	else:
-		cmd_buckets_list_all(args)
-
-def cmd_buckets_list_all(args):
-	s3 = S3(Config())
-	response = s3.list_all_buckets()
-	for bucket in response["list"]:
-		output("%s  %s" % (
-			formatDateTime(bucket["CreationDate"]),
-			s3.compose_uri(bucket["Name"]),
-			))
+		uri = S3Uri(args[0])
+		if uri.type == "s3" and uri.has_bucket():
+			subcmd_bucket_list(s3, uri)
+			return
+	subcmd_buckets_list_all(s3)
 
 def cmd_buckets_list_all_all(args):
 	s3 = S3(Config())
+
 	response = s3.list_all_buckets()
 
 	for bucket in response["list"]:
-		cmd_bucket_list([bucket["Name"]])
+		subcmd_bucket_list(s3, S3Uri("s3://" + bucket["Name"]))
 		output("")
 
 
-def cmd_bucket_list(args):
-	s3 = S3(Config())
-	isuri, bucket, object = s3.parse_uri(args[0])
-	if not isuri:
-		bucket = args[0]
+def subcmd_buckets_list_all(s3):
+	response = s3.list_all_buckets()
+	for bucket in response["list"]:
+		output("%s  s3://%s" % (
+			formatDateTime(bucket["CreationDate"]),
+			bucket["Name"],
+			))
+
+def subcmd_bucket_list(s3, uri):
+	bucket = uri.bucket()
+	object = uri.object()
+
 	output("Bucket '%s':" % bucket)
 	if object.endswith('*'):
 		object = object[:-1]
@@ -77,78 +73,45 @@ def cmd_bucket_list(args):
 			))
 
 def cmd_bucket_create(args):
-	s3 = S3(Config())
-	isuri, bucket, object = s3.parse_uri(args[0])
-	if not isuri:
-		bucket = args[0]
+	uri = S3Uri(args[0])
+	if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
+		raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % args[0])
+
 	try:
-		response = s3.bucket_create(bucket)
+		s3 = S3(Config())
+		response = s3.bucket_create(uri.bucket())
 	except S3Error, e:
 		if S3.codes.has_key(e.Code):
-			error(S3.codes[e.Code] % bucket)
+			error(S3.codes[e.Code] % uri.bucket())
 			return
 		else:
 			raise
-	output("Bucket '%s' created" % bucket)
+	output("Bucket '%s' created" % uri.bucket())
 
 def cmd_bucket_delete(args):
-	s3 = S3(Config())
-	isuri, bucket, object = s3.parse_uri(args[0])
-	if not isuri:
-		bucket = args[0]
+	uri = S3Uri(args[0])
+	if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
+		raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % args[0])
 	try:
-		response = s3.bucket_delete(bucket)
+		s3 = S3(Config())
+		response = s3.bucket_delete(uri.bucket())
 	except S3Error, e:
 		if S3.codes.has_key(e.Code):
-			error(S3.codes[e.Code] % bucket)
+			error(S3.codes[e.Code] % uri.bucket())
 			return
 		else:
 			raise
-	output("Bucket '%s' removed" % bucket)
-
-def cmd_cp(args):
-	s3 = S3(Config())
-	xnor=lambda a, b:(a and b) or (not a and not b)
-	cp_remote_local = s3.is_uri(args[0])
-	arg_copy = args[:]
-	srcs = []
-	dest = []
-	index = 0
-	try:
-		while(xnor(cp_remote_local, s3.is_uri(arg_copy[index]))):
-			if cp_remote_local:
-				if not s3.is_uri_object(arg_copy[index]):
-					raise ParameterError("%s: source URI must include the object name!" % arg_copy[index])
-			else:
-				if not os.path.isfile(arg_copy[index]):
-					raise ParameterError("%s is not a regular file!" % arg_copy[index])
-			srcs.append(arg_copy[index])
-			index+=1
-		dest = arg_copy[index]
-		if len(arg_copy) > index+1:
-			raise ParameterError("Too many arguments for 'cp': %s" % (arg_copy[index + 1:]))
-	except IndexError, e:
-		raise ParameterError("Destination %s not set. See --help for details." % 
-			(cp_remote_local and "local directory" or "S3-URI"))
-	if cp_remote_local and not os.path.isdir(dest):
-		raise ParameterError("Destination path '%s' is not a directory." %
-			(dest))
-	## All checks done, now DO IT
-	if cp_remote_local:
-		for src in srcs:
-			cmd_object_get([src, dest])
-	else:
-		cmd_object_put(srcs + [dest])
+	output("Bucket '%s' removed" % uri.bucket())
 
 def cmd_object_put(args):
 	s3 = S3(Config())
 
-	s3uri = args.pop()
+	uri_arg = args.pop()
 	files = args[:]
 
-	uri = S3Uri(s3uri)
+	uri = S3Uri(uri_arg)
 	if uri.type != "s3":
-		raise ParameterError("Expecting S3 URI instead of '%s'" % s3uri)
+		raise ParameterError("Expecting S3 URI instead of '%s'" % uri_arg)
 
 	if len(files) > 1 and uri.object != "" and not Config().force:
 		error("When uploading multiple files the last argument must")
@@ -159,38 +122,42 @@ def cmd_object_put(args):
 		exit(1)
 
 	for file in files:
-		s3uri_final = str(uri)
+		uri_arg_final = str(uri)
 		if len(files) > 1 or uri.object() == "":
-			s3uri_final += os.path.basename(file)
+			uri_arg_final += os.path.basename(file)
 
-		uri_final = S3Uri(s3uri_final)
+		uri_final = S3Uri(uri_arg_final)
 		response = s3.object_put_uri(file, uri_final)
 		output("File '%s' stored as %s (%d bytes)" %
 			(file, uri_final, response["size"]))
 
 def cmd_object_get(args):
 	s3 = S3(Config())
-	s3uri = args.pop(0)
-	isuri, bucket, object = s3.parse_uri(s3uri)
-	if not isuri or not bucket or not object:
-		raise ParameterError("Expecting S3 object URI instead of '%s'" % s3uri)
-	destination = len(args) > 0 and args.pop(0) or object
+
+	uri_arg = args.pop(0)
+	uri = S3Uri(uri_arg)
+	if uri.type != "s3" or not uri.has_object():
+		raise ParameterError("Expecting S3 URI instead of '%s'" % uri_arg)
+
+	destination = len(args) > 0 and args.pop(0) or uri.object()
 	if os.path.isdir(destination):
-		destination += ("/" + object)
+		destination += ("/" + uri.object())
 	if not Config().force and os.path.exists(destination):
 		raise ParameterError("File %s already exists. Use --force to overwrite it" % destination)
-	response = s3.object_get(destination, bucket, object)
+	response = s3.object_get_uri(destination, uri)
 	output("Object %s saved as '%s' (%d bytes)" %
-		(s3uri, destination, response["size"]))
+		(uri, destination, response["size"]))
 
 def cmd_object_del(args):
 	s3 = S3(Config())
-	s3uri = args.pop(0)
-	isuri, bucket, object = s3.parse_uri(s3uri)
-	if not isuri or not bucket or not object:
-		raise ParameterError("Expecting S3 object URI instead of '%s'" % s3uri)
-	response = s3.object_delete(bucket, object)
-	output("Object %s deleted" % s3uri)
+
+	uri_arg = args.pop(0)
+	uri = S3Uri(uri_arg)
+	if uri.type != "s3" or not uri.has_object():
+		raise ParameterError("Expecting S3 URI instead of '%s'" % uri_arg)
+
+	response = s3.object_delete_uri(uri)
+	output("Object %s deleted" % uri)
 
 def run_configure(config_file):
 	cfg = Config()
@@ -242,7 +209,6 @@ commands_list = [
 	{"cmd":"rb", "label":"Remove bucket", "param":"s3://BUCKET", "func":cmd_bucket_delete, "argc":1},
 	{"cmd":"ls", "label":"List objects or buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_ls, "argc":0},
 	{"cmd":"la", "label":"List all object in all buckets", "param":"", "func":cmd_buckets_list_all_all, "argc":0},
-	{"cmd":"cp", "label":"Copy files to / from S3 bucket", "param":"SRC DST", "func":cmd_cp, "argc":2},
 	{"cmd":"put", "label":"Put file into bucket", "param":"FILE [FILE...] s3://BUCKET[/PREFIX]", "func":cmd_object_put, "argc":2},
 	{"cmd":"get", "label":"Get file from bucket", "param":"s3://BUCKET/OBJECT LOCAL_FILE", "func":cmd_object_get, "argc":1},
 	{"cmd":"del", "label":"Delete file from bucket", "param":"s3://BUCKET/OBJECT", "func":cmd_object_del, "argc":1},

@@ -117,11 +117,6 @@ class S3(object):
 		response["size"] = size
 		return response
 
-	def object_put_uri(self, filename, uri):
-		if uri.type != "s3":
-			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
-		return self.object_put(filename, uri.bucket(), uri.object())
-
 	def object_get(self, filename, bucket, object):
 		try:
 			file = open(filename, "w")
@@ -136,6 +131,21 @@ class S3(object):
 		request = self.create_request("OBJECT_DELETE", bucket = bucket, object = object)
 		response = self.send_request(request)
 		return response
+
+	def object_put_uri(self, filename, uri):
+		if uri.type != "s3":
+			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
+		return self.object_put(filename, uri.bucket(), uri.object())
+
+	def object_get_uri(self, filename, uri):
+		if uri.type != "s3":
+			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
+		return self.object_get(filename, uri.bucket(), uri.object())
+
+	def object_delete_uri(self, uri):
+		if uri.type != "s3":
+			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
+		return self.object_delete(filename, uri.bucket(), uri.object())
 
 	def create_request(self, operation, bucket = None, object = None, headers = None, **params):
 		resource = "/"
@@ -285,21 +295,3 @@ class S3(object):
 		else:
 			return object and object or bucket
 
-	def parse_uri(self, uri):
-		match = re.compile("^s3://([^/]*)/?(.*)").match(uri)
-		if match:
-			return (True,) + match.groups()
-		else:
-			return (False, "", "")
-
-	def is_uri(self, uri):
-		isuri, bucket, object = self.parse_uri(uri)
-		return isuri
-
-	def is_uri_bucket(self, uri):
-		isuri, bucket, object = self.parse_uri(uri)
-		return isuri and bool(bucket)
-
-	def is_uri_object(self, uri):
-		isuri, bucket, object = self.parse_uri(uri)
-		return isuri and bool(bucket) and bool(object)
