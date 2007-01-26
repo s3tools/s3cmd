@@ -10,41 +10,60 @@ import pickle
 
 class S3fs(object):
 	_sync_attrs = [ "tree" ]
-	fsname = None
-	tree = None
+
+	## These are instance variables - we must
+	## catch when they are used uninitialized
+	###   _object_name = ...
+	###  fsname = ...
+	###  tree = ...
+
 	def __init__(self, fsname = None):
 		self.n = S3fsObjectName()
 		if fsname:
 			self.openfs(fsname)
 
 	def mkfs(self, fsname):
+		self.fsname = fsname
 		self._object_name = self.n.fs(fsname)
 		if self.object_exists(self._object_name):
-			raise S3fsError("Filesystem already exists", errno.EEXIST)
-		self.fsname = fsname
+			raise S3fsError("Filesystem '%s' already exists" % fsname, errno.EEXIST)
 		root_inode = S3fsInode(self)
 		S3fsSync.store(self, root_inode)
 		self.tree = { "/" : root_inode.inode_id }
 		S3fsSync.store(self, self)
+		self.openfs(fsname)
 	
 	def openfs(self, fsname):
-		raise S3fsError("Not implemented", errno.ENOSYS)
+		self.fsname = fsname
+		self._object_name = self.n.fs(fsname)
+		if not self.object_exists(self._object_name):
+			raise S3fsError("Filesystem '%s' does not exist" % fsname, errno.ENOENT)
+		S3fsSync.load(self, self)
+		print self.tree
+
+	def syncfs(self):
+		S3fsSync.store(self, self)
 	
+	def get_inode(self, path):
+		inode_id = self.tree[path]
+		inode = S3fsInode(self, inode_id)
+		return inode
+
 class S3fsInode(object):
 	_fs = None
 
 	## Interface for S3fsSync
 	_sync_attrs = [ "properties" ]
-	_object_name = None
+	# _object_name = 
 
 	## Properties
 	inode_id = None
 	properties = {
-		"ctime" : None,
-		"mtime" : None,
-		"uid" : None,
-		"gid" : None,
-		"mode" : None,
+		"ctime" : 0,
+		"mtime" : 0,
+		"uid" : 0,
+		"gid" : 0,
+		"mode" : 0,
 	}
 
 	def __init__(self, fs, inode_id = None):
@@ -53,6 +72,7 @@ class S3fsInode(object):
 		self.inode_id = inode_id
 		self._object_name = fs.n.inode(fs.fsname, inode_id)
 		self._fs = fs
+		S3fsSync.try_load(self._fs, self)
 
 	def setprop(self, property, value):
 		self.assert_property_name(property)
@@ -68,18 +88,14 @@ class S3fsInode(object):
 			raise ValueError("Property '%s' not known to S3fsInode")
 
 class S3fsLocalDir(S3fs):
-	def __init__(self, directory):
-		S3fs.__init__(self)
+	def __init__(self, directory, fsname = None):
 		if not os.path.isdir(directory):
-			raise S3fsError("Directory %s does not exist" % directory, errno.ENOENT)
+			raise IOError("Directory %s does not exist" % directory, errno.ENOENT)
 		self._dir = directory
+
+		## SubClass must be set to go before calling parent constructor!
+		S3fs.__init__(self, fsname)
 	
-	def lock(self):
-		pass
-
-	def unlock(self):
-		pass
-
 	def object_exists(self, object_name):
 		real_path = os.path.join(self._dir, object_name)
 		if os.path.isfile(real_path):	## Is file, all good
@@ -139,9 +155,18 @@ class S3fsSync(object):
 			object_name = instance._object_name
 		from_sync = pickle.loads(fs.object_read(object_name))
 		for attr in instance._sync_attrs:
-			if from_sync.has_key[attr]:
+			if from_sync.has_key(attr):
 				setattr(instance, attr, from_sync[attr])
 		print "Loaded object: %s" % (object_name)
+
+	@staticmethod
+	def try_load(fs, instance, object_name = None):
+		if not object_name:
+			object_name = instance._object_name
+		if fs.object_exists(object_name):
+			S3fsSync.load(fs, instance, object_name)
+		else:
+			print "Nonexist object: %s" % (object_name)
 
 class S3fsError(Exception):
 	def __init__(self, message, errno = -1):
@@ -150,13 +175,22 @@ class S3fsError(Exception):
 	
 if __name__ == "__main__":
 	local_dir = "/tmp/s3fs"
+	fsname = "testFs"
+	if not os.path.isdir(local_dir):
+		os.mkdir(local_dir)
+
 	try:
-		fs = S3fsLocalDir(local_dir)
+		fs = S3fsLocalDir(local_dir, fsname)
+		print "Filesystem '%s' opened." % fsname
 	except S3fsError, e:
 		if e.errno == errno.ENOENT:
-			os.mkdir(local_dir)
+			print "Filesystem %s does not exist -> mkfs()" % fsname
+			fs = S3fsLocalDir(local_dir)
+			fs.mkfs(fsname)
 		else:
 			raise
-	print "RandomStrings = %s %s" % (fs.n.rndstr(5), fs.n.rndstr(10))
-
-	fs.mkfs("testFs")
+	root_inode = fs.get_inode("/")
+	print "root_inode(%s).mode = 0%o" % (root_inode.inode_id, root_inode.getprop("mode"))
+	if root_inode.getprop("mode") == 0:
+		root_inode.setprop("mode", 0755)
+	S3fsSync.store(fs, root_inode)
