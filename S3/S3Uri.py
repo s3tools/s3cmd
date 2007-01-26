@@ -35,7 +35,7 @@ class S3Uri(object):
 	
 class S3UriS3(S3Uri):
 	type = "s3"
-	_re = re.compile("^s3://([^/]+)/?(.*)")
+	_re = re.compile("^s3://([^/]+)/?(.*)", re.IGNORECASE)
 	def __init__(self, string):
 		match = self._re.match(string)
 		if not match:
@@ -61,11 +61,11 @@ class S3UriS3(S3Uri):
 	
 	@staticmethod
 	def compose_uri(bucket, object = ""):
-		return "S3://%s/%s" % (bucket, object)
+		return "s3://%s/%s" % (bucket, object)
 
 class S3UriS3FS(S3Uri):
 	type = "s3fs"
-	_re = re.compile("^s3fs://([^/]*)/?(.*)")
+	_re = re.compile("^s3fs://([^/]*)/?(.*)", re.IGNORECASE)
 	def __init__(self, string):
 		match = self._re.match(string)
 		if not match:

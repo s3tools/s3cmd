@@ -151,7 +151,7 @@ class S3(object):
 	def object_delete_uri(self, uri):
 		if uri.type != "s3":
 			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
-		return self.object_delete(filename, uri.bucket(), uri.object())
+		return self.object_delete(uri.bucket(), uri.object())
 
 	## Low level methods
 	def create_request(self, operation, bucket = None, object = None, headers = None, **params):
