@@ -118,8 +118,8 @@ def cmd_object_put(args):
 		error("be a S3 URI specifying just the bucket name")
 		error("WITHOUT object name!")
 		error("Alternatively use --force argument and the specified")
-		error("object name will be prefixed to all stored filanames.")
-		exit(1)
+		error("object name will be prefixed to all stored filenames.")
+		sys.exit(1)
 
 	for file in files:
 		uri_arg_final = str(uri)
@@ -201,7 +201,7 @@ def run_configure(config_file):
 	
 	except IOError, e:
 		error("Writing config file failed: %s: %s" % (config_file, e.strerror))
-		exit(1)
+		sys.exit(1)
 
 commands = {}
 commands_list = [
@@ -238,9 +238,9 @@ class MyHelpFormatter(IndentedHelpFormatter):
 			return ""
 
 if __name__ == '__main__':
-	if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.5:
-		sys.stderr.write("ERROR: Python 2.5 or higher required, sorry.\n")
-		exit(1)
+	if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
+		sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
+		sys.exit(1)
 
 	## Populate "commands" from "commands_list"
 	for cmd in commands_list:
@@ -288,7 +288,7 @@ if __name__ == '__main__':
 			error("%s: %s"  % (options.config, e.strerror))
 			error("Configuration file not available.")
 			error("Consider using --configure parameter to create one.")
-			exit(1)
+			sys.exit(1)
 
 	## And again some logging level adjustments
 	## according to configfile and command line parameters
@@ -308,15 +308,15 @@ if __name__ == '__main__':
 
 	if options.dump_config:
 		cfg.dump_config(sys.stdout)
-		exit(0)
+		sys.exit(0)
 
 	if options.run_configure:
 		run_configure(options.config)
-		exit(0)
+		sys.exit(0)
 
 	if len(args) < 1:
 		error("Missing command. Please run with --help for more information.")
-		exit(1)
+		sys.exit(1)
 
 	command = args.pop(0)
 	try:
@@ -327,11 +327,11 @@ if __name__ == '__main__':
 		cmd_func = commands[command]["func"]
 	except KeyError, e:
 		error("Invalid command: %s" % e)
-		exit(1)
+		sys.exit(1)
 
 	if len(args) < commands[command]["argc"]:
 		error("Not enough paramters for command '%s'" % command)
-		exit(1)
+		sys.exit(1)
 
 	try:
 		cmd_func(args)
