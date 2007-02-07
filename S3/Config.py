@@ -18,7 +18,6 @@ class Config(object):
 	recv_chunk = 4096
 	human_readable_sizes = False
 	force = False
-	show_uri = False
 	acl_public = False
 
 	## Creating a singleton
