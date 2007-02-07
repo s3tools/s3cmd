@@ -5,8 +5,9 @@
 
 import os, os.path
 import base64
+import md5
+import sha
 import hmac
-import hashlib
 import httplib
 import logging
 from logging import debug, info, warning, error
@@ -248,7 +249,7 @@ class S3(object):
 		if response["status"] < 200 or response["status"] > 299:
 			raise S3Error(response)
 
-		md5=hashlib.new("md5")
+		md5_hash = md5.new()
 		size_left = size_total = int(response["headers"]["content-length"])
 		while (size_left > 0):
 			this_chunk = size_left > self.config.recv_chunk and self.config.recv_chunk or size_left
@@ -256,14 +257,14 @@ class S3(object):
 			data = http_response.read(this_chunk)
 			debug("ReceiveFile: Writing %d bytes to file '%s'" % (len(data), file.name))
 			file.write(data)
-			md5.update(data)
+			md5_hash.update(data)
 			size_left -= len(data)
 			info("Received %d bytes (%d %% of %d)" % (
 				(size_total - size_left),
 				(size_total - size_left) * 100 / size_total,
 				size_total))
 		conn.close()
-		response["md5"] = md5.hexdigest()
+		response["md5"] = md5_hash.hexdigest()
 		response["md5match"] = response["headers"]["etag"].find(response["md5"]) >= 0
 		debug("ReceiveFile: Computed MD5 = %s" % response["md5"])
 		if not response["md5match"]:
@@ -282,7 +283,7 @@ class S3(object):
 				h += header+":"+str(headers[header])+"\n"
 		h += resource
 		debug("SignHeaders: " + repr(h))
-		return base64.encodestring(hmac.new(self.config.secret_key, h, hashlib.sha1).digest()).strip()
+		return base64.encodestring(hmac.new(self.config.secret_key, h, sha).digest()).strip()
 
 	def check_bucket_name(self, bucket):
 		if re.compile("[^A-Za-z0-9\._-]").search(bucket):
