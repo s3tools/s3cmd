@@ -8,7 +8,7 @@ except:
 
 setup(name = "s3cmd",
 	## Content description
-	version = "0.9.0",
+	version = "0.9.1",
 	packages = [ 'S3' ],
 	scripts = ['s3cmd'],
 	data_files = [ ("share/s3cmd", [ "README" ]), ],
