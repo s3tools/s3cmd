@@ -9,16 +9,10 @@ import random
 import pickle
 import sqlite3
 import string
+import stat
+import time
 
 class S3fs(object):
-	_sync_attrs = [ "tree" ]
-
-	## These are instance variables - we must
-	## catch when they are used uninitialized
-	###   _object_name = ...
-	###  fsname = ...
-	###  tree = ...
-
 	def __init__(self, fsname = None):
 		self.n = S3fsObjectName()
 		if fsname:
@@ -29,10 +23,10 @@ class S3fs(object):
 		self._object_name = self.n.fs(fsname)
 		if self.object_exists(self._object_name):
 			raise S3fsError("Filesystem '%s' already exists" % fsname, errno.EEXIST)
-		tree = S3fsTree(self.object_create(self._object_name))
 		root_inode = S3fsInode(self)
-		S3fsSync.store(self, root_inode)
-		tree.mkrootdir(root_inode.inode_id)
+		root_inode.store()
+		local_name = self.object_create(self._object_name)
+		S3fsTree(local_name, root_inode_id = root_inode.inode_id)
 		self.store()
 
 		self.openfs(fsname)
@@ -53,14 +47,28 @@ class S3fs(object):
 	def store(self):
 		self.object_store(self.fsname)
 	
+	def mknod(self, name, props = {}):
+		inode = S3fsInode(self, props = props)
+		self.tree.mknod(name, inode.inode_id)
+		inode.store()
+		return inode
 
 class S3fsTree(object):
-	def __init__(self, fsfilename):
+	def __init__(self, fsfilename, root_inode_id = None):
 		print "S3fsTree(%s) opening database" % fsfilename
 		self._cache = {}
 		self.conn = sqlite3.connect(fsfilename)
 		self.conn.isolation_level = None	## Auto-Commit mode
 		self.c = self.conn.cursor()
+		if root_inode_id:
+			self.mkfs(root_inode_id)
+		print "Dumping filesystem:"
+		for row in self.c.execute("SELECT * FROM tree"):
+			print row
+		print "Done."
+
+	
+	def mkfs(self, root_inode_id):
 		try:
 			self.c.execute("""
 				CREATE TABLE tree (
@@ -72,22 +80,25 @@ class S3fsTree(object):
 					)
 			""")
 			print "Table 'tree' created"
+			root_inode = self.mknod("/", root_inode_id, -1)
 		except sqlite3.OperationalError, e:
 			if e.message != "table tree already exists":
 				raise
-		print "Dumping filesystem:"
-		r = self.c.execute("SELECT * FROM tree")
-		for row in r.fetchall():
-			print row
-		print "Done."
 	
-	def mkrootdir(self, id):
-		r = self.c.execute("""
-			INSERT INTO tree (parent, name, id)
-			     VALUES (-1, "/", ?)
-			""", (id,))
-		self._cache["/"] = (r.lastrowid, id)
-		print "Stored '/': %s" % str(self._cache["/"])
+	def mknod(self, name, id, parent = None):
+		if not parent:
+			parent = self.get_inode(os.path.dirname(name))[0]
+		print "mknod(name=%s, id=%s, parent=%s)" % (name, id, parent)
+		try:
+			r = self.c.execute("""
+				INSERT INTO tree (parent, name, id)
+				     VALUES (?, ?, ?)
+				""", (parent, os.path.basename(name), id))
+			self._cache[name] = (r.lastrowid, id)
+		except sqlite3.IntegrityError, e:
+			raise IOError(errno.EEXIST, "Node '%s' aleady exists" %name)
+		print "mknod('%s'): %s" % (name, str(self._cache[name]))
+		return self._cache[name]
 
 	def get_inode(self, path):
 		print "get_inode(%s)" % path
@@ -96,10 +107,13 @@ class S3fsTree(object):
 			return self._cache[path]
 		if not path.startswith("/"):
 			raise ValueError("get_inode() requires path beginning with '/'")
-		path = path[1:]
-		pathparts = path.split("/")[1:]
+		if path in ("/", ""):
+			pathparts = []
+		else:
+			path = path[1:]
+			pathparts = path.split("/")[1:]
 		query_from = "tree as t0"
-		query_where = "t0.parent == -1 AND t0.name == '/'"
+		query_where = "t0.parent == -1 AND t0.name == ''"
 		join_index = 0
 		for p in pathparts:
 			join_index += 1
@@ -112,13 +126,43 @@ class S3fsTree(object):
 
 		print query
 		retval = self.c.execute(query, pathparts).fetchone()
+		if not retval:
+			raise S3fsError("get_inode(%s): not found" % path, errno.ENOENT)
 		print retval
 		return retval
 
-#class S3fsDb(object):
+class S3fsSync(object):
+	def store(self, fs, object_name = None):
+		if not object_name:
+			object_name = self._object_name
+		to_sync = {}
+		for attr in self._sync_attrs:
+			if hasattr(self, attr):
+				to_sync[attr] = getattr(self, attr)
+		fs.object_write(object_name, pickle.dumps(to_sync))
+		print "Stored object: %s" % (object_name)
+
+	def load(self, fs, object_name = None):
+		if not object_name:
+			object_name = self._object_name
+		from_sync = pickle.loads(fs.object_read(object_name))
+		for attr in self._sync_attrs:
+			if from_sync.has_key(attr):
+				setattr(self, attr, from_sync[attr])
+		print "Loaded object: %s" % (object_name)
+
+	def try_load(self, fs, object_name = None):
+		if not object_name:
+			object_name = self._object_name
+		if fs.object_exists(object_name):
+			self.load(fs, object_name)
+			return True
+		else:
+			print "Nonexist object: %s" % (object_name)
+			return False
 
 	
-class S3fsInode(object):
+class S3fsInode(S3fsSync):
 	_fs = None
 
 	## Interface for S3fsSync
@@ -135,13 +179,17 @@ class S3fsInode(object):
 		"mode" : 0,
 	}
 
-	def __init__(self, fs, inode_id = None):
+	def __init__(self, fs, inode_id = None, props = {}):
 		if not inode_id:
 			inode_id = fs.n.rndstr(10)
 		self.inode_id = inode_id
 		self._object_name = fs.n.inode(fs.fsname, inode_id)
 		self._fs = fs
-		S3fsSync.try_load(self._fs, self)
+		print "S3fsInode._object_name="+self._object_name
+		if not self.try_load(self._fs):
+			self.setprop("ctime", time.time())
+		for prop in props:
+			self.setprop(prop, props[prop])
 
 	def setprop(self, property, value):
 		self.assert_property_name(property)
@@ -155,6 +203,10 @@ class S3fsInode(object):
 	def assert_property_name(self, property):
 		if not self.properties.has_key(property):
 			raise ValueError("Property '%s' not known to S3fsInode")
+	
+	def store(self, object_name = None):
+		self.setprop("mtime", time.time())
+		S3fsSync.store(self, self._fs, object_name)
 
 class S3fsLocalDir(S3fs):
 	def __init__(self, directory, fsname = None):
@@ -233,37 +285,6 @@ class S3fsObjectName(object):
 	def inode(self, fsname, inode_id):
 		return "%s-i-%s" % (fsname, inode_id)
 	
-class S3fsSync(object):
-	@staticmethod
-	def store(fs, instance, object_name = None):
-		if not object_name:
-			object_name = instance._object_name
-		to_sync = {}
-		for attr in instance._sync_attrs:
-			if hasattr(instance, attr):
-				to_sync[attr] = getattr(instance, attr)
-		fs.object_write(object_name, pickle.dumps(to_sync))
-		print "Stored object: %s" % (object_name)
-
-	@staticmethod
-	def load(fs, instance, object_name = None):
-		if not object_name:
-			object_name = instance._object_name
-		from_sync = pickle.loads(fs.object_read(object_name))
-		for attr in instance._sync_attrs:
-			if from_sync.has_key(attr):
-				setattr(instance, attr, from_sync[attr])
-		print "Loaded object: %s" % (object_name)
-
-	@staticmethod
-	def try_load(fs, instance, object_name = None):
-		if not object_name:
-			object_name = instance._object_name
-		if fs.object_exists(object_name):
-			S3fsSync.load(fs, instance, object_name)
-		else:
-			print "Nonexist object: %s" % (object_name)
-
 class S3fsError(Exception):
 	def __init__(self, message, errno = -1):
 		Exception.__init__(self, message)
@@ -289,4 +310,7 @@ if __name__ == "__main__":
 	print "root_inode(%s).mode = 0%o" % (root_inode.inode_id, root_inode.getprop("mode"))
 	if root_inode.getprop("mode") == 0:
 		root_inode.setprop("mode", 0755)
-	S3fsSync.store(fs, root_inode)
+	root_inode.store()
+	fs.mknod("/data", props = {"mode":0755 | stat.S_IFDIR, "uid":11022})
+	fs.mknod("/data/share", props = {"mode":0755 | stat.S_IFDIR, "uid":11022})
+	
