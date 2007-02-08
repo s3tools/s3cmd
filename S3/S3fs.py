@@ -7,6 +7,8 @@ import os, os.path
 import errno
 import random
 import pickle
+import sqlite3
+import string
 
 class S3fs(object):
 	_sync_attrs = [ "tree" ]
@@ -27,10 +29,12 @@ class S3fs(object):
 		self._object_name = self.n.fs(fsname)
 		if self.object_exists(self._object_name):
 			raise S3fsError("Filesystem '%s' already exists" % fsname, errno.EEXIST)
+		tree = S3fsTree(self.object_create(self._object_name))
 		root_inode = S3fsInode(self)
 		S3fsSync.store(self, root_inode)
-		self.tree = { "/" : root_inode.inode_id }
-		S3fsSync.store(self, self)
+		tree.mkrootdir(root_inode.inode_id)
+		self.store()
+
 		self.openfs(fsname)
 	
 	def openfs(self, fsname):
@@ -38,17 +42,82 @@ class S3fs(object):
 		self._object_name = self.n.fs(fsname)
 		if not self.object_exists(self._object_name):
 			raise S3fsError("Filesystem '%s' does not exist" % fsname, errno.ENOENT)
-		S3fsSync.load(self, self)
+		self.tree = S3fsTree(self.object_fetch(self._object_name))
 		print self.tree
 
-	def syncfs(self):
-		S3fsSync.store(self, self)
-	
 	def get_inode(self, path):
-		inode_id = self.tree[path]
-		inode = S3fsInode(self, inode_id)
+		(inode_num, id) = self.tree.get_inode(path)
+		inode = S3fsInode(self, id)
 		return inode
+	
+	def store(self):
+		self.object_store(self.fsname)
+	
 
+class S3fsTree(object):
+	def __init__(self, fsfilename):
+		print "S3fsTree(%s) opening database" % fsfilename
+		self._cache = {}
+		self.conn = sqlite3.connect(fsfilename)
+		self.conn.isolation_level = None	## Auto-Commit mode
+		self.c = self.conn.cursor()
+		try:
+			self.c.execute("""
+				CREATE TABLE tree (
+					inode INTEGER PRIMARY KEY AUTOINCREMENT, 
+					parent INTEGER, 
+					name TEXT, 
+					id TEXT, 
+					UNIQUE (parent, name)
+					)
+			""")
+			print "Table 'tree' created"
+		except sqlite3.OperationalError, e:
+			if e.message != "table tree already exists":
+				raise
+		print "Dumping filesystem:"
+		r = self.c.execute("SELECT * FROM tree")
+		for row in r.fetchall():
+			print row
+		print "Done."
+	
+	def mkrootdir(self, id):
+		r = self.c.execute("""
+			INSERT INTO tree (parent, name, id)
+			     VALUES (-1, "/", ?)
+			""", (id,))
+		self._cache["/"] = (r.lastrowid, id)
+		print "Stored '/': %s" % str(self._cache["/"])
+
+	def get_inode(self, path):
+		print "get_inode(%s)" % path
+		print "_cache = %s" % str(self._cache)
+		if self._cache.has_key(path):
+			return self._cache[path]
+		if not path.startswith("/"):
+			raise ValueError("get_inode() requires path beginning with '/'")
+		path = path[1:]
+		pathparts = path.split("/")[1:]
+		query_from = "tree as t0"
+		query_where = "t0.parent == -1 AND t0.name == '/'"
+		join_index = 0
+		for p in pathparts:
+			join_index += 1
+			query_from += " LEFT JOIN tree as t%d" % join_index
+			query_where += " AND t%d.parent == t%d.inode AND t%d.name == ?" % \
+					(join_index, join_index-1, join_index)
+
+		query = "SELECT t%d.inode, t%d.id FROM %s WHERE %s" % \
+			(join_index, join_index, query_from, query_where)
+
+		print query
+		retval = self.c.execute(query, pathparts).fetchone()
+		print retval
+		return retval
+
+#class S3fsDb(object):
+
+	
 class S3fsInode(object):
 	_fs = None
 
@@ -116,9 +185,36 @@ class S3fsLocalDir(S3fs):
 		contents = f.read()
 		f.close()
 		return contents
+	
+	def object_create(self, object_name):
+		""" Create object in a temporary directory
+		"""
+		real_path = os.path.join(self._dir, object_name)
+		# Load object from S3 to a temporary directory
+		return real_path
+
+	def object_fetch(self, object_name):
+		""" Load object from S3 to a local directory.
+
+		    Returns: real file name on the local filesystem.
+		"""
+		real_path = os.path.join(self._dir, object_name)
+		return real_path
+
+	def object_store(self, object_name):
+		""" Store object from a local directory to S3.
+
+		    Returns: real file name on the local filesystem.
+		"""
+		real_path = os.path.join(self._dir, object_name)
+		# Store file from temporary directory to S3
+		return real_path
+	
+	def object_real_path(self, object_name):
+		return os.path.join(self._dir, object_name)
 
 class S3fsObjectName(object):
-	_rnd_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	_rnd_chars = string.ascii_letters+string.digits
 	_rnd_chars_len = len(_rnd_chars)
 
 	def __init__(self):
