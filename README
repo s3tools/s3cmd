@@ -7,8 +7,15 @@ Author:
 S3tools / S3cmd project homepage:
     http://s3tools.sourceforge.net
 
+S3tools / S3cmd mailing list:
+    s3tools-general@lists.sourceforge.net
+
 Amazon S3 homepage:
     http://aws.amazon.com/s3
+
+!!!
+!!! Please consult INSTALL file for installation instructions!
+!!!
 
 What is Amazon S3
 -----------------
