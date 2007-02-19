@@ -144,9 +144,10 @@ def cmd_object_get(args):
 		destination += ("/" + uri.object())
 	if not Config().force and os.path.exists(destination):
 		raise ParameterError("File %s already exists. Use --force to overwrite it" % destination)
-	response = s3.object_get_uri(destination, uri)
-	output("Object %s saved as '%s' (%d bytes)" %
-		(uri, destination, response["size"]))
+	response = s3.object_get_uri(uri, destination)
+	if destination != "-":
+		output("Object %s saved as '%s' (%d bytes)" %
+			(uri, destination, response["size"]))
 
 def cmd_object_del(args):
 	s3 = S3(Config())

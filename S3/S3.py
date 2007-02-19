@@ -3,6 +3,7 @@
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
 
+import sys
 import os, os.path
 import base64
 import md5
@@ -124,16 +125,18 @@ class S3(object):
 		response["size"] = size
 		return response
 
-	def object_get(self, filename, bucket, object):
+	def object_get_file(self, bucket, object, filename):
 		try:
-			file = open(filename, "w")
+			stream = open(filename, "w")
 		except IOError, e:
 			raise ParameterError("%s: %s" % (filename, e.strerror))
-		request = self.create_request("OBJECT_GET", bucket = bucket, object = object)
-		response = self.recv_file(request, file)
-		response["size"] = int(response["headers"]["content-length"])
-		return response
+		return self.object_get_stream(bucket, object, stream)
 
+	def object_get_stream(self, bucket, object, stream):
+		request = self.create_request("OBJECT_GET", bucket = bucket, object = object)
+		response = self.recv_file(request, stream)
+		return response
+		
 	def object_delete(self, bucket, object):
 		request = self.create_request("OBJECT_DELETE", bucket = bucket, object = object)
 		response = self.send_request(request)
@@ -144,10 +147,13 @@ class S3(object):
 			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 		return self.object_put(filename, uri.bucket(), uri.object())
 
-	def object_get_uri(self, filename, uri):
+	def object_get_uri(self, uri, filename):
 		if uri.type != "s3":
 			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
-		return self.object_get(filename, uri.bucket(), uri.object())
+		if filename == "-":
+			return self.object_get_stream(uri.bucket(), uri.object(), sys.stdout)
+		else:
+			return self.object_get_file(uri.bucket(), uri.object(), filename)
 
 	def object_delete_uri(self, uri):
 		if uri.type != "s3":
@@ -232,9 +238,9 @@ class S3(object):
 			raise S3Error(response)
 		return response
 
-	def recv_file(self, request, file):
+	def recv_file(self, request, stream):
 		method_string, resource, headers = request
-		info("Receiving file '%s', please wait..." % file.name)
+		info("Receiving file '%s', please wait..." % stream.name)
 		conn = httplib.HTTPConnection(self.config.host)
 		conn.connect()
 		conn.putrequest(method_string, resource)
@@ -251,26 +257,30 @@ class S3(object):
 
 		md5_hash = md5.new()
 		size_left = size_total = int(response["headers"]["content-length"])
-		while (size_left > 0):
+		size_recvd = 0
+		while (size_recvd < size_total):
 			this_chunk = size_left > self.config.recv_chunk and self.config.recv_chunk or size_left
 			debug("ReceiveFile: Receiving up to %d bytes from the server" % this_chunk)
 			data = http_response.read(this_chunk)
-			debug("ReceiveFile: Writing %d bytes to file '%s'" % (len(data), file.name))
-			file.write(data)
+			debug("ReceiveFile: Writing %d bytes to file '%s'" % (len(data), stream.name))
+			stream.write(data)
 			md5_hash.update(data)
-			size_left -= len(data)
+			size_recvd += len(data)
 			info("Received %d bytes (%d %% of %d)" % (
-				(size_total - size_left),
-				(size_total - size_left) * 100 / size_total,
+				size_recvd,
+				size_recvd * 100 / size_total,
 				size_total))
 		conn.close()
 		response["md5"] = md5_hash.hexdigest()
 		response["md5match"] = response["headers"]["etag"].find(response["md5"]) >= 0
+		response["size"] = size_recvd
+		if response["size"] != long(response["headers"]["content-length"]):
+			warning("Reported size (%s) does not match received size (%s)" % (
+				response["headers"]["content-length"], response["size"]))
 		debug("ReceiveFile: Computed MD5 = %s" % response["md5"])
 		if not response["md5match"]:
 			warning("MD5 signatures do not match: computed=%s, received=%s" % (
 				response["md5"], response["headers"]["etag"]))
-
 		return response
 
 	def sign_headers(self, method, resource, headers):
