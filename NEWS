@@ -1,0 +1,19 @@
+s3cmd 0.9.2
+===========
+* Allow "get" to stdout (use "-" in place of destination file
+  to get the file contents on stdout)
+
+s3cmd 0.9.1   -   2007-02-06
+===========
+* All commands now use S3-URIs
+* Removed hard dependency on Python 2.5
+* Experimental support for Python 2.4 
+  (requires external ElementTree module)
+
+
+s3cmd 0.9.0   -   2007-01-18
+===========
+* First public release brings support for all basic Amazon S3
+  operations: Creation and Removal of buckets, Upload (put),
+  Download (get) and Removal (del) of files/objects.
+
