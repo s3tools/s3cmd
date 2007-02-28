@@ -108,8 +108,12 @@ class ConfigParser(object):
 				data = is_data.groupdict()
 				if r_quotes.match(data["value"]):
 					data["value"] = data["value"][1:-1]
-				debug("ConfigParser: %s->%s" % (data["key"], data["value"]))
 				self.__setitem__(data["key"], data["value"])
+				if data["key"] in ("access_key", "secret_key"):
+					print_value = (data["value"][:3]+"...%d_chars..."+data["value"][-2:]) % (len(data["value"]) - 4)
+				else:
+					print_value = data["value"]
+				debug("ConfigParser: %s->%s" % (data["key"], print_value))
 				continue
 			warning("Ignoring invalid line in '%s': %s" % (file, line))
 
