@@ -1,0 +1,271 @@
+2007-02-28  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3.py: Modify S3Error exception to work
+	  in python 2.4 (=> don't expect Exception is
+	  a new-style class).
+	* s3cmd: Updated for the above change.
+
+2007-02-19  Michal Ludvig  <michal@logix.cz>
+
+	* NEWS, INSTALL, README, setup.py: Added
+	  more documentation.
+
+2007-02-19  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3.py, s3cmd: New feature - allow "get" to stdout
+
+2007-02-19  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3fs.py: Removed (development moved to branch s3fs-devel).
+
+2007-02-08  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3fs.py: 
+	  - Implemented mknod()
+	  - Can create directory structure
+	  - Rewritten to use SQLite3. Currently can create
+	    the filesystem, and a root inode.
+
+2007-02-07  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd (from /s3py:74): Renamed SVN top-level project
+	  s3py to s3cmd
+
+2007-02-07  Michal Ludvig  <michal@logix.cz>
+
+	* setup.cfg: Only require Python 2.4, not 2.5
+	* S3/Config.py: Removed show_uri - no longer needed,
+	  it's now default
+
+2007-02-07  Michal Ludvig  <michal@logix.cz>
+
+	* setup.py
+	  - Version 0.9.1
+
+2007-02-07  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Change all "exit()" calls to "sys.exit()"
+	  and allow for python 2.4
+	* S3/S3.py: Removed dependency on hashlib -> allow for python 2.4
+
+2007-01-27  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3.py, S3/S3Uri.py: Case insensitive regex in S3Uri.py
+
+2007-01-26  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3fs.py: Added support for stroing/loading inodes.
+	  No data yet however.
+
+2007-01-26  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3fs.py: Initial version of S3fs module. 
+	  Can create filesystem via "S3fs.mkfs()"
+
+2007-01-26  Michal Ludvig  <michal@logix.cz>
+
+	* S3/BidirMap.py, S3/Config.py, S3/S3.py, S3/S3Uri.py,
+	  S3/SortedDict.py, S3/Utils.py, s3cmd: Added headers with
+	  copyright to all files
+	* S3/S3.py, S3/S3Uri.py: Removed S3.compose_uri(), introduced
+	  S3UriS3.compose_uri() instead.
+
+2007-01-26  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3.py, S3/S3Uri.py, s3cmd: 
+	  - Converted all users of parse_uri to S3Uri class API
+	  - Removed "cp" command again. Will have to use 'put'
+	    and 'get' for now.
+
+2007-01-25  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3Uri.py: New module S3/S3Uri.py
+	* S3/S3.py, s3cmd: Converted "put" operation to use
+	  the new S3Uri class.
+
+2007-01-24  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3.py
+	* s3cmd
+	  - Added 'cp' command
+	  - Renamed parse_s3_uri to parse_uri (this will go away anyway)
+
+2007-01-19  Michal Ludvig  <michal@logix.cz>
+
+	* setup.cfg
+	* setup.py
+	  - Include README into tarballs
+
+2007-01-19  Michal Ludvig  <michal@logix.cz>
+
+	* README
+	  - Added comprehensive README file
+
+2007-01-19  Michal Ludvig  <michal@logix.cz>
+
+	* setup.cfg
+	* setup.py
+	  - Added configuration for setup.py sdist
+
+2007-01-19  Michal Ludvig  <michal@logix.cz>
+
+	* S3/Config.py
+	* s3cmd
+	  - Added interactive configurator (--configure)
+	  - Added config dumper (--dump-config)
+	  - Improved --help output
+
+2007-01-19  Michal Ludvig  <michal@logix.cz>
+
+	* setup.cfg
+	* setup.py
+	  Added info for building RPM packages.
+
+2007-01-18  Michal Ludvig  <michal@logix.cz>
+
+	* S3/Config.py
+	* S3/S3.py
+	* s3cmd
+	  Moved class Config from S3/S3.py to S3/Config.py
+
+2007-01-18  Michal Ludvig  <michal@logix.cz>
+
+	* S3/Config.py (from /s3py/trunk/S3/ConfigParser.py:47)
+	* S3/ConfigParser.py
+	* S3/S3.py
+	  Renamed S3/ConfigParser.py to S3/Config.py
+
+2007-01-18  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd
+	  Added info about homepage
+
+2007-01-17  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3.py
+	* s3cmd
+	  - Use prefix for listings if specified.
+	  - List all commands in --help
+
+2007-01-16  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3.py
+	* s3cmd
+	  Major rework of Config class:
+	  - Renamed from AwsConfig to Config
+	  - Converted to Singleton (see Config.__new__() and an article on
+	    Wikipedia)
+	  - No more explicit listing of options - use introspection to get them
+	    (class variables that of type str, int or bool that don't start with
+	    underscore)
+	  - Check values read from config file and verify their type.
+	  
+	  Added OptionMimeType and -m/-M options. Not yet implemented
+	  functionality in the rest of S3/S3.py
+
+2007-01-15  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3.py
+	* s3cmd
+	  - Merged list-buckets and bucket-list-objects operations into
+	    a single 'ls' command.
+	  - New parameter -P for uploading publicly readable objects
+
+2007-01-14  Michal Ludvig  <michal@logix.cz>
+
+	* s3.py
+	* setup.py
+	  Renamed s3.py to s3cmd (take 2)
+
+2007-01-14  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd (from /s3py/trunk/s3.py:45)
+	  Renamed s3.py to s3cmd
+
+2007-01-14  Michal Ludvig  <michal@logix.cz>
+
+	* S3
+	* S3/S3.py
+	* s3.py
+	* setup.py
+	  All classes from s3.py go to S3/S3.py
+	  Added setup.py
+
+2007-01-14  Michal Ludvig  <michal@logix.cz>
+
+	* s3.py
+	  Minor fix S3.utils -> S3.Utils
+
+2007-01-14  Michal Ludvig  <michal@logix.cz>
+
+	* .svnignore
+	* BidirMap.py
+	* ConfigParser.py
+	* S3
+	* S3/BidirMap.py (from /s3py/trunk/BidirMap.py:35)
+	* S3/ConfigParser.py (from /s3py/trunk/ConfigParser.py:38)
+	* S3/SortedDict.py (from /s3py/trunk/SortedDict.py:35)
+	* S3/Utils.py (from /s3py/trunk/utils.py:39)
+	* S3/__init__.py
+	* SortedDict.py
+	* s3.py
+	* utils.py
+	  Moved modules to their own package
+
+2007-01-12  Michal Ludvig  <michal@logix.cz>
+
+	* s3.py
+	  Added "del" command
+	  Converted all (?) commands to accept s3-uri
+	  Added -u/--show-uri parameter
+
+2007-01-11  Michal Ludvig  <michal@logix.cz>
+
+	* s3.py
+	  Verify MD5 on received files
+	  Improved upload of multiple files
+	  Initial S3-URI support (more tbd)
+
+2007-01-11  Michal Ludvig  <michal@logix.cz>
+
+	* s3.py
+	  Minor fixes:
+	  - store names of parsed files in AwsConfig
+	  - Print total size with upload/download
+
+2007-01-11  Michal Ludvig  <michal@logix.cz>
+
+	* s3.py
+	* utils.py
+	  Added support for sending and receiving files.
+
+2007-01-11  Michal Ludvig  <michal@logix.cz>
+
+	* ConfigParser.py
+	* s3.py
+	  List all Objects in all Buckets command
+	  Yet another logging improvement
+	  Version check for Python 2.5 or higher
+
+2007-01-11  Michal Ludvig  <michal@logix.cz>
+
+	* ConfigParser.py
+	* s3.py
+	* utils.py
+	  Added ConfigParser
+	  Improved setting logging levels
+	  It can now quite reliably list buckets and objects
+
+2007-01-11  Michal Ludvig  <michal@logix.cz>
+
+	* .svnignore
+	  Added ignore list
+
+2007-01-11  Michal Ludvig  <michal@logix.cz>
+
+	* .svnignore
+	* BidirMap.py
+	* SortedDict.py
+	* s3.py
+	* utils.py
+	  Initial import
