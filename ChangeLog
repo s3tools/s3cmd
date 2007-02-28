@@ -1,5 +1,7 @@
 2007-02-28  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Verify supplied accesskey and secretkey
+	  in interactive configuration path.
 	* S3/Config.py: Hide access key and secret key
 	  from debug output.
 	* S3/S3.py: Modify S3Error exception to work

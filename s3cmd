@@ -188,9 +188,24 @@ def run_configure(config_file):
 			output("\nNew settings:")
 			for option in options:
 				output("  %s: %s" % (option[1], getattr(cfg, option[0])))
-			val = raw_input("\nChange any setting? [y/N] ")
-			if not val.lower().startswith("y"):
+			val = raw_input("\nTest access with supplied credentials? [Y/n] ")
+			if val.lower().startswith("y") or val == "":
+				try:
+					output("Please wait...")
+					S3(Config()).bucket_list("", "")
+					output("\nSuccess. Your access key and secret key worked fine :-)")
+				except S3Error, e:
+					error("Test failed: %s" % (e))
+					val = raw_input("\nRetry configuration? [Y/n] ")
+					if val.lower().startswith("y") or val == "":
+						continue
+
+			val = raw_input("\nSave settings? [y/N] ")
+			if val.lower().startswith("y"):
 				break
+			val = raw_input("Retry configuration? [Y/n] ")
+			if val.lower().startswith("n"):
+				raise EOFError()
 		f = open(config_file, "w")
 		cfg.dump_config(f)
 		f.close()
