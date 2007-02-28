@@ -23,6 +23,7 @@ class S3Error (Exception):
 	def __init__(self, response):
 		self.status = response["status"]
 		self.reason = response["reason"]
+		self.info = {}
 		debug("S3Error: %s (%s)" % (self.status, self.reason))
 		if response.has_key("headers"):
 			for header in response["headers"]:
@@ -32,12 +33,12 @@ class S3Error (Exception):
 			for child in tree.getchildren():
 				if child.text != "":
 					debug("ErrorXML: " + child.tag + ": " + repr(child.text))
-					self.__setattr__(child.tag, child.text)
+					self.info[child.tag] = child.text
 
 	def __str__(self):
 		retval = "%d (%s)" % (self.status, self.reason)
 		try:
-			retval += (": %s" % self.Code)
+			retval += (": %s" % self.info["Code"])
 		except AttributeError:
 			pass
 		return retval

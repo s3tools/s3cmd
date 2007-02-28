@@ -59,8 +59,8 @@ def subcmd_bucket_list(s3, uri):
 	try:
 		response = s3.bucket_list(bucket, prefix = object)
 	except S3Error, e:
-		if S3.codes.has_key(e.Code):
-			error(S3.codes[e.Code] % bucket)
+		if S3.codes.has_key(e.info["Code"]):
+			error(S3.codes[e.info["Code"]] % bucket)
 			return
 		else:
 			raise
@@ -81,8 +81,8 @@ def cmd_bucket_create(args):
 		s3 = S3(Config())
 		response = s3.bucket_create(uri.bucket())
 	except S3Error, e:
-		if S3.codes.has_key(e.Code):
-			error(S3.codes[e.Code] % uri.bucket())
+		if S3.codes.has_key(e.info["Code"]):
+			error(S3.codes[e.info["Code"]] % uri.bucket())
 			return
 		else:
 			raise
@@ -96,8 +96,8 @@ def cmd_bucket_delete(args):
 		s3 = S3(Config())
 		response = s3.bucket_delete(uri.bucket())
 	except S3Error, e:
-		if S3.codes.has_key(e.Code):
-			error(S3.codes[e.Code] % uri.bucket())
+		if S3.codes.has_key(e.info["Code"]):
+			error(S3.codes[e.info["Code"]] % uri.bucket())
 			return
 		else:
 			raise
