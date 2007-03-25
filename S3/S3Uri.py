@@ -33,6 +33,9 @@ class S3Uri(object):
 	def __str__(self):
 		return self.uri()
 	
+	def public_url(self):
+		raise ValueError("This S3 URI does not have Anonymous URL representation")
+	
 class S3UriS3(S3Uri):
 	type = "s3"
 	_re = re.compile("^s3://([^/]+)/?(.*)", re.IGNORECASE)
@@ -59,10 +62,13 @@ class S3UriS3(S3Uri):
 	def uri(self):
 		return "/".join(["s3:/", self._bucket, self._object])
 	
+	def public_url(self):
+		return "http://s3.amazonaws.com/%s/%s" % (self._bucket, self._object)
+
 	@staticmethod
 	def compose_uri(bucket, object = ""):
 		return "s3://%s/%s" % (bucket, object)
-
+	
 class S3UriS3FS(S3Uri):
 	type = "s3fs"
 	_re = re.compile("^s3fs://([^/]*)/?(.*)", re.IGNORECASE)

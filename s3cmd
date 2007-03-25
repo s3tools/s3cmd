@@ -130,6 +130,9 @@ def cmd_object_put(args):
 		response = s3.object_put_uri(file, uri_final)
 		output("File '%s' stored as %s (%d bytes)" %
 			(file, uri_final, response["size"]))
+		if Config().acl_public:
+			output("Public URL of the object is: %s" %
+				(uri.public_url()))
 
 def cmd_object_get(args):
 	s3 = S3(Config())

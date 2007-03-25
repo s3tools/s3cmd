@@ -1,3 +1,8 @@
+2007-03-26  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd, S3/S3Uri.py: Output public HTTP URL for objects
+	  stored with Public ACL.
+	  
 2007-02-28  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Verify supplied accesskey and secretkey
