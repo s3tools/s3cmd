@@ -1,14 +1,17 @@
 from distutils.core import setup
 import os
 
+import S3.PkgInfo
+
 try:
 	os.unlink("MANIFEST")
 except:
 	pass
 
-setup(name = "s3cmd",
+setup(
 	## Content description
-	version = "0.9.1",
+	name = S3.PkgInfo.package,
+	version = S3.PkgInfo.version,
 	packages = [ 'S3' ],
 	scripts = ['s3cmd'],
 	data_files = [ ("share/s3cmd", [ "README", "INSTALL", "NEWS" ]), ],
@@ -16,16 +19,14 @@ setup(name = "s3cmd",
 	## Packaging details
 	author = "Michal Ludvig",
 	author_email = "michal@logix.cz",
-	url = 'http://s3tools.sourceforge.net',
-	license = 'GPL version 2',
-	description = 'S3cmd is a tool for managing your Amazon S3 storage.',
+	url = S3.PkgInfo.url,
+	license = S3.PkgInfo.license,
+	description = S3.PkgInfo.short_description,
 	long_description = """
-S3cmd lets you copy files from/to Amazon S3 
-(Simple Storage Service) using a simple to use
-command line client.
+%s
 
 Authors:
 --------
-    Michal Ludvig <michal@logix.cz>
-""",
+    Michal Ludvig  <michal@logix.cz>
+""" % (S3.PkgInfo.long_description)
 	)

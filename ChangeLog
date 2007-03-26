@@ -1,5 +1,7 @@
 2007-03-26  Michal Ludvig  <michal@logix.cz>
 
+	* setup.py, S3/PkgInfo.py: Move package info out of setup.py
+	* s3cmd: new parameter --version
 	* s3cmd, S3/S3Uri.py: Output public HTTP URL for objects
 	  stored with Public ACL.
 	  
