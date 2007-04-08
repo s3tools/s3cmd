@@ -1,5 +1,10 @@
 2007-04-09  Michal Ludvig  <michal@logix.cz>
 
+	* Released version 0.9.2
+	  ----------------------
+
+2007-04-09  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd.1: Added manpage
 	* Updated infrastructure files to create "better"
 	  distribution archives.
