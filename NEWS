@@ -1,7 +1,11 @@
 s3cmd 0.9.2
 ===========
+* Lots of new documentation
 * Allow "get" to stdout (use "-" in place of destination file
   to get the file contents on stdout)
+* Better compatibility with Python 2.4
+* Output public HTTP URL for objects stored with Public ACL
+* Various bugfixes and improvements
 
 s3cmd 0.9.1   -   2007-02-06
 ===========
