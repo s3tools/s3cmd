@@ -12,7 +12,7 @@ except:
 
 ## Compress manpage. It behaves weird 
 ## with bdist_rpm when not compressed.
-os.system("gzip s3cmd.1")
+os.system("gzip -c s3cmd.1 > s3cmd.1.gz")
 
 ## Main distutils info
 setup(
