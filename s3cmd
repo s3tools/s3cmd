@@ -15,10 +15,11 @@ from logging import debug, info, warning, error
 import elementtree.ElementTree as ET
 
 ## Our modules
+from S3 import PkgInfo
 from S3.S3 import *
 from S3.Config import Config
 from S3.S3Uri import *
-import S3.PkgInfo
+
 
 def output(message):
 	print message
@@ -285,10 +286,9 @@ if __name__ == '__main__':
 	optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")
 
 	optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form.")
-	optparser.add_option("-u", "--show-uri", dest="show_uri", action="store_true", help="Show complete S3 URI in listings.")
 	optparser.add_option("-v", "--verbose", dest="verbosity", action="store_const", const=logging.INFO, help="Enable verbose output.")
 	optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output.")
-	optparser.add_option(      "--version", dest="show_version", action="store_true", help="Show s3cmd version (%s) and exit." % (S3.PkgInfo.version))
+	optparser.add_option(      "--version", dest="show_version", action="store_true", help="Show s3cmd version (%s) and exit." % (PkgInfo.version))
 
 	optparser.set_usage(optparser.usage + " COMMAND [parameters]")
 	optparser.set_description('S3cmd is a tool for managing objects in '+
@@ -296,7 +296,7 @@ if __name__ == '__main__':
 		'"buckets" and uploading, downloading and removing '+
 		'"objects" from these buckets.')
 	optparser.epilog = format_commands(optparser.get_prog_name())
-	optparser.epilog += ("\nSee program homepage for more information at\n%s\n" % S3.PkgInfo.url)
+	optparser.epilog += ("\nSee program homepage for more information at\n%s\n" % PkgInfo.url)
 
 	(options, args) = optparser.parse_args()
 
@@ -305,7 +305,7 @@ if __name__ == '__main__':
 	logging.basicConfig(level=options.verbosity, format='%(levelname)s: %(message)s')
 	
 	if options.show_version:
-		output("s3cmd version %s" % S3.PkgInfo.version)
+		output("s3cmd version %s" % PkgInfo.version)
 		sys.exit(0)
 
 	## Now finally parse the config file
