@@ -1,0 +1,116 @@
+.TH s3cmd 1
+.SH NAME
+s3cmd - tool for managing Amazon S3 storage space
+.SH SYNOPSIS
+.B s3cmd
+[\fIOPTIONS\fR] \fICOMMAND\fR [\fIPARAMETERS\fR]
+.SH DESCRIPTION
+.PP
+.B s3cmd
+is a command line client for copying files to/from 
+Amazon S3 (Simple Storage Service) and performing other
+related tasks, for instance creating and removing buckets,
+listing objects, etc.
+.PP
+.B s3cmd
+can do several \fIactions\fR specified by the following \fIcommands\fR.
+.TP
+\fBmb\fR \fIs3://BUCKET\fR
+Make bucket
+.TP
+\fBrb\fR \fIs3://BUCKET\fR
+Remove bucket
+.TP
+\fBls\fR \fI[s3://BUCKET[/PREFIX]]\fR
+List objects or buckets
+.TP
+\fBla\fR
+List all object in all buckets
+.TP
+\fBput\fR \fIFILE [FILE...] s3://BUCKET[/PREFIX]\fR
+Put file into bucket
+.TP
+\fBget\fR \fIs3://BUCKET/OBJECT LOCAL_FILE\fR
+Get file from bucket
+.TP
+\fBdel\fR \fIs3://BUCKET/OBJECT\fR
+Delete file from bucket
+
+.SH OPTIONS
+.PP
+Some of the below specified options can have their default 
+values set in 
+.B s3cmd
+config file (by default $HOME/.s3cmd). As it's a simple text file 
+feel free to open it with your favorite text editor and do any
+changes you like.
+.PP
+Config file related options.
+.TP
+\fB--configure\fR
+Invoke interactive (re)configuration tool. Don't worry, you won't 
+lose your settings on subsequent runs.
+.TP
+\fB-c\fR FILE, \fB--config\fR=FILE
+Config file name. Defaults to $HOME/.s3cfg
+.TP
+\fB--dump-config\fR
+Dump current configuration after parsing config files
+and command line options and exit.
+.PP
+Most of the following options can have a default value set 
+in the above specified config file.
+.TP
+\fB-f\fR, \fB--force\fR
+Force overwrite and other dangerous operations.
+.TP
+\fB-P\fR, \fB--acl-public\fR
+Store objects with permissions allowing read by anyone.
+.TP
+\fB-m\fR MIME/TYPE, \fB--mime-type\fR=MIME/TYPE
+Default MIME-type to be set for objects stored.
+.TP
+\fB-M\fR, \fB--guess-mime-type\fR
+Guess MIME-type of files by their extension. Falls
+back to default MIME-Type as specified by \fB--mime-type\fR
+option
+.TP
+\fB-H\fR, \fB--human-readable-sizes\fR
+Print sizes in human readable form.
+.\".TP
+.\"\fB-u\fR, \fB--show-uri\fR
+.\"Show complete S3 URI in listings.
+.TP
+\fB-v\fR, \fB--verbose\fR
+Enable verbose output.
+.TP
+\fB-d\fR, \fB--debug\fR
+Enable debug output.
+.TP
+\fB-h\fR, \fB--help\fR
+Show the help message and exit
+.TP
+\fB--version\fR
+Show
+.B s3cmd
+version and exit.
+
+.SH AUTHOR
+Written by Michal Ludvig <michal@logix.cz>
+.SH REPORTING BUGS
+Report bugs to 
+.I s3tools-general@lists.sourceforge.net
+.SH COPYRIGHT
+Copyright \(co 2007 Michal Ludvig
+.br
+This is free software.  You may redistribute copies of it under the terms of
+the GNU General Public License version 2 <http://www.gnu.org/licenses/gpl.html>.
+There is NO WARRANTY, to the extent permitted by law.
+.SH SEE ALSO
+For the most up to date list of options run 
+.B s3cmd --help
+.br
+For more info about usage, examples and other related info visit project homepage at
+.br
+.B http://s3tools.logix.cz
+
