@@ -1,6 +1,8 @@
 2007-04-09  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd.1: Added manpage
+	* Updated infrastructure files to create "better"
+	  distribution archives.
 
 2007-03-26  Michal Ludvig  <michal@logix.cz>
 

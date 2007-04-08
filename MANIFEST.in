@@ -1,0 +1,2 @@
+include INSTALL README NEWS
+include s3cmd.1.gz

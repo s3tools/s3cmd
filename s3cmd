@@ -274,21 +274,24 @@ if __name__ == '__main__':
 	optparser.set_defaults(config=os.getenv("HOME")+"/.s3cfg")
 	optparser.set_defaults(verbosity = default_verbosity)
 
+	optparser.add_option(      "--configure", dest="run_configure", action="store_true", help="Invoke interactive (re)configuration tool.")
 	optparser.add_option("-c", "--config", dest="config", metavar="FILE", help="Config file name. Defaults to %default")
-	optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form.")
+	optparser.add_option(      "--dump-config", dest="dump_config", action="store_true", help="Dump current configuration after parsing config files and command line options and exit.")
+
 	optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations.")
-	optparser.add_option("-u", "--show-uri", dest="show_uri", action="store_true", help="Show complete S3 URI in listings.")
 	optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read by anyone.")
+
 	optparser.add_option("-m", "--mime-type", dest="default_mime_type", type="mimetype", metavar="MIME/TYPE", help="Default MIME-type to be set for objects stored.")
 	optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")
-	optparser.add_option(      "--dump-config", dest="dump_config", action="store_true", help="Dump current configuration after parsin config files and command line options and exit.")
-	optparser.add_option(      "--configure", dest="run_configure", action="store_true", help="Invoke interactive (re)configuration tool.")
-	optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output.")
+
+	optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form.")
+	optparser.add_option("-u", "--show-uri", dest="show_uri", action="store_true", help="Show complete S3 URI in listings.")
 	optparser.add_option("-v", "--verbose", dest="verbosity", action="store_const", const=logging.INFO, help="Enable verbose output.")
+	optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output.")
 	optparser.add_option(      "--version", dest="show_version", action="store_true", help="Show s3cmd version (%s) and exit." % (S3.PkgInfo.version))
 
 	optparser.set_usage(optparser.usage + " COMMAND [parameters]")
-	optparser.set_description('S3cmd is a tool to manage objects in '+
+	optparser.set_description('S3cmd is a tool for managing objects in '+
 		'Amazon S3 storage. It allows for making and removing '+
 		'"buckets" and uploading, downloading and removing '+
 		'"objects" from these buckets.')
