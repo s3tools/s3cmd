@@ -41,9 +41,10 @@ def subcmd_bucket_usage_all(s3):
 		size = subcmd_bucket_usage(s3, S3Uri("s3://" + bucket["Name"]))
 		if size != None:
 			buckets_size += size
-		output("")
 	total_size, size_coeff = formatSize(buckets_size, Config().human_readable_sizes)
-	output("Total Disk Usage: %s%s" % (str(total_size).rjust(8), size_coeff.ljust(1)))
+	total_size_str = str(total_size) + size_coeff 
+	output("".rjust(8, "-"))
+	output("%s Total" % (total_size_str.ljust(8)))
 
 def subcmd_bucket_usage(s3, uri):
 	bucket = uri.bucket()
@@ -64,8 +65,9 @@ def subcmd_bucket_usage(s3, uri):
 		size, size_coeff = formatSize(object["Size"], False)
 		bucket_size += size
 	total_size, size_coeff = formatSize(bucket_size, Config().human_readable_sizes)
-	output("Bucket %s Usage: %s%s" % (bucket, str(total_size).rjust(8), size_coeff.ljust(1)))
-	return total_size
+	total_size_str = str(total_size) + size_coeff 
+	output("%s %s" % (total_size_str.ljust(8), uri))
+	return bucket_size
 
 def cmd_ls(args):
 	s3 = S3(Config())
