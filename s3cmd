@@ -168,7 +168,7 @@ def cmd_object_del(args):
 def run_configure(config_file):
 	cfg = Config()
 	options = [
-		("access_key", "Access Key"),
+		("access_key", "Access Key", "Access key and Secret key are your identifiers for Amazon S3"),
 		("secret_key", "Secret Key"),
 		]
 	try:
