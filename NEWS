@@ -1,4 +1,9 @@
-s3cmd 0.9.2
+s3cmd 0.9.3   -   2007-05-26
+===========
+* New command "du" for displaying size of your data in S3.
+  (Basil Shubin)
+
+s3cmd 0.9.2   -   2007-04-09
 ===========
 * Lots of new documentation
 * Allow "get" to stdout (use "-" in place of destination file
