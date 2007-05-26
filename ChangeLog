@@ -1,5 +1,9 @@
 2007-05-26  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd.1: Add info about "s3cmd du" command.
+
+2007-05-26  Michal Ludvig  <michal@logix.cz>
+
 	* Released version 0.9.3
 	  ----------------------
 
