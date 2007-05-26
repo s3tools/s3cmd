@@ -1,5 +1,7 @@
 2007-05-26  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Patch from Basil Shubin <basil.shubin@gmail.com>
+	  adding support for "s3cmd du" command.
 	* setup.cfg: Require Python 2.5 in RPM. Otherwise it needs
 	  to require additional python modules (e.g. ElementTree)
 	  which may have different names in different distros. It's 

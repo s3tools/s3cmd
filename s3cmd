@@ -24,6 +24,49 @@ from S3.S3Uri import *
 def output(message):
 	print message
 
+def cmd_du(args):
+	s3 = S3(Config())
+	if len(args) > 0:
+		uri = S3Uri(args[0])
+		if uri.type == "s3" and uri.has_bucket():
+			subcmd_bucket_usage(s3, uri)
+			return
+	subcmd_bucket_usage_all(s3)
+
+def subcmd_bucket_usage_all(s3):
+	response = s3.list_all_buckets()
+
+	buckets_size = 0
+	for bucket in response["list"]:
+		size = subcmd_bucket_usage(s3, S3Uri("s3://" + bucket["Name"]))
+		if size != None:
+			buckets_size += size
+		output("")
+	total_size, size_coeff = formatSize(buckets_size, Config().human_readable_sizes)
+	output("Total Disk Usage: %s%s" % (str(total_size).rjust(8), size_coeff.ljust(1)))
+
+def subcmd_bucket_usage(s3, uri):
+	bucket = uri.bucket()
+	object = uri.object()
+
+	if object.endswith('*'):
+		object = object[:-1]
+	try:
+		response = s3.bucket_list(bucket, prefix = object)
+	except S3Error, e:
+		if S3.codes.has_key(e.Code):
+			error(S3.codes[e.Code] % bucket)
+			return
+		else:
+			raise
+	bucket_size = 0
+	for object in response["list"]:
+		size, size_coeff = formatSize(object["Size"], False)
+		bucket_size += size
+	total_size, size_coeff = formatSize(bucket_size, Config().human_readable_sizes)
+	output("Bucket %s Usage: %s%s" % (bucket, str(total_size).rjust(8), size_coeff.ljust(1)))
+	return total_size
+
 def cmd_ls(args):
 	s3 = S3(Config())
 	if len(args) > 0:
@@ -229,6 +272,7 @@ commands_list = [
 	{"cmd":"mb", "label":"Make bucket", "param":"s3://BUCKET", "func":cmd_bucket_create, "argc":1},
 	{"cmd":"rb", "label":"Remove bucket", "param":"s3://BUCKET", "func":cmd_bucket_delete, "argc":1},
 	{"cmd":"ls", "label":"List objects or buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_ls, "argc":0},
+	{"cmd":"du", "label":"Disk usage by buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_du, "argc":0},
 	{"cmd":"la", "label":"List all object in all buckets", "param":"", "func":cmd_buckets_list_all_all, "argc":0},
 	{"cmd":"put", "label":"Put file into bucket", "param":"FILE [FILE...] s3://BUCKET[/PREFIX]", "func":cmd_object_put, "argc":2},
 	{"cmd":"get", "label":"Get file from bucket", "param":"s3://BUCKET/OBJECT LOCAL_FILE", "func":cmd_object_get, "argc":1},
