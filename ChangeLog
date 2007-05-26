@@ -1,3 +1,11 @@
+2007-05-26  Michal Ludvig  <michal@logix.cz>
+
+	* setup.cfg: Require Python 2.5 in RPM. Otherwise it needs
+	  to require additional python modules (e.g. ElementTree)
+	  which may have different names in different distros. It's 
+	  indeed still possible to manually install s3cmd with 
+	  Python 2.4 and appropriate modules.
+
 2007-04-09  Michal Ludvig  <michal@logix.cz>
 
 	* Released version 0.9.2
