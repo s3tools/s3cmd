@@ -3,9 +3,12 @@
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
 
+import os
 import time
 import re
 import elementtree.ElementTree as ET
+import string
+import random
 
 def parseNodes(nodes, xmlns = ""):
 	retval = []
@@ -68,3 +71,36 @@ def convertTupleListToDict(list):
 		retval[tuple[0]] = tuple[1]
 	return retval
 
+
+_rnd_chars = string.ascii_letters+string.digits
+_rnd_chars_len = len(_rnd_chars)
+def rndstr(len):
+	retval = ""
+	while len > 0:
+		retval += _rnd_chars[random.randint(0, _rnd_chars_len-1)]
+		len -= 1
+	return retval
+
+def mktmpsomething(prefix, randchars, createfunc):
+	old_umask = os.umask(0077)
+	tries = 5
+	while tries > 0:
+		dirname = prefix + rndstr(randchars)
+		try:
+			createfunc(dirname)
+			break
+		except OSError, e:
+			if e.errno != errno.EEXIST:
+				os.umask(old_umask)
+				raise
+		tries -= 1
+
+	os.umask(old_umask)
+	return dirname
+
+def mktmpdir(prefix = "/tmp/tmpdir-", randchars = 10):
+	return mktmpsomething(prefix, randchars, os.mkdir)
+
+def mktmpfile(prefix = "/tmp/tmpfile-", randchars = 20):
+	createfunc = lambda filename : os.close(os.open(filename, os.O_CREAT | os.O_EXCL))
+	return mktmpsomething(prefix, randchars, createfunc)

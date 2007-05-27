@@ -1,3 +1,7 @@
+2007-05-27  Michal Ludvig  <michal@logix.cz>
+
+	* Support for on-the-fly GPG encryption.
+
 2007-05-26  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd.1: Add info about "s3cmd du" command.

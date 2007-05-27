@@ -19,6 +19,7 @@ from S3 import PkgInfo
 from S3.S3 import *
 from S3.Config import Config
 from S3.S3Uri import *
+from S3 import Utils
 
 
 def output(message):
@@ -172,14 +173,21 @@ def cmd_object_put(args):
 		uri_arg_final = str(uri)
 		if len(files) > 1 or uri.object() == "":
 			uri_arg_final += os.path.basename(file)
-
+		
 		uri_final = S3Uri(uri_arg_final)
-		response = s3.object_put_uri(file, uri_final)
+		extra_headers = {}
+		real_filename = file
+		if Config().encrypt:
+			exitcode, real_filename, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(file)
+		response = s3.object_put_uri(real_filename, uri_final, extra_headers)
 		output("File '%s' stored as %s (%d bytes)" %
 			(file, uri_final, response["size"]))
 		if Config().acl_public:
 			output("Public URL of the object is: %s" %
 				(uri.public_url()))
+		if Config().encrypt and real_filename != file:
+			debug("Removing temporary encrypted file: %s" % real_filename)
+			os.remove(real_filename)
 
 def cmd_object_get(args):
 	s3 = S3(Config())
@@ -195,6 +203,9 @@ def cmd_object_get(args):
 	if not Config().force and os.path.exists(destination):
 		raise ParameterError("File %s already exists. Use --force to overwrite it" % destination)
 	response = s3.object_get_uri(uri, destination)
+	if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
+		gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
+		response["size"] = os.stat(destination)[6]
 	if destination != "-":
 		output("Object %s saved as '%s' (%d bytes)" %
 			(uri, destination, response["size"]))
@@ -209,6 +220,52 @@ def cmd_object_del(args):
 
 	response = s3.object_delete_uri(uri)
 	output("Object %s deleted" % uri)
+
+def resolve_list(lst, args):
+	retval = []
+	for item in lst:
+		retval.append(item % args)
+	return retval
+
+def gpg_command(command, passphrase = ""):
+	p_in, p_out = os.popen4(command)
+	if command.count("--passphrase-fd"):
+		p_in.write(passphrase+"\n")
+		p_in.flush()
+	for line in p_out:
+		info(line.strip())
+	p_pid, p_exitcode = os.wait()
+	return p_exitcode
+
+def gpg_encrypt(filename):
+	tmp_filename = Utils.mktmpfile()
+	args = {
+		"gpg_command" : cfg.gpg_command,
+		"passphrase_fd" : "0",
+		"input_file" : filename, 
+		"output_file" : tmp_filename,
+	}
+	info("Encrypting file %(input_file)s to %(output_file)s..." % args)
+	command = resolve_list(cfg.gpg_encrypt.split(" "), args)
+	code = gpg_command(command, cfg.gpg_passphrase)
+	return (code, tmp_filename, "gpg")
+
+def gpg_decrypt(filename, gpgenc_header = ""):
+	tmp_filename = Utils.mktmpfile(filename)
+	args = {
+		"gpg_command" : cfg.gpg_command,
+		"passphrase_fd" : "0",
+		"input_file" : filename, 
+		"output_file" : tmp_filename,
+	}
+	info("Decrypting file %(input_file)s to %(output_file)s..." % args)
+	command = resolve_list(cfg.gpg_decrypt.split(" "), args)
+	code = gpg_command(command, cfg.gpg_passphrase)
+	if code == 0:
+		debug("Renaming %s to %s" % (tmp_filename, filename))
+		os.unlink(filename)
+		os.rename(tmp_filename, filename)
+	return (code)
 
 def run_configure(config_file):
 	cfg = Config()
@@ -325,6 +382,7 @@ if __name__ == '__main__':
 	optparser.add_option("-c", "--config", dest="config", metavar="FILE", help="Config file name. Defaults to %default")
 	optparser.add_option(      "--dump-config", dest="dump_config", action="store_true", help="Dump current configuration after parsing config files and command line options and exit.")
 
+	optparser.add_option("-e", "--encrypt", dest="encrypt", action="store_true", help="Encrypt files before uploading to S3.")
 	optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations.")
 	optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read by anyone.")
 
@@ -381,6 +439,11 @@ if __name__ == '__main__':
 		except AttributeError:
 			## Some Config() options are not settable from command line
 			pass
+
+	if cfg.encrypt and cfg.gpg_passphrase == "":
+		error("Encryption requested but no passphrase set in config file.")
+		error("Please re-run 's3cmd --configure' and supply it.")
+		sys.exit(1)
 
 	if options.dump_config:
 		cfg.dump_config(sys.stdout)

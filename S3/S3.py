@@ -109,7 +109,7 @@ class S3(object):
 		response = self.send_request(request)
 		return response
 
-	def object_put(self, filename, bucket, object):
+	def object_put(self, filename, bucket, object, extra_headers = None):
 		if not os.path.isfile(filename):
 			raise ParameterError("%s is not a regular file" % filename)
 		try:
@@ -118,6 +118,8 @@ class S3(object):
 		except IOError, e:
 			raise ParameterError("%s: %s" % (filename, e.strerror))
 		headers = SortedDict()
+		if extra_headers:
+			headers.update(extra_headers)
 		headers["content-length"] = size
 		if self.config.acl_public:
 			headers["x-amz-acl"] = "public-read"
@@ -143,10 +145,10 @@ class S3(object):
 		response = self.send_request(request)
 		return response
 
-	def object_put_uri(self, filename, uri):
+	def object_put_uri(self, filename, uri, extra_headers = None):
 		if uri.type != "s3":
 			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
-		return self.object_put(filename, uri.bucket(), uri.object())
+		return self.object_put(filename, uri.bucket(), uri.object(), extra_headers)
 
 	def object_get_uri(self, uri, filename):
 		if uri.type != "s3":

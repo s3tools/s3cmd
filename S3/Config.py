@@ -19,6 +19,11 @@ class Config(object):
 	human_readable_sizes = False
 	force = False
 	acl_public = False
+	encrypt = False
+	gpg_passphrase = ""
+	gpg_command = "/usr/bin/gpg"
+	gpg_encrypt = "%(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
+	gpg_decrypt = "%(gpg_command)s -d --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
 
 	## Creating a singleton
 	def __new__(self, configfile = None):
@@ -109,8 +114,8 @@ class ConfigParser(object):
 				if r_quotes.match(data["value"]):
 					data["value"] = data["value"][1:-1]
 				self.__setitem__(data["key"], data["value"])
-				if data["key"] in ("access_key", "secret_key"):
-					print_value = (data["value"][:3]+"...%d_chars..."+data["value"][-2:]) % (len(data["value"]) - 4)
+				if data["key"] in ("access_key", "secret_key", "gpg_passphrase"):
+					print_value = (data["value"][:2]+"...%d_chars..."+data["value"][-1:]) % (len(data["value"]) - 3)
 				else:
 					print_value = data["value"]
 				debug("ConfigParser: %s->%s" % (data["key"], print_value))
