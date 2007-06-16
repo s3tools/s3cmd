@@ -13,6 +13,7 @@ from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
 from logging import debug, info, warning, error
 import elementtree.ElementTree as ET
+from distutils.spawn import find_executable
 
 ## Our modules
 from S3 import PkgInfo
@@ -250,7 +251,7 @@ def gpg_encrypt(filename):
 	code = gpg_command(command, cfg.gpg_passphrase)
 	return (code, tmp_filename, "gpg")
 
-def gpg_decrypt(filename, gpgenc_header = ""):
+def gpg_decrypt(filename, gpgenc_header = "", in_place = True):
 	tmp_filename = Utils.mktmpfile(filename)
 	args = {
 		"gpg_command" : cfg.gpg_command,
@@ -261,22 +262,28 @@ def gpg_decrypt(filename, gpgenc_header = ""):
 	info("Decrypting file %(input_file)s to %(output_file)s..." % args)
 	command = resolve_list(cfg.gpg_decrypt.split(" "), args)
 	code = gpg_command(command, cfg.gpg_passphrase)
-	if code == 0:
+	if code == 0 and in_place:
 		debug("Renaming %s to %s" % (tmp_filename, filename))
 		os.unlink(filename)
 		os.rename(tmp_filename, filename)
-	return (code)
+		tmp_filename = filename
+	return (code, tmp_filename)
 
 def run_configure(config_file):
 	cfg = Config()
 	options = [
 		("access_key", "Access Key", "Access key and Secret key are your identifiers for Amazon S3"),
 		("secret_key", "Secret Key"),
+		("gpg_passphrase", "Encryption password", "Encryption password is used to protect your files from reading\nby unauthorized persons while in transfer to S3"),
+		("gpg_command", "Path to GPG program"),
 		]
+	if getattr(cfg, "gpg_command") == "":
+		setattr(cfg, "gpg_command", find_executable("gpg"))
+
 	try:
 		while 1:
 			output("\nEnter new values or accept defaults in brackets with Enter.")
-			output("Refer to user manual for detailed description of all options.\n")
+			output("Refer to user manual for detailed description of all options.")
 			for option in options:
 				prompt = option[1]
 				try:
@@ -287,7 +294,7 @@ def run_configure(config_file):
 					pass
 
 				if len(option) >= 3:
-					output("%s" % option[2])
+					output("\n%s" % option[2])
 
 				val = raw_input(prompt + ": ")
 				if val != "":
@@ -300,12 +307,38 @@ def run_configure(config_file):
 				try:
 					output("Please wait...")
 					S3(Config()).bucket_list("", "")
-					output("\nSuccess. Your access key and secret key worked fine :-)")
-				except S3Error, e:
+					output("Success. Your access key and secret key worked fine :-)")
+
+					output("\nNow verifying that encryption works...")
+					if not getattr(cfg, "gpg_command"):
+						raise Exception("Path to GPG program not set")
+					if not os.path.isfile(getattr(cfg, "gpg_command")):
+						raise Exception("GPG program not found")
+					filename = Utils.mktmpfile()
+					f = open(filename, "w")
+					f.write(os.sys.copyright)
+					f.close()
+					ret_enc = gpg_encrypt(filename)
+					ret_dec = gpg_decrypt(ret_enc[1], ret_enc[2], False)
+					hash = [
+						Utils.hash_file_md5(filename),
+						Utils.hash_file_md5(ret_enc[1]),
+						Utils.hash_file_md5(ret_dec[1]),
+					]
+					os.unlink(filename)
+					os.unlink(ret_enc[1])
+					os.unlink(ret_dec[1])
+					if hash[0] == hash[2] and hash[0] != hash[1]:
+						output ("Success. Encryption and decryption worked fine :-)") 
+					else:
+						raise Exception("Encryption verification error.")
+
+				except Exception, e:
 					error("Test failed: %s" % (e))
 					val = raw_input("\nRetry configuration? [Y/n] ")
 					if val.lower().startswith("y") or val == "":
 						continue
+					
 
 			val = raw_input("\nSave settings? [y/N] ")
 			if val.lower().startswith("y"):

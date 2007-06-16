@@ -9,6 +9,7 @@ import re
 import elementtree.ElementTree as ET
 import string
 import random
+import md5
 
 def parseNodes(nodes, xmlns = ""):
 	retval = []
@@ -104,3 +105,10 @@ def mktmpdir(prefix = "/tmp/tmpdir-", randchars = 10):
 def mktmpfile(prefix = "/tmp/tmpfile-", randchars = 20):
 	createfunc = lambda filename : os.close(os.open(filename, os.O_CREAT | os.O_EXCL))
 	return mktmpsomething(prefix, randchars, createfunc)
+
+def hash_file_md5(filename):
+	h = md5.new()
+	f = open(filename, "r")
+	h.update(f.read())
+	f.close()
+	return h.hexdigest()

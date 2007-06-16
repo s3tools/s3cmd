@@ -21,7 +21,7 @@ class Config(object):
 	acl_public = False
 	encrypt = False
 	gpg_passphrase = ""
-	gpg_command = "/usr/bin/gpg"
+	gpg_command = ""
 	gpg_encrypt = "%(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
 	gpg_decrypt = "%(gpg_command)s -d --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
 
