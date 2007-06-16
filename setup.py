@@ -1,18 +1,21 @@
 from distutils.core import setup
+import sys
 import os
 
 import S3.PkgInfo
 
-## Remove 'MANIFEST' file to force
-## distutils to recreate it
 try:
-	os.unlink("MANIFEST")
+	## Remove 'MANIFEST' file to force
+	## distutils to recreate it.
+	## Only in "sdist" stage. Otherwise 
+	## it makes life difficult to packagers.
+	if sys.argv[1] == "sdist":
+		os.unlink("MANIFEST")
 except:
 	pass
 
-## Compress manpage. It behaves weird 
-## with bdist_rpm when not compressed.
-os.system("gzip -c s3cmd.1 > s3cmd.1.gz")
+man_path = os.getenv("S3CMD_INSTPATH_MAN") or "share/man"
+doc_path = os.getenv("S3CMD_INSTPATH_DOC") or "share/doc/packages"
 
 ## Main distutils info
 setup(
@@ -22,8 +25,8 @@ setup(
 	packages = [ 'S3' ],
 	scripts = ['s3cmd'],
 	data_files = [
-		("share/doc/packages/s3cmd", [ "README", "INSTALL", "NEWS" ]),
-		("share/man/man1", [ "s3cmd.1.gz" ] ),
+		(doc_path+"/s3cmd", [ "README", "INSTALL", "NEWS" ]),
+		(man_path+"/man1", [ "s3cmd.1" ] ),
 	],
 
 	## Packaging details
