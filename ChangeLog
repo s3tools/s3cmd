@@ -1,5 +1,6 @@
 2007-06-17  Michal Ludvig  <michal@logix.cz>
 
+	* S3/PkgInfo.py: Bump up version to 0.9.4-pre
 	* setup.py: Cleaned up some rpm-specific stuff that 
 	  caused problems to Debian packager Mikhail Gusarov
 	* setup.cfg: Removed [bdist_rpm] section
