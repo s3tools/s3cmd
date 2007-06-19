@@ -14,8 +14,17 @@ try:
 except:
 	pass
 
-man_path = os.getenv("S3CMD_INSTPATH_MAN") or "share/man"
-doc_path = os.getenv("S3CMD_INSTPATH_DOC") or "share/doc/packages"
+## Don't install manpages and docs when $S3CMD_PACKAGING is set
+## This was a requirement of Debian package maintainer. 
+if not os.getenv("S3CMD_PACKAGING"):
+	man_path = os.getenv("S3CMD_INSTPATH_MAN") or "share/man"
+	doc_path = os.getenv("S3CMD_INSTPATH_DOC") or "share/doc/packages"
+	data_files = [	
+		(doc_path+"/s3cmd", [ "README", "INSTALL", "NEWS" ]),
+		(man_path+"/man1", [ "s3cmd.1" ] ),
+	]
+else:
+	data_files = None
 
 ## Main distutils info
 setup(
@@ -24,10 +33,7 @@ setup(
 	version = S3.PkgInfo.version,
 	packages = [ 'S3' ],
 	scripts = ['s3cmd'],
-	data_files = [
-		(doc_path+"/s3cmd", [ "README", "INSTALL", "NEWS" ]),
-		(man_path+"/man1", [ "s3cmd.1" ] ),
-	],
+	data_files = data_files,
 
 	## Packaging details
 	author = "Michal Ludvig",

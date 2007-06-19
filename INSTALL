@@ -66,6 +66,19 @@ There are three options to run s3cmd from source tarball:
    find out the actual package name and how to install it then.
 
 
+Note to distibutions package maintainers
+----------------------------------------
+Define shell environment variable S3CMD_PACKAGING=yes if you
+don't want setup.py to install manpages and doc files. You'll
+have to install them manually in your .spec or similar package
+build scripts.
+
+On the other hand if you want setup.py to install manpages 
+and docs, but to other than default path, define env 
+variables $S3CMD_INSTPATH_MAN and $S3CMD_INSTPATH_DOC. Check 
+out setup.py for details and default values.
+
+
 Where to get help
 -----------------
 If in doubt, or if something doesn't work as expected, 
