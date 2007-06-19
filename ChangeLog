@@ -3,6 +3,7 @@
 	* setup.py: Check for S3CMD_PACKAGING and don't install
 	  manpages and docs if defined.
 	* INSTALL: Document the above change.
+	* MANIFEST.in: Include uncompressed manpage
 
 2007-06-17  Michal Ludvig  <michal@logix.cz>
 
