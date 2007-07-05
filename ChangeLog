@@ -1,5 +1,6 @@
 2007-07-05  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: --configure support for Proxy
 	* S3/S3.py: HTTP proxy support from
 	  John D. Rowell <jdrowell@exerciseyourbrain.com>
 

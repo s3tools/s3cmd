@@ -8,6 +8,8 @@
 import sys
 import logging
 import time
+import os
+import re
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -276,9 +278,18 @@ def run_configure(config_file):
 		("secret_key", "Secret Key"),
 		("gpg_passphrase", "Encryption password", "Encryption password is used to protect your files from reading\nby unauthorized persons while in transfer to S3"),
 		("gpg_command", "Path to GPG program"),
+		("proxy_host", "HTTP Proxy server name", "On some networks all internet access must go through a HTTP proxy.\nTry setting it here if you can't conect to S3 directly"),
+		("proxy_port", "HTTP Proxy server port"),
 		]
+	## Option-specfic defaults
 	if getattr(cfg, "gpg_command") == "":
 		setattr(cfg, "gpg_command", find_executable("gpg"))
+
+	if getattr(cfg, "proxy_host") == "" and os.getenv("http_proxy"):
+		re_match=re.match("(http://)?([^:]+):(\d+)", os.getenv("http_proxy"))
+		if re_match:
+			setattr(cfg, "proxy_host", re_match.groups()[1])
+			setattr(cfg, "proxy_port", re_match.groups()[2])
 
 	try:
 		while 1:

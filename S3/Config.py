@@ -20,7 +20,7 @@ class Config(object):
 	force = False
 	acl_public = False
 	proxy_host = ""
-	proxy_port = 0
+	proxy_port = 8080
 	encrypt = False
 	gpg_passphrase = ""
 	gpg_command = ""
