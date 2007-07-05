@@ -83,6 +83,18 @@ class S3(object):
 	def __init__(self, config):
 		self.config = config
 
+	def get_connection(self):
+		if self.config.proxy_host != "":
+			return httplib.HTTPConnection(self.config.proxy_host, self.config.proxy_port)
+		else:
+			return httplib.HTTPConnection(self.config.host)
+
+	def format_resource(self, resource):
+		if self.config.proxy_host != "":
+			resource = "http://%s%s" % (self.config.host, resource)
+
+		return resource
+
 	## Commands / Actions
 	def list_all_buckets(self):
 		request = self.create_request("LIST_ALL_BUCKETS")
@@ -100,7 +112,9 @@ class S3(object):
 
 	def bucket_create(self, bucket):
 		self.check_bucket_name(bucket)
-		request = self.create_request("BUCKET_CREATE", bucket = bucket)
+		headers = SortedDict()
+		headers["content-length"] = 0
+		request = self.create_request("BUCKET_CREATE", bucket = bucket, headers = headers)
 		response = self.send_request(request)
 		return response
 
@@ -197,8 +211,8 @@ class S3(object):
 	def send_request(self, request):
 		method_string, resource, headers = request
 		info("Processing request, please wait...")
-		conn = httplib.HTTPConnection(self.config.host)
-		conn.request(method_string, resource, {}, headers)
+ 		conn = self.get_connection()
+ 		conn.request(method_string, self.format_resource(resource), {}, headers)
 		response = {}
 		http_response = conn.getresponse()
 		response["status"] = http_response.status
@@ -213,9 +227,9 @@ class S3(object):
 	def send_file(self, request, file):
 		method_string, resource, headers = request
 		info("Sending file '%s', please wait..." % file.name)
-		conn = httplib.HTTPConnection(self.config.host)
+		conn = self.get_connection()
 		conn.connect()
-		conn.putrequest(method_string, resource)
+		conn.putrequest(method_string, self.format_resource(resource))
 		for header in headers.keys():
 			conn.putheader(header, str(headers[header]))
 		conn.endheaders()
@@ -244,9 +258,9 @@ class S3(object):
 	def recv_file(self, request, stream):
 		method_string, resource, headers = request
 		info("Receiving file '%s', please wait..." % stream.name)
-		conn = httplib.HTTPConnection(self.config.host)
+		conn = self.get_connection()
 		conn.connect()
-		conn.putrequest(method_string, resource)
+		conn.putrequest(method_string, self.format_resource(resource))
 		for header in headers.keys():
 			conn.putheader(header, str(headers[header]))
 		conn.endheaders()

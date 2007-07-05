@@ -19,6 +19,8 @@ class Config(object):
 	human_readable_sizes = False
 	force = False
 	acl_public = False
+	proxy_host = ""
+	proxy_port = 0
 	encrypt = False
 	gpg_passphrase = ""
 	gpg_command = ""

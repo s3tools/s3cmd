@@ -1,3 +1,8 @@
+2007-07-05  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3.py: HTTP proxy support from
+	  John D. Rowell <jdrowell@exerciseyourbrain.com>
+
 2007-06-19  Michal Ludvig  <michal@logix.cz>
 
 	* setup.py: Check for S3CMD_PACKAGING and don't install
