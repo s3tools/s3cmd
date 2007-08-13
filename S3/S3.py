@@ -180,12 +180,49 @@ class S3(object):
 		return self.object_delete(uri.bucket(), uri.object())
 
 	## Low level methods
+	def urlencode_string(self, string):
+		encoded = ""
+		## List of characters that must be escaped for S3
+		## Haven't found this in any official docs
+		## but my tests show it's more less correct.
+		## If you start getting InvalidSignature errors
+		## from S3 check the error headers returned
+		## from S3 to see whether the list hasn't
+		## changed.
+		for c in string:	# I'm not sure how to know in what encoding 
+					# 'object' is. Apparently "type(object)==str"
+					# but the contents is a string of unicode
+					# bytes, e.g. '\xc4\x8d\xc5\xafr\xc3\xa1k'
+					# Don't know what it will do on non-utf8 
+					# systems.
+					#           [hope that sounds reassuring ;-)]
+			o = ord(c)
+			if (o <= 32 or		# Space and below
+			    o == 0x22 or	# "
+			    o == 0x23 or	# #
+			    o == 0x25 or	# %
+			    o == 0x2B or	# + (or it would become <space>)
+			    o == 0x3C or	# <
+			    o == 0x3E or	# >
+			    o == 0x3F or	# ?
+			    o == 0x5B or	# [
+			    o == 0x5C or	# \
+			    o == 0x5D or	# ]
+			    o == 0x5E or	# ^
+			    o == 0x60 or	# `
+			    o >= 123):   	# { and above, including >= 128 for UTF-8
+				encoded += "%%%02X" % o
+			else:
+				encoded += c
+		debug("String '%s' encoded to '%s'" % (string, encoded))
+		return encoded
+
 	def create_request(self, operation, bucket = None, object = None, headers = None, **params):
 		resource = "/"
 		if bucket:
 			resource += str(bucket)
 			if object:
-				resource += "/"+str(object)
+				resource += "/" + self.urlencode_string(object)
 
 		if not headers:
 			headers = SortedDict()
