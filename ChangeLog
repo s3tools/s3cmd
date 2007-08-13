@@ -1,3 +1,7 @@
+2007-08-14  Michal Ludvig  <michal@logix.cz>
+
+	* S3/PkgInfo.py: Bump up version to 0.9.5-pre
+
 2007-08-13  Michal Ludvig  <michal@logix.cz>
 
 	* Released version 0.9.4
