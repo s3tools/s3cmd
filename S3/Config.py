@@ -20,12 +20,13 @@ class Config(object):
 	force = False
 	acl_public = False
 	proxy_host = ""
-	proxy_port = 8080
+	proxy_port = 3128
 	encrypt = False
 	gpg_passphrase = ""
 	gpg_command = ""
 	gpg_encrypt = "%(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
 	gpg_decrypt = "%(gpg_command)s -d --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
+	use_https = False
 
 	## Creating a singleton
 	def __new__(self, configfile = None):

@@ -84,6 +84,8 @@ class S3(object):
 		self.config = config
 
 	def get_connection(self):
+		if self.config.use_https:
+			return httplib.HTTPSConnection(self.config.host)
 		if self.config.proxy_host != "":
 			return httplib.HTTPConnection(self.config.proxy_host, self.config.proxy_port)
 		else:
