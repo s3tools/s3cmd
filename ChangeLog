@@ -1,5 +1,9 @@
 2007-08-13  Michal Ludvig  <michal@logix.cz>
 
+	* README: Updated Amazon S3 pricing overview
+
+2007-08-13  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd, S3/Config.py, S3/S3.py: HTTPS support
 
 2007-07-20  Michal Ludvig  <michal@logix.cz>
