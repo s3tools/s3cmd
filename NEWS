@@ -1,8 +1,9 @@
-s3cmd 0.9.4   -   ...
+s3cmd 0.9.4   -   2007-08-13
 ===========
-* Support for transparent GPG encryption of uploaded files.
+* Support for transparent GPG encryption of uploaded files
 * HTTP proxy support
 * HTTPS protocol support
+* Support for non-ASCII characters in uploaded filenames
 
 s3cmd 0.9.3   -   2007-05-26
 ===========
