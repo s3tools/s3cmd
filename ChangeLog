@@ -1,5 +1,10 @@
 2007-08-13  Michal Ludvig  <michal@logix.cz>
 
+	* Released version 0.9.4
+	  ----------------------
+
+2007-08-13  Michal Ludvig  <michal@logix.cz>
+
 	* S3/S3.py: Added function urlencode_string() that encodes
 	  non-ascii characters in object name before sending it to S3.
 
