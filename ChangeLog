@@ -1,5 +1,9 @@
 2007-08-14  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd.1: Add info about --encrypt parameter.
+
+2007-08-14  Michal Ludvig  <michal@logix.cz>
+
 	* S3/PkgInfo.py: Bump up version to 0.9.5-pre
 
 2007-08-13  Michal Ludvig  <michal@logix.cz>
