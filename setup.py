@@ -10,12 +10,18 @@ if float("%d.%d" % sys.version_info[:2]) < 2.4:
 	sys.exit(1)
 
 try:
-	import elementtree.ElementTree as ET
+	import xml.etree.ElementTree as ET
+	print "Using xml.etree.ElementTree for XML processing"
 except ImportError, e:
-	sys.stderr.write(e.message + "\n")
-	sys.stderr.write("Please upgrade to Python 2.5 or install ElementTree module\n")
-	sys.stderr.write("from http://effbot.org/zone/element-index.htm\n")
-	sys.exit(1)
+	sys.stderr.write(str(e) + "\n")
+	try:
+		import elementtree.ElementTree as ET
+		print "Using elementtree.ElementTree for XML processing"
+	except ImportError, e:
+		sys.stderr.write(str(e) + "\n")
+		sys.stderr.write("Please install ElementTree module from\n")
+		sys.stderr.write("http://effbot.org/zone/element-index.htm\n")
+		sys.exit(1)
 
 try:
 	## Remove 'MANIFEST' file to force

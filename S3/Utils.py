@@ -11,6 +11,11 @@ import string
 import random
 import md5
 
+try:
+	import xml.etree.ElementTree as ET
+except ImportError:
+	import elementtree.ElementTree as ET
+
 def parseNodes(nodes, xmlns = ""):
 	retval = []
 	for node in nodes:
