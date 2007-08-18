@@ -1,3 +1,8 @@
+s3cmd 0.9.5   -   ???
+===========
+* Much better handling of multiple args to put, get and del
+* Tries to use ElementTree from any available module
+
 s3cmd 0.9.4   -   2007-08-13
 ===========
 * Support for transparent GPG encryption of uploaded files
