@@ -1,3 +1,7 @@
+2007-08-19  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Better handling of multiple arguments for put, get and del
+
 2007-08-14  Michal Ludvig  <michal@logix.cz>
 
 	* setup.py, S3/Utils.py: Try import xml.etree.ElementTree

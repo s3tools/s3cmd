@@ -28,6 +28,11 @@ from S3 import Utils
 def output(message):
 	print message
 
+def check_args_type(args, type, verbose_type):
+	for arg in args:
+		if S3Uri(arg).type != type:
+			raise ParameterError("Expecting %s instead of '%s'" % (verbose_type, arg))
+
 def cmd_du(args):
 	s3 = S3(Config())
 	if len(args) > 0:
@@ -158,13 +163,13 @@ def cmd_object_put(args):
 	s3 = S3(Config())
 
 	uri_arg = args.pop()
-	files = args[:]
+	check_args_type(args, 'file', 'filename')
 
 	uri = S3Uri(uri_arg)
 	if uri.type != "s3":
 		raise ParameterError("Expecting S3 URI instead of '%s'" % uri_arg)
 
-	if len(files) > 1 and uri.object != "" and not Config().force:
+	if len(args) > 1 and uri.object() != "" and not Config().force:
 		error("When uploading multiple files the last argument must")
 		error("be a S3 URI specifying just the bucket name")
 		error("WITHOUT object name!")
@@ -172,9 +177,9 @@ def cmd_object_put(args):
 		error("object name will be prefixed to all stored filenames.")
 		sys.exit(1)
 	
-	for file in files:
+	for file in args:
 		uri_arg_final = str(uri)
-		if len(files) > 1 or uri.object() == "":
+		if len(args) > 1 or uri.object() == "":
 			uri_arg_final += os.path.basename(file)
 		
 		uri_final = S3Uri(uri_arg_final)
@@ -195,34 +200,62 @@ def cmd_object_put(args):
 def cmd_object_get(args):
 	s3 = S3(Config())
 
-	uri_arg = args.pop(0)
-	uri = S3Uri(uri_arg)
-	if uri.type != "s3" or not uri.has_object():
-		raise ParameterError("Expecting S3 URI instead of '%s'" % uri_arg)
+	if not S3Uri(args[0]).type == 's3':
+		raise ParameterError("Expecting S3 URI instead of '%s'" % args[0])
 
-	destination = len(args) > 0 and args.pop(0) or uri.object()
-	if os.path.isdir(destination):
-		destination += ("/" + uri.object())
-	if not Config().force and os.path.exists(destination):
-		raise ParameterError("File %s already exists. Use --force to overwrite it" % destination)
-	response = s3.object_get_uri(uri, destination)
-	if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
-		gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
-		response["size"] = os.stat(destination)[6]
-	if destination != "-":
-		output("Object %s saved as '%s' (%d bytes)" %
-			(uri, destination, response["size"]))
+	destination_dir = None
+	destination_file = None
+	if len(args) > 1:
+		if S3Uri(args[-1]).type == 's3':
+			# all S3, use object names to local dir
+			check_args_type(args, type="s3", verbose_type="S3 URI")	# May raise ParameterError
+		else:
+			if (len(args) > 2):
+				# last must be dir, all preceding S3
+				if not os.path.isdir(args[-1]):
+					raise ParameterError("Last parameter must be a directory")
+				destination_dir = args.pop()
+				check_args_type(args, type="s3", verbose_type="S3 URI")	# May raise ParameterError
+			else:
+				# last must be a dir or a filename
+				if os.path.isdir(args[-1]):
+					destination_dir = args.pop()
+				else:
+					destination_file = args.pop()
+
+	while (len(args)):
+		uri_arg = args.pop(0)
+		uri = S3Uri(uri_arg)
+
+		if destination_file:
+			destination = destination_file
+		elif destination_dir:
+			destination = destination_dir + "/" + uri.object()
+		else:
+			# By default the destination filename is the object name
+			destination = uri.object()
+
+		if not Config().force and os.path.exists(destination):
+			raise ParameterError("File %s already exists. Use --force to overwrite it" % destination)
+		response = s3.object_get_uri(uri, destination)
+		if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
+			gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
+			response["size"] = os.stat(destination)[6]
+		if destination != "-":
+			output("Object %s saved as '%s' (%d bytes)" %
+				(uri, destination, response["size"]))
 
 def cmd_object_del(args):
 	s3 = S3(Config())
 
-	uri_arg = args.pop(0)
-	uri = S3Uri(uri_arg)
-	if uri.type != "s3" or not uri.has_object():
-		raise ParameterError("Expecting S3 URI instead of '%s'" % uri_arg)
+	while (len(args)):
+		uri_arg = args.pop(0)
+		uri = S3Uri(uri_arg)
+		if uri.type != "s3" or not uri.has_object():
+			raise ParameterError("Expecting S3 URI instead of '%s'" % uri_arg)
 
-	response = s3.object_delete_uri(uri)
-	output("Object %s deleted" % uri)
+		response = s3.object_delete_uri(uri)
+		output("Object %s deleted" % uri)
 
 def resolve_list(lst, args):
 	retval = []
