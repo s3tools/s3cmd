@@ -6,7 +6,6 @@
 import os
 import time
 import re
-import elementtree.ElementTree as ET
 import string
 import random
 import md5

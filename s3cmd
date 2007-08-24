@@ -14,7 +14,6 @@ import re
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
 from logging import debug, info, warning, error
-import elementtree.ElementTree as ET
 from distutils.spawn import find_executable
 
 ## Our modules

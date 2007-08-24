@@ -1,3 +1,7 @@
+2007-08-24  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd, S3/Util.py: More ElementTree imports cleanup
+
 2007-08-19  Michal Ludvig  <michal@logix.cz>
 
 	* NEWS: Added news for 0.9.5
