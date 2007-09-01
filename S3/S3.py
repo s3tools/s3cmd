@@ -108,8 +108,10 @@ class S3(object):
 		## TODO: use prefix if supplied
 		request = self.create_request("BUCKET_LIST", bucket = bucket, prefix = prefix)
 		response = self.send_request(request)
-		debug(response)
+		#debug(response)
 		response["list"] = getListFromXml(response["data"], "Contents")
+		if getTextFromXml(response['data'], ".//IsTruncated").lower() != "false":
+			raise Exception("Listing truncated. Please notify s3cmd developers.")
 		return response
 
 	def bucket_create(self, bucket):

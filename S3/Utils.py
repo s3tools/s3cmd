@@ -15,20 +15,30 @@ try:
 except ImportError:
 	import elementtree.ElementTree as ET
 
+def stripTagXmlns(xmlns, tag):
+	"""
+	Returns a function that, given a tag name argument, removes
+	eventual ElementTree xmlns from it.
+
+	Example:
+		stripTagXmlns("{myXmlNS}tag") -> "tag"
+	"""
+	if not xmlns:
+		return tag
+	return re.sub(xmlns, "", tag)
+
+def fixupXPath(xmlns, xpath, max = 0):
+	if not xmlns:
+		return xpath
+	retval = re.subn("//", "//%s" % xmlns, xpath, max)[0]
+	return retval
+
 def parseNodes(nodes, xmlns = ""):
 	retval = []
 	for node in nodes:
 		retval_item = {}
-		if xmlns != "":
-			## Take regexp compilation out of the loop
-			r = re.compile(xmlns)
-			fixup = lambda string : r.sub("", string)
-		else:
-			## Do-nothing function
-			fixup = lambda string : string
-
 		for child in node.getchildren():
-			name = fixup(child.tag)
+			name = stripTagXmlns(xmlns, child.tag)
 			retval_item[name] = node.findtext(".//%s" % child.tag)
 
 		retval.append(retval_item)
@@ -45,6 +55,11 @@ def getListFromXml(xml, node):
 	nodes = tree.findall('.//%s%s' % (xmlns, node))
 	return parseNodes(nodes, xmlns)
 	
+def getTextFromXml(xml, xpath):
+	tree = ET.fromstring(xml)
+	xmlns = getNameSpace(tree)
+	return tree.findtext(fixupXPath(xmlns, xpath))
+
 def dateS3toPython(date):
 	date = re.compile("\.\d\d\dZ").sub(".000Z", date)
 	return time.strptime(date, "%Y-%m-%dT%H:%M:%S.000Z")

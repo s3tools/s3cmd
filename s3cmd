@@ -256,6 +256,97 @@ def cmd_object_del(args):
 		response = s3.object_delete_uri(uri)
 		output("Object %s deleted" % uri)
 
+def cmd_sync(agrs):
+	src = args.pop(0)
+	if S3Uri(src).type != "file":
+		raise ParameterError("Source must be a local path instead of: %s" % src)
+	dst = args.pop(0)
+	dst_uri = S3Uri(dst)
+	if dst_uri.type != "s3":
+		raise ParameterError("Destination must be a S3 URI instead of: %s" % dst)
+	if (len(args)):
+		raise ParameterError("Too many parameters! Expected: %s" % commands['sync']['param'])
+
+	s3 = S3(Config())
+
+	output("Compiling list of local files...")
+	loc_base = os.path.join(src, "")
+	loc_base_len = len(loc_base)
+	loc_list = {}
+	for root, dirs, files in os.walk(src):
+		## TODO: implement explicit exclude
+		for f in files:
+			full_name = os.path.join(root, f)
+			if not os.path.isfile(full_name):
+				continue
+			file = full_name[loc_base_len:]
+			sr = os.stat_result(os.lstat(full_name))
+			loc_list[file] = {
+				'full_name' : full_name,
+				'size' : sr.st_size, 
+				'mtime' : sr.st_mtime,
+				## TODO: Possibly more to save here...
+			}
+	
+	output("Retrieving list of remote files...")
+	response = s3.bucket_list(dst_uri.bucket(), prefix = dst_uri.object())
+
+	rem_base = dst_uri.object()
+	rem_base_len = len(rem_base)
+	rem_list = {}
+	for object in response['list']:
+		key = object['Key'][rem_base_len:]
+		rem_list[key] = { 
+			'size' : int(object['Size']),
+			# 'mtime' : dateS3toUnix(object['LastModified']), ## That's upload time, not our lastmod time :-(
+			'md5' : object['ETag'][1:-1],
+			'object_key' : object['Key'],
+		}
+	output("Verifying checksums...")
+	for file in loc_list.keys():
+		debug("Checking %s ..." % file)
+		if rem_list.has_key(file):
+			debug("%s exists in remote list" % file)
+			## Check size first
+			if rem_list[file]['size'] == loc_list[file]['size']:
+				debug("%s same size: %s" % (file, rem_list[file]['size']))
+				## ... same size, check MD5
+				loc_md5 = Utils.hash_file_md5(loc_list[file]['full_name'])
+				if loc_md5 == rem_list[file]['md5']:
+					debug("%s md5 matches: %s" % (file, rem_list[file]['md5']))
+					## Checksums are the same.
+					## Remove from local-list, all that is left there will be uploaded
+					debug("%s removed from local list - upload not needed" % file)
+					del(loc_list[file])
+				else:
+					debug("! %s md5 mismatch: local=%s remote=%s" % (file, loc_md5, rem_list[file]['md5']))
+			else:
+				debug("! %s size mismatch: local=%s remote=%s" % (file, loc_list[file]['size'], rem_list[file]['size']))
+                        
+			## Remove from remote-list, all that is left there will be deleted
+			debug("%s removed from remote list" % file)
+			del(rem_list[file])
+
+	output("Summary: %d local files to upload, %d remote files to delete" % (len(loc_list), len(rem_list)))
+	if cfg.delete_removed:
+		for file in rem_list:
+			uri = S3Uri("s3://" + dst_uri.bucket()+"/"+rem_list[file]['object_key'])
+			response = s3.object_delete_uri(uri)
+			output("%s deleted" % uri)
+
+	total_size = 0
+	dst_base = dst_uri.uri()
+	if not dst_base[-1] == "/": dst_base += "/"
+	file_list = loc_list.keys()
+	file_list.sort()
+	for file in file_list:
+		src = loc_list[file]['full_name']
+		uri = S3Uri(dst_base + file)
+		response = s3.object_put_uri(src, uri)
+		output("%s stored as %s (%d bytes)" % (src, uri, response["size"]))
+		total_size += response["size"]
+	output("Done. Uploaded %d bytes." % total_size)
+
 def resolve_list(lst, args):
 	retval = []
 	for item in lst:
@@ -425,6 +516,8 @@ commands_list = [
 	{"cmd":"put", "label":"Put file into bucket", "param":"FILE [FILE...] s3://BUCKET[/PREFIX]", "func":cmd_object_put, "argc":2},
 	{"cmd":"get", "label":"Get file from bucket", "param":"s3://BUCKET/OBJECT LOCAL_FILE", "func":cmd_object_get, "argc":1},
 	{"cmd":"del", "label":"Delete file from bucket", "param":"s3://BUCKET/OBJECT", "func":cmd_object_del, "argc":1},
+	#{"cmd":"mkdir", "label":"Make a virtual S3 directory", "param":"s3://BUCKET/path/to/dir", "func":cmd_mkdir, "argc":1},
+	{"cmd":"sync", "label":"Synchronize a directory tree to S3 and back", "param":"LOCAL_DIR s3://BUCKET[/PREFIX]", "func":cmd_sync, "argc":2},
 	{"cmd":"du", "label":"Disk usage by buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_du, "argc":0},
 	]
 
@@ -475,6 +568,7 @@ if __name__ == '__main__':
 	optparser.add_option("-e", "--encrypt", dest="encrypt", action="store_true", help="Encrypt files before uploading to S3.")
 	optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations.")
 	optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read by anyone.")
+	optparser.add_option(      "--delete-removed", dest="delete_removed", action="store_true", help="Delete remote objects with no corresponding local file [sync]")
 
 	optparser.add_option("-m", "--mime-type", dest="default_mime_type", type="mimetype", metavar="MIME/TYPE", help="Default MIME-type to be set for objects stored.")
 	optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")

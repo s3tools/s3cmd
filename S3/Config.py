@@ -10,6 +10,7 @@ import re
 class Config(object):
 	_instance = None
 	_parsed_files = []
+	_doc = {}
 	access_key = ""
 	secret_key = ""
 	host = "s3.amazonaws.com"
@@ -22,6 +23,8 @@ class Config(object):
 	proxy_host = ""
 	proxy_port = 3128
 	encrypt = False
+	delete_removed = False
+	_doc['delete_removed'] = "[sync] Remove remote S3 objects when local file has been deleted"
 	gpg_passphrase = ""
 	gpg_command = ""
 	gpg_encrypt = "%(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"

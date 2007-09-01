@@ -1,3 +1,10 @@
+2007-09-02  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Initial support for 'sync' operation. For
+	  now only local->s3 direction. In this version doesn't
+	  work well with non-ASCII filenames and doesn't support
+	  encryption.
+
 2007-08-24  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd, S3/Util.py: More ElementTree imports cleanup
