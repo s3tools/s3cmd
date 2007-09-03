@@ -110,7 +110,8 @@ class S3(object):
 		response = self.send_request(request)
 		#debug(response)
 		response["list"] = getListFromXml(response["data"], "Contents")
-		if getTextFromXml(response['data'], ".//IsTruncated").lower() != "false":
+		is_truncated = getTextFromXml(response['data'], ".//IsTruncated")
+		if is_truncated and is_truncated.lower() != "false":
 			raise Exception("Listing truncated. Please notify s3cmd developers.")
 		return response
 

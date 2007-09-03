@@ -458,28 +458,31 @@ def run_configure(config_file):
 					output("Success. Your access key and secret key worked fine :-)")
 
 					output("\nNow verifying that encryption works...")
-					if not getattr(cfg, "gpg_command"):
-						raise Exception("Path to GPG program not set")
-					if not os.path.isfile(getattr(cfg, "gpg_command")):
-						raise Exception("GPG program not found")
-					filename = Utils.mktmpfile()
-					f = open(filename, "w")
-					f.write(os.sys.copyright)
-					f.close()
-					ret_enc = gpg_encrypt(filename)
-					ret_dec = gpg_decrypt(ret_enc[1], ret_enc[2], False)
-					hash = [
-						Utils.hash_file_md5(filename),
-						Utils.hash_file_md5(ret_enc[1]),
-						Utils.hash_file_md5(ret_dec[1]),
-					]
-					os.unlink(filename)
-					os.unlink(ret_enc[1])
-					os.unlink(ret_dec[1])
-					if hash[0] == hash[2] and hash[0] != hash[1]:
-						output ("Success. Encryption and decryption worked fine :-)") 
+					if not getattr(cfg, "gpg_command") or not getattr(cfg, "gpg_passphrase"):
+						output("Not configured. Never mind.")
 					else:
-						raise Exception("Encryption verification error.")
+						if not getattr(cfg, "gpg_command"):
+							raise Exception("Path to GPG program not set")
+						if not os.path.isfile(getattr(cfg, "gpg_command")):
+							raise Exception("GPG program not found")
+						filename = Utils.mktmpfile()
+						f = open(filename, "w")
+						f.write(os.sys.copyright)
+						f.close()
+						ret_enc = gpg_encrypt(filename)
+						ret_dec = gpg_decrypt(ret_enc[1], ret_enc[2], False)
+						hash = [
+							Utils.hash_file_md5(filename),
+							Utils.hash_file_md5(ret_enc[1]),
+							Utils.hash_file_md5(ret_dec[1]),
+						]
+						os.unlink(filename)
+						os.unlink(ret_enc[1])
+						os.unlink(ret_dec[1])
+						if hash[0] == hash[2] and hash[0] != hash[1]:
+							output ("Success. Encryption and decryption worked fine :-)") 
+						else:
+							raise Exception("Encryption verification error.")
 
 				except Exception, e:
 					error("Test failed: %s" % (e))
