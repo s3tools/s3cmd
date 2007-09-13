@@ -176,7 +176,10 @@ def cmd_object_put(args):
 		error("object name will be prefixed to all stored filenames.")
 		sys.exit(1)
 	
+	seq = 0
+	total = len(args)
 	for file in args:
+		seq += 1
 		uri_arg_final = str(uri)
 		if len(args) > 1 or uri.object() == "":
 			uri_arg_final += os.path.basename(file)
@@ -187,8 +190,9 @@ def cmd_object_put(args):
 		if Config().encrypt:
 			exitcode, real_filename, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(file)
 		response = s3.object_put_uri(real_filename, uri_final, extra_headers)
-		output("File '%s' stored as %s (%d bytes)" %
-			(file, uri_final, response["size"]))
+		output("File '%s' stored as %s (%d bytes) [%d of %d]" %
+			(file, uri_final, response["size"],
+			seq, total))
 		if Config().acl_public:
 			output("Public URL of the object is: %s" %
 				(uri.public_url()))
@@ -261,6 +265,8 @@ def cmd_sync(agrs):
 	if S3Uri(src).type != "file":
 		raise ParameterError("Source must be a local path instead of: %s" % src)
 	dst = args.pop(0)
+	if not dst.endswith('/'):
+		dst += "/"
 	dst_uri = S3Uri(dst)
 	if dst_uri.type != "s3":
 		raise ParameterError("Destination must be a S3 URI instead of: %s" % dst)
@@ -279,6 +285,10 @@ def cmd_sync(agrs):
 			full_name = os.path.join(root, f)
 			if not os.path.isfile(full_name):
 				continue
+			if os.path.islink(full_name):
+				## Synchronize symlinks... one day
+				## for now skip over
+				continue
 			file = full_name[loc_base_len:]
 			sr = os.stat_result(os.lstat(full_name))
 			loc_list[file] = {
@@ -287,6 +297,7 @@ def cmd_sync(agrs):
 				'mtime' : sr.st_mtime,
 				## TODO: Possibly more to save here...
 			}
+	loc_count = len(loc_list)
 	
 	output("Retrieving list of remote files...")
 	response = s3.bucket_list(dst_uri.bucket(), prefix = dst_uri.object())
@@ -294,14 +305,17 @@ def cmd_sync(agrs):
 	rem_base = dst_uri.object()
 	rem_base_len = len(rem_base)
 	rem_list = {}
+	rem_count = len(response['list'])
 	for object in response['list']:
-		key = object['Key'][rem_base_len:]
+		key = object['Key'][rem_base_len:].encode('utf-8')
 		rem_list[key] = { 
 			'size' : int(object['Size']),
 			# 'mtime' : dateS3toUnix(object['LastModified']), ## That's upload time, not our lastmod time :-(
 			'md5' : object['ETag'][1:-1],
-			'object_key' : object['Key'],
+			'object_key' : object['Key'].encode('utf-8'),
 		}
+	output("Found %d local files, %d remote files" % (loc_count, rem_count))
+
 	output("Verifying checksums...")
 	for file in loc_list.keys():
 		debug("Checking %s ..." % file)
@@ -328,22 +342,27 @@ def cmd_sync(agrs):
 			del(rem_list[file])
 
 	output("Summary: %d local files to upload, %d remote files to delete" % (len(loc_list), len(rem_list)))
-	if cfg.delete_removed:
-		for file in rem_list:
-			uri = S3Uri("s3://" + dst_uri.bucket()+"/"+rem_list[file]['object_key'])
+	for file in rem_list:
+		uri = S3Uri("s3://" + dst_uri.bucket()+"/"+rem_list[file]['object_key'])
+		if cfg.delete_removed:
 			response = s3.object_delete_uri(uri)
-			output("%s deleted" % uri)
+			output("deleted '%s'" % uri)
+		else:
+			output("not-deleted '%s'" % uri)
 
 	total_size = 0
+	total_count = len(loc_list)
+	seq = 0
 	dst_base = dst_uri.uri()
 	if not dst_base[-1] == "/": dst_base += "/"
 	file_list = loc_list.keys()
 	file_list.sort()
 	for file in file_list:
+		seq += 1
 		src = loc_list[file]['full_name']
 		uri = S3Uri(dst_base + file)
 		response = s3.object_put_uri(src, uri)
-		output("%s stored as %s (%d bytes)" % (src, uri, response["size"]))
+		output("stored '%s' as '%s' (%d bytes) [%d of %d]" % (src, uri, response["size"], seq, total_count))
 		total_size += response["size"]
 	output("Done. Uploaded %d bytes." % total_size)
 
