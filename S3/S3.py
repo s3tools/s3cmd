@@ -105,14 +105,23 @@ class S3(object):
 		return response
 	
 	def bucket_list(self, bucket, prefix = None):
-		## TODO: use prefix if supplied
+		def _list_truncated(data):
+			return getTextFromXml(data, ".//IsTruncated").lower() != "false"
+
+		def _get_contents(data):
+			return getListFromXml(data, "Contents")
+
 		request = self.create_request("BUCKET_LIST", bucket = bucket, prefix = prefix)
 		response = self.send_request(request)
 		#debug(response)
-		response["list"] = getListFromXml(response["data"], "Contents")
-		is_truncated = getTextFromXml(response['data'], ".//IsTruncated")
-		if is_truncated and is_truncated.lower() != "false":
-			raise Exception("Listing truncated. Please notify s3cmd developers.")
+		list = _get_contents(response["data"])
+		while _list_truncated(response["data"]):
+			marker = list[-1]["Key"]
+			info("Listing continues after '%s'" % marker)
+			request = self.create_request("BUCKET_LIST", bucket = bucket, prefix = prefix, marker = marker)
+			response = self.send_request(request)
+			list += _get_contents(response["data"])
+		response['list'] = list
 		return response
 
 	def bucket_create(self, bucket):

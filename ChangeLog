@@ -1,3 +1,7 @@
+2007-09-13  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3.py: Support for buckets with over 1000 objects.
+
 2007-09-03  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Small tweaks to --configure workflow.

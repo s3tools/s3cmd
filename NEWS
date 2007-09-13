@@ -2,6 +2,7 @@ s3cmd 0.9.5   -   ???
 ===========
 * Much better handling of multiple args to put, get and del
 * Tries to use ElementTree from any available module
+* Support for buckets with over 1000 objects.
 
 s3cmd 0.9.4   -   2007-08-13
 ===========
