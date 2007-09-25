@@ -106,7 +106,9 @@ class S3(object):
 	
 	def bucket_list(self, bucket, prefix = None):
 		def _list_truncated(data):
-			return getTextFromXml(data, ".//IsTruncated").lower() != "false"
+			## <IsTruncated> can either be "true" or "false" or be missing completely
+			is_truncated = getTextFromXml(data, ".//IsTruncated") or "false"
+			return is_truncated.lower() != "false"
 
 		def _get_contents(data):
 			return getListFromXml(data, "Contents")

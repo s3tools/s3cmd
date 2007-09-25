@@ -9,6 +9,7 @@ import re
 import string
 import random
 import md5
+import errno
 
 try:
 	import xml.etree.ElementTree as ET
