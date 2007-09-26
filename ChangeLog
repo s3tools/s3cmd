@@ -1,5 +1,10 @@
 2007-09-25  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Exit with error code on error (patch
+	  from Kim-Minh KAPLAN, SF #1800583)
+
+2007-09-25  Michal Ludvig  <michal@logix.cz>
+
 	* S3/S3.py: Don't fail if bucket listing doesn't have
 	  <IsTruncated> node.
 	* s3cmd: Create ~/.s3cfg with 0600 permissions.
