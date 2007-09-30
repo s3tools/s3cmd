@@ -1,3 +1,8 @@
+2007-10-01  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Fix typo in argument name (patch
+	  from Kim-Minh KAPLAN, SF #1804808)
+
 2007-09-25  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Exit with error code on error (patch
