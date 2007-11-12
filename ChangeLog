@@ -1,3 +1,8 @@
+2007-11-12  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Support for storing file attributes (like ownership, 
+	  mode, etc) in sync operation.
+
 2007-10-01  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Fix typo in argument name (patch

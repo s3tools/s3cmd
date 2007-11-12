@@ -11,6 +11,7 @@ import time
 import os
 import re
 import errno
+import pwd, grp
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -262,6 +263,20 @@ def cmd_object_del(args):
 		output("Object %s deleted" % uri)
 
 def cmd_sync(args):
+	def _build_attr_header(src):
+		attrs = {}
+		st = os.stat_result(os.stat(src))
+		for attr in cfg.preserve_attrs_list:
+			if attr == 'uname':
+				val = pwd.getpwuid(st.st_uid).pw_name
+			elif attr == 'gname':
+				val = grp.getgrgid(st.st_gid).gr_name
+			else:
+				val = getattr(st, 'st_' + attr)
+			attrs[attr] = val
+		result = ""
+		for k in attrs: result += "%s:%s/" % (k, attrs[k])
+		return { 'x-amz-meta-s3cmd-attrs' : result[:-1] }
 	src = args.pop(0)
 	if S3Uri(src).type != "file":
 		raise ParameterError("Source must be a local path instead of: %s" % src)
@@ -277,10 +292,15 @@ def cmd_sync(args):
 	s3 = S3(Config())
 
 	output("Compiling list of local files...")
-	loc_base = os.path.join(src, "")
+	if os.path.isdir(src):
+		loc_base = os.path.join(src, "")
+		filelist = os.walk(src)
+	else:
+		loc_base = "./"
+		filelist = [( '.', [], [src] )]
 	loc_base_len = len(loc_base)
 	loc_list = {}
-	for root, dirs, files in os.walk(src):
+	for root, dirs, files in filelist:
 		## TODO: implement explicit exclude
 		for f in files:
 			full_name = os.path.join(root, f)
@@ -362,7 +382,10 @@ def cmd_sync(args):
 		seq += 1
 		src = loc_list[file]['full_name']
 		uri = S3Uri(dst_base + file)
-		response = s3.object_put_uri(src, uri)
+		if cfg.preserve_attrs:
+			attr_header = _build_attr_header(src)
+			debug(attr_header)
+		response = s3.object_put_uri(src, uri, attr_header)
 		output("stored '%s' as '%s' (%d bytes) [%d of %d]" % (src, uri, response["size"], seq, total_count))
 		total_size += response["size"]
 	output("Done. Uploaded %d bytes." % total_size)

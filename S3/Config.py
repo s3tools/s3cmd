@@ -23,6 +23,18 @@ class Config(object):
 	proxy_host = ""
 	proxy_port = 3128
 	encrypt = False
+	dry_run = False
+	preserve_attrs = True
+	preserve_attrs_list = [ 
+		'uname',	# Verbose owner Name (e.g. 'root')
+		#'uid',		# Numeric user ID (e.g. 0)
+		'gname',	# Group name (e.g. 'users')
+		#'gid',		# Numeric group ID (e.g. 100)
+		'mtime',	# Modification timestamp
+		'ctime',	# Creation timestamp
+		'mode',		# File mode (e.g. rwxr-xr-x = 755)
+		#'acl',		# Full ACL (not yet supported)
+	]
 	delete_removed = False
 	_doc['delete_removed'] = "[sync] Remove remote S3 objects when local file has been deleted"
 	gpg_passphrase = ""
