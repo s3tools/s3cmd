@@ -2,6 +2,8 @@
 
 	* s3cmd: Support for storing file attributes (like ownership, 
 	  mode, etc) in sync operation.
+	* s3cmd, S3/S3.py: New command 'ib' to get information about 
+	  bucket (only 'LocationConstraint' supported for now).
 
 2007-10-01  Michal Ludvig  <michal@logix.cz>
 

@@ -139,6 +139,12 @@ class S3(object):
 		response = self.send_request(request)
 		return response
 
+	def bucket_info(self, bucket):
+		request = self.create_request("BUCKET_LIST", bucket = bucket + "?location")
+		response = self.send_request(request)
+		response['bucket-location'] = getTextFromXml(response['data'], ".//LocationConstraint") or "any"
+		return response
+
 	def object_put(self, filename, bucket, object, extra_headers = None):
 		if not os.path.isfile(filename):
 			raise ParameterError("%s is not a regular file" % filename)
@@ -256,6 +262,8 @@ class S3(object):
 		for param in params:
 			if params[param] not in (None, ""):
 				param_str += "&%s=%s" % (param, params[param])
+			else:
+				param_str += "&%s" % param
 		if param_str != "":
 			resource += "?" + param_str[1:]
 		debug("CreateRequest: resource=" + resource)

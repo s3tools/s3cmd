@@ -160,6 +160,22 @@ def cmd_bucket_delete(args):
 			raise
 	output("Bucket '%s' removed" % uri.bucket())
 
+def cmd_bucket_info(args):
+	uri = S3Uri(args[0])
+	if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
+		raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % args[0])
+	try:
+		s3 = S3(Config())
+		response = s3.bucket_info(uri.bucket())
+	except S3Error, e:
+		if S3.codes.has_key(e.info["Code"]):
+			error(S3.codes[e.info["Code"]] % uri.bucket())
+			return
+		else:
+			raise
+	output("Bucket '%s':" % uri.bucket())
+	output("   Location: %s" % response['bucket-location'])
+
 def cmd_object_put(args):
 	s3 = S3(Config())
 
@@ -566,6 +582,7 @@ commands = {}
 commands_list = [
 	{"cmd":"mb", "label":"Make bucket", "param":"s3://BUCKET", "func":cmd_bucket_create, "argc":1},
 	{"cmd":"rb", "label":"Remove bucket", "param":"s3://BUCKET", "func":cmd_bucket_delete, "argc":1},
+	{"cmd":"ib", "label":"Bucket information", "param":"s3://BUCKET", "func":cmd_bucket_info, "argc":1},
 	{"cmd":"ls", "label":"List objects or buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_ls, "argc":0},
 	{"cmd":"la", "label":"List all object in all buckets", "param":"", "func":cmd_buckets_list_all_all, "argc":0},
 	{"cmd":"put", "label":"Put file into bucket", "param":"FILE [FILE...] s3://BUCKET[/PREFIX]", "func":cmd_object_put, "argc":2},
