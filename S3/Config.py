@@ -13,7 +13,8 @@ class Config(object):
 	_doc = {}
 	access_key = ""
 	secret_key = ""
-	host = "s3.amazonaws.com"
+	host_base = "s3.amazonaws.com"
+	host_bucket = "%(bucket)s.s3.amazonaws.com"
 	verbosity = logging.WARNING
 	send_chunk = 4096
 	recv_chunk = 4096
@@ -42,6 +43,7 @@ class Config(object):
 	gpg_encrypt = "%(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
 	gpg_decrypt = "%(gpg_command)s -d --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
 	use_https = False
+	bucket_location = "US"
 
 	## Creating a singleton
 	def __new__(self, configfile = None):

@@ -59,7 +59,10 @@ def getListFromXml(xml, node):
 def getTextFromXml(xml, xpath):
 	tree = ET.fromstring(xml)
 	xmlns = getNameSpace(tree)
-	return tree.findtext(fixupXPath(xmlns, xpath))
+	if tree.tag.endswith(xpath):
+		return tree.text
+	else:
+		return tree.findtext(fixupXPath(xmlns, xpath))
 
 def dateS3toPython(date):
 	date = re.compile("\.\d\d\dZ").sub(".000Z", date)

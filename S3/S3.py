@@ -39,7 +39,7 @@ class S3Error (Exception):
 		retval = "%d (%s)" % (self.status, self.reason)
 		try:
 			retval += (": %s" % self.info["Code"])
-		except AttributeError:
+		except (AttributeError, KeyError):
 			pass
 		return retval
 
@@ -83,19 +83,30 @@ class S3(object):
 	def __init__(self, config):
 		self.config = config
 
-	def get_connection(self):
-		if self.config.use_https:
-			return httplib.HTTPSConnection(self.config.host)
+	def get_connection(self, bucket):
 		if self.config.proxy_host != "":
 			return httplib.HTTPConnection(self.config.proxy_host, self.config.proxy_port)
 		else:
-			return httplib.HTTPConnection(self.config.host)
+			if self.config.use_https:
+				return httplib.HTTPSConnection(self.get_hostname(bucket))
+			else:
+				return httplib.HTTPConnection(self.get_hostname(bucket))
 
-	def format_resource(self, resource):
+	def get_hostname(self, bucket):
+		if bucket:
+			host = self.config.host_bucket % { 'bucket' : bucket }
+		else:
+			host = self.config.host_base
+		debug('get_hostname(): ' + host)
+		return host
+
+	def format_uri(self, resource):
 		if self.config.proxy_host != "":
-			resource = "http://%s%s" % (self.config.host, resource)
-
-		return resource
+			uri = "http://%s%s" % (self.get_hostname(resource['bucket']), resource['uri'])
+		else:
+			uri = resource['uri']
+		debug('format_uri(): ' + uri)
+		return uri
 
 	## Commands / Actions
 	def list_all_buckets(self):
@@ -126,12 +137,18 @@ class S3(object):
 		response['list'] = list
 		return response
 
-	def bucket_create(self, bucket):
+	def bucket_create(self, bucket, bucket_location = None):
 		self.check_bucket_name(bucket)
 		headers = SortedDict()
-		headers["content-length"] = 0
+		body = ""
+		if bucket_location and bucket_location.strip().upper() != "US":
+			body  = "<CreateBucketConfiguration><LocationConstraint>"
+			body += bucket_location.strip().upper()
+			body += "</LocationConstraint></CreateBucketConfiguration>"
+			debug("bucket_location: " + body)
+		headers["content-length"] = len(body)
 		request = self.create_request("BUCKET_CREATE", bucket = bucket, headers = headers)
-		response = self.send_request(request)
+		response = self.send_request(request, body)
 		return response
 
 	def bucket_delete(self, bucket):
@@ -140,9 +157,9 @@ class S3(object):
 		return response
 
 	def bucket_info(self, bucket):
-		request = self.create_request("BUCKET_LIST", bucket = bucket + "?location")
+		request = self.create_request("BUCKET_LIST", bucket = bucket, extra = "?location")
 		response = self.send_request(request)
-		response['bucket-location'] = getTextFromXml(response['data'], ".//LocationConstraint") or "any"
+		response['bucket-location'] = getTextFromXml(response['data'], "LocationConstraint") or "any"
 		return response
 
 	def object_put(self, filename, bucket, object, extra_headers = None):
@@ -237,12 +254,14 @@ class S3(object):
 		debug("String '%s' encoded to '%s'" % (string, encoded))
 		return encoded
 
-	def create_request(self, operation, bucket = None, object = None, headers = None, **params):
-		resource = "/"
+	def create_request(self, operation, bucket = None, object = None, headers = None, extra = None, **params):
+		resource = { 'bucket' : None, 'uri' : "/" }
 		if bucket:
-			resource += str(bucket)
+			resource['bucket'] = str(bucket)
 			if object:
-				resource += "/" + self.urlencode_string(object)
+				resource['uri'] = "/" + self.urlencode_string(object)
+		if extra:
+			resource['uri'] += extra
 
 		if not headers:
 			headers = SortedDict()
@@ -265,21 +284,22 @@ class S3(object):
 			else:
 				param_str += "&%s" % param
 		if param_str != "":
-			resource += "?" + param_str[1:]
-		debug("CreateRequest: resource=" + resource)
+			resource['uri'] += "?" + param_str[1:]
+		debug("CreateRequest: resource[uri]=" + resource['uri'])
 		return (method_string, resource, headers)
 	
-	def send_request(self, request):
+	def send_request(self, request, body = None):
 		method_string, resource, headers = request
 		info("Processing request, please wait...")
- 		conn = self.get_connection()
- 		conn.request(method_string, self.format_resource(resource), {}, headers)
+ 		conn = self.get_connection(resource['bucket'])
+ 		conn.request(method_string, self.format_uri(resource), body, headers)
 		response = {}
 		http_response = conn.getresponse()
 		response["status"] = http_response.status
 		response["reason"] = http_response.reason
 		response["headers"] = convertTupleListToDict(http_response.getheaders())
 		response["data"] =  http_response.read()
+		debug("Response: " + str(response))
 		conn.close()
 		if response["status"] < 200 or response["status"] > 299:
 			raise S3Error(response)
@@ -288,9 +308,9 @@ class S3(object):
 	def send_file(self, request, file):
 		method_string, resource, headers = request
 		info("Sending file '%s', please wait..." % file.name)
-		conn = self.get_connection()
+		conn = self.get_connection(resource['bucket'])
 		conn.connect()
-		conn.putrequest(method_string, self.format_resource(resource))
+		conn.putrequest(method_string, self.format_uri(resource))
 		for header in headers.keys():
 			conn.putheader(header, str(headers[header]))
 		conn.endheaders()
@@ -319,9 +339,9 @@ class S3(object):
 	def recv_file(self, request, stream):
 		method_string, resource, headers = request
 		info("Receiving file '%s', please wait..." % stream.name)
-		conn = self.get_connection()
+		conn = self.get_connection(resource['bucket'])
 		conn.connect()
-		conn.putrequest(method_string, self.format_resource(resource))
+		conn.putrequest(method_string, self.format_uri(resource))
 		for header in headers.keys():
 			conn.putheader(header, str(headers[header]))
 		conn.endheaders()
@@ -369,7 +389,9 @@ class S3(object):
 		for header in headers.keys():
 			if header.startswith("x-amz-"):
 				h += header+":"+str(headers[header])+"\n"
-		h += resource
+		if resource['bucket']:
+			h += "/" + resource['bucket']
+		h += resource['uri']
 		debug("SignHeaders: " + repr(h))
 		return base64.encodestring(hmac.new(self.config.secret_key, h, sha).digest()).strip()
 

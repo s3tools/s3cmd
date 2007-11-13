@@ -133,10 +133,9 @@ def cmd_bucket_create(args):
 	uri = S3Uri(args[0])
 	if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
 		raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % args[0])
-
 	try:
 		s3 = S3(Config())
-		response = s3.bucket_create(uri.bucket())
+		response = s3.bucket_create(uri.bucket(), cfg.bucket_location)
 	except S3Error, e:
 		if S3.codes.has_key(e.info["Code"]):
 			error(S3.codes[e.info["Code"]] % uri.bucket())
@@ -648,6 +647,7 @@ if __name__ == '__main__':
 	optparser.add_option(      "--no-delete-removed", dest="delete_removed", action="store_false", help="Don't delete remote objects.")
 	optparser.add_option("-p", "--preserve", dest="preserve_attrs", action="store_true", help="Preserve filesystem attributes (mode, ownership, timestamps). Default for [sync] command.")
 	optparser.add_option(      "--no-preserve", dest="preserve_attrs", action="store_false", help="Don't store FS attributes")
+	optparser.add_option(      "--bucket-location", dest="bucket_location", help="Datacentre to create bucket in. Either EU or US (default)")
 
 	optparser.add_option("-m", "--mime-type", dest="default_mime_type", type="mimetype", metavar="MIME/TYPE", help="Default MIME-type to be set for objects stored.")
 	optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")
