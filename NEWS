@@ -1,4 +1,4 @@
-s3cmd 0.9.5   -   ???
+s3cmd 0.9.5   -   2007-11-13
 ===========
 * Support for buckets created in Europe
 * Initial 'sync' support, for now local to s3 direction only
