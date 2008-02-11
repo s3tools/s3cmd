@@ -212,7 +212,7 @@ def cmd_object_put(args):
 			seq, total))
 		if Config().acl_public:
 			output("Public URL of the object is: %s" %
-				(uri.public_url()))
+				(uri_final.public_url()))
 		if Config().encrypt and real_filename != file:
 			debug("Removing temporary encrypted file: %s" % real_filename)
 			os.remove(real_filename)

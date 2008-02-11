@@ -63,7 +63,7 @@ class S3UriS3(S3Uri):
 		return "/".join(["s3:/", self._bucket, self._object])
 	
 	def public_url(self):
-		return "http://s3.amazonaws.com/%s/%s" % (self._bucket, self._object)
+		return "http://%s.s3.amazonaws.com/%s" % (self._bucket, self._object)
 
 	@staticmethod
 	def compose_uri(bucket, object = ""):
