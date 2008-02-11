@@ -141,7 +141,9 @@ class S3(object):
 		while _list_truncated(response["data"]):
 			marker = list[-1]["Key"]
 			info("Listing continues after '%s'" % marker)
-			request = self.create_request("BUCKET_LIST", bucket = bucket, prefix = prefix, marker = marker)
+			request = self.create_request("BUCKET_LIST", bucket = bucket,
+			                              prefix = prefix, 
+			                              marker = self.urlencode_string(marker))
 			response = self.send_request(request)
 			list += _get_contents(response["data"])
 		response['list'] = list
@@ -157,6 +159,8 @@ class S3(object):
 			body += "</LocationConstraint></CreateBucketConfiguration>"
 			debug("bucket_location: " + body)
 		headers["content-length"] = len(body)
+		if self.config.acl_public:
+			headers["x-amz-acl"] = "public-read"
 		request = self.create_request("BUCKET_CREATE", bucket = bucket, headers = headers)
 		response = self.send_request(request, body)
 		return response
