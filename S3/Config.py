@@ -44,6 +44,8 @@ class Config(object):
 	gpg_decrypt = "%(gpg_command)s -d --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
 	use_https = False
 	bucket_location = "US"
+	default_mime_type = "binary/octet-stream"
+	guess_mime_type = False
 
 	## Creating a singleton
 	def __new__(self, configfile = None):

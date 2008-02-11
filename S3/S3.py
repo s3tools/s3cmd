@@ -11,6 +11,7 @@ import sha
 import hmac
 import httplib
 import logging
+import mimetypes
 from logging import debug, info, warning, error
 from stat import ST_SIZE
 
@@ -174,6 +175,13 @@ class S3(object):
 		if extra_headers:
 			headers.update(extra_headers)
 		headers["content-length"] = size
+		content_type = None
+		if self.config.guess_mime_type:
+			content_type = mimetypes.guess_type(filename)[0]
+		if not content_type:
+			content_type = self.config.default_mime_type
+		debug("Content-Type set to '%s'" % content_type)
+		headers["content-type"] = content_type
 		if self.config.acl_public:
 			headers["x-amz-acl"] = "public-read"
 		request = self.create_request("OBJECT_PUT", bucket = bucket, object = object, headers = headers)

@@ -1,3 +1,10 @@
+2008-02-11  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3.py, S3/Config.py: Support for MIME types. Both 
+	default and guessing. Fixes bug #1872192 (Thanks Martin Herr)
+
+2007-11-13  Michal Ludvig  <michal@logix.cz>
+
 	* Released version 0.9.5
 	  ----------------------
 
