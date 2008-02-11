@@ -1,5 +1,6 @@
 2008-02-11  Michal Ludvig  <michal@logix.cz>
 
+	* S3/S3.py: Properly follow RedirectPermanent responses for EU buckets
 	* S3/S3.py, s3cmd: Correctly display public URL on uploads.
 	* S3/S3.py, S3/Config.py: Support for MIME types. Both 
 	default and guessing. Fixes bug #1872192 (Thanks Martin Herr)

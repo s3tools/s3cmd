@@ -81,6 +81,9 @@ class S3(object):
 		"BucketAlreadyExists" : "Bucket '%s' already exists",
 		}
 
+	## S3 sometimes sends HTTP-307 response 
+	redir_map = {}
+
 	def __init__(self, config):
 		self.config = config
 
@@ -95,11 +98,17 @@ class S3(object):
 
 	def get_hostname(self, bucket):
 		if bucket:
-			host = self.config.host_bucket % { 'bucket' : bucket }
+			if self.redir_map.has_key(bucket):
+				host = self.redir_map[bucket]
+			else:
+				host = self.config.host_bucket % { 'bucket' : bucket }
 		else:
 			host = self.config.host_base
-		debug('get_hostname(): ' + host)
+		debug('get_hostname(%s): %s' % (bucket, host))
 		return host
+
+	def set_hostname(self, bucket, redir_hostname):
+		self.redir_map[bucket] = redir_hostname
 
 	def format_uri(self, resource):
 		if self.config.proxy_host != "":
@@ -309,6 +318,15 @@ class S3(object):
 		response["data"] =  http_response.read()
 		debug("Response: " + str(response))
 		conn.close()
+
+		if response["status"] == 307:
+			## RedirectPermanent
+			redir_bucket = getTextFromXml(response['data'], ".//Bucket")
+			redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
+			self.set_hostname(redir_bucket, redir_hostname)
+			info("Redirected to: %s" % (redir_hostname))
+			return self.send_request(request, body)
+
 		if response["status"] < 200 or response["status"] > 299:
 			raise S3Error(response)
 		return response
@@ -322,6 +340,7 @@ class S3(object):
 		for header in headers.keys():
 			conn.putheader(header, str(headers[header]))
 		conn.endheaders()
+		file.seek(0)
 		size_left = size_total = headers.get("content-length")
 		while (size_left > 0):
 			debug("SendFile: Reading up to %d bytes from '%s'" % (self.config.send_chunk, file.name))
@@ -340,6 +359,15 @@ class S3(object):
 		response["headers"] = convertTupleListToDict(http_response.getheaders())
 		response["data"] =  http_response.read()
 		conn.close()
+
+		if response["status"] == 307:
+			## RedirectPermanent
+			redir_bucket = getTextFromXml(response['data'], ".//Bucket")
+			redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
+			self.set_hostname(redir_bucket, redir_hostname)
+			info("Redirected to: %s" % (redir_hostname))
+			return self.send_file(request, file)
+
 		if response["status"] < 200 or response["status"] > 299:
 			raise S3Error(response)
 		return response
@@ -358,6 +386,16 @@ class S3(object):
 		response["status"] = http_response.status
 		response["reason"] = http_response.reason
 		response["headers"] = convertTupleListToDict(http_response.getheaders())
+
+		if response["status"] == 307:
+			## RedirectPermanent
+			response['data'] = http_response.read()
+			redir_bucket = getTextFromXml(response['data'], ".//Bucket")
+			redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
+			self.set_hostname(redir_bucket, redir_hostname)
+			info("Redirected to: %s" % (redir_hostname))
+			return self.recv_file(request, stream)
+
 		if response["status"] < 200 or response["status"] > 299:
 			raise S3Error(response)
 
