@@ -1,3 +1,7 @@
+2008-02-27  Michal Ludvig  <michal@logix.cz>
+
+	* TODO: Updated wishlist.
+
 2008-02-11  Michal Ludvig  <michal@logix.cz>
 
 	* S3/S3.py: Properly follow RedirectPermanent responses for EU buckets

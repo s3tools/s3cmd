@@ -1,1 +1,29 @@
-- finish MIME type setting
+TODO list for s3cmd project
+===========================
+
+- Treat objects with "/" in their name as directories
+  - Will need local cache for bucket listings
+  - More user friendly 'del' operation that would work
+    with "directories"
+  - Recursion for some commands
+
+- Implement 'sync' from S3 to local filesystem
+  - Will have to restore file attributes
+    - Eh, we have to store them first ;-)
+
+- Implement GPG for sync
+  (it's not that easy since it won't be easy to compare
+   the encrypted-remote-object size with local file. 
+   either we can store the metadata in a dedicated file 
+   where we face a risk of inconsistencies, or we'll store
+   the metadata encrypted in each object header where we'll
+   have to do large number for object/HEAD requests. tough 
+   call).
+
+- Compute MD5 checksum when sending file to S3 
+  (that's easy and patch exists but it will slow down 
+   the operation. instead I'm planning to run the 
+   MD5-summor in a separate thread since both MD5-summing
+   and sending data to S3 can both be time consuming yet 
+   parallel tasks).
+
