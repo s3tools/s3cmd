@@ -1,6 +1,7 @@
 2008-02-27  Michal Ludvig  <michal@logix.cz>
 
 	* S3/S3.py, S3/Utils.py, s3cmd: Support for 's3cmd info' command.
+	* s3cmd: Fix crash when 'sync'ing files with unresolvable owner uid/gid.
 
 2008-02-27  Michal Ludvig  <michal@logix.cz>
 

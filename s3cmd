@@ -298,9 +298,19 @@ def cmd_sync(args):
 		st = os.stat_result(os.stat(src))
 		for attr in cfg.preserve_attrs_list:
 			if attr == 'uname':
-				val = pwd.getpwuid(st.st_uid).pw_name
+				try:
+					val = pwd.getpwuid(st.st_uid).pw_name
+				except KeyError:
+					attr = "uid"
+					val = st.st_uid
+					warning("%s: Owner username not known. Storing UID=%d instead." % (src, val))
 			elif attr == 'gname':
-				val = grp.getgrgid(st.st_gid).gr_name
+				try:
+					val = grp.getgrgid(st.st_gid).gr_name
+				except KeyError:
+					attr = "gid"
+					val = st.st_gid
+					warning("%s: Owner groupname not known. Storing GID=%d instead." % (src, val))
 			else:
 				val = getattr(st, 'st_' + attr)
 			attrs[attr] = val
