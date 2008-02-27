@@ -28,13 +28,19 @@ List objects or buckets
 List all object in all buckets
 .TP
 \fBput\fR \fIFILE [FILE...] s3://BUCKET[/PREFIX]\fR
-Put file into bucket
+Put file into bucket (i.e. upload to S3)
 .TP
 \fBget\fR \fIs3://BUCKET/OBJECT LOCAL_FILE\fR
-Get file from bucket
+Get file from bucket (i.e. download from S3)
 .TP
 \fBdel\fR \fIs3://BUCKET/OBJECT\fR
 Delete file from bucket
+.TP
+\fBsync\fR \fILOCAL_DIR s3://BUCKET[/PREFIX]\fR
+Synchronize a directory tree to S3
+.TP
+\fBinfo\fR \fIs3://BUCKET[/OBJECT]\fR
+Get various information about a Bucket or Object
 .TP
 \fBdu\fR \fI[s3://BUCKET[/PREFIX]]\fR
 Disk usage \- amount of data stored in S3
@@ -61,14 +67,38 @@ Config file name. Defaults to $HOME/.s3cfg
 Dump current configuration after parsing config files
 and command line options and exit.
 .PP
-Most of the following options can have a default value set 
-in the above specified config file.
+Most options can have a default value set in the above specified config file.
+.PP
+Options specific to \fBsync\fR command:
+.TP
+\fB\-\-delete\-removed\fR
+Delete remote objects with no corresponding local file
+.TP
+\fB\-\-no\-delete\-removed\fR
+Don't delete remote objects. Default for 'sync' command.
+.TP
+\fB\-p\fR, \fB\-\-preserve\fR
+Preserve filesystem attributes (mode, ownership, timestamps). Default for 'sync' command.
+.TP
+\fB\-\-no\-preserve\fR
+Don't store filesystem attributes with uploaded files.
+.TP
+\fB\-n\fR, \fB\-\-dry\-run\fR
+Only show what would be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though.
+.PP
+Options common for all commands (where it makes sense indeed):
 .TP
 \fB\-f\fR, \fB\-\-force\fR
 Force overwrite and other dangerous operations.
 .TP
 \fB\-P\fR, \fB\-\-acl\-public\fR
-Store objects with permissions allowing read by anyone.
+Store objects with permissions allowing read for anyone.
+.TP
+\fB\-\-acl\-private\fR
+Store objects with default ACL allowing access for you only.
+.TP
+\fB\-\-bucket\-location\fR=BUCKET_LOCATION
+Specify datacentre where to create the bucket. Possible values are \fIUS\fR (default) or \fIEU\fR.
 .TP
 \fB\-e\fR, \fB\-\-encrypt\fR
 Use GPG encryption to protect stored objects from unauthorized access.
@@ -107,7 +137,7 @@ Written by Michal Ludvig <michal@logix.cz>
 Report bugs to 
 .I s3tools\-general@lists.sourceforge.net
 .SH COPYRIGHT
-Copyright \(co 2007 Michal Ludvig
+Copyright \(co 2007,2008 Michal Ludvig <http://www.logix.cz/michal>
 .br
 This is free software.  You may redistribute copies of it under the terms of
 the GNU General Public License version 2 <http://www.gnu.org/licenses/gpl.html>.

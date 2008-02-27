@@ -1,5 +1,6 @@
 2008-02-27  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd, s3cmd.1: Updated help and man page.
 	* S3/S3.py, S3/Utils.py, s3cmd: Support for 's3cmd info' command.
 	* s3cmd: Fix crash when 'sync'ing files with unresolvable owner uid/gid.
 	* S3/S3.py, S3/Utils.py: open files in binary mode (otherwise windows

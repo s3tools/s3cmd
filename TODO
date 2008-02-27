@@ -27,3 +27,5 @@ TODO list for s3cmd project
    and sending data to S3 can both be time consuming yet 
    parallel tasks).
 
+- Keep man page up to date and write some more documentation
+  - Yeah, right ;-)

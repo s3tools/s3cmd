@@ -612,9 +612,9 @@ commands_list = [
 	{"cmd":"get", "label":"Get file from bucket", "param":"s3://BUCKET/OBJECT LOCAL_FILE", "func":cmd_object_get, "argc":1},
 	{"cmd":"del", "label":"Delete file from bucket", "param":"s3://BUCKET/OBJECT", "func":cmd_object_del, "argc":1},
 	#{"cmd":"mkdir", "label":"Make a virtual S3 directory", "param":"s3://BUCKET/path/to/dir", "func":cmd_mkdir, "argc":1},
-	{"cmd":"sync", "label":"Synchronize a directory tree to S3 and back", "param":"LOCAL_DIR s3://BUCKET[/PREFIX]", "func":cmd_sync, "argc":2},
+	{"cmd":"sync", "label":"Synchronize a directory tree to S3", "param":"LOCAL_DIR s3://BUCKET[/PREFIX]", "func":cmd_sync, "argc":2},
 	{"cmd":"du", "label":"Disk usage by buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_du, "argc":0},
-	{"cmd":"info", "label":"Get various Bucket or Object information", "param":"s3://BUCKET[/OBJECT]", "func":cmd_info, "argc":1},
+	{"cmd":"info", "label":"Get various information about Buckets or Objects", "param":"s3://BUCKET[/OBJECT]", "func":cmd_info, "argc":1},
 	#{"cmd":"setacl", "label":"Modify Access control list for Bucket or Object", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
 	]
 
@@ -662,13 +662,13 @@ if __name__ == '__main__':
 	optparser.add_option("-c", "--config", dest="config", metavar="FILE", help="Config file name. Defaults to %default")
 	optparser.add_option(      "--dump-config", dest="dump_config", action="store_true", help="Dump current configuration after parsing config files and command line options and exit.")
 
-	optparser.add_option("-n", "--dry-run", dest="dry_run", action="store_true", help="Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings though.")
+	optparser.add_option("-n", "--dry-run", dest="dry_run", action="store_true", help="Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though.")
 
 	optparser.add_option("-e", "--encrypt", dest="encrypt", action="store_true", help="Encrypt files before uploading to S3.")
 	optparser.add_option(      "--no-encrypt", dest="encrypt", action="store_false", help="Don't encrypt files.")
 	optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations.")
-	optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read by anyone.")
-	optparser.add_option(      "--acl-private", dest="acl_public", action="store_false", help="Store objects with default ACL allowing access by you only.")
+	optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read for anyone.")
+	optparser.add_option(      "--acl-private", dest="acl_public", action="store_false", help="Store objects with default ACL allowing access for you only.")
 	optparser.add_option(      "--delete-removed", dest="delete_removed", action="store_true", help="Delete remote objects with no corresponding local file [sync]")
 	optparser.add_option(      "--no-delete-removed", dest="delete_removed", action="store_false", help="Don't delete remote objects.")
 	optparser.add_option("-p", "--preserve", dest="preserve_attrs", action="store_true", help="Preserve filesystem attributes (mode, ownership, timestamps). Default for [sync] command.")
