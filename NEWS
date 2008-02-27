@@ -1,3 +1,13 @@
+s3cmd 0.9.6   -   2008-02-28
+===========
+* Support for setting / guessing MIME-type of uploaded file
+* Correctly follow redirects when accessing buckets created
+  in Europe.
+* Introduced 'info' command both for buckets and objects
+* Correctly display public URL on uploads
+* Updated TODO list for everyone to see where we're heading
+* Various small fixes. See ChangeLog for details.
+
 s3cmd 0.9.5   -   2007-11-13
 ===========
 * Support for buckets created in Europe

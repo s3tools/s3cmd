@@ -1,3 +1,13 @@
+2008-02-28  Michal Ludvig  <michal@logix.cz>
+
+	* Released version 0.9.5
+	  ----------------------
+
+2008-02-28  Michal Ludvig  <michal@logix.cz>
+
+	* S3/PkgInfo.py: bumped up version to 0.9.6
+	* NEWS: What's new in 0.9.6
+
 2008-02-27  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd, s3cmd.1: Updated help and man page.
