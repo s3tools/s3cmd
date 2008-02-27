@@ -136,7 +136,7 @@ def mktmpfile(prefix = "/tmp/tmpfile-", randchars = 20):
 
 def hash_file_md5(filename):
 	h = md5.new()
-	f = open(filename, "r")
+	f = open(filename, "rb")
 	h.update(f.read())
 	f.close()
 	return h.hexdigest()

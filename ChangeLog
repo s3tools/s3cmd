@@ -2,6 +2,8 @@
 
 	* S3/S3.py, S3/Utils.py, s3cmd: Support for 's3cmd info' command.
 	* s3cmd: Fix crash when 'sync'ing files with unresolvable owner uid/gid.
+	* S3/S3.py, S3/Utils.py: open files in binary mode (otherwise windows
+	  users have problems).
 
 2008-02-27  Michal Ludvig  <michal@logix.cz>
 

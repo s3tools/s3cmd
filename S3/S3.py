@@ -180,7 +180,7 @@ class S3(object):
 		if not os.path.isfile(filename):
 			raise ParameterError("%s is not a regular file" % filename)
 		try:
-			file = open(filename, "r")
+			file = open(filename, "rb")
 			size = os.stat(filename)[ST_SIZE]
 		except IOError, e:
 			raise ParameterError("%s: %s" % (filename, e.strerror))
@@ -204,7 +204,7 @@ class S3(object):
 
 	def object_get_file(self, bucket, object, filename):
 		try:
-			stream = open(filename, "w")
+			stream = open(filename, "wb")
 		except IOError, e:
 			raise ParameterError("%s: %s" % (filename, e.strerror))
 		return self.object_get_stream(bucket, object, stream)
