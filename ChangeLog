@@ -5,6 +5,8 @@
 	* s3cmd: Fix crash when 'sync'ing files with unresolvable owner uid/gid.
 	* S3/S3.py, S3/Utils.py: open files in binary mode (otherwise windows
 	  users have problems).
+	* S3/S3.py: modify 'x-amz-date' format (problems reported on MacOS X). 
+	  Thanks Jon Larkowski for fix.
 
 2008-02-27  Michal Ludvig  <michal@logix.cz>
 
