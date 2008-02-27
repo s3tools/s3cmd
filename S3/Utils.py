@@ -35,13 +35,18 @@ def fixupXPath(xmlns, xpath, max = 0):
 	return retval
 
 def parseNodes(nodes, xmlns = ""):
+	## WARNING: Ignores text nodes from mixed xml/text.
+	## For instance <tag1>some text<tag2>other text</tag2></tag1>
+	## will be ignore "some text" node
 	retval = []
 	for node in nodes:
 		retval_item = {}
 		for child in node.getchildren():
 			name = stripTagXmlns(xmlns, child.tag)
-			retval_item[name] = node.findtext(".//%s" % child.tag)
-
+			if child.getchildren():
+				retval_item[name] = parseNodes([child], xmlns)
+			else:
+				retval_item[name] = node.findtext(".//%s" % child.tag)
 		retval.append(retval_item)
 	return retval
 

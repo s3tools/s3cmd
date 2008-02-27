@@ -170,8 +170,8 @@ class S3(object):
 		response = self.send_request(request)
 		return response
 
-	def bucket_info(self, bucket):
-		request = self.create_request("BUCKET_LIST", bucket = bucket, extra = "?location")
+	def bucket_info(self, uri):
+		request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?location")
 		response = self.send_request(request)
 		response['bucket-location'] = getTextFromXml(response['data'], "LocationConstraint") or "any"
 		return response
@@ -236,6 +236,30 @@ class S3(object):
 		if uri.type != "s3":
 			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 		return self.object_delete(uri.bucket(), uri.object())
+
+	def object_info(self, uri):
+		request = self.create_request("OBJECT_HEAD", bucket = uri.bucket(), object = uri.object())
+		response = self.send_request(request)
+		return response
+
+	def get_acl(self, uri):
+		if uri.has_object():
+			request = self.create_request("OBJECT_GET", bucket = uri.bucket(), object = uri.object(), extra = "?acl")
+		else:
+			request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?acl")
+		acl = {}
+		response = self.send_request(request)
+		grants = getListFromXml(response['data'], "Grant")
+		for grant in grants:
+			if grant['Grantee'][0].has_key('DisplayName'):
+				user = grant['Grantee'][0]['DisplayName']
+			if grant['Grantee'][0].has_key('URI'):
+				user = grant['Grantee'][0]['URI']
+				if user == 'http://acs.amazonaws.com/groups/global/AllUsers':
+					user = "*anon*"
+			perm = grant['Permission']
+			acl[user] = perm
+		return acl
 
 	## Low level methods
 	def urlencode_string(self, string):

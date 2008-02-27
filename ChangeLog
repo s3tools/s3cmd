@@ -1,5 +1,9 @@
 2008-02-27  Michal Ludvig  <michal@logix.cz>
 
+	* S3/S3.py, S3/Utils.py, s3cmd: Support for 's3cmd info' command.
+
+2008-02-27  Michal Ludvig  <michal@logix.cz>
+
 	* TODO: Updated wishlist.
 
 2008-02-11  Michal Ludvig  <michal@logix.cz>

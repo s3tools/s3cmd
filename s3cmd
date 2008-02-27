@@ -159,22 +159,6 @@ def cmd_bucket_delete(args):
 			raise
 	output("Bucket '%s' removed" % uri.bucket())
 
-def cmd_bucket_info(args):
-	uri = S3Uri(args[0])
-	if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
-		raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % args[0])
-	try:
-		s3 = S3(Config())
-		response = s3.bucket_info(uri.bucket())
-	except S3Error, e:
-		if S3.codes.has_key(e.info["Code"]):
-			error(S3.codes[e.info["Code"]] % uri.bucket())
-			return
-		else:
-			raise
-	output("Bucket '%s':" % uri.bucket())
-	output("   Location: %s" % response['bucket-location'])
-
 def cmd_object_put(args):
 	s3 = S3(Config())
 
@@ -276,6 +260,37 @@ def cmd_object_del(args):
 
 		response = s3.object_delete_uri(uri)
 		output("Object %s deleted" % uri)
+
+def cmd_info(args):
+	s3 = S3(Config())
+
+	while (len(args)):
+		uri_arg = args.pop(0)
+		uri = S3Uri(uri_arg)
+		if uri.type != "s3" or not uri.has_bucket():
+			raise ParameterError("Expecting S3 URI instead of '%s'" % uri_arg)
+
+		try:
+			if uri.has_object():
+				info = s3.object_info(uri)
+				output("%s (object):" % uri.uri())
+				output("   File size: %s" % info['headers']['content-length'])
+				output("   Last mod:  %s" % info['headers']['last-modified'])
+				output("   MIME type: %s" % info['headers']['content-type'])
+				output("   MD5 sum:   %s" % info['headers']['etag'].strip('"'))
+			else:
+				info = s3.bucket_info(uri)
+				output("%s (bucket):" % uri.uri())
+				output("   Location:  %s" % info['bucket-location'])
+			acl = s3.get_acl(uri)
+			for user in acl.keys():
+				output("   ACL:       %s: %s" % (user, acl[user]))
+		except S3Error, e:
+			if S3.codes.has_key(e.info["Code"]):
+				error(S3.codes[e.info["Code"]] % uri.bucket())
+				return
+			else:
+				raise
 
 def cmd_sync(args):
 	def _build_attr_header(src):
@@ -581,7 +596,6 @@ commands = {}
 commands_list = [
 	{"cmd":"mb", "label":"Make bucket", "param":"s3://BUCKET", "func":cmd_bucket_create, "argc":1},
 	{"cmd":"rb", "label":"Remove bucket", "param":"s3://BUCKET", "func":cmd_bucket_delete, "argc":1},
-	{"cmd":"ib", "label":"Bucket information", "param":"s3://BUCKET", "func":cmd_bucket_info, "argc":1},
 	{"cmd":"ls", "label":"List objects or buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_ls, "argc":0},
 	{"cmd":"la", "label":"List all object in all buckets", "param":"", "func":cmd_buckets_list_all_all, "argc":0},
 	{"cmd":"put", "label":"Put file into bucket", "param":"FILE [FILE...] s3://BUCKET[/PREFIX]", "func":cmd_object_put, "argc":2},
@@ -590,6 +604,8 @@ commands_list = [
 	#{"cmd":"mkdir", "label":"Make a virtual S3 directory", "param":"s3://BUCKET/path/to/dir", "func":cmd_mkdir, "argc":1},
 	{"cmd":"sync", "label":"Synchronize a directory tree to S3 and back", "param":"LOCAL_DIR s3://BUCKET[/PREFIX]", "func":cmd_sync, "argc":2},
 	{"cmd":"du", "label":"Disk usage by buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_du, "argc":0},
+	{"cmd":"info", "label":"Get various Bucket or Object information", "param":"s3://BUCKET[/OBJECT]", "func":cmd_info, "argc":1},
+	#{"cmd":"setacl", "label":"Modify Access control list for Bucket or Object", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
 	]
 
 def format_commands(progname):
