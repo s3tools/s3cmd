@@ -190,9 +190,14 @@ def cmd_object_put(args):
 		real_filename = file
 		if Config().encrypt:
 			exitcode, real_filename, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(file)
-		response = s3.object_put_uri(real_filename, uri_final, extra_headers)
-		output("File '%s' stored as %s (%d bytes) [%d of %d]" %
-			(file, uri_final, response["size"],
+		try:
+			response = s3.object_put_uri(real_filename, uri_final, extra_headers)
+		except S3UploadError, e:
+			error("Upload of '%s' failed too many times. Skipping that file." % real_filename)
+			continue
+		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
+		output("File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) [%d of %d]" %
+			(file, uri_final, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
 			seq, total))
 		if Config().acl_public:
 			output("Public URL of the object is: %s" %
@@ -246,8 +251,9 @@ def cmd_object_get(args):
 			gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
 			response["size"] = os.stat(destination)[6]
 		if destination != "-":
-			output("Object %s saved as '%s' (%d bytes)" %
-				(uri, destination, response["size"]))
+			speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
+			output("Object %s saved as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s)" %
+				(uri, destination, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1]))
 
 def cmd_object_del(args):
 	s3 = S3(Config())
@@ -413,6 +419,8 @@ def cmd_sync(args):
 
 	total_size = 0
 	total_count = len(loc_list)
+	total_elapsed = 0.0
+	timestamp_start = time.time()
 	seq = 0
 	dst_base = dst_uri.uri()
 	if not dst_base[-1] == "/": dst_base += "/"
@@ -425,10 +433,21 @@ def cmd_sync(args):
 		if cfg.preserve_attrs:
 			attr_header = _build_attr_header(src)
 			debug(attr_header)
-		response = s3.object_put_uri(src, uri, attr_header)
-		output("stored '%s' as '%s' (%d bytes) [%d of %d]" % (src, uri, response["size"], seq, total_count))
+		try:
+			response = s3.object_put_uri(src, uri, attr_header)
+		except S3UploadError, e:
+			error("Upload of '%s' failed too many times. Skipping that file." % src)
+			continue
+		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
+		output("File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) [%d of %d]" %
+			(src, uri, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
+			seq, total_count))
 		total_size += response["size"]
-	output("Done. Uploaded %d bytes." % total_size)
+
+	total_elapsed = time.time() - timestamp_start
+	speed_fmt = formatSize(total_size/total_elapsed, human_readable = True, floating_point = True)
+	output("Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s" % 
+	       (total_size, total_elapsed, speed_fmt[0], speed_fmt[1]))
 
 def resolve_list(lst, args):
 	retval = []

@@ -79,8 +79,8 @@ def dateS3toUnix(date):
 	## treats it as "localtime". Anyway...
 	return time.mktime(dateS3toPython(date))
 
-def formatSize(size, human_readable = False):
-	size = int(size)
+def formatSize(size, human_readable = False, floating_point = False):
+	size = floating_point and float(size) or int(size)
 	if human_readable:
 		coeffs = ['k', 'M', 'G', 'T']
 		coeff = ""

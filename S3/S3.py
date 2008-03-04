@@ -44,6 +44,9 @@ class S3Error (Exception):
 			pass
 		return retval
 
+class S3UploadError(Exception):
+	pass
+
 class ParameterError(Exception):
 	pass
 
@@ -199,7 +202,6 @@ class S3(object):
 			headers["x-amz-acl"] = "public-read"
 		request = self.create_request("OBJECT_PUT", bucket = bucket, object = object, headers = headers)
 		response = self.send_file(request, file)
-		response["size"] = size
 		return response
 
 	def object_get_file(self, bucket, object, filename):
@@ -359,7 +361,7 @@ class S3(object):
 			raise S3Error(response)
 		return response
 
-	def send_file(self, request, file):
+	def send_file(self, request, file, throttle = 0, retries = 3):
 		method_string, resource, headers = request
 		info("Sending file '%s', please wait..." % file.name)
 		conn = self.get_connection(resource['bucket'])
@@ -369,23 +371,43 @@ class S3(object):
 			conn.putheader(header, str(headers[header]))
 		conn.endheaders()
 		file.seek(0)
+		timestamp_start = time.time()
 		size_left = size_total = headers.get("content-length")
 		while (size_left > 0):
 			debug("SendFile: Reading up to %d bytes from '%s'" % (self.config.send_chunk, file.name))
 			data = file.read(self.config.send_chunk)
 			debug("SendFile: Sending %d bytes to the server" % len(data))
-			conn.send(data)
+			try:
+				conn.send(data)
+			except Exception, e:
+				## When an exception occurs insert a 
+				if retries:
+					conn.close()
+					warning("Upload of '%s' failed %s " % (file.name, e))
+					throttle = throttle and throttle * 5 or 0.01
+					warning("Retrying on lower speed (throttle=%0.2f)" % throttle)
+					return self.send_file(request, file, throttle, retries - 1)
+				else:
+					debug("Giving up on '%s' %s" % (file.name, e))
+					raise S3UploadError
+
 			size_left -= len(data)
+			if throttle:
+				time.sleep(throttle)
 			info("Sent %d bytes (%d %% of %d)" % (
 				(size_total - size_left),
 				(size_total - size_left) * 100 / size_total,
 				size_total))
+		timestamp_end = time.time()
 		response = {}
 		http_response = conn.getresponse()
 		response["status"] = http_response.status
 		response["reason"] = http_response.reason
 		response["headers"] = convertTupleListToDict(http_response.getheaders())
-		response["data"] =  http_response.read()
+		response["data"] = http_response.read()
+		response["elapsed"] = timestamp_end - timestamp_start
+		response["size"] = size_total
+		response["speed"] = float(response["size"]) / response["elapsed"]
 		conn.close()
 
 		if response["status"] == 307:
@@ -430,6 +452,7 @@ class S3(object):
 		md5_hash = md5.new()
 		size_left = size_total = int(response["headers"]["content-length"])
 		size_recvd = 0
+		timestamp_start = time.time()
 		while (size_recvd < size_total):
 			this_chunk = size_left > self.config.recv_chunk and self.config.recv_chunk or size_left
 			debug("ReceiveFile: Receiving up to %d bytes from the server" % this_chunk)
@@ -443,9 +466,12 @@ class S3(object):
 				size_recvd * 100 / size_total,
 				size_total))
 		conn.close()
+		timestamp_end = time.time()
 		response["md5"] = md5_hash.hexdigest()
 		response["md5match"] = response["headers"]["etag"].find(response["md5"]) >= 0
+		response["elapsed"] = timestamp_end - timestamp_start
 		response["size"] = size_recvd
+		response["speed"] = float(response["size"]) / response["elapsed"]
 		if response["size"] != long(response["headers"]["content-length"]):
 			warning("Reported size (%s) does not match received size (%s)" % (
 				response["headers"]["content-length"], response["size"]))

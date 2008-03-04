@@ -1,3 +1,9 @@
+2008-03-05  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd, S3/S3.py, S3/Utils.py: Throttle upload speed and retry 
+	  when upload failed.
+	  Report download/upload speed and time elapsed.
+
 2008-02-28  Michal Ludvig  <michal@logix.cz>
 
 	* Released version 0.9.6
