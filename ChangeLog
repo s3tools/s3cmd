@@ -1,3 +1,9 @@
+2008-04-28  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3.py: send_file() now computes MD5 sum of the file
+	  being uploaded, compares with ETag returned by Amazon
+	  and retries upload if they don't match.
+
 2008-03-05  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd, S3/S3.py, S3/Utils.py: Throttle upload speed and retry 

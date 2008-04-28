@@ -372,10 +372,12 @@ class S3(object):
 		conn.endheaders()
 		file.seek(0)
 		timestamp_start = time.time()
+		md5_hash = md5.new()
 		size_left = size_total = headers.get("content-length")
 		while (size_left > 0):
 			debug("SendFile: Reading up to %d bytes from '%s'" % (self.config.send_chunk, file.name))
 			data = file.read(self.config.send_chunk)
+			md5_hash.update(data)
 			debug("SendFile: Sending %d bytes to the server" % len(data))
 			try:
 				conn.send(data)
@@ -399,6 +401,7 @@ class S3(object):
 				(size_total - size_left) * 100 / size_total,
 				size_total))
 		timestamp_end = time.time()
+		md5_computed = md5_hash.hexdigest()
 		response = {}
 		http_response = conn.getresponse()
 		response["status"] = http_response.status
@@ -417,6 +420,16 @@ class S3(object):
 			self.set_hostname(redir_bucket, redir_hostname)
 			info("Redirected to: %s" % (redir_hostname))
 			return self.send_file(request, file)
+
+		debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
+		if response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
+			warning("MD5 Sums don't match!")
+			if retries:
+				info("Retrying upload.")
+				return self.send_file(request, file, throttle, retries - 1)
+			else:
+				debug("Too many failures. Giving up on '%s'" % (file.name))
+				raise S3UploadError
 
 		if response["status"] < 200 or response["status"] > 299:
 			raise S3Error(response)
