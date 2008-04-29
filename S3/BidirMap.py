@@ -33,4 +33,8 @@ class BidirMap(object):
 	def getvalue(self, key):
 		return self.k2v[key]
 
+	def keys(self):
+		return [key for key in self.k2v]
 
+	def values(self):
+		return [value for value in self.v2k]
