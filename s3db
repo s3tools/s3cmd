@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+
+## Amazon S3 manager
+## Author: Michal Ludvig <michal@logix.cz>
+##         http://www.logix.cz/michal
+## License: GPL Version 2
+
+import sys
+import os
+import logging
+
+from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
+from logging import debug, info, warning, error
+
+## Our modules
+from S3 import PkgInfo
+from S3.SimpleDB import SimpleDB
+from S3.Config import Config
+from S3.Exceptions import *
+
+
+if __name__ == '__main__':
+	if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
+		sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
+		sys.exit(1)
+	logging.root.setLevel(logging.DEBUG)
+	cfg = Config(os.getenv("HOME")+"/.s3cfg")
+	sdb = SimpleDB(cfg)
+	print sdb.ListDomains()

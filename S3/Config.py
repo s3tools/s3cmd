@@ -15,6 +15,7 @@ class Config(object):
 	secret_key = ""
 	host_base = "s3.amazonaws.com"
 	host_bucket = "%(bucket)s.s3.amazonaws.com"
+	simpledb_host = "sdb.amazonaws.com"
 	verbosity = logging.WARNING
 	send_chunk = 4096
 	recv_chunk = 4096
