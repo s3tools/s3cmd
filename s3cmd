@@ -24,7 +24,7 @@ from S3.S3 import *
 from S3.Config import Config
 from S3.S3Uri import *
 from S3 import Utils
-
+from S3.Exceptions import *
 
 def output(message):
 	print message

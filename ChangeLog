@@ -1,5 +1,6 @@
 2008-04-29  Michal Ludvig  <michal@logix.cz>
 
+	* S3/Exceptions.py: Exceptions moved out of S3.S3
 	* S3/SortedDict.py: rewritten from scratch to preserve
 	  case of keys while still sorting in case-ignore mode.
 
