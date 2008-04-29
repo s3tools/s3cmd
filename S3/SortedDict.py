@@ -3,45 +3,53 @@
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
 
+from BidirMap import BidirMap
+
 class SortedDictIterator(object):
-	def __init__(self, dict):
-		self.dict = dict
-		self.keys = dict.keys()
-		self.index = 0
-		self.length = len(self.keys)
+	def __init__(self, sorted_dict, keys):
+		self.sorted_dict = sorted_dict
+		self.keys = keys
 
 	def next(self):
-		if self.length <= self.index:
+		try:
+			return self.keys.pop(0)
+		except IndexError:
 			raise StopIteration
 
-		retval = self.keys[self.index]
-		self.index += 1
-		return retval
-
-
 class SortedDict(dict):
-	def __setitem__(self, name, value):
-		try:
-			value = value.strip()
-		except:
-			pass
-		dict.__setitem__(self, name.lower(), value)
-
-	def __iter__(self):
-		return SortedDictIterator(self)
-	
+	keys_sort_lowercase = True
 
 	def keys(self):
 		keys = dict.keys(self)
-		keys.sort()
-		return keys
-	
-	def popitem(self):
-		keys = self.keys()
-		if len(keys) < 1:
-			raise KeyError("popitem(): dictionary is empty")
-		retval = (keys[0], dict.__getitem__(self, keys[0]))
-		dict.__delitem__(self, keys[0])
-		return retval
+		if self.keys_sort_lowercase:
+			# Translation map
+			xlat_map = BidirMap()
+			for key in keys:
+				xlat_map[key.lower()] = key
+			# Lowercase keys
+			lc_keys = xlat_map.keys()
+			lc_keys.sort()
+			return [xlat_map[k] for k in lc_keys]
+		else:
+			keys.sort()
+			return keys
 
+	def __iter__(self):
+		return SortedDictIterator(self, self.keys())
 
+if __name__ == "__main__":
+	d = SortedDict()
+	d['AWS'] = 1
+	d['Action'] = 2
+	d['america'] = 3
+	d.keys_sort_lowercase = True
+	print "Wanted: Action, america, AWS,"
+	print "Got:   ",
+	for key in d:
+		print "%s," % key,
+	print "   __iter__()"
+	d.keys_return_lowercase = True
+	print "Got:   ",
+	for key in d.keys():
+		print "%s," % key,
+	print "   keys()"
