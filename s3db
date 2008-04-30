@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+# vim: set fileencoding=utf-8 :
 ## Amazon S3 manager
 ## Author: Michal Ludvig <michal@logix.cz>
 ##         http://www.logix.cz/michal
@@ -18,12 +18,36 @@ from S3.SimpleDB import SimpleDB
 from S3.Config import Config
 from S3.Exceptions import *
 
-
+def display_response(response):
+	print "%s\n%s\n%s" % ('-'*40, response['data'], '-'*40)
+	
 if __name__ == '__main__':
 	if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
 		sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
 		sys.exit(1)
-	logging.root.setLevel(logging.DEBUG)
 	cfg = Config(os.getenv("HOME")+"/.s3cfg")
+
+	logging.root.setLevel(logging.DEBUG)
 	sdb = SimpleDB(cfg)
-	print sdb.ListDomains()
+
+	try:
+		display_response(sdb.ListDomains())
+
+		display_response(sdb.CreateDomain("logix.cz-test"))
+
+		display_response(sdb.ListDomains())
+
+		display_response(sdb.PutAttributes("logix.cz-test", "AbCd", {'First': "One", "Second" : 2, "Third" : u"drei"}))
+		display_response(sdb.PutAttributes("logix.cz-test", "XyZ", {'xyz' : ['x', 'y', 'z'], 'Third' : u'traja'}))
+
+		display_response(sdb.GetAttributes("logix.cz-test", "AbCd", ['Second', 'Third']))
+		display_response(sdb.GetAttributes("logix.cz-test", "XyZ"))
+
+		display_response(sdb.Query("logix.cz-test", "['xyz' = 'z']"))
+
+		display_response(sdb.DeleteDomain("logix.cz-test"))
+
+		display_response(sdb.ListDomains())
+	except S3Error, e:
+		error(e)
+		error(e.info)
