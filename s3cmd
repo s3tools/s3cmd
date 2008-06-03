@@ -298,7 +298,94 @@ def cmd_info(args):
 			else:
 				raise
 
-def cmd_sync(args):
+def _get_filelist_local(local_uri):
+	output("Compiling list of local files...")
+	local_path = local_uri.path()
+	if os.path.isdir(local_path):
+		loc_base = os.path.join(local_path, "")
+		filelist = os.walk(local_path)
+	else:
+		loc_base = "./"
+		filelist = [( '.', [], [local_path] )]
+	loc_base_len = len(loc_base)
+	loc_list = {}
+	for root, dirs, files in filelist:
+		## TODO: implement explicit exclude
+		for f in files:
+			full_name = os.path.join(root, f)
+			if not os.path.isfile(full_name):
+				continue
+			if os.path.islink(full_name):
+				## Synchronize symlinks... one day
+				## for now skip over
+				continue
+			file = full_name[loc_base_len:]
+			sr = os.stat_result(os.lstat(full_name))
+			loc_list[file] = {
+				'full_name' : full_name,
+				'size' : sr.st_size, 
+				'mtime' : sr.st_mtime,
+				## TODO: Possibly more to save here...
+			}
+	return loc_list
+
+def _get_filelist_remote(remote_uri):
+	output("Retrieving list of remote files...")
+
+	s3 = S3(Config())
+	response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object())
+
+	rem_base = remote_uri.object()
+	rem_base_len = len(rem_base)
+	rem_list = {}
+	for object in response['list']:
+		key = object['Key'][rem_base_len:].encode('utf-8')
+		rem_list[key] = { 
+			'size' : int(object['Size']),
+			# 'mtime' : dateS3toUnix(object['LastModified']), ## That's upload time, not our lastmod time :-(
+			'md5' : object['ETag'][1:-1],
+			'object_key' : object['Key'].encode('utf-8'),
+		}
+	return rem_list
+	
+def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
+	output("Verifying checksums...")
+	exists_list = {}
+	for file in src_list.keys():
+		debug("Checking %s ..." % file)
+		if dst_list.has_key(file):
+			debug("%s exists in remote list" % file)
+			## Check size first
+			if dst_list[file]['size'] == src_list[file]['size']:
+				debug("%s same size: %s" % (file, dst_list[file]['size']))
+				## ... same size, check MD5
+				if src_is_local_and_dst_is_remote:
+					src_md5 = Utils.hash_file_md5(src_list[file]['full_name'])
+					dst_md5 = dst_list[file]['md5']
+				else:
+					src_md5 = src_list[file]['md5']
+					dst_md5 = Utils.hash_file_md5(dst_list[file]['full_name'])
+				if src_md5 == dst_md5:
+					debug("%s md5 matches: %s" % (file, dst_md5))
+					## Checksums are the same.
+					## Remove from source-list, all that is left there will be transferred
+					debug("%s removed from source list - transfer not needed" % file)
+					exists_list[file] = src_list[file]
+					del(src_list[file])
+				else:
+					debug("! %s md5 mismatch: src=%s dst=%s" % (file, src_md5, dst_md5))
+			else:
+				debug("! %s size mismatch: src=%s dst=%s" % (file, src_list[file]['size'], dst_list[file]['size']))
+                        
+			## Remove from destination-list, all that is left there will be deleted
+			debug("%s removed from destination list" % file)
+			del(dst_list[file])
+	return src_list, dst_list, exists_list
+
+def cmd_sync_remote2local(src, dst):
+	raise NotImplementedError("Remote->Local sync is not yet implemented.") 
+
+def cmd_sync_local2remote(src, dst):
 	def _build_attr_header(src):
 		attrs = {}
 		st = os.stat_result(os.stat(src))
@@ -323,90 +410,21 @@ def cmd_sync(args):
 		result = ""
 		for k in attrs: result += "%s:%s/" % (k, attrs[k])
 		return { 'x-amz-meta-s3cmd-attrs' : result[:-1] }
-	src = args.pop(0)
-	if S3Uri(src).type != "file":
-		raise ParameterError("Source must be a local path instead of: %s" % src)
-	dst = args.pop(0)
-	if not dst.endswith('/'):
-		dst += "/"
-	dst_uri = S3Uri(dst)
-	if dst_uri.type != "s3":
-		raise ParameterError("Destination must be a S3 URI instead of: %s" % dst)
-	if (len(args)):
-		raise ParameterError("Too many parameters! Expected: %s" % commands['sync']['param'])
 
 	s3 = S3(Config())
 
-	output("Compiling list of local files...")
-	if os.path.isdir(src):
-		loc_base = os.path.join(src, "")
-		filelist = os.walk(src)
-	else:
-		loc_base = "./"
-		filelist = [( '.', [], [src] )]
-	loc_base_len = len(loc_base)
-	loc_list = {}
-	for root, dirs, files in filelist:
-		## TODO: implement explicit exclude
-		for f in files:
-			full_name = os.path.join(root, f)
-			if not os.path.isfile(full_name):
-				continue
-			if os.path.islink(full_name):
-				## Synchronize symlinks... one day
-				## for now skip over
-				continue
-			file = full_name[loc_base_len:]
-			sr = os.stat_result(os.lstat(full_name))
-			loc_list[file] = {
-				'full_name' : full_name,
-				'size' : sr.st_size, 
-				'mtime' : sr.st_mtime,
-				## TODO: Possibly more to save here...
-			}
+	src_uri = S3Uri(src)
+	dst_uri = S3Uri(dst)
+
+	loc_list = _get_filelist_local(src_uri)
 	loc_count = len(loc_list)
 	
-	output("Retrieving list of remote files...")
-	response = s3.bucket_list(dst_uri.bucket(), prefix = dst_uri.object())
+	rem_list = _get_filelist_remote(dst_uri)
+	rem_count = len(rem_list)
 
-	rem_base = dst_uri.object()
-	rem_base_len = len(rem_base)
-	rem_list = {}
-	rem_count = len(response['list'])
-	for object in response['list']:
-		key = object['Key'][rem_base_len:].encode('utf-8')
-		rem_list[key] = { 
-			'size' : int(object['Size']),
-			# 'mtime' : dateS3toUnix(object['LastModified']), ## That's upload time, not our lastmod time :-(
-			'md5' : object['ETag'][1:-1],
-			'object_key' : object['Key'].encode('utf-8'),
-		}
 	output("Found %d local files, %d remote files" % (loc_count, rem_count))
 
-	output("Verifying checksums...")
-	for file in loc_list.keys():
-		debug("Checking %s ..." % file)
-		if rem_list.has_key(file):
-			debug("%s exists in remote list" % file)
-			## Check size first
-			if rem_list[file]['size'] == loc_list[file]['size']:
-				debug("%s same size: %s" % (file, rem_list[file]['size']))
-				## ... same size, check MD5
-				loc_md5 = Utils.hash_file_md5(loc_list[file]['full_name'])
-				if loc_md5 == rem_list[file]['md5']:
-					debug("%s md5 matches: %s" % (file, rem_list[file]['md5']))
-					## Checksums are the same.
-					## Remove from local-list, all that is left there will be uploaded
-					debug("%s removed from local list - upload not needed" % file)
-					del(loc_list[file])
-				else:
-					debug("! %s md5 mismatch: local=%s remote=%s" % (file, loc_md5, rem_list[file]['md5']))
-			else:
-				debug("! %s size mismatch: local=%s remote=%s" % (file, loc_list[file]['size'], rem_list[file]['size']))
-                        
-			## Remove from remote-list, all that is left there will be deleted
-			debug("%s removed from remote list" % file)
-			del(rem_list[file])
+	_compare_filelists(loc_list, rem_list, True)
 
 	output("Summary: %d local files to upload, %d remote files to delete" % (len(loc_list), len(rem_list)))
 	for file in rem_list:
@@ -449,6 +467,20 @@ def cmd_sync(args):
 	output("Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s" % 
 	       (total_size, total_elapsed, speed_fmt[0], speed_fmt[1]))
 
+def cmd_sync(args):
+	src = args.pop(0)
+	dst = args.pop(0)
+	if (len(args)):
+		raise ParameterError("Too many parameters! Expected: %s" % commands['sync']['param'])
+
+	if not dst.endswith('/'):
+		dst += "/"
+
+	if S3Uri(src).type == "file" and S3Uri(dst).type == "s3":
+		return cmd_sync_local2remote(src, dst)
+	if S3Uri(src).type == "s3" and S3Uri(dst).type == "file":
+		return cmd_sync_remote2local(src, dst)
+	
 def resolve_list(lst, args):
 	retval = []
 	for item in lst:

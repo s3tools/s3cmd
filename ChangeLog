@@ -1,3 +1,8 @@
+2008-06-04  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Refactored cmd_sync() in preparation 
+	  for remote->local sync.
+
 2008-04-30  Michal Ludvig  <michal@logix.cz>
 
 	* s3db, S3/SimpleDB.py: Implemented almost full SimpleDB API.
