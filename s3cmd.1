@@ -37,7 +37,10 @@ Get file from bucket (i.e. download from S3)
 Delete file from bucket
 .TP
 \fBsync\fR \fILOCAL_DIR s3://BUCKET[/PREFIX]\fR
-Synchronize a directory tree to S3
+Backup a directory tree to S3
+.TP
+\fBsync\fR \fIs3://BUCKET[/PREFIX] LOCAL_DIR\fR
+Restore a tree from S3 to local directory
 .TP
 \fBinfo\fR \fIs3://BUCKET[/OBJECT]\fR
 Get various information about a Bucket or Object
@@ -72,7 +75,7 @@ Most options can have a default value set in the above specified config file.
 Options specific to \fBsync\fR command:
 .TP
 \fB\-\-delete\-removed\fR
-Delete remote objects with no corresponding local file
+Delete remote objects with no corresponding local file when \fIsync\fRing \fBto\fR S3 or delete local files with no corresponding object in S3 when \fIsync\fRing \fBfrom\fR S3.
 .TP
 \fB\-\-no\-delete\-removed\fR
 Don't delete remote objects. Default for 'sync' command.
@@ -82,9 +85,9 @@ Preserve filesystem attributes (mode, ownership, timestamps). Default for 'sync'
 .TP
 \fB\-\-no\-preserve\fR
 Don't store filesystem attributes with uploaded files.
-.TP
-\fB\-n\fR, \fB\-\-dry\-run\fR
-Only show what would be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though.
+.\".TP
+.\"\fB\-n\fR, \fB\-\-dry\-run\fR
+.\"Only show what would be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though.
 .PP
 Options common for all commands (where it makes sense indeed):
 .TP

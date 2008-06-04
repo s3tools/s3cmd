@@ -1,3 +1,12 @@
+s3cmd 0.9.7   -   2008-06-05
+===========
+* Implemented 'sync' from S3 back to local folder, including
+  file attribute restoration.
+* Failed uploads are retried on lower speed to improve error
+  resilience.
+* Compare MD5 of the uploaded file, compare with checksum
+  reported by S3 and re-upload on mismatch.
+
 s3cmd 0.9.6   -   2008-02-28
 ===========
 * Support for setting / guessing MIME-type of uploaded file

@@ -7,10 +7,6 @@ TODO list for s3cmd project
     with "directories"
   - Recursion for some commands
 
-- Implement 'sync' from S3 to local filesystem
-  - Will have to restore file attributes
-    - Eh, we have to store them first ;-)
-
 - Implement GPG for sync
   (it's not that easy since it won't be easy to compare
    the encrypted-remote-object size with local file. 
@@ -19,13 +15,6 @@ TODO list for s3cmd project
    the metadata encrypted in each object header where we'll
    have to do large number for object/HEAD requests. tough 
    call).
-
-- Compute MD5 checksum when sending file to S3 
-  (that's easy and patch exists but it will slow down 
-   the operation. instead I'm planning to run the 
-   MD5-summor in a separate thread since both MD5-summing
-   and sending data to S3 can both be time consuming yet 
-   parallel tasks).
 
 - Keep man page up to date and write some more documentation
   - Yeah, right ;-)

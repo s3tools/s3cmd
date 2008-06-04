@@ -1,5 +1,13 @@
 2008-06-05  Michal Ludvig  <michal@logix.cz>
 
+	* S3/PkgInfo.py: Bumped up version to 0.9.7
+	* NEWS: Added 0.9.7
+	* TODO: Removed completed tasks
+	* s3cmd, s3cmd.1: Updated help texts, 
+	  removed --dry-run option as it's not implemented.
+	
+2008-06-05  Michal Ludvig  <michal@logix.cz>
+
 	* S3/Config.py: Store more file attributes in sync to S3.
 	* s3cmd: Make sync remote2local more error-resilient.
 
