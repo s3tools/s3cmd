@@ -29,9 +29,10 @@ class Config(object):
 	preserve_attrs = True
 	preserve_attrs_list = [ 
 		'uname',	# Verbose owner Name (e.g. 'root')
-		#'uid',		# Numeric user ID (e.g. 0)
+		'uid',		# Numeric user ID (e.g. 0)
 		'gname',	# Group name (e.g. 'users')
-		#'gid',		# Numeric group ID (e.g. 100)
+		'gid',		# Numeric group ID (e.g. 100)
+		'atime',	# Last access timestamp
 		'mtime',	# Modification timestamp
 		'ctime',	# Creation timestamp
 		'mode',		# File mode (e.g. rwxr-xr-x = 755)

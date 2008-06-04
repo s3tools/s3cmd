@@ -1,3 +1,8 @@
+2008-06-05  Michal Ludvig  <michal@logix.cz>
+
+	* S3/Config.py: Store more file attributes in sync to S3.
+	* s3cmd: Make sync remote2local more error-resilient.
+
 2008-06-04  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Implemented cmd_sync_remote2local() for restoring

@@ -441,7 +441,7 @@ def cmd_sync_remote2local(src, dst):
 		try:
 			dst_dir = os.path.dirname(dst_file)
 			if not dir_cache.has_key(dst_dir):
-				dir_cache[dst_dir] = Utils.mkdir_with_parents(dst_dir, mode = 022)
+				dir_cache[dst_dir] = Utils.mkdir_with_parents(dst_dir)
 			if dir_cache[dst_dir] == False:
 				warning("%s: destination directory not writable: %s" % (file, dst_dir))
 				continue
@@ -463,14 +463,20 @@ def cmd_sync_remote2local(src, dst):
 					attrs = _parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
 					if attrs.has_key('mode'):
 						os.chmod(dst_file, int(attrs['mode']))
-					## FIXME: uid/gid and mtime/ctime handling comes here! TODO
+					if attrs.has_key('mtime') or attrs.has_key('atime'):
+						mtime = attrs.has_key('mtime') and int(attrs['mtime']) or int(time.time())
+						atime = attrs.has_key('atime') and int(attrs['atime']) or int(time.time())
+						os.utime(dst_file, (atime, mtime))
+					## FIXME: uid/gid / uname/gname handling comes here! TODO
 			except OSError, e:
 				if e.errno == errno.EEXIST:
 					warning("%s exists - not overwriting" % (dst_file))
 					continue
+				if e.errno in (errno.EPERM, errno.EACCES):
+					warning("%s not writable: %s" % (dst_file, e.strerror))
+					continue
 				raise
-			except IOError, e:
-				## See if it's missing path and try again
+			except Exception, e:
 				error("%s: %s" % (file, e))
 				continue
 			finally:

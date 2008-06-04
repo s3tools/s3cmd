@@ -143,9 +143,9 @@ def hash_file_md5(filename):
 	f.close()
 	return h.hexdigest()
 
-def mkdir_with_parents(dir_name, mode):
+def mkdir_with_parents(dir_name):
 	"""
-	mkdir_with_parents(dst_dir, mode)
+	mkdir_with_parents(dst_dir)
 	
 	Create directory 'dir_name' with all parent directories
 
@@ -161,10 +161,10 @@ def mkdir_with_parents(dir_name, mode):
 		try:
 			debug("mkdir(%s)" % cur_dir)
 			os.mkdir(cur_dir)
-		except IOError, e:
-			error("%s: can not make directory: %s" % (cur_dir, e.strerror))
+		except (OSError, IOError), e:
+			warning("%s: can not make directory: %s" % (cur_dir, e.strerror))
 			return False
 		except Exception, e:
-			error("%s: %s" % (cur_dir, e))
+			warning("%s: %s" % (cur_dir, e))
 			return False
 	return True
