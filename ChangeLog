@@ -1,5 +1,10 @@
 2008-06-05  Michal Ludvig  <michal@logix.cz>
 
+	* Released version 0.9.7
+	  ----------------------
+
+2008-06-05  Michal Ludvig  <michal@logix.cz>
+
 	* S3/PkgInfo.py: Bumped up version to 0.9.7
 	* NEWS: Added 0.9.7
 	* TODO: Removed completed tasks
