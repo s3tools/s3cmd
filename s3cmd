@@ -243,10 +243,19 @@ def cmd_object_get(args):
 		else:
 			# By default the destination filename is the object name
 			destination = uri.object()
-
-		if not Config().force and os.path.exists(destination):
-			raise ParameterError("File %s already exists. Use --force to overwrite it" % destination)
-		response = s3.object_get_uri(uri, destination)
+		if destination == "-":
+			## stdout
+			dst_stream = sys.stdout
+		else:
+			## File
+			if not Config().force and os.path.exists(destination):
+				raise ParameterError("File %s already exists. Use --force to overwrite it" % destination)
+			try:
+				dst_stream = open(destination, "wb")
+			except IOError, e:
+				error("Skipping %s: %s" % (destination, e.strerror))
+				continue
+		response = s3.object_get_uri(uri, dst_stream)
 		if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
 			gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
 			response["size"] = os.stat(destination)[6]
@@ -383,7 +392,106 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 	return src_list, dst_list, exists_list
 
 def cmd_sync_remote2local(src, dst):
-	raise NotImplementedError("Remote->Local sync is not yet implemented.") 
+	def _parse_attrs_header(attrs_header):
+		attrs = {}
+		for attr in attrs_header.split("/"):
+			key, val = attr.split(":")
+			attrs[key] = val
+		return attrs
+		
+	s3 = S3(Config())
+
+	src_uri = S3Uri(src)
+	dst_uri = S3Uri(dst)
+
+	rem_list = _get_filelist_remote(src_uri)
+	rem_count = len(rem_list)
+
+	loc_list = _get_filelist_local(dst_uri)
+	loc_count = len(loc_list)
+	
+	output("Found %d remote files, %d local files" % (rem_count, loc_count))
+
+	_compare_filelists(rem_list, loc_list, False)
+
+	output("Summary: %d remote files to download, %d local files to delete" % (len(rem_list), len(loc_list)))
+
+	for file in loc_list:
+		if cfg.delete_removed:
+			# os.unlink(file)
+			output("deleted '%s'" % file)
+		else:
+			output("not-deleted '%s'" % file)
+
+	total_size = 0
+	total_count = len(rem_list)
+	total_elapsed = 0.0
+	timestamp_start = time.time()
+	seq = 0
+	dir_cache = {}
+	src_base = src_uri.uri()
+	dst_base = dst_uri.path()
+	if not src_base[-1] == "/": src_base += "/"
+	file_list = rem_list.keys()
+	file_list.sort()
+	for file in file_list:
+		seq += 1
+		uri = S3Uri(src_base + file)
+		dst_file = dst_base + file
+		try:
+			dst_dir = os.path.dirname(dst_file)
+			if not dir_cache.has_key(dst_dir):
+				dir_cache[dst_dir] = Utils.mkdir_with_parents(dst_dir, mode = 022)
+			if dir_cache[dst_dir] == False:
+				warning("%s: destination directory not writable: %s" % (file, dst_dir))
+				continue
+			try:
+				open_flags = os.O_CREAT
+				if cfg.force:
+					open_flags |= os.O_TRUNC
+				else:
+					open_flags |= os.O_EXCL
+
+				debug("dst_file=%s" % dst_file)
+				# This will have failed should the file exist
+				os.open(dst_file, open_flags)
+				# Yeah I know there is a race condition here. Sadly I don't know how to open() in exclusive mode.
+				dst_stream = open(dst_file, "wb")
+				response = s3.object_get_uri(uri, dst_stream)
+				dst_stream.close()
+				if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
+					attrs = _parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
+					if attrs.has_key('mode'):
+						os.chmod(dst_file, int(attrs['mode']))
+					## FIXME: uid/gid and mtime/ctime handling comes here! TODO
+			except OSError, e:
+				if e.errno == errno.EEXIST:
+					warning("%s exists - not overwriting" % (dst_file))
+					continue
+				raise
+			except IOError, e:
+				## See if it's missing path and try again
+				error("%s: %s" % (file, e))
+				continue
+			finally:
+				## Close the file if still open. Don't care if not.
+				try:
+					dst_stream.close()
+				except:
+					pass
+		except S3DownloadError, e:
+			error("%s: download failed too many times. Skipping that file." % file)
+			continue
+		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
+		output("File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) [%d of %d]" %
+			(uri, dst_file, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
+			seq, total_count))
+		total_size += response["size"]
+
+	total_elapsed = time.time() - timestamp_start
+	speed_fmt = formatSize(total_size/total_elapsed, human_readable = True, floating_point = True)
+	output("Done. Downloaded %d bytes in %0.1f seconds, %0.2f %sB/s" % 
+	       (total_size, total_elapsed, speed_fmt[0], speed_fmt[1]))
 
 def cmd_sync_local2remote(src, dst):
 	def _build_attr_header(src):
@@ -427,6 +535,7 @@ def cmd_sync_local2remote(src, dst):
 	_compare_filelists(loc_list, rem_list, True)
 
 	output("Summary: %d local files to upload, %d remote files to delete" % (len(loc_list), len(rem_list)))
+
 	for file in rem_list:
 		uri = S3Uri("s3://" + dst_uri.bucket()+"/"+rem_list[file]['object_key'])
 		if cfg.delete_removed:
@@ -454,7 +563,7 @@ def cmd_sync_local2remote(src, dst):
 		try:
 			response = s3.object_put_uri(src, uri, attr_header)
 		except S3UploadError, e:
-			error("Upload of '%s' failed too many times. Skipping that file." % src)
+			error("%s: upload failed too many times. Skipping that file." % src)
 			continue
 		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
 		output("File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) [%d of %d]" %
@@ -472,6 +581,9 @@ def cmd_sync(args):
 	dst = args.pop(0)
 	if (len(args)):
 		raise ParameterError("Too many parameters! Expected: %s" % commands['sync']['param'])
+
+	if S3Uri(src).type == "s3" and not src.endswith('/'):
+		src += "/"
 
 	if not dst.endswith('/'):
 		dst += "/"

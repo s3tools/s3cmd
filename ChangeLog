@@ -1,5 +1,13 @@
 2008-06-04  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Implemented cmd_sync_remote2local() for restoring
+	  backup from S3 to a local filesystem
+	* S3/S3.py: S3.object_get_uri() now requires writable stream 
+	  and not a path name.
+	* S3/Utils.py: Added mkdir_with_parents()
+
+2008-06-04  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd: Refactored cmd_sync() in preparation 
 	  for remote->local sync.
 

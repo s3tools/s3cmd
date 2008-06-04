@@ -175,35 +175,24 @@ class S3(object):
 		response = self.send_file(request, file)
 		return response
 
-	def object_get_file(self, bucket, object, filename):
-		try:
-			stream = open(filename, "wb")
-		except IOError, e:
-			raise ParameterError("%s: %s" % (filename, e.strerror))
-		return self.object_get_stream(bucket, object, stream)
-
-	def object_get_stream(self, bucket, object, stream):
-		request = self.create_request("OBJECT_GET", bucket = bucket, object = object)
+	def object_get_uri(self, uri, stream):
+		if uri.type != "s3":
+			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
+		request = self.create_request("OBJECT_GET", bucket = uri.bucket(), object = uri.object())
 		response = self.recv_file(request, stream)
 		return response
-		
+
 	def object_delete(self, bucket, object):
 		request = self.create_request("OBJECT_DELETE", bucket = bucket, object = object)
 		response = self.send_request(request)
 		return response
 
 	def object_put_uri(self, filename, uri, extra_headers = None):
+		# TODO TODO
+		# Make it consistent with stream-oriented object_get_uri()
 		if uri.type != "s3":
 			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 		return self.object_put(filename, uri.bucket(), uri.object(), extra_headers)
-
-	def object_get_uri(self, uri, filename):
-		if uri.type != "s3":
-			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
-		if filename == "-":
-			return self.object_get_stream(uri.bucket(), uri.object(), sys.stdout)
-		else:
-			return self.object_get_file(uri.bucket(), uri.object(), filename)
 
 	def object_delete_uri(self, uri):
 		if uri.type != "s3":

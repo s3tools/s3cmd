@@ -11,6 +11,8 @@ import random
 import md5
 import errno
 
+from logging import debug, info, warning, error
+
 try:
 	import xml.etree.ElementTree as ET
 except ImportError:
@@ -140,3 +142,29 @@ def hash_file_md5(filename):
 	h.update(f.read())
 	f.close()
 	return h.hexdigest()
+
+def mkdir_with_parents(dir_name, mode):
+	"""
+	mkdir_with_parents(dst_dir, mode)
+	
+	Create directory 'dir_name' with all parent directories
+
+	Returns True on success, False otherwise.
+	"""
+	pathmembers = dir_name.split(os.sep)
+	tmp_stack = []
+	while pathmembers and not os.path.isdir(os.sep.join(pathmembers)):
+		tmp_stack.append(pathmembers.pop())
+	while tmp_stack:
+		pathmembers.append(tmp_stack.pop())
+		cur_dir = os.sep.join(pathmembers)
+		try:
+			debug("mkdir(%s)" % cur_dir)
+			os.mkdir(cur_dir)
+		except IOError, e:
+			error("%s: can not make directory: %s" % (cur_dir, e.strerror))
+			return False
+		except Exception, e:
+			error("%s: %s" % (cur_dir, e))
+			return False
+	return True

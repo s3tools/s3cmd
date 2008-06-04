@@ -37,6 +37,9 @@ class S3Error (Exception):
 class S3UploadError(Exception):
 	pass
 
+class S3DownloadError(Exception):
+	pass
+
 class ParameterError(Exception):
 	pass
 
