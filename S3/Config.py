@@ -48,6 +48,7 @@ class Config(object):
 	bucket_location = "US"
 	default_mime_type = "binary/octet-stream"
 	guess_mime_type = False
+	exclude = []
 
 	## Creating a singleton
 	def __new__(self, configfile = None):
