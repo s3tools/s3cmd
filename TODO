@@ -1,6 +1,10 @@
 TODO list for s3cmd project
 ===========================
 
+- Finish sync --exclude support. 
+  - Add --exclude-from and --debug-exclude implementations.
+  - Support shell-style wildcards? Or rsync-style excludes?
+
 - Treat objects with "/" in their name as directories
   - Will need local cache for bucket listings
   - More user friendly 'del' operation that would work

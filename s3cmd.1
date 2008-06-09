@@ -85,6 +85,15 @@ Preserve filesystem attributes (mode, ownership, timestamps). Default for 'sync'
 .TP
 \fB\-\-no\-preserve\fR
 Don't store filesystem attributes with uploaded files.
+.TP
+\fB\-\-exclude REGEXP\fR
+Exclude files matching REGEXP from \fIsync\fI. See SYNC COMMAND section for more information.
+.TP
+\fB\-\-exclude\-from FILE\fR
+Same as \-\-exclude but reads REGEXPs from the given FILE instead of expecting them on the command line.
+.TP
+\fB\-\-debug\-exclude\fR
+Display detailed information about matching file names against exclude\-rules.
 .\".TP
 .\"\fB\-n\fR, \fB\-\-dry\-run\fR
 .\"Only show what would be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though.
@@ -133,6 +142,56 @@ Show the help message and exit
 Show
 .B s3cmd
 version and exit.
+
+.SH SYNC COMMAND
+One of the most powerful commands of \fIs3cmd\fR is \fBs3cmd sync\fR used for 
+synchronising complete directory trees to or from remote S3 storage. 
+.PP
+Basic usage common in backup scenarios is as simple as:
+.nf
+	s3cmd sync /local/path s3://test-bucket/backup
+.fi
+.PP
+This command will find all files under /local/path directory and copy them 
+to corresponding paths under s3://test-bucket/backup on the remote side.
+For example:
+.nf
+/local/path\fB/file1.ext\fR         ->  s3://test-bucket/backup\fB/file1.ext\fR
+/local/path\fB/dir123/file2.bin\fR  ->  s3://test-bucket/backup\fB/dir123/file2.bin\fR
+.fi
+
+To retrieve the files back from S3 use inverted syntax:
+.nf
+	s3cmd sync s3://test-bucket/backup/ /tmp/restore
+.fi
+that will download files:
+.nf
+s3://test-bucket/backup\fB/file1.ext\fR         ->  /tmp/restore\fB/file1.ext\fR       
+s3://test-bucket/backup\fB/dir123/file2.bin\fR  ->  /tmp/restore\fB/dir123/file2.bin\fR
+.fi
+
+For the purpose of \fB\-\-exclude\fR and \fB\-\-exclude\-from\fR matching the file name 
+\fIalways\fR begins with \fB/\fR (slash) and has the local or remote common part removed.
+For instance in the previous example the file names tested against --exclude list
+will be \fB/\fRfile1.ext and \fB/\fRdir123/file2.bin, that is both with the leading 
+slash regardless whether you specified s3://test-bucket/backup or 
+s3://test-bucket/backup/ (note the trailing slash) on the command line.
+
+Both \fB\-\-exclude\fR and \fB\-\-exclude\-from\fR options expect regular expressions, not 
+shell-style wildcards! Run s3cmd with \fB\-\-debug\-exclude\fR to get a detailed list of 
+matching file names against exclude rules.
+
+For example to exclude all files with ".bin" extension use:
+.PP
+	\-\-exclude '\.bin$'
+.PP
+to exclude all hidden files and subdirectories (i.e. those whose name begins with dot ".") use:
+.PP
+	\-\-exclude '/\.'
+.PP
+on the other hand to exclude only hidden files but not hidden subdirectories use:
+.PP
+	\-\-exclude '/\.[^/]*$'
 
 .SH AUTHOR
 Written by Michal Ludvig <michal@logix.cz>
