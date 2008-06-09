@@ -1,3 +1,7 @@
+2008-06-10  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Added --exclude switch for sync.
+
 2008-06-05  Michal Ludvig  <michal@logix.cz>
 
 	* Released version 0.9.7

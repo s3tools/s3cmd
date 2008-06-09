@@ -360,8 +360,23 @@ def _get_filelist_remote(remote_uri):
 def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 	output("Verifying checksums...")
 	exists_list = {}
+	exclude_list = {}
 	for file in src_list.keys():
 		debug("Checking %s ..." % file)
+		excluded = False
+		for r in Config().exclude:
+			## all paths start with '/' from the base dir
+			if r.search(os.sep + file):
+				## Can't directly 'continue' to the outer loop
+				## therefore this awkward excluded switch :-(
+				excluded = True
+				break
+		if excluded:
+			info("%s: excluded" % file)
+			exclude_list = src_list[file]
+			del(src_list[file])
+			continue
+
 		if dst_list.has_key(file):
 			debug("%s exists in remote list" % file)
 			## Check size first
@@ -389,7 +404,7 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 			## Remove from destination-list, all that is left there will be deleted
 			debug("%s removed from destination list" % file)
 			del(dst_list[file])
-	return src_list, dst_list, exists_list
+	return src_list, dst_list, exists_list, exclude_list
 
 def cmd_sync_remote2local(src, dst):
 	def _parse_attrs_header(attrs_header):
@@ -842,6 +857,9 @@ if __name__ == '__main__':
 	optparser.add_option(      "--no-delete-removed", dest="delete_removed", action="store_false", help="Don't delete remote objects.")
 	optparser.add_option("-p", "--preserve", dest="preserve_attrs", action="store_true", help="Preserve filesystem attributes (mode, ownership, timestamps). Default for [sync] command.")
 	optparser.add_option(      "--no-preserve", dest="preserve_attrs", action="store_false", help="Don't store FS attributes")
+	optparser.add_option(      "--exclude", dest="exclude", action="append", metavar="REGEXP", help="Filenames and paths matching REGEXP will be excluded from sync")
+	#optparser.add_option(      "--exclude-from", dest="exclude_from", action="append", metavar="FILE", help="Read --exclude REGEXPs from FILE")
+
 	optparser.add_option(      "--bucket-location", dest="bucket_location", help="Datacentre to create bucket in. Either EU or US (default)")
 
 	optparser.add_option("-m", "--mime-type", dest="default_mime_type", type="mimetype", metavar="MIME/TYPE", help="Default MIME-type to be set for objects stored.")
@@ -898,6 +916,9 @@ if __name__ == '__main__':
 		except AttributeError:
 			## Some Config() options are not settable from command line
 			pass
+
+	for ex in options.exclude:
+		cfg.exclude.append(re.compile(ex))
 
 	if cfg.encrypt and cfg.gpg_passphrase == "":
 		error("Encryption requested but no passphrase set in config file.")
