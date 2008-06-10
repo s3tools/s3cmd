@@ -414,6 +414,13 @@ def cmd_sync_remote2local(src, dst):
 			attrs[key] = val
 		return attrs
 		
+	def _try_close_dst_stream(dst_stream):
+		## Close the file if still open. Don't care if not.
+		try:
+			dst_stream.close()
+		except:
+			pass
+
 	s3 = S3(Config())
 
 	src_uri = S3Uri(src)
@@ -484,6 +491,7 @@ def cmd_sync_remote2local(src, dst):
 						os.utime(dst_file, (atime, mtime))
 					## FIXME: uid/gid / uname/gname handling comes here! TODO
 			except OSError, e:
+				_try_close_dst_stream(dst_stream)
 				if e.errno == errno.EEXIST:
 					warning("%s exists - not overwriting" % (dst_file))
 					continue
@@ -492,14 +500,13 @@ def cmd_sync_remote2local(src, dst):
 					continue
 				raise
 			except Exception, e:
+				_try_close_dst_stream(dst_stream)
 				error("%s: %s" % (file, e))
 				continue
-			finally:
-				## Close the file if still open. Don't care if not.
-				try:
-					dst_stream.close()
-				except:
-					pass
+			# We have to keep repeating this call because 
+			# Python 2.4 doesn't support try/except/finally
+			# construction :-(
+			_try_close_dst_stream(dst_stream)
 		except S3DownloadError, e:
 			error("%s: download failed too many times. Skipping that file." % file)
 			continue
