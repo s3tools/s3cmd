@@ -12,6 +12,7 @@ import os
 import re
 import errno
 import pwd, grp
+import glob
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -806,6 +807,15 @@ def run_configure(config_file):
 		error("Writing config file failed: %s: %s" % (config_file, e.strerror))
 		sys.exit(1)
 
+def process_exclude_from_file(exf, exclude_array):
+	exfi = open(exf, "rt")
+	for ex in exfi:
+		ex = ex.strip()
+		if re.match("^#", ex) or re.match("^\s*$", ex):
+			continue
+		debug("adding rule: %s" % ex)
+		exclude_array.append(ex)
+
 commands = {}
 commands_list = [
 	{"cmd":"mb", "label":"Make bucket", "param":"s3://BUCKET", "func":cmd_bucket_create, "argc":1},
@@ -877,8 +887,10 @@ if __name__ == '__main__':
 	optparser.add_option(      "--no-delete-removed", dest="delete_removed", action="store_false", help="Don't delete remote objects.")
 	optparser.add_option("-p", "--preserve", dest="preserve_attrs", action="store_true", help="Preserve filesystem attributes (mode, ownership, timestamps). Default for [sync] command.")
 	optparser.add_option(      "--no-preserve", dest="preserve_attrs", action="store_false", help="Don't store FS attributes")
-	optparser.add_option(      "--exclude", dest="exclude", action="append", metavar="REGEXP", help="Filenames and paths matching REGEXP will be excluded from sync")
-	optparser.add_option(      "--exclude-from", dest="exclude_from", action="append", metavar="FILE", help="Read --exclude REGEXPs from FILE")
+	optparser.add_option(      "--exclude", dest="exclude", action="append", metavar="GLOB", help="Filenames and paths matching GLOB will be excluded from sync")
+	optparser.add_option(      "--exclude-from", dest="exclude_from", action="append", metavar="FILE", help="Read --exclude GLOBs from FILE")
+	optparser.add_option(      "--rexclude", dest="rexclude", action="append", metavar="REGEXP", help="Filenames and paths matching REGEXP (regular expression) will be excluded from sync")
+	optparser.add_option(      "--rexclude-from", dest="rexclude_from", action="append", metavar="FILE", help="Read --rexclude REGEXPs from FILE")
 	optparser.add_option(      "--debug-syncmatch", dest="debug_syncmatch", action="store_true", help="Output detailed information about remote vs. local filelist matching and then exit")
 
 	optparser.add_option(      "--bucket-location", dest="bucket_location", help="Datacentre to create bucket in. Either EU or US (default)")
@@ -938,22 +950,34 @@ if __name__ == '__main__':
 			## Some Config() options are not settable from command line
 			pass
 
+	## Process GLOB (shell wildcard style) excludes
 	if options.exclude is None:
 		options.exclude = []
 
 	if options.exclude_from:
 		for exf in options.exclude_from:
 			debug("processing --exclude-from %s" % exf)
-			exfi = open(exf, "rt")
-			for ex in exfi:
-				ex = ex.strip()
-				if re.match("^#", ex) or re.match("^\s*$", ex):
-					continue
-				debug("adding rule: %s" % ex)
-				options.exclude.append(ex)
+			process_exclude_from_file(exf, options.exclude)
 
 	if options.exclude:
 		for ex in options.exclude:
+			debug("processing rule: %s" % ex)
+			exc = re.compile(glob.fnmatch.translate(ex))
+			cfg.exclude.append(exc)
+			if options.debug_syncmatch:
+				cfg.debug_exclude[exc] = ex
+
+	## Process REGEXP style excludes
+	if options.rexclude is None:
+		options.rexclude = []
+
+	if options.rexclude_from:
+		for exf in options.rexclude_from:
+			debug("processing --rexclude-from %s" % exf)
+			process_exclude_from_file(exf, options.rexclude)
+
+	if options.rexclude:
+		for ex in options.rexclude:
 			debug("processing rule: %s" % ex)
 			exc = re.compile(ex)
 			cfg.exclude.append(exc)

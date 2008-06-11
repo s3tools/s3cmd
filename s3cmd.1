@@ -86,11 +86,17 @@ Preserve filesystem attributes (mode, ownership, timestamps). Default for 'sync'
 \fB\-\-no\-preserve\fR
 Don't store filesystem attributes with uploaded files.
 .TP
-\fB\-\-exclude REGEXP\fR
-Exclude files matching REGEXP from \fIsync\fI. See SYNC COMMAND section for more information.
+\fB\-\-exclude GLOB\fR
+Exclude files matching GLOB (a.k.a. shell-style wildcard) from \fIsync\fI. See SYNC COMMAND section for more information.
 .TP
 \fB\-\-exclude\-from FILE\fR
-Same as \-\-exclude but reads REGEXPs from the given FILE instead of expecting them on the command line.
+Same as \-\-exclude but reads GLOBs from the given FILE instead of expecting them on the command line.
+.TP
+\fB\-\-rexclude REGEXP\fR
+Same as \-\-exclude but works with REGEXPs (Regular expressions).
+.TP
+\fB\-\-rexclude\-from FILE\fR
+Same as \-\-exclude\-from but works with REGEXPs.
 .TP
 \fB\-\-debug\-syncmatch\fR
 Display detailed information about matching file names against exclude\-rules as well as information about remote vs local filelists matching. S3cmd exits after performing the match and no actual transfer takes place.
@@ -177,21 +183,26 @@ will be \fB/\fRfile1.ext and \fB/\fRdir123/file2.bin, that is both with the lead
 slash regardless whether you specified s3://test-bucket/backup or 
 s3://test-bucket/backup/ (note the trailing slash) on the command line.
 
-Both \fB\-\-exclude\fR and \fB\-\-exclude\-from\fR options expect regular expressions, not 
-shell-style wildcards! Run s3cmd with \fB\-\-debug\-syncmatch\fR to get detailed information
+Both \fB\-\-exclude\fR and \fB\-\-exclude\-from\fR work with shell-style wildcards (a.k.a. GLOB).
+For a greater flexibility s3cmd provides Regular-expression versions of the two exclude options 
+named \fB\-\-rexclude\fR and \fB\-\-rexclude\-from\fR. 
+
+Run s3cmd with \fB\-\-debug\-syncmatch\fR to get detailed information
 about matching file names against exclude rules.
 
-For example to exclude all files with ".bin" extension use:
+For example to exclude all files with ".bin" extension with a REGEXP use:
 .PP
-	\-\-exclude '\.bin$'
+	\-\-rexclude '\.bin$'
 .PP
-to exclude all hidden files and subdirectories (i.e. those whose name begins with dot ".") use:
+to exclude all hidden files and subdirectories (i.e. those whose name begins with dot ".") use GLOB:
 .PP
-	\-\-exclude '/\.'
+	\-\-exclude '/.*'
 .PP
-on the other hand to exclude only hidden files but not hidden subdirectories use:
+on the other hand to exclude only hidden files but not hidden subdirectories use REGEXP:
 .PP
-	\-\-exclude '/\.[^/]*$'
+	\-\-rexclude '/\.[^/]*$'
+.PP
+etc...
 
 .SH AUTHOR
 Written by Michal Ludvig <michal@logix.cz>
