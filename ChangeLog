@@ -1,5 +1,9 @@
 2008-06-12  Michal Ludvig  <michal@logix.cz>
 
+	* S3/PkgInfo.py: Version 0.9.8-rc2
+
+2008-06-12  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd, s3cmd.1: Added GLOB (shell-style wildcard) exclude, renamed
 	  orig regexp-style --exclude to --rexclude
 
