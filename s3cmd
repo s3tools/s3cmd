@@ -359,29 +359,37 @@ def _get_filelist_remote(remote_uri):
 	
 def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 	output("Verifying checksums...")
+	cfg = Config()
 	exists_list = {}
 	exclude_list = {}
+	if cfg.debug_syncmatch:
+		logging.root.setLevel(logging.DEBUG)
 	for file in src_list.keys():
-		debug("Checking %s ..." % file)
+		if not cfg.debug_syncmatch:
+			debug("CHECK: %s" % (os.sep + file))
 		excluded = False
-		for r in Config().exclude:
+		for r in cfg.exclude:
 			## all paths start with '/' from the base dir
 			if r.search(os.sep + file):
 				## Can't directly 'continue' to the outer loop
 				## therefore this awkward excluded switch :-(
 				excluded = True
+				if cfg.debug_syncmatch:
+					debug("EXCL: %s" % (os.sep + file))
+					debug("RULE: '%s'" % (cfg.debug_exclude[r]))
+				else:
+					info("%s: excluded" % file)
 				break
 		if excluded:
-			info("%s: excluded" % file)
 			exclude_list = src_list[file]
 			del(src_list[file])
 			continue
-
+		else:
+			debug("PASS: %s" % (os.sep + file))
 		if dst_list.has_key(file):
-			debug("%s exists in remote list" % file)
 			## Check size first
 			if dst_list[file]['size'] == src_list[file]['size']:
-				debug("%s same size: %s" % (file, dst_list[file]['size']))
+				#debug("%s same size: %s" % (file, dst_list[file]['size']))
 				## ... same size, check MD5
 				if src_is_local_and_dst_is_remote:
 					src_md5 = Utils.hash_file_md5(src_list[file]['full_name'])
@@ -390,20 +398,24 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 					src_md5 = src_list[file]['md5']
 					dst_md5 = Utils.hash_file_md5(dst_list[file]['full_name'])
 				if src_md5 == dst_md5:
-					debug("%s md5 matches: %s" % (file, dst_md5))
+					#debug("%s md5 matches: %s" % (file, dst_md5))
 					## Checksums are the same.
 					## Remove from source-list, all that is left there will be transferred
-					debug("%s removed from source list - transfer not needed" % file)
+					debug("IGNR: %s (transfer not needed: MD5 OK, Size OK)" % file)
 					exists_list[file] = src_list[file]
 					del(src_list[file])
 				else:
-					debug("! %s md5 mismatch: src=%s dst=%s" % (file, src_md5, dst_md5))
+					debug("XFER: %s (md5 mismatch: src=%s dst=%s)" % (file, src_md5, dst_md5))
 			else:
-				debug("! %s size mismatch: src=%s dst=%s" % (file, src_list[file]['size'], dst_list[file]['size']))
+				debug("XFER: %s (size mismatch: src=%s dst=%s)" % (file, src_list[file]['size'], dst_list[file]['size']))
                         
 			## Remove from destination-list, all that is left there will be deleted
-			debug("%s removed from destination list" % file)
+			#debug("%s removed from destination list" % file)
 			del(dst_list[file])
+	if cfg.debug_syncmatch:
+		warning("Exiting because of --debug-syncmatch")
+		sys.exit(0)
+
 	return src_list, dst_list, exists_list, exclude_list
 
 def cmd_sync_remote2local(src, dst):
@@ -414,13 +426,6 @@ def cmd_sync_remote2local(src, dst):
 			attrs[key] = val
 		return attrs
 		
-	def _try_close_dst_stream(dst_stream):
-		## Close the file if still open. Don't care if not.
-		try:
-			dst_stream.close()
-		except:
-			pass
-
 	s3 = S3(Config())
 
 	src_uri = S3Uri(src)
@@ -491,7 +496,8 @@ def cmd_sync_remote2local(src, dst):
 						os.utime(dst_file, (atime, mtime))
 					## FIXME: uid/gid / uname/gname handling comes here! TODO
 			except OSError, e:
-				_try_close_dst_stream(dst_stream)
+				try: dst_stream.close()
+				except: pass
 				if e.errno == errno.EEXIST:
 					warning("%s exists - not overwriting" % (dst_file))
 					continue
@@ -499,14 +505,21 @@ def cmd_sync_remote2local(src, dst):
 					warning("%s not writable: %s" % (dst_file, e.strerror))
 					continue
 				raise
+			except KeyboardInterrupt:
+				try: dst_stream.close()
+				except: pass
+				warning("Exiting after keyboard interrupt")
+				return
 			except Exception, e:
-				_try_close_dst_stream(dst_stream)
+				try: dst_stream.close()
+				except: pass
 				error("%s: %s" % (file, e))
 				continue
 			# We have to keep repeating this call because 
 			# Python 2.4 doesn't support try/except/finally
 			# construction :-(
-			_try_close_dst_stream(dst_stream)
+			try: dst_stream.close()
+			except: pass
 		except S3DownloadError, e:
 			error("%s: download failed too many times. Skipping that file." % file)
 			continue
@@ -865,7 +878,8 @@ if __name__ == '__main__':
 	optparser.add_option("-p", "--preserve", dest="preserve_attrs", action="store_true", help="Preserve filesystem attributes (mode, ownership, timestamps). Default for [sync] command.")
 	optparser.add_option(      "--no-preserve", dest="preserve_attrs", action="store_false", help="Don't store FS attributes")
 	optparser.add_option(      "--exclude", dest="exclude", action="append", metavar="REGEXP", help="Filenames and paths matching REGEXP will be excluded from sync")
-	#optparser.add_option(      "--exclude-from", dest="exclude_from", action="append", metavar="FILE", help="Read --exclude REGEXPs from FILE")
+	optparser.add_option(      "--exclude-from", dest="exclude_from", action="append", metavar="FILE", help="Read --exclude REGEXPs from FILE")
+	optparser.add_option(      "--debug-syncmatch", dest="debug_syncmatch", action="store_true", help="Output detailed information about remote vs. local filelist matching and then exit")
 
 	optparser.add_option(      "--bucket-location", dest="bucket_location", help="Datacentre to create bucket in. Either EU or US (default)")
 
@@ -924,8 +938,27 @@ if __name__ == '__main__':
 			## Some Config() options are not settable from command line
 			pass
 
-	for ex in options.exclude:
-		cfg.exclude.append(re.compile(ex))
+	if options.exclude is None:
+		options.exclude = []
+
+	if options.exclude_from:
+		for exf in options.exclude_from:
+			debug("processing --exclude-from %s" % exf)
+			exfi = open(exf, "rt")
+			for ex in exfi:
+				ex = ex.strip()
+				if re.match("^#", ex) or re.match("^\s*$", ex):
+					continue
+				debug("adding rule: %s" % ex)
+				options.exclude.append(ex)
+
+	if options.exclude:
+		for ex in options.exclude:
+			debug("processing rule: %s" % ex)
+			exc = re.compile(ex)
+			cfg.exclude.append(exc)
+			if options.debug_syncmatch:
+				cfg.debug_exclude[exc] = ex
 
 	if cfg.encrypt and cfg.gpg_passphrase == "":
 		error("Encryption requested but no passphrase set in config file.")

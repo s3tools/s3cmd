@@ -92,8 +92,8 @@ Exclude files matching REGEXP from \fIsync\fI. See SYNC COMMAND section for more
 \fB\-\-exclude\-from FILE\fR
 Same as \-\-exclude but reads REGEXPs from the given FILE instead of expecting them on the command line.
 .TP
-\fB\-\-debug\-exclude\fR
-Display detailed information about matching file names against exclude\-rules.
+\fB\-\-debug\-syncmatch\fR
+Display detailed information about matching file names against exclude\-rules as well as information about remote vs local filelists matching. S3cmd exits after performing the match and no actual transfer takes place.
 .\".TP
 .\"\fB\-n\fR, \fB\-\-dry\-run\fR
 .\"Only show what would be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though.
@@ -178,8 +178,8 @@ slash regardless whether you specified s3://test-bucket/backup or
 s3://test-bucket/backup/ (note the trailing slash) on the command line.
 
 Both \fB\-\-exclude\fR and \fB\-\-exclude\-from\fR options expect regular expressions, not 
-shell-style wildcards! Run s3cmd with \fB\-\-debug\-exclude\fR to get a detailed list of 
-matching file names against exclude rules.
+shell-style wildcards! Run s3cmd with \fB\-\-debug\-syncmatch\fR to get detailed information
+about matching file names against exclude rules.
 
 For example to exclude all files with ".bin" extension use:
 .PP

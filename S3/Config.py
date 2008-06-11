@@ -48,7 +48,11 @@ class Config(object):
 	bucket_location = "US"
 	default_mime_type = "binary/octet-stream"
 	guess_mime_type = False
+	debug_syncmatch = False
+	# List of compiled REGEXPs
 	exclude = []
+	# Dict mapping compiled REGEXPs back to their textual form
+	debug_exclude = {}
 
 	## Creating a singleton
 	def __new__(self, configfile = None):
