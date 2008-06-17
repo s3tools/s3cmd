@@ -469,8 +469,9 @@ class S3(object):
 		return base64.encodestring(hmac.new(self.config.secret_key, h, sha).digest()).strip()
 
 	def check_bucket_name(self, bucket):
-		if re.compile("[^A-Za-z0-9\._-]").search(bucket):
-			raise ParameterError("Bucket name '%s' contains unallowed characters" % bucket)
+		invalid = re.compile("([^a-z0-9\._-])").search(bucket)
+		if invalid:
+			raise ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: lowercase us-ascii letters (a-z), digits (0-9), dot (.), hyphen (-) and underscore (_)." % (bucket, invalid.groups()[0]))
 		if len(bucket) < 3:
 			raise ParameterError("Bucket name '%s' is too short (min 3 characters)" % bucket)
 		if len(bucket) > 255:

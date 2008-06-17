@@ -1,3 +1,7 @@
+2008-06-13  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3.py: Bucket name can't contain upper-case letters (S3/DNS limitation).
+
 2008-06-12  Michal Ludvig  <michal@logix.cz>
 
 	* S3/PkgInfo.py: Version 0.9.8-rc2
