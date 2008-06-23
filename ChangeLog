@@ -11,6 +11,7 @@
 
 2008-06-23  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Last-minute compatibility fixes for Python 2.4
 	* s3cmd, s3cmd.1: --debug-exclude is an alias for --debug-syncmatch
 	* s3cmd: Don't require $HOME env variable to be set.
 	  Fixes #2000133

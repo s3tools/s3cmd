@@ -554,7 +554,8 @@ def cmd_sync_local2remote(src, dst):
 		for k in attrs: result += "%s:%s/" % (k, attrs[k])
 		return { 'x-amz-meta-s3cmd-attrs' : result[:-1] }
 
-	s3 = S3(Config())
+	cfg = Config()
+	s3 = S3(cfg)
 
 	src_uri = S3Uri(src)
 	dst_uri = S3Uri(dst)
@@ -1038,6 +1039,9 @@ if __name__ == '__main__':
 
 		main()
 		sys.exit(0)
+	except SystemExit, e:
+		sys.exit(e.code)
+
 	except Exception, e:
 		sys.stderr.write("""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
