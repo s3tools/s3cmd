@@ -13,19 +13,12 @@ import re
 import errno
 import pwd, grp
 import glob
+import traceback
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
 from logging import debug, info, warning, error
 from distutils.spawn import find_executable
-
-## Our modules
-from S3 import PkgInfo
-from S3.S3 import *
-from S3.Config import Config
-from S3.S3Uri import *
-from S3 import Utils
-from S3.Exceptions import *
 
 def output(message):
 	print message
@@ -855,7 +848,7 @@ class MyHelpFormatter(IndentedHelpFormatter):
 		else:
 			return ""
 
-if __name__ == '__main__':
+def main():
 	if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
 		sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
 		sys.exit(1)
@@ -1025,5 +1018,35 @@ if __name__ == '__main__':
 		error("Parameter problem: " + str(e))
 		sys.exit(1)
 
-	sys.exit(0)
+if __name__ == '__main__':
+	try:
+		## Our modules
+		## Keep them in try/except block to 
+		## detect any syntax errors in there
+		from S3 import PkgInfo
+		from S3.S3 import *
+		from S3.Config import Config
+		from S3.S3Uri import *
+		from S3 import Utils
+		from S3.Exceptions import *
 
+		main()
+		sys.exit(0)
+	except Exception, e:
+		sys.stderr.write("""
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    An unexpected error has occurred.
+  Please report the following lines to:
+  s3tools-general@lists.sourceforge.net
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+""")
+		sys.stderr.write(traceback.format_exc(sys.exc_info())+"\n")
+		sys.stderr.write("""
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    An unexpected error has occurred.
+    Please report the above lines to:
+  s3tools-general@lists.sourceforge.net
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+""")
+		sys.exit(1)

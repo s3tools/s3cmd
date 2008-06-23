@@ -1,3 +1,8 @@
+2008-06-23  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Wrapped all execution in a try/except block
+	  to catch all exceptions and ask for a report.
+
 2008-06-18  Michal Ludvig  <michal@logix.cz>
 
 	* S3/PkgInfo.py: Version 0.9.8-rc3
