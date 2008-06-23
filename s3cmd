@@ -862,7 +862,9 @@ def main():
 	optparser = OptionParser(option_class=OptionMimeType, formatter=MyHelpFormatter())
 	#optparser.disable_interspersed_args()
 
-	optparser.set_defaults(config=os.getenv("HOME")+"/.s3cfg")
+	if os.getenv("HOME"):
+		optparser.set_defaults(config=os.getenv("HOME")+"/.s3cfg")
+
 	optparser.set_defaults(verbosity = default_verbosity)
 
 	optparser.add_option(      "--configure", dest="run_configure", action="store_true", help="Invoke interactive (re)configuration tool.")
@@ -916,6 +918,10 @@ def main():
 		sys.exit(0)
 
 	## Now finally parse the config file
+	if not options.config:
+		error("Can't find a config file. Please use --config option.")
+		sys.exit(1)
+
 	try:
 		cfg = Config(options.config)
 	except IOError, e:

@@ -1,5 +1,7 @@
 2008-06-23  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Don't require $HOME env variable to be set.
+	  Fixes #2000133
 	* s3cmd: Wrapped all execution in a try/except block
 	  to catch all exceptions and ask for a report.
 
