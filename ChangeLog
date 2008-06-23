@@ -1,5 +1,17 @@
 2008-06-23  Michal Ludvig  <michal@logix.cz>
 
+	* Released version 0.9.8
+	  ----------------------
+
+2008-06-23  Michal Ludvig  <michal@logix.cz>
+
+	* S3/PkgInfo.py: Bumped up version to 0.9.8
+	* NEWS: Added 0.9.8
+	* TODO: Removed completed tasks
+
+2008-06-23  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd, s3cmd.1: --debug-exclude is an alias for --debug-syncmatch
 	* s3cmd: Don't require $HOME env variable to be set.
 	  Fixes #2000133
 	* s3cmd: Wrapped all execution in a try/except block
