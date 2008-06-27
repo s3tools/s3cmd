@@ -1,5 +1,12 @@
 2008-06-27  Michal Ludvig  <michal@logix.cz>
 
+	* Released version 0.9.8.1
+	  ------------------------
+
+2008-06-27  Michal Ludvig  <michal@logix.cz>
+
+	* S3/PkgInfo.py: Bumped up version to 0.9.8.1
+	* NEWS: Added 0.9.8.1
 	* s3cmd: make 'cfg' global
 	* run-tests.sh: Sort-of testsuite
 
