@@ -1,5 +1,6 @@
 2008-06-27  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: make 'cfg' global
 	* run-tests.sh: Sort-of testsuite
 
 2008-06-23  Michal Ludvig  <michal@logix.cz>

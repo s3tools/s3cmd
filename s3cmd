@@ -554,8 +554,7 @@ def cmd_sync_local2remote(src, dst):
 		for k in attrs: result += "%s:%s/" % (k, attrs[k])
 		return { 'x-amz-meta-s3cmd-attrs' : result[:-1] }
 
-	cfg = Config()
-	s3 = S3(cfg)
+	s3 = S3(Config())
 
 	src_uri = S3Uri(src)
 	dst_uri = S3Uri(dst)
@@ -850,6 +849,7 @@ class MyHelpFormatter(IndentedHelpFormatter):
 			return ""
 
 def main():
+	global cfg
 	if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
 		sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
 		sys.exit(1)
