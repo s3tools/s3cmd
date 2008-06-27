@@ -1,3 +1,7 @@
+2008-06-27  Michal Ludvig  <michal@logix.cz>
+
+	* run-tests.sh: Sort-of testsuite
+
 2008-06-23  Michal Ludvig  <michal@logix.cz>
 
 	* Released version 0.9.8
