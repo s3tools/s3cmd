@@ -1,3 +1,10 @@
+2008-06-30  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3.py: Re-upload when Amazon doesn't send ETag
+	  in PUT response. It happens from time to time for
+	  unknown reasons. Thanks "Burtc" for report and
+	  "hermzz" for fix.
+
 2008-06-27  Michal Ludvig  <michal@logix.cz>
 
 	* Released version 0.9.8.1

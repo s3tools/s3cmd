@@ -381,6 +381,11 @@ class S3(object):
 			info("Redirected to: %s" % (redir_hostname))
 			return self.send_file(request, file)
 
+		# S3 from time to time doesn't send ETag back in a response :-(
+		# Force re-upload here.
+		if not response['headers'].has_key('etag'):
+			response['headers']['etag'] = '' 
+
 		debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
 		if response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
 			warning("MD5 Sums don't match!")
