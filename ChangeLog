@@ -1,3 +1,7 @@
+2008-07-03  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Print version info on 'unexpected error' output.
+
 2008-06-30  Michal Ludvig  <michal@logix.cz>
 
 	* S3/S3.py: Re-upload when Amazon doesn't send ETag

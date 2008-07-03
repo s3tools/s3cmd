@@ -1051,6 +1051,9 @@ if __name__ == '__main__':
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 """)
+		sys.stderr.write("S3cmd:  %s\n" % PkgInfo.version)
+		sys.stderr.write("Python: %s\n" % sys.version.replace('\n', ' '))
+		sys.stderr.write("\n")
 		sys.stderr.write(traceback.format_exc(sys.exc_info())+"\n")
 		sys.stderr.write("""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
