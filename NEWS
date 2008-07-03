@@ -1,3 +1,8 @@
+s3cmd 0.9.8.2 -   2008-06-27
+=============
+* Bugfix release. Re-upload file if Amazon doesn't send ETag 
+  back.
+
 s3cmd 0.9.8.1 -   2008-06-27
 =============
 * Bugfix release. Fixed 'mb' and 'rb' commands again.
