@@ -1,3 +1,7 @@
+2008-07-07  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd.1: couple of syntax fixes from Mikhail Gusarov
+
 2008-07-03  Michal Ludvig  <michal@logix.cz>
 
 	* Released version 0.9.8.2

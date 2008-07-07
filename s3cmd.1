@@ -162,8 +162,8 @@ This command will find all files under /local/path directory and copy them
 to corresponding paths under s3://test-bucket/backup on the remote side.
 For example:
 .nf
-/local/path\fB/file1.ext\fR         ->  s3://test-bucket/backup\fB/file1.ext\fR
-/local/path\fB/dir123/file2.bin\fR  ->  s3://test-bucket/backup\fB/dir123/file2.bin\fR
+/local/path\fB/file1.ext\fR         \->  s3://test-bucket/backup\fB/file1.ext\fR
+/local/path\fB/dir123/file2.bin\fR  \->  s3://test-bucket/backup\fB/dir123/file2.bin\fR
 .fi
 
 To retrieve the files back from S3 use inverted syntax:
@@ -172,13 +172,13 @@ To retrieve the files back from S3 use inverted syntax:
 .fi
 that will download files:
 .nf
-s3://test-bucket/backup\fB/file1.ext\fR         ->  /tmp/restore\fB/file1.ext\fR       
-s3://test-bucket/backup\fB/dir123/file2.bin\fR  ->  /tmp/restore\fB/dir123/file2.bin\fR
+s3://test-bucket/backup\fB/file1.ext\fR         \->  /tmp/restore\fB/file1.ext\fR       
+s3://test-bucket/backup\fB/dir123/file2.bin\fR  \->  /tmp/restore\fB/dir123/file2.bin\fR
 .fi
 
 For the purpose of \fB\-\-exclude\fR and \fB\-\-exclude\-from\fR matching the file name 
 \fIalways\fR begins with \fB/\fR (slash) and has the local or remote common part removed.
-For instance in the previous example the file names tested against --exclude list
+For instance in the previous example the file names tested against \-\-exclude list
 will be \fB/\fRfile1.ext and \fB/\fRdir123/file2.bin, that is both with the leading 
 slash regardless whether you specified s3://test-bucket/backup or 
 s3://test-bucket/backup/ (note the trailing slash) on the command line.
