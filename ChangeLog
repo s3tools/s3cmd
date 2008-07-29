@@ -1,3 +1,9 @@
+2008-07-29  Michal Ludvig  <michal@logix.cz>
+
+	* S3/Utils.py (hash_file_md5): Hash files in 32kB chunks
+	  instead of reading it all up to a memory first to avoid
+	  OOM on large files.
+
 2008-07-07  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd.1: couple of syntax fixes from Mikhail Gusarov
