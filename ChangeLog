@@ -1,5 +1,15 @@
 2008-07-29  Michal Ludvig  <michal@logix.cz>
 
+	* Released version 0.9.8.3
+	  ------------------------
+
+2008-07-29  Michal Ludvig  <michal@logix.cz>
+
+	* S3/PkgInfo.py: Bumped up version to 0.9.8.3
+	* NEWS: Added 0.9.8.3
+
+2008-07-29  Michal Ludvig  <michal@logix.cz>
+
 	* S3/Utils.py (hash_file_md5): Hash files in 32kB chunks
 	  instead of reading it all up to a memory first to avoid
 	  OOM on large files.
