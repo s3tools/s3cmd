@@ -1,6 +1,18 @@
 TODO list for s3cmd project
 ===========================
 
+- For 0.9.9
+  - Implement 'cp' and 'mv'
+  - Better upload / download progress display (and remove 
+    excessive useless transfer info from verbose/debug 
+    output)
+  - Warn when encryption is required (conf/arg) for sync
+    and request for explicit --no-encrypt parameter.
+  - Add --include/--include-from/--rinclude* for sync
+
+- After 1.0.0
+  - Speed up upload / download with multiple threads.
+
 - Treat objects with "/" in their name as directories
   - Will need local cache for bucket listings
   - More user friendly 'del' operation that would work
