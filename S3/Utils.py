@@ -139,7 +139,12 @@ def mktmpfile(prefix = "/tmp/tmpfile-", randchars = 20):
 def hash_file_md5(filename):
 	h = md5.new()
 	f = open(filename, "rb")
-	h.update(f.read())
+	while True:
+		# Hash 32kB chunks
+		data = f.read(32*1024)
+		if not data:
+			break
+		h.update(data)
 	f.close()
 	return h.hexdigest()
 
