@@ -14,6 +14,7 @@ import errno
 import pwd, grp
 import glob
 import traceback
+import codecs
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -1036,6 +1037,9 @@ if __name__ == '__main__':
 		from S3.S3Uri import *
 		from S3 import Utils
 		from S3.Exceptions import *
+
+		## Output UTF-8 in all cases, even on output redirects
+		sys.stdout = codecs.getwriter("utf-8")(sys.stdout)
 
 		main()
 		sys.exit(0)

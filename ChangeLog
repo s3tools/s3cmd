@@ -1,3 +1,7 @@
+2008-08-19  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Always output UTF-8, even on output redirects.
+
 2008-08-01  Michal Ludvig  <michal@logix.cz>
 
 	* TODO: Add some items
