@@ -6,9 +6,9 @@ TODO list for s3cmd project
   - Better upload / download progress display (and remove 
     excessive useless transfer info from verbose/debug 
     output)
-  - Warn when encryption is required (conf/arg) for sync
-    and request for explicit --no-encrypt parameter.
   - Add --include/--include-from/--rinclude* for sync
+  - Recursive processing / multiple sources with most commands.
+  - Force removal of non-empty buckets.
 
 - After 1.0.0
   - Speed up upload / download with multiple threads.
