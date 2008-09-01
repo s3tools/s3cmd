@@ -1,5 +1,11 @@
 2008-09-01  Michal Ludvig  <michal@logix.cz>
 
+	* S3/S3.py: removed object_{get,put,delete}_uri() functions
+	  and made object_{get,put,delete}() accept URI instead of 
+	  bucket/object parameters.
+
+2008-09-01  Michal Ludvig  <michal@logix.cz>
+
 	* S3/PkgInfo.py: Bumped up version to 0.9.9-pre1
 
 2008-09-01  Michal Ludvig  <michal@logix.cz>

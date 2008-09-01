@@ -152,7 +152,12 @@ class S3(object):
 		response['bucket-location'] = getTextFromXml(response['data'], "LocationConstraint") or "any"
 		return response
 
-	def object_put(self, filename, bucket, object, extra_headers = None):
+	def object_put(self, filename, uri, extra_headers = None):
+		# TODO TODO
+		# Make it consistent with stream-oriented object_get()
+		if uri.type != "s3":
+			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
+
 		if not os.path.isfile(filename):
 			raise ParameterError("%s is not a regular file" % filename)
 		try:
@@ -173,42 +178,32 @@ class S3(object):
 		headers["content-type"] = content_type
 		if self.config.acl_public:
 			headers["x-amz-acl"] = "public-read"
-		request = self.create_request("OBJECT_PUT", bucket = bucket, object = object, headers = headers)
+		request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
 		response = self.send_file(request, file)
 		return response
 
-	def object_get_uri(self, uri, stream):
+	def object_get(self, uri, stream):
 		if uri.type != "s3":
 			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
-		request = self.create_request("OBJECT_GET", bucket = uri.bucket(), object = uri.object())
+		request = self.create_request("OBJECT_GET", uri = uri)
 		response = self.recv_file(request, stream)
 		return response
 
-	def object_delete(self, bucket, object):
-		request = self.create_request("OBJECT_DELETE", bucket = bucket, object = object)
+	def object_delete(self, uri):
+		if uri.type != "s3":
+			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
+		request = self.create_request("OBJECT_DELETE", uri = uri)
 		response = self.send_request(request)
 		return response
 
-	def object_put_uri(self, filename, uri, extra_headers = None):
-		# TODO TODO
-		# Make it consistent with stream-oriented object_get_uri()
-		if uri.type != "s3":
-			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
-		return self.object_put(filename, uri.bucket(), uri.object(), extra_headers)
-
-	def object_delete_uri(self, uri):
-		if uri.type != "s3":
-			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
-		return self.object_delete(uri.bucket(), uri.object())
-
 	def object_info(self, uri):
-		request = self.create_request("OBJECT_HEAD", bucket = uri.bucket(), object = uri.object())
+		request = self.create_request("OBJECT_HEAD", uri = uri)
 		response = self.send_request(request)
 		return response
 
 	def get_acl(self, uri):
 		if uri.has_object():
-			request = self.create_request("OBJECT_GET", bucket = uri.bucket(), object = uri.object(), extra = "?acl")
+			request = self.create_request("OBJECT_GET", uri = uri, extra = "?acl")
 		else:
 			request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?acl")
 		acl = {}
@@ -263,8 +258,16 @@ class S3(object):
 		debug("String '%s' encoded to '%s'" % (string, encoded))
 		return encoded
 
-	def create_request(self, operation, bucket = None, object = None, headers = None, extra = None, **params):
+	def create_request(self, operation, uri = None, bucket = None, object = None, headers = None, extra = None, **params):
 		resource = { 'bucket' : None, 'uri' : "/" }
+
+		if uri and (bucket or object):
+			raise ValueError("Both 'uri' and either 'bucket' or 'object' parameters supplied")
+		## If URI is given use that instead of bucket/object parameters
+		if uri:
+			bucket = uri.bucket()
+			object = uri.has_object() and uri.object() or None
+
 		if bucket:
 			resource['bucket'] = str(bucket)
 			if object:

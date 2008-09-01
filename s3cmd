@@ -186,7 +186,7 @@ def cmd_object_put(args):
 		if Config().encrypt:
 			exitcode, real_filename, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(file)
 		try:
-			response = s3.object_put_uri(real_filename, uri_final, extra_headers)
+			response = s3.object_put(real_filename, uri_final, extra_headers)
 		except S3UploadError, e:
 			error("Upload of '%s' failed too many times. Skipping that file." % real_filename)
 			continue
@@ -250,7 +250,7 @@ def cmd_object_get(args):
 			except IOError, e:
 				error("Skipping %s: %s" % (destination, e.strerror))
 				continue
-		response = s3.object_get_uri(uri, dst_stream)
+		response = s3.object_get(uri, dst_stream)
 		if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
 			gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
 			response["size"] = os.stat(destination)[6]
@@ -268,7 +268,7 @@ def cmd_object_del(args):
 		if uri.type != "s3" or not uri.has_object():
 			raise ParameterError("Expecting S3 URI instead of '%s'" % uri_arg)
 
-		response = s3.object_delete_uri(uri)
+		response = s3.object_delete(uri)
 		output("Object %s deleted" % uri)
 
 def cmd_info(args):
@@ -479,7 +479,7 @@ def cmd_sync_remote2local(src, dst):
 				os.open(dst_file, open_flags)
 				# Yeah I know there is a race condition here. Sadly I don't know how to open() in exclusive mode.
 				dst_stream = open(dst_file, "wb")
-				response = s3.object_get_uri(uri, dst_stream)
+				response = s3.object_get(uri, dst_stream)
 				dst_stream.close()
 				if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
 					attrs = _parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
@@ -575,7 +575,7 @@ def cmd_sync_local2remote(src, dst):
 	for file in rem_list:
 		uri = S3Uri("s3://" + dst_uri.bucket()+"/"+rem_list[file]['object_key'])
 		if cfg.delete_removed:
-			response = s3.object_delete_uri(uri)
+			response = s3.object_delete(uri)
 			output("deleted '%s'" % uri)
 		else:
 			output("not-deleted '%s'" % uri)
@@ -597,7 +597,7 @@ def cmd_sync_local2remote(src, dst):
 			attr_header = _build_attr_header(src)
 			debug(attr_header)
 		try:
-			response = s3.object_put_uri(src, uri, attr_header)
+			response = s3.object_put(src, uri, attr_header)
 		except S3UploadError, e:
 			error("%s: upload failed too many times. Skipping that file." % src)
 			continue
