@@ -1,3 +1,8 @@
+s3cmd 0.9.9   -   ???
+===========
+* Allow access to upper-case named buckets with 
+  --use-old-connect-method parameter
+
 s3cmd 0.9.8.3 -   2008-07-29
 =============
 * Bugfix release. Avoid running out-of-memory in MD5'ing

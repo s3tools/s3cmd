@@ -71,7 +71,7 @@ class S3(object):
 				return httplib.HTTPConnection(self.get_hostname(bucket))
 
 	def get_hostname(self, bucket):
-		if bucket:
+		if bucket and not Config().use_old_connect_method:
 			if self.redir_map.has_key(bucket):
 				host = self.redir_map[bucket]
 			else:
@@ -85,10 +85,12 @@ class S3(object):
 		self.redir_map[bucket] = redir_hostname
 
 	def format_uri(self, resource):
-		if self.config.proxy_host != "":
-			uri = "http://%s%s" % (self.get_hostname(resource['bucket']), resource['uri'])
+		if resource['bucket'] and Config().use_old_connect_method:
+			uri = "/%s%s" % (resource['bucket'], resource['uri'])
 		else:
 			uri = resource['uri']
+		if self.config.proxy_host != "":
+			uri = "http://%s%s" % (self.get_hostname(resource['bucket']), uri)
 		debug('format_uri(): ' + uri)
 		return uri
 

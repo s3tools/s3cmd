@@ -1,3 +1,10 @@
+2008-09-01  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd, S3/S3.py, S3/Config.py: Allow access to upper-case
+	  named buckets again with --use-old-connect-method 
+	  (uses http://s3.amazonaws.com/bucket/object instead of
+	  http://bucket.s3.amazonaws.com/object)
+
 2008-08-19  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Always output UTF-8, even on output redirects.

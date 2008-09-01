@@ -898,6 +898,7 @@ def main():
 	optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form.")
 
 	optparser.add_option("-v", "--verbose", dest="verbosity", action="store_const", const=logging.INFO, help="Enable verbose output.")
+	optparser.add_option(      "--use-old-connect-method", dest="use_old_connect_method", action="store_true", help="Use deprecated method for connection to S3. Allows for upper-case bucket names but doesn't allow for buckets in Europe")
 	optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output.")
 	optparser.add_option(      "--version", dest="show_version", action="store_true", help="Show s3cmd version (%s) and exit." % (PkgInfo.version))
 
