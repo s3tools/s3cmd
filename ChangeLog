@@ -1,5 +1,9 @@
 2008-09-01  Michal Ludvig  <michal@logix.cz>
 
+	* S3/PkgInfo.py: Bumped up version to 0.9.9-pre1
+
+2008-09-01  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd, S3/S3.py, S3/Config.py: Allow access to upper-case
 	  named buckets again with --use-old-connect-method 
 	  (uses http://s3.amazonaws.com/bucket/object instead of
