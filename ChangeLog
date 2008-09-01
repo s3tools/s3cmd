@@ -1,5 +1,6 @@
 2008-09-01  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Refuse 'sync' together with '--encrypt'.
 	* S3/S3.py: removed object_{get,put,delete}_uri() functions
 	  and made object_{get,put,delete}() accept URI instead of 
 	  bucket/object parameters.

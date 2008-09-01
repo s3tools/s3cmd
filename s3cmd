@@ -555,7 +555,14 @@ def cmd_sync_local2remote(src, dst):
 		for k in attrs: result += "%s:%s/" % (k, attrs[k])
 		return { 'x-amz-meta-s3cmd-attrs' : result[:-1] }
 
-	s3 = S3(Config())
+	s3 = S3(cfg)
+
+	if cfg.encrypt:
+		error("S3cmd 'sync' doesn't support GPG encryption, sorry.")
+		error("Either use unconditional 's3cmd put --recursive'")
+		error("or disable encryption with --no-encryption parameter.")
+		sys.exit(1)
+
 
 	src_uri = S3Uri(src)
 	dst_uri = S3Uri(dst)
