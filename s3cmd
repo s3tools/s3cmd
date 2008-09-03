@@ -125,34 +125,43 @@ def subcmd_bucket_list(s3, uri):
 			))
 
 def cmd_bucket_create(args):
-	uri = S3Uri(args[0])
-	if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
-		raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % args[0])
-	try:
-		s3 = S3(Config())
-		response = s3.bucket_create(uri.bucket(), cfg.bucket_location)
-	except S3Error, e:
-		if S3.codes.has_key(e.info["Code"]):
-			error(S3.codes[e.info["Code"]] % uri.bucket())
-			return
-		else:
-			raise
-	output("Bucket '%s' created" % uri.bucket())
+	s3 = S3(Config())
+	for arg in args:
+		uri = S3Uri(arg)
+		if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
+			raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % arg)
+		try:
+			response = s3.bucket_create(uri.bucket(), cfg.bucket_location)
+			output("Bucket '%s' created" % uri.uri())
+		except S3Error, e:
+			if S3.codes.has_key(e.info["Code"]):
+				error(S3.codes[e.info["Code"]] % uri.bucket())
+				return
+			else:
+				raise
 
 def cmd_bucket_delete(args):
-	uri = S3Uri(args[0])
-	if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
-		raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % args[0])
-	try:
-		s3 = S3(Config())
-		response = s3.bucket_delete(uri.bucket())
-	except S3Error, e:
-		if S3.codes.has_key(e.info["Code"]):
-			error(S3.codes[e.info["Code"]] % uri.bucket())
-			return
-		else:
-			raise
-	output("Bucket '%s' removed" % uri.bucket())
+	def _bucket_delete_one(uri):
+		try:
+			response = s3.bucket_delete(uri.bucket())
+		except S3Error, e:
+			if e.info['Code'] == 'BucketNotEmpty' and (cfg.force or cfg.recursive):
+				warning("Bucket is not empty. Removing all the objects from it first. This may take some time...")
+				subcmd_object_del_uri(uri, recursive = True)
+				return _bucket_delete_one(uri)
+			elif S3.codes.has_key(e.info["Code"]):
+				error(S3.codes[e.info["Code"]] % uri.bucket())
+				return
+			else:
+				raise
+		
+	s3 = S3(Config())
+	for arg in args:
+		uri = S3Uri(arg)
+		if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
+			raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % arg)
+		_bucket_delete_one(uri)
+		output("Bucket '%s' removed" % uri.uri())
 
 def cmd_object_put(args):
 	s3 = S3(Config())
@@ -260,16 +269,31 @@ def cmd_object_get(args):
 				(uri, destination, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1]))
 
 def cmd_object_del(args):
-	s3 = S3(Config())
-
 	while (len(args)):
 		uri_arg = args.pop(0)
 		uri = S3Uri(uri_arg)
 		if uri.type != "s3" or not uri.has_object():
 			raise ParameterError("Expecting S3 URI instead of '%s'" % uri_arg)
 
-		response = s3.object_delete(uri)
-		output("Object %s deleted" % uri)
+		subcmd_object_del_uri(uri)
+
+def subcmd_object_del_uri(uri, recursive = None):
+	s3 = S3(Config())
+	if recursive is None:
+		recursive = cfg.recursive
+	uri_list = []
+	if recursive:
+		filelist = _get_filelist_remote(uri)
+		uri_base = 's3://' + uri.bucket() + "/"
+		for idx in filelist:
+			object = filelist[idx]
+			debug("Adding URI " + uri_base + object['object_key'])
+			uri_list.append(S3Uri(uri_base + object['object_key']))
+	else:
+		uri_list.append(uri)
+	for _uri in uri_list:
+		response = s3.object_delete(_uri)
+		info("Object %s deleted" % _uri)
 
 def cmd_info(args):
 	s3 = S3(Config())
@@ -885,6 +909,7 @@ def main():
 	optparser.add_option("-e", "--encrypt", dest="encrypt", action="store_true", help="Encrypt files before uploading to S3.")
 	optparser.add_option(      "--no-encrypt", dest="encrypt", action="store_false", help="Don't encrypt files.")
 	optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations.")
+	optparser.add_option("-r", "--recursive", dest="recursive", action="store_true", help="Recursive upload, download or removal.")
 	optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read for anyone.")
 	optparser.add_option(      "--acl-private", dest="acl_public", action="store_false", help="Store objects with default ACL allowing access for you only.")
 	optparser.add_option(      "--delete-removed", dest="delete_removed", action="store_true", help="Delete remote objects with no corresponding local file [sync]")

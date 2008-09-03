@@ -1,5 +1,13 @@
 2008-09-01  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd, S3/Config.py: [rb] Allow removal of non-empty buckets
+	  with --force.
+	  [mb, rb] Allow multiple arguments, i.e. create or remove
+	  multiple buckets at once.
+	  [del] Perform recursive removal with --recursive (or -r).
+
+2008-09-01  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd: Refuse 'sync' together with '--encrypt'.
 	* S3/S3.py: removed object_{get,put,delete}_uri() functions
 	  and made object_{get,put,delete}() accept URI instead of 
