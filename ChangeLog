@@ -1,5 +1,10 @@
 2008-09-03  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd, S3/S3.py, S3/Config.py: Removed --use-old-connect-method
+	  again. Autodetect the need for old connect method instead.
+
+2008-09-03  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd, S3/S3.py: Make --verbose mode more useful and default 
 	  mode less verbose.
 
