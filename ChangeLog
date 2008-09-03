@@ -1,4 +1,9 @@
-2008-09-01  Michal Ludvig  <michal@logix.cz>
+2008-09-03  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd, S3/S3.py: Make --verbose mode more useful and default 
+	  mode less verbose.
+
+2008-09-03  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd, S3/Config.py: [rb] Allow removal of non-empty buckets
 	  with --force.

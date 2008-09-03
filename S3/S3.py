@@ -116,7 +116,7 @@ class S3(object):
 		list = _get_contents(response["data"])
 		while _list_truncated(response["data"]):
 			marker = list[-1]["Key"]
-			info("Listing continues after '%s'" % marker)
+			debug("Listing continues after '%s'" % marker)
 			request = self.create_request("BUCKET_LIST", bucket = bucket,
 			                              prefix = prefix, 
 			                              marker = self.urlencode_string(marker))
@@ -302,7 +302,7 @@ class S3(object):
 	
 	def send_request(self, request, body = None):
 		method_string, resource, headers = request
-		info("Processing request, please wait...")
+		debug("Processing request, please wait...")
  		conn = self.get_connection(resource['bucket'])
  		conn.request(method_string, self.format_uri(resource), body, headers)
 		response = {}
@@ -319,7 +319,7 @@ class S3(object):
 			redir_bucket = getTextFromXml(response['data'], ".//Bucket")
 			redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
 			self.set_hostname(redir_bucket, redir_hostname)
-			info("Redirected to: %s" % (redir_hostname))
+			warning("Redirected to: %s" % (redir_hostname))
 			return self.send_request(request, body)
 
 		if response["status"] < 200 or response["status"] > 299:
@@ -361,7 +361,8 @@ class S3(object):
 			size_left -= len(data)
 			if throttle:
 				time.sleep(throttle)
-			info("Sent %d bytes (%d %% of %d)" % (
+			## Call progress meter from here
+			debug("Sent %d bytes (%d %% of %d)" % (
 				(size_total - size_left),
 				(size_total - size_left) * 100 / size_total,
 				size_total))
@@ -383,7 +384,7 @@ class S3(object):
 			redir_bucket = getTextFromXml(response['data'], ".//Bucket")
 			redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
 			self.set_hostname(redir_bucket, redir_hostname)
-			info("Redirected to: %s" % (redir_hostname))
+			warning("Redirected to: %s" % (redir_hostname))
 			return self.send_file(request, file)
 
 		# S3 from time to time doesn't send ETag back in a response :-(
@@ -395,10 +396,10 @@ class S3(object):
 		if response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
 			warning("MD5 Sums don't match!")
 			if retries:
-				info("Retrying upload.")
+				warning("Retrying upload of %s" % (file.name))
 				return self.send_file(request, file, throttle, retries - 1)
 			else:
-				debug("Too many failures. Giving up on '%s'" % (file.name))
+				warning("Too many failures. Giving up on '%s'" % (file.name))
 				raise S3UploadError
 
 		if response["status"] < 200 or response["status"] > 299:
@@ -426,7 +427,7 @@ class S3(object):
 			redir_bucket = getTextFromXml(response['data'], ".//Bucket")
 			redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
 			self.set_hostname(redir_bucket, redir_hostname)
-			info("Redirected to: %s" % (redir_hostname))
+			warning("Redirected to: %s" % (redir_hostname))
 			return self.recv_file(request, stream)
 
 		if response["status"] < 200 or response["status"] > 299:
@@ -444,7 +445,8 @@ class S3(object):
 			stream.write(data)
 			md5_hash.update(data)
 			size_recvd += len(data)
-			info("Received %d bytes (%d %% of %d)" % (
+			## Call progress meter from here...
+			debug("Received %d bytes (%d %% of %d)" % (
 				size_recvd,
 				size_recvd * 100 / size_total,
 				size_total))

@@ -293,7 +293,7 @@ def subcmd_object_del_uri(uri, recursive = None):
 		uri_list.append(uri)
 	for _uri in uri_list:
 		response = s3.object_delete(_uri)
-		info("Object %s deleted" % _uri)
+		output("Object %s deleted" % _uri)
 
 def cmd_info(args):
 	s3 = S3(Config())
@@ -327,7 +327,7 @@ def cmd_info(args):
 				raise
 
 def _get_filelist_local(local_uri):
-	output("Compiling list of local files...")
+	info("Compiling list of local files...")
 	local_path = local_uri.path()
 	if os.path.isdir(local_path):
 		loc_base = os.path.join(local_path, "")
@@ -358,7 +358,7 @@ def _get_filelist_local(local_uri):
 	return loc_list
 
 def _get_filelist_remote(remote_uri):
-	output("Retrieving list of remote files...")
+	info("Retrieving list of remote files...")
 
 	s3 = S3(Config())
 	response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object())
@@ -377,7 +377,7 @@ def _get_filelist_remote(remote_uri):
 	return rem_list
 	
 def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
-	output("Verifying checksums...")
+	info("Verifying checksums...")
 	cfg = Config()
 	exists_list = {}
 	exclude_list = {}
@@ -456,11 +456,11 @@ def cmd_sync_remote2local(src, dst):
 	loc_list = _get_filelist_local(dst_uri)
 	loc_count = len(loc_list)
 	
-	output("Found %d remote files, %d local files" % (rem_count, loc_count))
+	info("Found %d remote files, %d local files" % (rem_count, loc_count))
 
 	_compare_filelists(rem_list, loc_list, False)
 
-	output("Summary: %d remote files to download, %d local files to delete" % (len(rem_list), len(loc_list)))
+	info("Summary: %d remote files to download, %d local files to delete" % (len(rem_list), len(loc_list)))
 
 	for file in loc_list:
 		if cfg.delete_removed:
@@ -550,8 +550,14 @@ def cmd_sync_remote2local(src, dst):
 
 	total_elapsed = time.time() - timestamp_start
 	speed_fmt = formatSize(total_size/total_elapsed, human_readable = True, floating_point = True)
-	output("Done. Downloaded %d bytes in %0.1f seconds, %0.2f %sB/s" % 
-	       (total_size, total_elapsed, speed_fmt[0], speed_fmt[1]))
+
+	# Only print out the result if any work has been done or 
+	# if the user asked for verbose output
+	outstr = "Done. Downloaded %d bytes in %0.1f seconds, %0.2f %sB/s" % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1])
+	if total_size > 0:
+		output(outstr)
+	else:
+		info(outstr)
 
 def cmd_sync_local2remote(src, dst):
 	def _build_attr_header(src):
@@ -584,7 +590,7 @@ def cmd_sync_local2remote(src, dst):
 	if cfg.encrypt:
 		error("S3cmd 'sync' doesn't support GPG encryption, sorry.")
 		error("Either use unconditional 's3cmd put --recursive'")
-		error("or disable encryption with --no-encryption parameter.")
+		error("or disable encryption with --no-encrypt parameter.")
 		sys.exit(1)
 
 
@@ -597,11 +603,11 @@ def cmd_sync_local2remote(src, dst):
 	rem_list = _get_filelist_remote(dst_uri)
 	rem_count = len(rem_list)
 
-	output("Found %d local files, %d remote files" % (loc_count, rem_count))
+	info("Found %d local files, %d remote files" % (loc_count, rem_count))
 
 	_compare_filelists(loc_list, rem_list, True)
 
-	output("Summary: %d local files to upload, %d remote files to delete" % (len(loc_list), len(rem_list)))
+	info("Summary: %d local files to upload, %d remote files to delete" % (len(loc_list), len(rem_list)))
 
 	for file in rem_list:
 		uri = S3Uri("s3://" + dst_uri.bucket()+"/"+rem_list[file]['object_key'])
@@ -640,8 +646,14 @@ def cmd_sync_local2remote(src, dst):
 
 	total_elapsed = time.time() - timestamp_start
 	speed_fmt = formatSize(total_size/total_elapsed, human_readable = True, floating_point = True)
-	output("Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s" % 
-	       (total_size, total_elapsed, speed_fmt[0], speed_fmt[1]))
+
+	# Only print out the result if any work has been done or 
+	# if the user asked for verbose output
+	outstr = "Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s" % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1])
+	if total_size > 0:
+		output(outstr)
+	else:
+		info(outstr)
 
 def cmd_sync(args):
 	src = args.pop(0)
