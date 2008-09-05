@@ -21,8 +21,12 @@ from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatt
 from logging import debug, info, warning, error
 from distutils.spawn import find_executable
 
+## Output UTF-8 in all cases, even on output redirects
+_unicode_stdout = codecs.getwriter("utf-8")(sys.stdout)
+_unicode_stderr = codecs.getwriter("utf-8")(sys.stderr)
+
 def output(message):
-	print message
+	_unicode_stdout.write(message + "\n")
 
 def check_args_type(args, type, verbose_type):
 	for arg in args:
@@ -105,7 +109,7 @@ def subcmd_bucket_list(s3, uri):
 	bucket = uri.bucket()
 	object = uri.object()
 
-	output("Bucket '%s':" % bucket)
+	output("Bucket 's3://%s':" % bucket)
 	if object.endswith('*'):
 		object = object[:-1]
 	try:
@@ -957,7 +961,9 @@ def main():
 
 	## Some mucking with logging levels to enable 
 	## debugging/verbose output for config file parser on request
-	logging.basicConfig(level=options.verbosity, format='%(levelname)s: %(message)s')
+	logging.basicConfig(level=options.verbosity,
+	                    format='%(levelname)s: %(message)s',
+	                    stream = _unicode_stderr)
 	
 	if options.show_version:
 		output("s3cmd version %s" % PkgInfo.version)
@@ -1081,9 +1087,6 @@ if __name__ == '__main__':
 		from S3.S3Uri import *
 		from S3 import Utils
 		from S3.Exceptions import *
-
-		## Output UTF-8 in all cases, even on output redirects
-		sys.stdout = codecs.getwriter("utf-8")(sys.stdout)
 
 		main()
 		sys.exit(0)
