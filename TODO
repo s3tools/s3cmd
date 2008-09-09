@@ -7,6 +7,7 @@ TODO list for s3cmd project
   - Add --include/--include-from/--rinclude* for sync
   - Recursive processing / multiple sources with most commands.
   - Document --recursive and --force for buckets
+  - Allow change /tmp to somewhere else
 
 - After 1.0.0
   - Speed up upload / download with multiple threads.
