@@ -6,6 +6,7 @@
 import re
 import sys
 from BidirMap import BidirMap
+from logging import debug
 
 class S3Uri(object):
 	type = None
@@ -32,10 +33,25 @@ class S3Uri(object):
 	
 	def __str__(self):
 		return self.uri()
-	
+
+	def __unicode__(self):
+		return self.uri()
+
 	def public_url(self):
 		raise ValueError("This S3 URI does not have Anonymous URL representation")
-	
+
+	def _unicodise(self, string):
+		"""
+		Convert 'string' to Unicode or raise an exception.
+		"""
+		debug("Unicodising %r" % string)
+		if type(string) == unicode:
+			return string
+		try:
+			return string.decode("utf-8")
+		except UnicodeDecodeError:
+			raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
+
 class S3UriS3(S3Uri):
 	type = "s3"
 	_re = re.compile("^s3://([^/]+)/?(.*)", re.IGNORECASE)
@@ -45,7 +61,7 @@ class S3UriS3(S3Uri):
 			raise ValueError("%s: not a S3 URI" % string)
 		groups = match.groups()
 		self._bucket = groups[0]
-		self._object = groups[1]
+		self._object = self._unicodise(groups[1])
 
 	def bucket(self):
 		return self._bucket
@@ -78,7 +94,7 @@ class S3UriS3FS(S3Uri):
 			raise ValueError("%s: not a S3fs URI" % string)
 		groups = match.groups()
 		self._fsname = groups[0]
-		self._path = groups[1].split("/")
+		self._path = self._unicodise(groups[1]).split("/")
 
 	def fsname(self):
 		return self._fsname
@@ -97,7 +113,7 @@ class S3UriFile(S3Uri):
 		groups = match.groups()
 		if groups[0] not in (None, "file://"):
 			raise ValueError("%s: not a file:// URI" % string)
-		self._path = groups[1].split("/")
+		self._path = self._unicodise(groups[1]).split("/")
 
 	def path(self):
 		return "/".join(self._path)

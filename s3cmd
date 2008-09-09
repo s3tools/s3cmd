@@ -371,12 +371,12 @@ def _get_filelist_remote(remote_uri):
 	rem_base_len = len(rem_base)
 	rem_list = {}
 	for object in response['list']:
-		key = object['Key'][rem_base_len:].encode('utf-8')
+		key = object['Key'][rem_base_len:]
 		rem_list[key] = { 
 			'size' : int(object['Size']),
 			# 'mtime' : dateS3toUnix(object['LastModified']), ## That's upload time, not our lastmod time :-(
 			'md5' : object['ETag'][1:-1],
-			'object_key' : object['Key'].encode('utf-8'),
+			'object_key' : object['Key']
 		}
 	return rem_list
 	
