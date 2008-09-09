@@ -25,18 +25,13 @@ rm -f s3cmd-${VER}/file.to.remove
 ./s3cmd sync --delete s3cmd-${VER} s3://s3cmd-autotest/sync-test
 rm -f s3cmd-${VER}/S3/PkgInfo.py
 rm -f s3cmd-${VER}/s3cmd
-./s3cmd sync --delete --exclude "/s3cmd-${VER}/S3/*" s3://s3cmd-autotest/sync-test s3cmd-${VER}
+./s3cmd sync --delete --exclude "/s3cmd-${VER}/S3/S3*" s3://s3cmd-autotest/sync-test s3cmd-${VER}
 rm -rf s3cmd-${VER}
 
 ./s3cmd rb s3://s3cmd-autotest/ || true
 # ERROR: S3 error: 409 (Conflict): BucketNotEmpty
 
-# hack to remove all objects from a bucket
-mkdir empty
-./s3cmd sync --delete empty/ s3://s3cmd-autotest
-rm -rf empty
-
-./s3cmd rb s3://s3cmd-autotest/
+./s3cmd rb --force s3://s3cmd-autotest/
 
 set +x
 

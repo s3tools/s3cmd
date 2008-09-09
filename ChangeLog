@@ -1,5 +1,9 @@
 2008-09-10  Michal Ludvig  <michal@logix.cz>
 
+	* testsuite, run-tests.py: Added testsuite with first few tests.
+
+2008-09-10  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd, S3/S3Uri.py, S3/S3.py: All internal representations of
 	  S3Uri()s are Unicode (i.e. not UTF-8 but type()==unicode). It 
 	  still doesn't work on non-UTF8 systems though.
