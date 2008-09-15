@@ -6,6 +6,14 @@ s3cmd 0.9.9   -   ???
 * Recursively remove objects from buckets with a given
   prefix with --recursive (-r)
 
+s3cmd 0.9.8.4 -   2008-09-16
+=============
+* Bugfix release:
+* Restored access to upper-case named buckets.
+* Improved handling of filenames with Unicode characters.
+* Avoid ZeroDivisionError on ultrafast links (for instance
+  on Amazon EC2)
+
 s3cmd 0.9.8.3 -   2008-07-29
 =============
 * Bugfix release. Avoid running out-of-memory in MD5'ing
