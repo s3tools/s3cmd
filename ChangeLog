@@ -1,3 +1,9 @@
+2008-09-15  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3.py: "s3cmd mb" can create upper-case buckets again
+	  in US. Non-US (e.g. EU) bucket names must conform strict
+	  DNS-rules.
+
 2008-09-10  Michal Ludvig  <michal@logix.cz>
 
 	* testsuite, run-tests.py: Added testsuite with first few tests.

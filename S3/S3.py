@@ -126,7 +126,6 @@ class S3(object):
 		return response
 
 	def bucket_create(self, bucket, bucket_location = None):
-		self.check_bucket_name(bucket)
 		headers = SortedDict()
 		body = ""
 		if bucket_location and bucket_location.strip().upper() != "US":
@@ -134,6 +133,9 @@ class S3(object):
 			body += bucket_location.strip().upper()
 			body += "</LocationConstraint></CreateBucketConfiguration>"
 			debug("bucket_location: " + body)
+			self.check_bucket_name(bucket, dns_strict = True)
+		else:
+			self.check_bucket_name(bucket, dns_strict = False)
 		headers["content-length"] = len(body)
 		if self.config.acl_public:
 			headers["x-amz-acl"] = "public-read"
