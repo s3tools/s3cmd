@@ -380,7 +380,7 @@ class S3(object):
 		response["data"] = http_response.read()
 		response["elapsed"] = timestamp_end - timestamp_start
 		response["size"] = size_total
-		response["speed"] = float(response["size"]) / response["elapsed"]
+		response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
 		conn.close()
 
 		if response["status"] == 307:
@@ -460,7 +460,7 @@ class S3(object):
 		response["md5match"] = response["headers"]["etag"].find(response["md5"]) >= 0
 		response["elapsed"] = timestamp_end - timestamp_start
 		response["size"] = size_recvd
-		response["speed"] = float(response["size"]) / response["elapsed"]
+		response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
 		if response["size"] != long(response["headers"]["content-length"]):
 			warning("Reported size (%s) does not match received size (%s)" % (
 				response["headers"]["content-length"], response["size"]))
