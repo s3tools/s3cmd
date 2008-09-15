@@ -7,6 +7,7 @@ import re
 import sys
 from BidirMap import BidirMap
 from logging import debug
+from S3 import S3
 
 class S3Uri(object):
 	type = None
@@ -79,12 +80,15 @@ class S3UriS3(S3Uri):
 		return "/".join(["s3:/", self._bucket, self._object])
 	
 	def public_url(self):
-		return "http://%s.s3.amazonaws.com/%s" % (self._bucket, self._object)
+		if S3.check_bucket_name_dns_conformity(self._bucket):
+			return "http://%s.s3.amazonaws.com/%s" % (self._bucket, self._object)
+		else:
+			return "http://s3.amazonaws.com/%s/%s" % (self._bucket, self._object)
 
 	@staticmethod
 	def compose_uri(bucket, object = ""):
 		return "s3://%s/%s" % (bucket, object)
-	
+
 class S3UriS3FS(S3Uri):
 	type = "s3fs"
 	_re = re.compile("^s3fs://([^/]*)/?(.*)", re.IGNORECASE)

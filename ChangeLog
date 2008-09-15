@@ -1,5 +1,19 @@
 2008-09-15  Michal Ludvig  <michal@logix.cz>
 
+	* Merge from trunk, revisions 218, 226, 233, 234:
+	* s3cmd, S3/S3.py, S3/Config.py: Allow access to upper-case
+	  named buckets again with --use-old-connect-method 
+	  (uses http://s3.amazonaws.com/bucket/object instead of
+	  http://bucket.s3.amazonaws.com/object)
+	* s3cmd, S3/S3.py, S3/Config.py: Removed --use-old-connect-method
+	  again. Autodetect the need for old connect method instead.
+	* S3/S3.py: "s3cmd mb" can create upper-case buckets again
+	  in US. Non-US (e.g. EU) bucket names must conform to strict
+	  DNS-rules.
+	* S3/S3Uri.py: Display public URLs correctly for non-DNS buckets.
+
+2008-09-15  Michal Ludvig  <michal@logix.cz>
+
 	* Merge from trunk, revisions 227, 230:
 
 	* r227: s3cmd: Rework UTF-8 output to keep sys.stdout untouched 

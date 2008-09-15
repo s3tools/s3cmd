@@ -71,7 +71,7 @@ class S3(object):
 				return httplib.HTTPConnection(self.get_hostname(bucket))
 
 	def get_hostname(self, bucket):
-		if bucket:
+		if bucket and self.check_bucket_name_dns_conformity(bucket):
 			if self.redir_map.has_key(bucket):
 				host = self.redir_map[bucket]
 			else:
@@ -85,10 +85,12 @@ class S3(object):
 		self.redir_map[bucket] = redir_hostname
 
 	def format_uri(self, resource):
-		if self.config.proxy_host != "":
-			uri = "http://%s%s" % (self.get_hostname(resource['bucket']), resource['uri'])
+		if resource['bucket'] and not self.check_bucket_name_dns_conformity(resource['bucket']):
+			uri = "/%s%s" % (resource['bucket'], resource['uri'])
 		else:
 			uri = resource['uri']
+		if self.config.proxy_host != "":
+			uri = "http://%s%s" % (self.get_hostname(resource['bucket']), uri)
 		debug('format_uri(): ' + uri)
 		return uri
 
@@ -124,7 +126,6 @@ class S3(object):
 		return response
 
 	def bucket_create(self, bucket, bucket_location = None):
-		self.check_bucket_name(bucket)
 		headers = SortedDict()
 		body = ""
 		if bucket_location and bucket_location.strip().upper() != "US":
@@ -132,6 +133,9 @@ class S3(object):
 			body += bucket_location.strip().upper()
 			body += "</LocationConstraint></CreateBucketConfiguration>"
 			debug("bucket_location: " + body)
+			self.check_bucket_name(bucket, dns_strict = True)
+		else:
+			self.check_bucket_name(bucket, dns_strict = False)
 		headers["content-length"] = len(body)
 		if self.config.acl_public:
 			headers["x-amz-acl"] = "public-read"
@@ -475,13 +479,37 @@ class S3(object):
 		debug("SignHeaders: " + repr(h))
 		return base64.encodestring(hmac.new(self.config.secret_key, h, sha).digest()).strip()
 
-	def check_bucket_name(self, bucket):
-		invalid = re.compile("([^a-z0-9\._-])").search(bucket)
-		if invalid:
-			raise ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: lowercase us-ascii letters (a-z), digits (0-9), dot (.), hyphen (-) and underscore (_)." % (bucket, invalid.groups()[0]))
+	@staticmethod
+	def check_bucket_name(bucket, dns_strict = True):
+		if dns_strict:
+			invalid = re.search("([^a-z0-9\.-])", bucket)
+			if invalid:
+				raise ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: lowercase us-ascii letters (a-z), digits (0-9), dot (.) and hyphen (-)." % (bucket, invalid.groups()[0]))
+		else:
+			invalid = re.search("([^A-Za-z0-9\._-])", bucket)
+			if invalid:
+				raise ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: us-ascii letters (a-z, A-Z), digits (0-9), dot (.), hyphen (-) and underscore (_)." % (bucket, invalid.groups()[0]))
+
 		if len(bucket) < 3:
 			raise ParameterError("Bucket name '%s' is too short (min 3 characters)" % bucket)
 		if len(bucket) > 255:
 			raise ParameterError("Bucket name '%s' is too long (max 255 characters)" % bucket)
+		if dns_strict:
+			if len(bucket) > 63:
+				raise ParameterError("Bucket name '%s' is too long (max 63 characters)" % bucket)
+			if re.search("-\.", bucket):
+				raise ParameterError("Bucket name '%s' must not contain sequence '-.' for DNS compatibility" % bucket)
+			if re.search("\.\.", bucket):
+				raise ParameterError("Bucket name '%s' must not contain sequence '..' for DNS compatibility" % bucket)
+			if not re.search("^[0-9a-z]", bucket):
+				raise ParameterError("Bucket name '%s' must start with a letter or a digit" % bucket)
+			if not re.search("[0-9a-z]$", bucket):
+				raise ParameterError("Bucket name '%s' must end with a letter or a digit" % bucket)
 		return True
 
+	@staticmethod
+	def check_bucket_name_dns_conformity(bucket):
+		try:
+			return S3.check_bucket_name(bucket, dns_strict = True)
+		except ParameterError:
+			return False
