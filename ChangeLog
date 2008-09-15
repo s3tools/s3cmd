@@ -1,5 +1,10 @@
 2008-09-15  Michal Ludvig  <michal@logix.cz>
 
+	* Merge from trunk, revision 221:
+	* s3cmd: Refuse 'sync' together with '--encrypt'.
+
+2008-09-15  Michal Ludvig  <michal@logix.cz>
+
 	* Merge from trunk, revisions 218, 226, 233, 234:
 	* s3cmd, S3/S3.py, S3/Config.py: Allow access to upper-case
 	  named buckets again with --use-old-connect-method 
