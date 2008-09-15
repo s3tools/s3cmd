@@ -1,3 +1,9 @@
+2008-09-16  Michal Ludvig  <michal@logix.cz>
+
+	* Merge from trunk, revision 240:
+	* S3/S3.py: Don't run into ZeroDivisionError when speed counter
+	  returns 0s elapsed on upload/download file
+
 2008-09-15  Michal Ludvig  <michal@logix.cz>
 
 	* Merge from trunk, revision 238:
