@@ -1,5 +1,12 @@
 2008-09-15  Michal Ludvig  <michal@logix.cz>
 
+	* Merge from trunk, revision 238:
+	* s3cmd, S3/S3.py, S3/Utils.py, S3/S3Uri.py, S3/Exceptions.py:
+	  Yet anoter Unicode round. Unicodised all command line arguments 
+	  before processing.
+
+2008-09-15  Michal Ludvig  <michal@logix.cz>
+
 	* Merge from trunk, revision 221:
 	* s3cmd: Refuse 'sync' together with '--encrypt'.
 
