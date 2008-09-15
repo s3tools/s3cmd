@@ -10,7 +10,15 @@ try:
 except ImportError:
 	import elementtree.ElementTree as ET
 
-class S3Error (Exception):
+class S3Exception(Exception):
+	def __str__(self):
+		## Is this legal?
+		return unicode(self)
+
+	def __unicode__(self):
+		return self.message
+
+class S3Error (S3Exception):
 	def __init__(self, response):
 		self.status = response["status"]
 		self.reason = response["reason"]
@@ -26,7 +34,7 @@ class S3Error (Exception):
 					debug("ErrorXML: " + child.tag + ": " + repr(child.text))
 					self.info[child.tag] = child.text
 
-	def __str__(self):
+	def __unicode__(self):
 		retval = "%d (%s)" % (self.status, self.reason)
 		try:
 			retval += (": %s" % self.info["Code"])
@@ -34,13 +42,11 @@ class S3Error (Exception):
 			pass
 		return retval
 
-class S3UploadError(Exception):
+class S3UploadError(S3Exception):
 	pass
 
-class S3DownloadError(Exception):
+class S3DownloadError(S3Exception):
 	pass
 
-class ParameterError(Exception):
+class ParameterError(S3Exception):
 	pass
-
-

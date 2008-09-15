@@ -21,12 +21,14 @@ from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatt
 from logging import debug, info, warning, error
 from distutils.spawn import find_executable
 
-## Output UTF-8 in all cases, even on output redirects
-_unicode_stdout = codecs.getwriter("utf-8")(sys.stdout)
-_unicode_stderr = codecs.getwriter("utf-8")(sys.stderr)
+## Output native on TTY, UTF-8 otherwise (redirects)
+_stdout = sys.stdout.isatty() and sys.stdout or codecs.getwriter("utf-8")(sys.stdout)
+_stderr = sys.stderr.isatty() and sys.stderr or codecs.getwriter("utf-8")(sys.stderr)
+#_stdout = codecs.getwriter("utf-8")(sys.stdout)
+#_stderr = codecs.getwriter("utf-8")(sys.stderr)
 
 def output(message):
-	_unicode_stdout.write(message + "\n")
+	_stdout.write(message + "\n")
 
 def check_args_type(args, type, verbose_type):
 	for arg in args:
@@ -963,7 +965,7 @@ def main():
 	## debugging/verbose output for config file parser on request
 	logging.basicConfig(level=options.verbosity,
 	                    format='%(levelname)s: %(message)s',
-	                    stream = _unicode_stderr)
+	                    stream = _stderr)
 	
 	if options.show_version:
 		output("s3cmd version %s" % PkgInfo.version)
@@ -1052,9 +1054,12 @@ def main():
 		error("Missing command. Please run with --help for more information.")
 		sys.exit(1)
 
+	## Unicodise all remaining arguments:
+	args = [unicodise(arg) for arg in args]
+
 	command = args.pop(0)
 	try:
-		debug("Command: " + commands[command]["cmd"])
+		debug("Command: %s" % commands[command]["cmd"])
 		## We must do this lookup in extra step to 
 		## avoid catching all KeyError exceptions
 		## from inner functions.
@@ -1070,10 +1075,10 @@ def main():
 	try:
 		cmd_func(args)
 	except S3Error, e:
-		error("S3 error: " + str(e))
+		error("S3 error: %s" % e)
 		sys.exit(1)
 	except ParameterError, e:
-		error("Parameter problem: " + str(e))
+		error("Parameter problem: %s" % e)
 		sys.exit(1)
 
 if __name__ == '__main__':
@@ -1087,6 +1092,7 @@ if __name__ == '__main__':
 		from S3.S3Uri import *
 		from S3 import Utils
 		from S3.Exceptions import *
+		from S3.Utils import unicodise
 
 		main()
 		sys.exit(0)

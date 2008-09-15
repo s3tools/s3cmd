@@ -1,5 +1,11 @@
 2008-09-15  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd, S3/S3.py, S3/Utils.py, S3/S3Uri.py, S3/Exceptions.py:
+	  Yet anoter Unicode round. Unicodised all command line arguments 
+	  before processing.
+
+2008-09-15  Michal Ludvig  <michal@logix.cz>
+
 	* S3/S3.py: "s3cmd mb" can create upper-case buckets again
 	  in US. Non-US (e.g. EU) bucket names must conform to strict
 	  DNS-rules.

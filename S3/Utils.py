@@ -173,3 +173,22 @@ def mkdir_with_parents(dir_name):
 			warning("%s: %s" % (cur_dir, e))
 			return False
 	return True
+
+def unicodise(string):
+	"""
+	Convert 'string' to Unicode or raise an exception.
+	"""
+	debug("Unicodising %r" % string)
+	if type(string) == unicode:
+		return string
+	try:
+		return string.decode("utf-8")
+	except UnicodeDecodeError:
+		raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
+
+def try_unicodise(string):
+	try:
+		return unicodise(string)
+	except UnicodeDecodeError:
+		return string
+
