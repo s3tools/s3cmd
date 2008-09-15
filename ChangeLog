@@ -1,8 +1,9 @@
 2008-09-15  Michal Ludvig  <michal@logix.cz>
 
 	* S3/S3.py: "s3cmd mb" can create upper-case buckets again
-	  in US. Non-US (e.g. EU) bucket names must conform strict
+	  in US. Non-US (e.g. EU) bucket names must conform to strict
 	  DNS-rules.
+	* S3/S3Uri.py: Display public URLs correctly for non-DNS buckets.
 
 2008-09-10  Michal Ludvig  <michal@logix.cz>
 

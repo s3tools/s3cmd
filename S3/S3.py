@@ -484,7 +484,8 @@ class S3(object):
 		debug("SignHeaders: " + repr(h))
 		return base64.encodestring(hmac.new(self.config.secret_key, h, sha).digest()).strip()
 
-	def check_bucket_name(self, bucket, dns_strict = True):
+	@staticmethod
+	def check_bucket_name(bucket, dns_strict = True):
 		if dns_strict:
 			invalid = re.search("([^a-z0-9\.-])", bucket)
 			if invalid:
@@ -511,8 +512,9 @@ class S3(object):
 				raise ParameterError("Bucket name '%s' must end with a letter or a digit" % bucket)
 		return True
 
-	def check_bucket_name_dns_conformity(self, bucket):
+	@staticmethod
+	def check_bucket_name_dns_conformity(bucket):
 		try:
-			return self.check_bucket_name(bucket, dns_strict = True)
+			return S3.check_bucket_name(bucket, dns_strict = True)
 		except ParameterError:
 			return False
