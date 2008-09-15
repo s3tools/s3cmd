@@ -1,5 +1,13 @@
 2008-09-16  Michal Ludvig  <michal@logix.cz>
 
+	* Released version 0.9.8.4
+	  ------------------------
+
+	* S3/PkgInfo.py: Bumped up version to 0.9.8.4
+	* NEWS: Added 0.9.8.4
+
+2008-09-16  Michal Ludvig  <michal@logix.cz>
+
 	* Merge from trunk, revision 240:
 	* S3/S3.py: Don't run into ZeroDivisionError when speed counter
 	  returns 0s elapsed on upload/download file
