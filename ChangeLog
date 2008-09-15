@@ -1,3 +1,13 @@
+2008-09-15  Michal Ludvig  <michal@logix.cz>
+
+	* Merge from trunk, revisions 227, 230:
+
+	* r227: s3cmd: Rework UTF-8 output to keep sys.stdout untouched 
+	  (or it'd break 's3cmd get' to stdout for binary files).
+	* r230: s3cmd, S3/S3Uri.py, S3/S3.py: All internal representations
+	  of S3Uri()s are Unicode (i.e. not UTF-8 but type()==unicode). It
+	  still doesn't work on non-UTF8 systems though.
+
 2008-08-19  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Always output UTF-8, even on output
