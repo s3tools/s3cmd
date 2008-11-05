@@ -157,12 +157,12 @@ class S3(object):
 
 	def object_put(self, filename, bucket, object, extra_headers = None):
 		if not os.path.isfile(filename):
-			raise ParameterError("%s is not a regular file" % filename)
+			raise InvalidFileError("%s is not a regular file" % filename)
 		try:
 			file = open(filename, "rb")
 			size = os.stat(filename)[ST_SIZE]
 		except IOError, e:
-			raise ParameterError("%s: %s" % (filename, e.strerror))
+			raise InvalidFileError("%s: %s" % (filename, e.strerror))
 		headers = SortedDict()
 		if extra_headers:
 			headers.update(extra_headers)
