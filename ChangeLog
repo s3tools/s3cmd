@@ -1,5 +1,10 @@
 2008-11-05  Michal Ludvig  <michal@logix.cz>
 
+	* S3/S3.py: Escape parameters in strings. Fixes sync to and 
+	  ls of directories with spaces. (Thx Lubomir Rintel from Fedora Project)
+
+2008-11-05  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd: Unicode brainfuck again. This time force all output
 	  in UTF-8, will see how many complaints we'll get...
 
