@@ -1,5 +1,6 @@
 2008-11-05  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Re-raise the right exception.
 	* s3cmd, S3/S3.py, S3/Exceptions.py: Don't abort 'sync' or 'put' on files
 	  that can't be open (e.g. Permision denied). Print a warning and skip over
 	  instead.
