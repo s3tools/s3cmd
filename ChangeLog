@@ -1,7 +1,9 @@
-2008-09-16  Michal Ludvig  <michal@logix.cz>
+2008-11-05  Michal Ludvig  <michal@logix.cz>
 
-	* Released version 0.9.8.4
-	  ------------------------
+	* s3cmd: Unicode brainfuck again. This time force all output
+	  in UTF-8, will see how many complaints we'll get...
+
+2008-09-16  Michal Ludvig  <michal@logix.cz>
 
 	* S3/PkgInfo.py: Bumped up version to 0.9.8.4
 	* NEWS: Added 0.9.8.4
