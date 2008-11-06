@@ -1,3 +1,8 @@
+2008-11-06  Michal Ludvig  <michal@logix.cz>
+
+	* run-tests.sh: Use unique bucket name for testing. Apparently someone 
+	  else snatched my favourite s3://s3cmd-autotest :-D
+
 2008-11-05  Michal Ludvig  <michal@logix.cz>
 
 	* S3/S3.py, S3/Exception.py: Re-issue failed requests in S3.send_request()
