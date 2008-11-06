@@ -1,3 +1,12 @@
+2008-11-07  Michal Ludvig  <michal@logix.cz>
+
+	* Released version 0.9.8.4
+	  ------------------------
+
+2008-11-07  Michal Ludvig  <michal@logix.cz>
+
+	* NEWS: Updated 0.9.8.4 entry
+
 2008-11-06  Michal Ludvig  <michal@logix.cz>
 
 	* S3/S3.py: Adjusting commit 249 - it's not a good idea to retry ALL failures.
