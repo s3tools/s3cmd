@@ -1,5 +1,8 @@
 2008-11-06  Michal Ludvig  <michal@logix.cz>
 
+	* S3/S3.py: Adjusting commit 249 - it's not a good idea to retry ALL failures.
+	  Especially not those code=4xx where AmazonS3 servers are not happy with our
+	  requests.
 	* run-tests.sh: Use unique bucket name for testing. Apparently someone 
 	  else snatched my favourite s3://s3cmd-autotest :-D
 
