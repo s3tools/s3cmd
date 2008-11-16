@@ -319,9 +319,9 @@ class S3(object):
 			response["data"] =  http_response.read()
 			debug("Response: " + str(response))
 			conn.close()
-		except Exception:
+		except Exception, e:
 			if retries:
-				warning("Retrying failed request: %s" % resource['uri'])
+				warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
 				return self.send_request(request, body, retries - 1)
 			else:
 				raise S3RequestError("Request failed for: %s" % resource['uri'])
@@ -334,12 +334,18 @@ class S3(object):
 			warning("Redirected to: %s" % (redir_hostname))
 			return self.send_request(request, body)
 
-		if response["status"] < 200 or response["status"] > 299:
+		if response["status"] >= 500:
+			e = S3Error(response)
 			if retries:
-				warning("Retrying failed request: %s" % resource['uri'])
+				warning(u"Retrying failed request: %s" % resource['uri'])
+				warning(unicode(e))
 				return self.send_request(request, body, retries - 1)
 			else:
-				raise S3Error(response)
+				raise e
+
+		if response["status"] < 200 or response["status"] > 299:
+			raise S3Error(response)
+
 		return response
 
 	def send_file(self, request, file, throttle = 0, retries = 3):

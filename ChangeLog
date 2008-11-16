@@ -1,5 +1,9 @@
 2008-11-16  Michal Ludvig  <michal@logix.cz>
 
+	Merge from 0.9.8.x branch, rel 251:
+	* S3/S3.py: Adjusting previous commit (orig 249) - it's not a good idea 
+	  to retry ALL failures. Especially not those code=4xx where AmazonS3 
+	  servers are not happy with our requests.
 	Merge from 0.9.8.x branch, rel 249:
 	* S3/S3.py, S3/Exception.py: Re-issue failed requests in S3.send_request()
 	Merge from 0.9.8.x branch, rel 248:
