@@ -1,7 +1,6 @@
 s3cmd 0.9.9   -   ???
 ===========
-* Allow access to upper-case named buckets with 
-  --use-old-connect-method parameter
+* Implemented progress meter (--progress / --no-progress)
 * Removing of non-empty buckets with --force
 * Recursively remove objects from buckets with a given
   prefix with --recursive (-r)

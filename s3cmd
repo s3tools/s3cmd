@@ -957,6 +957,8 @@ def main():
 
 	optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form.")
 
+	optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default).")
+	optparser.add_option(      "--no-progress", dest="progress_meter", action="store_false", help="Don't display progress meter.")
 	optparser.add_option("-v", "--verbose", dest="verbosity", action="store_const", const=logging.INFO, help="Enable verbose output.")
 	optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output.")
 	optparser.add_option(      "--version", dest="show_version", action="store_true", help="Show s3cmd version (%s) and exit." % (PkgInfo.version))

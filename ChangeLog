@@ -1,3 +1,11 @@
+2008-11-17  Michal Ludvig  <michal@logix.cz>
+
+	* S3/Progress.py: Two progress meter implementations.
+	* S3/Config.py, s3cmd: New --progress / --no-progress parameters
+	  and Config() members.
+	* S3/S3.py: Call Progress() in send_file()/recv_file()
+	* NEWS: Let everyone know ;-)
+
 2008-11-16  Michal Ludvig  <michal@logix.cz>
 
 	* NEWS: Fetch 0.9.8.4 release news from 0.9.8.x branch.

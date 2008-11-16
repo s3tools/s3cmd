@@ -350,7 +350,12 @@ class S3(object):
 
 	def send_file(self, request, file, throttle = 0, retries = 3):
 		method_string, resource, headers = request
-		info("Sending file '%s', please wait..." % file.name)
+		size_left = size_total = headers.get("content-length")
+		if self.config.progress_meter:
+			progress = self.config.progress_class(file.name, size_total)
+		else:
+			info("Sending file '%s', please wait..." % file.name)
+		timestamp_start = time.time()
 		conn = self.get_connection(resource['bucket'])
 		conn.connect()
 		conn.putrequest(method_string, self.format_uri(resource))
@@ -358,17 +363,20 @@ class S3(object):
 			conn.putheader(header, str(headers[header]))
 		conn.endheaders()
 		file.seek(0)
-		timestamp_start = time.time()
 		md5_hash = md5.new()
-		size_left = size_total = headers.get("content-length")
 		while (size_left > 0):
 			debug("SendFile: Reading up to %d bytes from '%s'" % (self.config.send_chunk, file.name))
 			data = file.read(self.config.send_chunk)
 			md5_hash.update(data)
-			debug("SendFile: Sending %d bytes to the server" % len(data))
+			if self.config.progress_meter:
+				progress.update(delta_position = len(data))
+			else:
+				debug("SendFile: Sending %d bytes to the server" % len(data))
 			try:
 				conn.send(data)
 			except Exception, e:
+				if self.config.progress_meter:
+					progress.done("failed")
 				## When an exception occurs insert a 
 				if retries:
 					conn.close()
@@ -388,7 +396,6 @@ class S3(object):
 				(size_total - size_left),
 				(size_total - size_left) * 100 / size_total,
 				size_total))
-		timestamp_end = time.time()
 		md5_computed = md5_hash.hexdigest()
 		response = {}
 		http_response = conn.getresponse()
@@ -396,10 +403,19 @@ class S3(object):
 		response["reason"] = http_response.reason
 		response["headers"] = convertTupleListToDict(http_response.getheaders())
 		response["data"] = http_response.read()
-		response["elapsed"] = timestamp_end - timestamp_start
 		response["size"] = size_total
-		response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
 		conn.close()
+
+		timestamp_end = time.time()
+		response["elapsed"] = timestamp_end - timestamp_start
+		response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
+
+		if self.config.progress_meter:
+			## The above conn.close() takes some time -> update() progress meter
+			## to correct the average speed. Otherwise people will complain that 
+			## 'progress' and response["speed"] are inconsistent ;-)
+			progress.update()
+			progress.done("done")
 
 		if response["status"] == 307:
 			## RedirectPermanent
@@ -430,7 +446,11 @@ class S3(object):
 
 	def recv_file(self, request, stream):
 		method_string, resource, headers = request
-		info("Receiving file '%s', please wait..." % stream.name)
+		if self.config.progress_meter:
+			progress = self.config.progress_class(stream.name, 0)
+		else:
+			info("Receiving file '%s', please wait..." % stream.name)
+		timestamp_start = time.time()
 		conn = self.get_connection(resource['bucket'])
 		conn.connect()
 		conn.putrequest(method_string, self.format_uri(resource))
@@ -457,8 +477,9 @@ class S3(object):
 
 		md5_hash = md5.new()
 		size_left = size_total = int(response["headers"]["content-length"])
+		if self.config.progress_meter:
+			progress.total_size = size_total
 		size_recvd = 0
-		timestamp_start = time.time()
 		while (size_recvd < size_total):
 			this_chunk = size_left > self.config.recv_chunk and self.config.recv_chunk or size_left
 			debug("ReceiveFile: Receiving up to %d bytes from the server" % this_chunk)
@@ -468,11 +489,15 @@ class S3(object):
 			md5_hash.update(data)
 			size_recvd += len(data)
 			## Call progress meter from here...
-			debug("Received %d bytes (%d %% of %d)" % (
-				size_recvd,
-				size_recvd * 100 / size_total,
-				size_total))
+			if self.config.progress_meter:
+				progress.update(delta_position = len(data))
+			else:
+				debug("Received %d bytes (%d %% of %d)" % (
+					size_recvd,
+					size_recvd * 100 / size_total,
+					size_total))
 		conn.close()
+		progress.done("done")
 		timestamp_end = time.time()
 		response["md5"] = md5_hash.hexdigest()
 		response["md5match"] = response["headers"]["etag"].find(response["md5"]) >= 0

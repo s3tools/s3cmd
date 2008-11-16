@@ -6,6 +6,7 @@
 import logging
 from logging import debug, info, warning, error
 import re
+import Progress
 
 class Config(object):
 	_instance = None
@@ -17,6 +18,8 @@ class Config(object):
 	host_bucket = "%(bucket)s.s3.amazonaws.com"
 	simpledb_host = "sdb.amazonaws.com"
 	verbosity = logging.WARNING
+	progress_meter = True
+	progress_class = Progress.ProgressANSI
 	send_chunk = 4096
 	recv_chunk = 4096
 	human_readable_sizes = False
