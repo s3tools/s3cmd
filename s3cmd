@@ -513,7 +513,7 @@ def cmd_sync_remote2local(src, dst):
 
 				debug("dst_file=%s" % dst_file)
 				# This will have failed should the file exist
-				os.open(dst_file, open_flags)
+				os.close(os.open(dst_file, open_flags))
 				# Yeah I know there is a race condition here. Sadly I don't know how to open() in exclusive mode.
 				dst_stream = open(dst_file, "wb")
 				response = s3.object_get(uri, dst_stream)
