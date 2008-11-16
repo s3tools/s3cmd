@@ -22,10 +22,14 @@ from logging import debug, info, warning, error
 from distutils.spawn import find_executable
 
 ## Output native on TTY, UTF-8 otherwise (redirects)
-_stdout = sys.stdout.isatty() and sys.stdout or codecs.getwriter("utf-8")(sys.stdout)
-_stderr = sys.stderr.isatty() and sys.stderr or codecs.getwriter("utf-8")(sys.stderr)
-#_stdout = codecs.getwriter("utf-8")(sys.stdout)
-#_stderr = codecs.getwriter("utf-8")(sys.stderr)
+#_stdout = sys.stdout.isatty() and sys.stdout or codecs.getwriter("utf-8")(sys.stdout)
+#_stderr = sys.stderr.isatty() and sys.stderr or codecs.getwriter("utf-8")(sys.stderr)
+## Output UTF-8 in all cases
+_stdout = codecs.getwriter("utf-8")(sys.stdout)
+_stderr = codecs.getwriter("utf-8")(sys.stderr)
+## Leave it to the terminal
+#_stdout = sys.stdout
+#_stderr = sys.stderr
 
 def output(message):
 	_stdout.write(message + "\n")

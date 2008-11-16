@@ -1,3 +1,9 @@
+2008-11-16  Michal Ludvig  <michal@logix.cz>
+
+	Merge from 0.9.8.x branch, rel 244:
+	* s3cmd: Unicode brainfuck again. This time force all output
+	  in UTF-8, will see how many complaints we'll get...
+
 2008-09-16  Michal Ludvig  <michal@logix.cz>
 
 	* NEWS: s3cmd 0.9.8.4 released from branches/0.9.8.x SVN branch.
