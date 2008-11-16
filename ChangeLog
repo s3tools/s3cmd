@@ -1,5 +1,9 @@
 2008-11-16  Michal Ludvig  <michal@logix.cz>
 
+	Merge from 0.9.8.x branch, rel 246:
+	* s3cmd, S3/S3.py, S3/Exceptions.py: Don't abort 'sync' or 'put' on files
+	  that can't be open (e.g. Permision denied). Print a warning and skip over
+	  instead.
 	Merge from 0.9.8.x branch, rel 245:
 	* S3/S3.py: Escape parameters in strings. Fixes sync to and 
 	  ls of directories with spaces. (Thx Lubomir Rintel from Fedora Project)

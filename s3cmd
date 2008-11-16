@@ -209,6 +209,9 @@ def cmd_object_put(args):
 		except S3UploadError, e:
 			error("Upload of '%s' failed too many times. Skipping that file." % real_filename)
 			continue
+		except InvalidFileError, e:
+			warning("File can not be uploaded: %s" % e)
+			continue
 		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
 		output("File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) [%d of %d]" %
 			(file, uri_final, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
@@ -647,6 +650,9 @@ def cmd_sync_local2remote(src, dst):
 			response = s3.object_put(src, uri, attr_header)
 		except S3UploadError, e:
 			error("%s: upload failed too many times. Skipping that file." % src)
+			continue
+		except InvalidFileError, e:
+			warning("File can not be uploaded: %s" % e)
 			continue
 		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
 		output("File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) [%d of %d]" %
