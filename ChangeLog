@@ -1,5 +1,9 @@
 2008-11-16  Michal Ludvig  <michal@logix.cz>
 
+	* NEWS: Fetch 0.9.8.4 release news from 0.9.8.x branch.
+
+2008-11-16  Michal Ludvig  <michal@logix.cz>
+
 	Merge from 0.9.8.x branch, rel 251:
 	* S3/S3.py: Adjusting previous commit (orig 249) - it's not a good idea 
 	  to retry ALL failures. Especially not those code=4xx where AmazonS3 
