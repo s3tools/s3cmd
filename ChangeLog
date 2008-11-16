@@ -1,5 +1,8 @@
 2008-11-16  Michal Ludvig  <michal@logix.cz>
 
+	Merge from 0.9.8.x branch, rel 245:
+	* S3/S3.py: Escape parameters in strings. Fixes sync to and 
+	  ls of directories with spaces. (Thx Lubomir Rintel from Fedora Project)
 	Merge from 0.9.8.x branch, rel 244:
 	* s3cmd: Unicode brainfuck again. This time force all output
 	  in UTF-8, will see how many complaints we'll get...

@@ -110,6 +110,7 @@ class S3(object):
 		def _get_contents(data):
 			return getListFromXml(data, "Contents")
 
+		prefix = self.urlencode_string(prefix)
 		request = self.create_request("BUCKET_LIST", bucket = bucket, prefix = prefix)
 		response = self.send_request(request)
 		#debug(response)
