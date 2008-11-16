@@ -536,7 +536,7 @@ def cmd_sync_remote2local(src, dst):
 				if e.errno in (errno.EPERM, errno.EACCES):
 					warning("%s not writable: %s" % (dst_file, e.strerror))
 					continue
-				raise
+				raise e
 			except KeyboardInterrupt:
 				try: dst_stream.close()
 				except: pass
