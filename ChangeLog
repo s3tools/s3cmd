@@ -1,5 +1,7 @@
 2008-11-16  Michal Ludvig  <michal@logix.cz>
 
+	Merge from 0.9.8.x branch, rel 249:
+	* S3/S3.py, S3/Exception.py: Re-issue failed requests in S3.send_request()
 	Merge from 0.9.8.x branch, rel 248:
 	* s3cmd: Don't leak open filehandles in sync. Thx Patrick Linskey for report.
 	Merge from 0.9.8.x branch, rel 247:

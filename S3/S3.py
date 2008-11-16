@@ -305,19 +305,26 @@ class S3(object):
 		debug("CreateRequest: resource[uri]=" + resource['uri'])
 		return (method_string, resource, headers)
 	
-	def send_request(self, request, body = None):
+	def send_request(self, request, body = None, retries = 5):
 		method_string, resource, headers = request
 		debug("Processing request, please wait...")
- 		conn = self.get_connection(resource['bucket'])
- 		conn.request(method_string, self.format_uri(resource), body, headers)
-		response = {}
-		http_response = conn.getresponse()
-		response["status"] = http_response.status
-		response["reason"] = http_response.reason
-		response["headers"] = convertTupleListToDict(http_response.getheaders())
-		response["data"] =  http_response.read()
-		debug("Response: " + str(response))
-		conn.close()
+		try:
+			conn = self.get_connection(resource['bucket'])
+			conn.request(method_string, self.format_uri(resource), body, headers)
+			response = {}
+			http_response = conn.getresponse()
+			response["status"] = http_response.status
+			response["reason"] = http_response.reason
+			response["headers"] = convertTupleListToDict(http_response.getheaders())
+			response["data"] =  http_response.read()
+			debug("Response: " + str(response))
+			conn.close()
+		except Exception:
+			if retries:
+				warning("Retrying failed request: %s" % resource['uri'])
+				return self.send_request(request, body, retries - 1)
+			else:
+				raise S3RequestError("Request failed for: %s" % resource['uri'])
 
 		if response["status"] == 307:
 			## RedirectPermanent
@@ -328,7 +335,11 @@ class S3(object):
 			return self.send_request(request, body)
 
 		if response["status"] < 200 or response["status"] > 299:
-			raise S3Error(response)
+			if retries:
+				warning("Retrying failed request: %s" % resource['uri'])
+				return self.send_request(request, body, retries - 1)
+			else:
+				raise S3Error(response)
 		return response
 
 	def send_file(self, request, file, throttle = 0, retries = 3):
