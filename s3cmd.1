@@ -42,6 +42,10 @@ Backup a directory tree to S3
 \fBsync\fR \fIs3://BUCKET[/PREFIX] LOCAL_DIR\fR
 Restore a tree from S3 to local directory
 .TP
+\fBcp\fR \fIs3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]\fR 
+Make a copy of a file. Either in the same bucket with a different name
+or in another bucket with the same or different name.
+.TP 
 \fBinfo\fR \fIs3://BUCKET[/OBJECT]\fR
 Get various information about a Bucket or Object
 .TP

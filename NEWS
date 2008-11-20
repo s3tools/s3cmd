@@ -4,6 +4,7 @@ s3cmd 0.9.9   -   ???
 * Removing of non-empty buckets with --force
 * Recursively remove objects from buckets with a given
   prefix with --recursive (-r)
+* Copying objects, within or between buckets. (Andrew Ryan)
 
 s3cmd 0.9.8.4 -   2008-11-07
 =============

@@ -308,6 +308,25 @@ def subcmd_object_del_uri(uri, recursive = None):
 		response = s3.object_delete(_uri)
 		output("Object %s deleted" % _uri)
 
+def cmd_cp(args):
+	s3 = S3(Config())
+	src_uri = S3Uri(args.pop(0))
+	dst_uri = S3Uri(args.pop(0))
+
+	if len(args): 
+		raise ParameterError("Too many parameters! Expected: %s" % commands['cp']['param']) 
+
+	if src_uri.type != "s3" or dst_uri.type != "s3": 
+		raise ParameterError("Parameters are not URIs! Expected: %s" % commands['cp']['param']) 
+
+	if dst_uri.object() == "":
+		dst_uri = S3Uri(dst_uri.uri() + src_uri.object())
+ 
+	response = s3.object_copy(src_uri, dst_uri) 
+	output("Object is copied to %s" % dst_uri)
+	if Config().acl_public:
+		output("Public URL is: %s" % dst_uri.public_url())
+
 def cmd_info(args):
 	s3 = S3(Config())
 
@@ -882,6 +901,7 @@ commands_list = [
 	{"cmd":"sync", "label":"Synchronize a directory tree to S3", "param":"LOCAL_DIR s3://BUCKET[/PREFIX] or s3://BUCKET[/PREFIX] LOCAL_DIR", "func":cmd_sync, "argc":2},
 	{"cmd":"du", "label":"Disk usage by buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_du, "argc":0},
 	{"cmd":"info", "label":"Get various information about Buckets or Objects", "param":"s3://BUCKET[/OBJECT]", "func":cmd_info, "argc":1},
+	{"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
 	#{"cmd":"setacl", "label":"Modify Access control list for Bucket or Object", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
 	]
 

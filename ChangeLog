@@ -1,3 +1,12 @@
+2008-11-21  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Support for 'cp' command.
+	* S3/S3.py: Added S3.object.copy() method.
+	* s3cmd.1: Document 'cp' command.
+	* NEWS: Let everyone know ;-)
+	Thanks Andrew Ryan for a patch proposal!
+	https://sourceforge.net/forum/forum.php?thread_id=2346987&forum_id=618865
+
 2008-11-17  Michal Ludvig  <michal@logix.cz>
 
 	* S3/Progress.py: Two progress meter implementations.
