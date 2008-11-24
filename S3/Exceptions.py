@@ -3,6 +3,7 @@
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
 
+from Utils import getRootTagName
 from logging import debug, info, warning, error
 
 try:
@@ -27,7 +28,7 @@ class S3Error (S3Exception):
 		if response.has_key("headers"):
 			for header in response["headers"]:
 				debug("HttpHeader: %s: %s" % (header, response["headers"][header]))
-		if response.has_key("data"):
+		if response.has_key("data") and getRootTagName(response["data"]) == "Error":
 			tree = ET.fromstring(response["data"])
 			for child in tree.getchildren():
 				if child.text != "":

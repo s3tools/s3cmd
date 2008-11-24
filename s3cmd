@@ -1108,6 +1108,8 @@ def main():
 		cmd_func(args)
 	except S3Error, e:
 		error("S3 error: %s" % e)
+		if e.info.has_key("Message"):
+			error(e.info['Message'])
 		sys.exit(1)
 	except ParameterError, e:
 		error("Parameter problem: %s" % e)

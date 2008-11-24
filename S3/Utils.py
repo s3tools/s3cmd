@@ -57,19 +57,26 @@ def getNameSpace(element):
 		return ""
 	return re.compile("^(\{[^}]+\})").match(element.tag).groups()[0]
 
-def getListFromXml(xml, node):
+def getTreeFromXml(xml):
 	tree = ET.fromstring(xml)
-	xmlns = getNameSpace(tree)
-	nodes = tree.findall('.//%s%s' % (xmlns, node))
-	return parseNodes(nodes, xmlns)
+	tree.xmlns = getNameSpace(tree)
+	return tree
+	
+def getListFromXml(xml, node):
+	tree = getTreeFromXml(xml)
+	nodes = tree.findall('.//%s%s' % (tree.xmlns, node))
+	return parseNodes(nodes, tree.xmlns)
 	
 def getTextFromXml(xml, xpath):
-	tree = ET.fromstring(xml)
-	xmlns = getNameSpace(tree)
+	tree = getTreeFromXml(xml)
 	if tree.tag.endswith(xpath):
 		return tree.text
 	else:
-		return tree.findtext(fixupXPath(xmlns, xpath))
+		return tree.findtext(fixupXPath(tree.xmlns, xpath))
+
+def getRootTagName(xml):
+	tree = getTreeFromXml(xml)
+	return stripTagXmlns(tree.xmlns, tree.tag)
 
 def dateS3toPython(date):
 	date = re.compile("\.\d\d\dZ").sub(".000Z", date)
