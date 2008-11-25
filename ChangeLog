@@ -1,5 +1,9 @@
 2008-11-24  Michal Ludvig  <michal@logix.cz>
 
+	* s3/s3.py: improved retrying in send_request() and send_file()
+
+2008-11-24  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd, S3/S3.py, NEWS: "s3cmd mv" for moving objects
 
 2008-11-24  Michal Ludvig  <michal@logix.cz>
