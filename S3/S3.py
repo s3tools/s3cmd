@@ -569,8 +569,14 @@ class S3(object):
 				raise S3DownloadError("Download failed for: %s" % resource['uri'])
 
 		stream.flush()
-		progress.done("done")
 		timestamp_end = time.time()
+
+		if self.config.progress_meter:
+			## The above stream.flush() may take some time -> update() progress meter
+			## to correct the average speed. Otherwise people will complain that 
+			## 'progress' and response["speed"] are inconsistent ;-)
+			progress.update()
+			progress.done("done")
 
 		if start_position == 0:
 			# Only compute MD5 on the fly if we were downloading from the beginning

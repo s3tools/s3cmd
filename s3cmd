@@ -996,8 +996,8 @@ def main():
 
 	optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form.")
 
-	optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default).")
-	optparser.add_option(      "--no-progress", dest="progress_meter", action="store_false", help="Don't display progress meter.")
+	optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default on TTY).")
+	optparser.add_option(      "--no-progress", dest="progress_meter", action="store_false", help="Don't display progress meter (default on non-TTY).")
 	optparser.add_option("-v", "--verbose", dest="verbosity", action="store_const", const=logging.INFO, help="Enable verbose output.")
 	optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output.")
 	optparser.add_option(      "--version", dest="show_version", action="store_true", help="Show s3cmd version (%s) and exit." % (PkgInfo.version))
@@ -1043,6 +1043,10 @@ def main():
 	if options.verbosity != default_verbosity:
 		cfg.verbosity = options.verbosity
 	logging.root.setLevel(cfg.verbosity)
+
+	## Default to --progress on TTY devices, --no-progress elsewhere
+	## Can be overriden by actual --(no-)progress parameter
+	cfg.update_option('progress_meter', sys.stdout.isatty())
 
 	## Update Config with other parameters
 	for option in cfg.option_list():
