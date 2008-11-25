@@ -308,8 +308,7 @@ def subcmd_object_del_uri(uri, recursive = None):
 		response = s3.object_delete(_uri)
 		output("Object %s deleted" % _uri)
 
-def cmd_cp(args):
-	s3 = S3(Config())
+def subcmd_cp_mv(args, process_fce, message):
 	src_uri = S3Uri(args.pop(0))
 	dst_uri = S3Uri(args.pop(0))
 
@@ -322,10 +321,18 @@ def cmd_cp(args):
 	if dst_uri.object() == "":
 		dst_uri = S3Uri(dst_uri.uri() + src_uri.object())
  
-	response = s3.object_copy(src_uri, dst_uri) 
-	output("Object is copied to %s" % dst_uri)
+	response = process_fce(src_uri, dst_uri) 
+	output(message % { "src" : src_uri, "dst" : dst_uri})
 	if Config().acl_public:
 		output("Public URL is: %s" % dst_uri.public_url())
+
+def cmd_cp(args):
+	s3 = S3(Config())
+	subcmd_cp_mv(args, s3.object_copy, "Object %(src)s copied to %(dst)s")
+
+def cmd_mv(args):
+	s3 = S3(Config())
+	subcmd_cp_mv(args, s3.object_move, "Object %(src)s moved to %(dst)s")
 
 def cmd_info(args):
 	s3 = S3(Config())
@@ -902,6 +909,7 @@ commands_list = [
 	{"cmd":"du", "label":"Disk usage by buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_du, "argc":0},
 	{"cmd":"info", "label":"Get various information about Buckets or Objects", "param":"s3://BUCKET[/OBJECT]", "func":cmd_info, "argc":1},
 	{"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
+	{"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
 	#{"cmd":"setacl", "label":"Modify Access control list for Bucket or Object", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
 	]
 

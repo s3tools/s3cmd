@@ -214,6 +214,14 @@ class S3(object):
 		response = self.send_request(request)
 		return response
 
+	def object_move(self, src_uri, dst_uri, extra_headers = None):
+		response_copy = self.object_copy(src_uri, dst_uri, extra_headers)
+		debug("Object %s copied to %s" % (src_uri, dst_uri))
+		if getRootTagName(response_copy["data"]) == "CopyObjectResult":
+			response_delete = self.object_delete(src_uri)
+			debug("Object %s deleted" % src_uri)
+		return response_copy
+
 	def object_info(self, uri):
 		request = self.create_request("OBJECT_HEAD", uri = uri)
 		response = self.send_request(request)

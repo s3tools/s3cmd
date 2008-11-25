@@ -1,5 +1,9 @@
 2008-11-24  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd, S3/S3.py, NEWS: "s3cmd mv" for moving objects
+
+2008-11-24  Michal Ludvig  <michal@logix.cz>
+
 	* S3/Utils.py: Common XML parser.
 	* s3cmd, S3/Exeptions.py: Print info message on Error.
 
