@@ -2,8 +2,6 @@ TODO list for s3cmd project
 ===========================
 
 - For 0.9.9
-  - Implement 'cp' and 'mv'
-  - Better upload / download progress display
   - Add --include/--include-from/--rinclude* for sync
   - Recursive processing / multiple sources with most commands.
   - Document --recursive and --force for buckets

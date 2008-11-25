@@ -1,5 +1,9 @@
 2008-11-24  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd.1, TODO: Document 'mv' command.
+
+2008-11-24  Michal Ludvig  <michal@logix.cz>
+
 	* S3/S3.py, s3cmd, S3/Config.py, s3cmd.1: Added --continue for
 	  'get' command, improved 'get' failure resiliency.
 	* S3/Progress.py: Support for progress meter not starting in 0.
