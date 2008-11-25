@@ -1,5 +1,6 @@
 2008-11-24  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Fixed 'get' conflict.
 	* s3cmd.1, TODO: Document 'mv' command.
 
 2008-11-24  Michal Ludvig  <michal@logix.cz>

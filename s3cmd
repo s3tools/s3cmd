@@ -267,8 +267,9 @@ def cmd_object_get(args):
 		else:
 			## File
 			try:
+				file_exists = os.path.exists(destination)
 				dst_stream = open(destination, "ab")
-				if os.path.exists(destination):
+				if file_exists:
 					if Config().get_continue:
 						start_position = dst_stream.tell()
 					elif Config().force:
@@ -276,6 +277,7 @@ def cmd_object_get(args):
 						dst_stream.seek(0L)
 						dst_stream.truncate()
 					else:
+						dst_stream.close()
 						raise ParameterError("File %s already exists. Use either --force or --continue or give it a new name." % destination)
 			except IOError, e:
 				error("Skipping %s: %s" % (destination, e.strerror))
