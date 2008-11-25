@@ -6,6 +6,9 @@ s3cmd 0.9.9   -   ???
   prefix with --recursive (-r)
 * Copying and moving objects, within or between buckets.
   (Andrew Ryan)
+* Continue getting partially downloaded files with --continue
+* Improved resistance to communication errors (Connection 
+  reset by peer, etc.)
 
 s3cmd 0.9.8.4 -   2008-11-07
 =============

@@ -24,6 +24,7 @@ class Config(object):
 	recv_chunk = 4096
 	human_readable_sizes = False
 	force = False
+	get_continue = False
 	recursive = False
 	acl_public = False
 	proxy_host = ""

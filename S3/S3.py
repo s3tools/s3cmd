@@ -189,11 +189,11 @@ class S3(object):
 		response = self.send_file(request, file)
 		return response
 
-	def object_get(self, uri, stream):
+	def object_get(self, uri, stream, start_position):
 		if uri.type != "s3":
 			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 		request = self.create_request("OBJECT_GET", uri = uri)
-		response = self.recv_file(request, stream)
+		response = self.recv_file(request, stream, start_position)
 		return response
 
 	def object_delete(self, uri):
@@ -399,6 +399,8 @@ class S3(object):
 				conn.putheader(header, str(headers[header]))
 			conn.endheaders()
 		except Exception, e:
+			if self.config.progress_meter:
+				progress.done("failed")
 			if retries:
 				warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
 				warning("Waiting %d sec..." % self._fail_wait(retries))
@@ -406,7 +408,7 @@ class S3(object):
 				# Connection error -> same throttle value
 				return self.send_file(request, file, throttle, retries - 1)
 			else:
-				raise S3UploadError("Request failed for: %s" % resource['uri'])
+				raise S3UploadError("Upload failed for: %s" % resource['uri'])
 		file.seek(0)
 		md5_hash = md5.new()
 		try:
@@ -414,20 +416,12 @@ class S3(object):
 				debug("SendFile: Reading up to %d bytes from '%s'" % (self.config.send_chunk, file.name))
 				data = file.read(self.config.send_chunk)
 				md5_hash.update(data)
+				conn.send(data)
 				if self.config.progress_meter:
 					progress.update(delta_position = len(data))
-				else:
-					debug("SendFile: Sending %d bytes to the server" % len(data))
-				conn.send(data)
-        
 				size_left -= len(data)
 				if throttle:
 					time.sleep(throttle)
-				## Call progress meter from here
-				debug("Sent %d bytes (%d %% of %d)" % (
-					(size_total - size_left),
-					(size_total - size_left) * 100 / size_total,
-					size_total))
 			md5_computed = md5_hash.hexdigest()
 			response = {}
 			http_response = conn.getresponse()
@@ -442,7 +436,7 @@ class S3(object):
 				progress.done("failed")
 			if retries:
 				throttle = throttle and throttle * 5 or 0.01
-				warning("Request failed: %s (%s)" % (resource['uri'], e))
+				warning("Upload failed: %s (%s)" % (resource['uri'], e))
 				warning("Retrying on lower speed (throttle=%0.2f)" % throttle)
 				warning("Waiting %d sec..." % self._fail_wait(retries))
 				time.sleep(self._fail_wait(retries))
@@ -450,7 +444,7 @@ class S3(object):
 				return self.send_file(request, file, throttle, retries - 1)
 			else:
 				debug("Giving up on '%s' %s" % (file.name, e))
-				raise S3UploadError("Request failed for: %s" % resource['uri'])
+				raise S3UploadError("Upload failed for: %s" % resource['uri'])
 
 		timestamp_end = time.time()
 		response["elapsed"] = timestamp_end - timestamp_start
@@ -490,24 +484,40 @@ class S3(object):
 			raise S3Error(response)
 		return response
 
-	def recv_file(self, request, stream):
+	def recv_file(self, request, stream, start_position = 0, retries = _max_retries):
 		method_string, resource, headers = request
 		if self.config.progress_meter:
 			progress = self.config.progress_class(stream.name, 0)
 		else:
 			info("Receiving file '%s', please wait..." % stream.name)
 		timestamp_start = time.time()
-		conn = self.get_connection(resource['bucket'])
-		conn.connect()
-		conn.putrequest(method_string, self.format_uri(resource))
-		for header in headers.keys():
-			conn.putheader(header, str(headers[header]))
-		conn.endheaders()
-		response = {}
-		http_response = conn.getresponse()
-		response["status"] = http_response.status
-		response["reason"] = http_response.reason
-		response["headers"] = convertTupleListToDict(http_response.getheaders())
+		try:
+			conn = self.get_connection(resource['bucket'])
+			conn.connect()
+			conn.putrequest(method_string, self.format_uri(resource))
+			for header in headers.keys():
+				conn.putheader(header, str(headers[header]))
+			if start_position > 0:
+				debug("Requesting Range: %d .. end" % start_position)
+				conn.putheader("Range", "bytes=%d-" % start_position)
+			conn.endheaders()
+			response = {}
+			http_response = conn.getresponse()
+			response["status"] = http_response.status
+			response["reason"] = http_response.reason
+			response["headers"] = convertTupleListToDict(http_response.getheaders())
+			debug("Response: %s" % response)
+		except Exception, e:
+			if self.config.progress_meter:
+				progress.done("failed")
+			if retries:
+				warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
+				warning("Waiting %d sec..." % self._fail_wait(retries))
+				time.sleep(self._fail_wait(retries))
+				# Connection error -> same throttle value
+				return self.recv_file(request, stream, start_position, retries - 1)
+			else:
+				raise S3DownloadError("Download failed for: %s" % resource['uri'])
 
 		if response["status"] == 307:
 			## RedirectPermanent
@@ -521,38 +531,67 @@ class S3(object):
 		if response["status"] < 200 or response["status"] > 299:
 			raise S3Error(response)
 
-		md5_hash = md5.new()
-		size_left = size_total = int(response["headers"]["content-length"])
+		if start_position == 0:
+			# Only compute MD5 on the fly if we're downloading from beginning
+			# Otherwise we'd get a nonsense.
+			md5_hash = md5.new()
+		size_left = int(response["headers"]["content-length"])
+		size_total = start_position + size_left
+		current_position = start_position
+
 		if self.config.progress_meter:
 			progress.total_size = size_total
-		size_recvd = 0
-		while (size_recvd < size_total):
-			this_chunk = size_left > self.config.recv_chunk and self.config.recv_chunk or size_left
-			debug("ReceiveFile: Receiving up to %d bytes from the server" % this_chunk)
-			data = http_response.read(this_chunk)
-			debug("ReceiveFile: Writing %d bytes to file '%s'" % (len(data), stream.name))
-			stream.write(data)
-			md5_hash.update(data)
-			size_recvd += len(data)
-			## Call progress meter from here...
+			progress.initial_position = current_position
+			progress.current_position = current_position
+
+		try:
+			while (current_position < size_total):
+				this_chunk = size_left > self.config.recv_chunk and self.config.recv_chunk or size_left
+				data = http_response.read(this_chunk)
+				stream.write(data)
+				if start_position == 0:
+					md5_hash.update(data)
+				current_position += len(data)
+				## Call progress meter from here...
+				if self.config.progress_meter:
+					progress.update(delta_position = len(data))
+			conn.close()
+		except Exception, e:
 			if self.config.progress_meter:
-				progress.update(delta_position = len(data))
+				progress.done("failed")
+			if retries:
+				warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
+				warning("Waiting %d sec..." % self._fail_wait(retries))
+				time.sleep(self._fail_wait(retries))
+				# Connection error -> same throttle value
+				return self.recv_file(request, stream, current_position, retries - 1)
 			else:
-				debug("Received %d bytes (%d %% of %d)" % (
-					size_recvd,
-					size_recvd * 100 / size_total,
-					size_total))
-		conn.close()
+				raise S3DownloadError("Download failed for: %s" % resource['uri'])
+
+		stream.flush()
 		progress.done("done")
 		timestamp_end = time.time()
-		response["md5"] = md5_hash.hexdigest()
+
+		if start_position == 0:
+			# Only compute MD5 on the fly if we were downloading from the beginning
+			response["md5"] = md5_hash.hexdigest()
+		else:
+			# Otherwise try to compute MD5 of the output file
+			try:
+				response["md5"] = hash_file_md5(stream.name)
+			except IOError, e:
+				if e.errno != errno.ENOENT:
+					warning("Unable to open file: %s: %s" % (stream.name, e))
+				warning("Unable to verify MD5. Assume it matches.")
+				response["md5"] = response["headers"]["etag"]
+
 		response["md5match"] = response["headers"]["etag"].find(response["md5"]) >= 0
 		response["elapsed"] = timestamp_end - timestamp_start
-		response["size"] = size_recvd
+		response["size"] = current_position
 		response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
-		if response["size"] != long(response["headers"]["content-length"]):
+		if response["size"] != start_position + long(response["headers"]["content-length"]):
 			warning("Reported size (%s) does not match received size (%s)" % (
-				response["headers"]["content-length"], response["size"]))
+				start_position + response["headers"]["content-length"], response["size"]))
 		debug("ReceiveFile: Computed MD5 = %s" % response["md5"])
 		if not response["md5match"]:
 			warning("MD5 signatures do not match: computed=%s, received=%s" % (

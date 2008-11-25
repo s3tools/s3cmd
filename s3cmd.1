@@ -113,6 +113,9 @@ Options common for all commands (where it makes sense indeed):
 \fB\-f\fR, \fB\-\-force\fR
 Force overwrite and other dangerous operations.
 .TP
+\fB\-\-continue\fR
+Continue getting a partially downloaded file (only for \fIget\fR command). This comes handy once download of a large file, say an ISO image, from a S3 bucket fails and a partially downloaded file is left on the disk. Unfortunately \fIput\fR command doesn't support restarting of failed upload due to Amazon S3 limitation.
+.TP
 \fB\-P\fR, \fB\-\-acl\-public\fR
 Store objects with permissions allowing read for anyone.
 .TP

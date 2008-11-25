@@ -253,6 +253,7 @@ def cmd_object_get(args):
 		uri_arg = args.pop(0)
 		uri = S3Uri(uri_arg)
 
+		start_position = 0
 		if destination_file:
 			destination = destination_file
 		elif destination_dir:
@@ -265,14 +266,21 @@ def cmd_object_get(args):
 			dst_stream = sys.stdout
 		else:
 			## File
-			if not Config().force and os.path.exists(destination):
-				raise ParameterError("File %s already exists. Use --force to overwrite it" % destination)
 			try:
-				dst_stream = open(destination, "wb")
+				dst_stream = open(destination, "ab")
+				if os.path.exists(destination):
+					if Config().get_continue:
+						start_position = dst_stream.tell()
+					elif Config().force:
+						start_position = 0L
+						dst_stream.seek(0L)
+						dst_stream.truncate()
+					else:
+						raise ParameterError("File %s already exists. Use either --force or --continue or give it a new name." % destination)
 			except IOError, e:
 				error("Skipping %s: %s" % (destination, e.strerror))
 				continue
-		response = s3.object_get(uri, dst_stream)
+		response = s3.object_get(uri, dst_stream, start_position = start_position)
 		if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
 			gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
 			response["size"] = os.stat(destination)[6]
@@ -965,6 +973,7 @@ def main():
 	optparser.add_option("-e", "--encrypt", dest="encrypt", action="store_true", help="Encrypt files before uploading to S3.")
 	optparser.add_option(      "--no-encrypt", dest="encrypt", action="store_false", help="Don't encrypt files.")
 	optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations.")
+	optparser.add_option(      "--continue", dest="get_continue", action="store_true", help="Continue getting a partially downloaded file (only for [get] command).")
 	optparser.add_option("-r", "--recursive", dest="recursive", action="store_true", help="Recursive upload, download or removal.")
 	optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read for anyone.")
 	optparser.add_option(      "--acl-private", dest="acl_public", action="store_false", help="Store objects with default ACL allowing access for you only.")
