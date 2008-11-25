@@ -14,7 +14,13 @@ class Progress(object):
 	def new_file(self, label, total_size):
 		self.label = label
 		self.total_size = total_size
-		self.current_position = 0
+		# Set initial_position to something in the
+		# case we're not counting from 0. For instance
+		# when appending to a partially downloaded file.
+		# Setting initial_position will let the speed
+		# be computed right.
+		self.initial_position = 0
+		self.current_position = self.initial_position
 		self.time_start = datetime.datetime.now()
 		self.time_last = self.time_start
 		self.time_current = self.time_start
@@ -52,7 +58,7 @@ class Progress(object):
 			if print_size[1] != "": print_size[1] += "B"
 			timedelta = self.time_current - self.time_start
 			sec_elapsed = timedelta.days * 86400 + timedelta.seconds + float(timedelta.microseconds)/1000000.0
-			print_speed = formatSize(self.current_position / sec_elapsed, True, True)
+			print_speed = formatSize((self.current_position - self.initial_position) / sec_elapsed, True, True)
 			sys.stdout.write("100%%  %s%s in %.2fs (%.2f %sB/s)\n" % 
 				(print_size[0], print_size[1], sec_elapsed, print_speed[0], print_speed[1]))
 			sys.stdout.flush()
@@ -89,7 +95,7 @@ class ProgressANSI(Progress):
 		timedelta = self.time_current - self.time_start
 		sec_elapsed = timedelta.days * 86400 + timedelta.seconds + float(timedelta.microseconds)/1000000.0
 		if (sec_elapsed > 0):
-			print_speed = formatSize(self.current_position / sec_elapsed, True, True)
+			print_speed = formatSize((self.current_position - self.initial_position) / sec_elapsed, True, True)
 		else:
 			print_speed = (0, "")
 		sys.stdout.write(self.ANSI_restore_cursor_pos)
@@ -97,7 +103,7 @@ class ProgressANSI(Progress):
 		sys.stdout.write("%(current)s of %(total)s   %(percent)3d%% in %(elapsed)ds  %(speed).2f %(speed_coeff)sB/s" % {
 			"current" : str(self.current_position).rjust(len(str(self.total_size))),
 			"total" : self.total_size,
-			"percent" : self.current_position * 100 / self.total_size,
+			"percent" : self.total_size and (self.current_position * 100 / self.total_size) or 0,
 			"elapsed" : sec_elapsed,
 			"speed" : print_speed[0],
 			"speed_coeff" : print_speed[1]

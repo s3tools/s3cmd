@@ -1,6 +1,7 @@
 2008-11-24  Michal Ludvig  <michal@logix.cz>
 
-	* s3/s3.py: improved retrying in send_request() and send_file()
+	* S3/Progress.py: Support for progress meter not starting in 0.
+	* S3/S3.py: improved retrying in send_request() and send_file()
 
 2008-11-24  Michal Ludvig  <michal@logix.cz>
 
