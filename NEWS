@@ -1,5 +1,5 @@
-s3cmd 0.9.9   -   ???
-===========
+s3cmd 0.9.9-pre2
+================
 * Implemented progress meter (--progress / --no-progress)
 * Removing of non-empty buckets with --force
 * Recursively remove objects from buckets with a given

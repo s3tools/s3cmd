@@ -1,5 +1,13 @@
 2008-11-24  Michal Ludvig  <michal@logix.cz>
 
+	* Released version 0.9.9-pre2
+	  ------------------------
+
+	* S3/PkgInfo.py: Bumped up version to 0.9.9-pre2
+	* NEWS: Added 0.9.9-pre2
+
+2008-11-24  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd, s3cmd.1, S3/S3.py: Display or don't display progress meter
 	  default depends on whether we're on TTY (console) or not.
 
