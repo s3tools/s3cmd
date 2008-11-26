@@ -115,7 +115,7 @@ def subcmd_bucket_list(s3, uri):
 	bucket = uri.bucket()
 	object = uri.object()
 
-	output("Bucket 's3://%s':" % bucket)
+	debug("Bucket 's3://%s':" % bucket)
 	if object.endswith('*'):
 		object = object[:-1]
 	try:
@@ -295,9 +295,13 @@ def cmd_object_del(args):
 	while (len(args)):
 		uri_arg = args.pop(0)
 		uri = S3Uri(uri_arg)
-		if uri.type != "s3" or not uri.has_object():
+		if uri.type != "s3":
 			raise ParameterError("Expecting S3 URI instead of '%s'" % uri_arg)
-
+		if not uri.has_object():
+			if Config().recursive and not Config().force:
+				raise ParameterError("Please use --force to delete ALL contents of %s" % uri)
+			elif not Config().recursive:
+				raise ParameterError("Object name required, not only the bucket name")
 		subcmd_object_del_uri(uri)
 
 def subcmd_object_del_uri(uri, recursive = None):
@@ -1048,6 +1052,9 @@ def main():
 	## Can be overriden by actual --(no-)progress parameter
 	cfg.update_option('progress_meter', sys.stdout.isatty())
 
+	## We may need a way to display progress meter on STDERR or somewhere else
+	Progress._stdout = _stdout
+
 	## Update Config with other parameters
 	for option in cfg.option_list():
 		try:
@@ -1150,6 +1157,7 @@ if __name__ == '__main__':
 		from S3 import Utils
 		from S3.Exceptions import *
 		from S3.Utils import unicodise
+		from S3.Progress import Progress
 
 		main()
 		sys.exit(0)

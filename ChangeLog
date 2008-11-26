@@ -1,5 +1,8 @@
 2008-11-25  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd, S3/Progress.py: Fixed Unicode output in Progress meter.
+	* s3cmd: Fixed 'del --recursive' without prefix (i.e. all objects).
+	* TODO: Updated list.
 	* upload-to-sf.sh: Helper script.
 	* S3/PkgInfo.py: Bumped up version to 0.9.9-pre2+svn
 

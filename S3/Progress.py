@@ -8,6 +8,8 @@ import datetime
 from Utils import formatSize
 
 class Progress(object):
+	_stdout = sys.stdout
+
 	def __init__(self, label, total_size):
 		self.new_file(label, total_size)
 	
@@ -48,8 +50,8 @@ class Progress(object):
 		Override this method to provide a nicer output.
 		"""
 		if new_file:
-			sys.stdout.write("%s  " % self.label[:30].ljust(30))
-			sys.stdout.flush()
+			self._stdout.write("%s  " % self.label[:30].ljust(30))
+			self._stdout.flush()
 			self.last_milestone = 0
 			return
 
@@ -59,16 +61,16 @@ class Progress(object):
 			timedelta = self.time_current - self.time_start
 			sec_elapsed = timedelta.days * 86400 + timedelta.seconds + float(timedelta.microseconds)/1000000.0
 			print_speed = formatSize((self.current_position - self.initial_position) / sec_elapsed, True, True)
-			sys.stdout.write("100%%  %s%s in %.2fs (%.2f %sB/s)\n" % 
+			self._stdout.write("100%%  %s%s in %.2fs (%.2f %sB/s)\n" % 
 				(print_size[0], print_size[1], sec_elapsed, print_speed[0], print_speed[1]))
-			sys.stdout.flush()
+			self._stdout.flush()
 			return
 
 		rel_position = selfself.current_position * 100 / self.total_size
 		if rel_position >= self.last_milestone:
 			self.last_milestone = (int(rel_position) / 5) * 5
-			sys.stdout.write("%d%% ", self.last_milestone)
-			sys.stdout.flush()
+			self._stdout.write("%d%% ", self.last_milestone)
+			self._stdout.flush()
 			return
 
 class ProgressANSI(Progress):
@@ -86,10 +88,10 @@ class ProgressANSI(Progress):
 		display(new_file = False[/True], done_message = None)
 		"""
 		if new_file:
-			sys.stdout.write("%s  " % self.label[:30].ljust(30))
-			#sys.stdout.write(self.ANSI_hide_cursor)
-			sys.stdout.write(self.ANSI_save_cursor_pos)
-			sys.stdout.flush()
+			self._stdout.write("%s  " % self.label[-30:].ljust(30))
+			#self._stdout.write(self.ANSI_hide_cursor)
+			self._stdout.write(self.ANSI_save_cursor_pos)
+			self._stdout.flush()
 			return
 
 		timedelta = self.time_current - self.time_start
@@ -98,9 +100,9 @@ class ProgressANSI(Progress):
 			print_speed = formatSize((self.current_position - self.initial_position) / sec_elapsed, True, True)
 		else:
 			print_speed = (0, "")
-		sys.stdout.write(self.ANSI_restore_cursor_pos)
-		sys.stdout.write(self.ANSI_erase_to_eol)
-		sys.stdout.write("%(current)s of %(total)s   %(percent)3d%% in %(elapsed)ds  %(speed).2f %(speed_coeff)sB/s" % {
+		self._stdout.write(self.ANSI_restore_cursor_pos)
+		self._stdout.write(self.ANSI_erase_to_eol)
+		self._stdout.write("%(current)s of %(total)s   %(percent)3d%% in %(elapsed)ds  %(speed).2f %(speed_coeff)sB/s" % {
 			"current" : str(self.current_position).rjust(len(str(self.total_size))),
 			"total" : self.total_size,
 			"percent" : self.total_size and (self.current_position * 100 / self.total_size) or 0,
@@ -110,6 +112,6 @@ class ProgressANSI(Progress):
 		})
 
 		if done_message:
-			sys.stdout.write("  %s\n" % done_message)
+			self._stdout.write("  %s\n" % done_message)
 
-		sys.stdout.flush()
+		self._stdout.flush()

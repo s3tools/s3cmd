@@ -4,6 +4,8 @@ TODO list for s3cmd project
 - For 0.9.9
   - Add --include/--include-from/--rinclude* for sync
   - Recursive processing / multiple sources with most commands.
+  - Add 'setacl' command.
+  - Add commands for CloudFront.
   - Document --recursive and --force for buckets
   - Allow change /tmp to somewhere else
 
