@@ -503,6 +503,10 @@ def cmd_sync_remote2local(src, dst):
 	src_uri = S3Uri(src)
 	dst_uri = S3Uri(dst)
 
+	src_base = src_uri.uri()
+	dst_base = dst_uri.path()
+	if not src_base[-1] == "/": src_base += "/"
+
 	rem_list = _get_filelist_remote(src_uri)
 	rem_count = len(rem_list)
 
@@ -517,8 +521,8 @@ def cmd_sync_remote2local(src, dst):
 
 	for file in loc_list:
 		if cfg.delete_removed:
-			# os.unlink(file)
-			output("deleted '%s'" % file)
+			os.unlink(dst_base + file)
+			output("deleted '%s'" % (dst_base + file))
 		else:
 			output("not-deleted '%s'" % file)
 
@@ -528,9 +532,6 @@ def cmd_sync_remote2local(src, dst):
 	timestamp_start = time.time()
 	seq = 0
 	dir_cache = {}
-	src_base = src_uri.uri()
-	dst_base = dst_uri.path()
-	if not src_base[-1] == "/": src_base += "/"
 	file_list = rem_list.keys()
 	file_list.sort()
 	for file in file_list:

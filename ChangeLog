@@ -1,3 +1,7 @@
+2008-11-29  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Delete local files with "sync --delete-removed"
+
 2008-11-25  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd, S3/Progress.py: Fixed Unicode output in Progress meter.
