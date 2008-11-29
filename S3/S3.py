@@ -189,7 +189,7 @@ class S3(object):
 		response = self.send_file(request, file)
 		return response
 
-	def object_get(self, uri, stream, start_position):
+	def object_get(self, uri, stream, start_position = 0):
 		if uri.type != "s3":
 			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 		request = self.create_request("OBJECT_GET", uri = uri)
