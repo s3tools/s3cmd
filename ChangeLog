@@ -1,3 +1,8 @@
+2008-11-29  Michal Ludvig  <michal@logix.cz>
+
+	Merge from trunk (r275):
+	* s3cmd: Delete local files with "sync --delete-removed"
+
 2008-11-07  Michal Ludvig  <michal@logix.cz>
 
 	* Released version 0.9.8.4
