@@ -1,3 +1,8 @@
+2008-12-01  Michal Ludvig  <michal@logix.cz>
+
+	* run-tests.py: Added a lot of new tests.
+	* testsuite/etc/logo.png: New file.
+
 2008-11-30  Michal Ludvig  <michal@logix.cz>
 
 	* S3/S3.py: object_get() -- make start_position argument optional.
