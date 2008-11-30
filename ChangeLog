@@ -1,5 +1,12 @@
 2008-12-01  Michal Ludvig  <michal@logix.cz>
 
+	* Released version 0.9.9-pre3
+	  ---------------------------
+
+	* S3/PkgInfo.py: Bumped up version to 0.9.9-pre3
+
+2008-12-01  Michal Ludvig  <michal@logix.cz>
+
 	* run-tests.py: Added a lot of new tests.
 	* testsuite/etc/logo.png: New file.
 
