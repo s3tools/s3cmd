@@ -100,9 +100,13 @@ test_s3cmd("Buckets list", ["ls"],
 
 test_s3cmd("Sync to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--no-encrypt'])
 
-test_s3cmd("Check bucket content", ['ls', 's3://s3cmd-autotest-1'],
+test_s3cmd("Check bucket content (-r)", ['ls', '--recursive', 's3://s3cmd-autotest-1'],
 	must_find = [ u"s3://s3cmd-autotest-1/xyz/unicode/ŪņЇЌœđЗ/☺ unicode € rocks ™" ],
 	must_not_find = [ "logo.png" ])
+
+test_s3cmd("Check bucket content", ['ls', 's3://s3cmd-autotest-1/xyz/'],
+	must_find_re = [ u"D s3://s3cmd-autotest-1/xyz/unicode/$" ],
+	must_not_find = [ u"ŪņЇЌœđЗ/☺ unicode € rocks ™" ])
 
 # test_s3cmd("Recursive put", ['put', '--recursive', 'testsuite/etc', 's3://s3cmd-autotest-1/xyz/'])
 

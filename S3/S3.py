@@ -105,7 +105,7 @@ class S3(object):
 		response["list"] = getListFromXml(response["data"], "Bucket")
 		return response
 	
-	def bucket_list(self, bucket, prefix = None):
+	def bucket_list(self, bucket, prefix = None, recursive = None):
 		def _list_truncated(data):
 			## <IsTruncated> can either be "true" or "false" or be missing completely
 			is_truncated = getTextFromXml(data, ".//IsTruncated") or "false"
@@ -120,7 +120,7 @@ class S3(object):
 		uri_params = {}
 		if prefix:
 			uri_params['prefix'] = self.urlencode_string(prefix)
-		if not self.config.recursive:
+		if not self.config.recursive and not recursive:
 			uri_params['delimiter'] = "/"
 		request = self.create_request("BUCKET_LIST", bucket = bucket, **uri_params)
 		response = self.send_request(request)
@@ -129,7 +129,7 @@ class S3(object):
 		prefixes = _get_common_prefixes(response["data"])
 		while _list_truncated(response["data"]):
 			uri_params['marker'] = self.urlencode_string(list[-1]["Key"])
-			debug("Listing continues after '%s'" % marker)
+			debug("Listing continues after '%s'" % uri_params['marker'])
 			request = self.create_request("BUCKET_LIST", bucket = bucket, **uri_params)
 			response = self.send_request(request)
 			list += _get_contents(response["data"])

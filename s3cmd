@@ -68,7 +68,7 @@ def subcmd_bucket_usage(s3, uri):
 	if object.endswith('*'):
 		object = object[:-1]
 	try:
-		response = s3.bucket_list(bucket, prefix = object)
+		response = s3.bucket_list(bucket, prefix = object, recursive = True)
 	except S3Error, e:
 		if S3.codes.has_key(e.Code):
 			error(S3.codes[e.Code] % bucket)
@@ -420,7 +420,7 @@ def _get_filelist_remote(remote_uri):
 	info("Retrieving list of remote files...")
 
 	s3 = S3(Config())
-	response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object())
+	response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object(), recursive = True)
 
 	rem_base = remote_uri.object()
 	rem_base_len = len(rem_base)
