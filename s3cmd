@@ -113,19 +113,25 @@ def subcmd_buckets_list_all(s3):
 
 def subcmd_bucket_list(s3, uri):
 	bucket = uri.bucket()
-	object = uri.object()
+	prefix = uri.object()
 
 	debug("Bucket 's3://%s':" % bucket)
-	if object.endswith('*'):
-		object = object[:-1]
+	if prefix.endswith('*'):
+		prefix = prefix[:-1]
 	try:
-		response = s3.bucket_list(bucket, prefix = object)
+		response = s3.bucket_list(bucket, prefix = prefix)
 	except S3Error, e:
 		if S3.codes.has_key(e.info["Code"]):
 			error(S3.codes[e.info["Code"]] % bucket)
 			return
 		else:
 			raise
+
+	for prefix in response['common_prefixes']:
+		output("%s %s" % (
+			"D".rjust(28),
+			uri.compose_uri(bucket, prefix["Prefix"])))
+
 	for object in response["list"]:
 		size, size_coeff = formatSize(object["Size"], Config().human_readable_sizes)
 		output("%s  %s%s  %s" % (

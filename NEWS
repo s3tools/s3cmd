@@ -1,3 +1,13 @@
+s3cmd 0.9.9-pre4
+================
+* Support for non-recursive 'ls'
+
+s3cmd 0.9.9-pre3
+================
+* Bugfixes only
+  - Fixed sync from S3 to local
+  - Fixed progress meter with Unicode chars
+
 s3cmd 0.9.9-pre2
 ================
 * Implemented progress meter (--progress / --no-progress)

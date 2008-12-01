@@ -114,20 +114,28 @@ class S3(object):
 		def _get_contents(data):
 			return getListFromXml(data, "Contents")
 
-		prefix = self.urlencode_string(prefix)
-		request = self.create_request("BUCKET_LIST", bucket = bucket, prefix = prefix)
+		def _get_common_prefixes(data):
+			return getListFromXml(data, "CommonPrefixes")
+
+		uri_params = {}
+		if prefix:
+			uri_params['prefix'] = self.urlencode_string(prefix)
+		if not self.config.recursive:
+			uri_params['delimiter'] = "/"
+		request = self.create_request("BUCKET_LIST", bucket = bucket, **uri_params)
 		response = self.send_request(request)
 		#debug(response)
 		list = _get_contents(response["data"])
+		prefixes = _get_common_prefixes(response["data"])
 		while _list_truncated(response["data"]):
-			marker = list[-1]["Key"]
+			uri_params['marker'] = self.urlencode_string(list[-1]["Key"])
 			debug("Listing continues after '%s'" % marker)
-			request = self.create_request("BUCKET_LIST", bucket = bucket,
-			                              prefix = prefix, 
-			                              marker = self.urlencode_string(marker))
+			request = self.create_request("BUCKET_LIST", bucket = bucket, **uri_params)
 			response = self.send_request(request)
 			list += _get_contents(response["data"])
+			prefixes += _get_common_prefixes(response["data"])
 		response['list'] = list
+		response['common_prefixes'] = prefixes
 		return response
 
 	def bucket_create(self, bucket, bucket_location = None):

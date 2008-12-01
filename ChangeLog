@@ -1,3 +1,7 @@
+2008-12-02  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd, S3/S3.py, NEWS: Support for (non-)recursive 'ls'
+
 2008-12-01  Michal Ludvig  <michal@logix.cz>
 
 	* Released version 0.9.9-pre3
