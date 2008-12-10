@@ -19,7 +19,7 @@ class Config(object):
 	simpledb_host = "sdb.amazonaws.com"
 	verbosity = logging.WARNING
 	progress_meter = True
-	progress_class = Progress.ProgressANSI
+	progress_class = Progress.ProgressCR
 	send_chunk = 4096
 	recv_chunk = 4096
 	human_readable_sizes = False

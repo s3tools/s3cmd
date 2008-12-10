@@ -10,11 +10,11 @@ from Utils import formatSize
 class Progress(object):
 	_stdout = sys.stdout
 
-	def __init__(self, label, total_size):
-		self.new_file(label, total_size)
+	def __init__(self, labels, total_size):
+		self.new_file(labels, total_size)
 	
-	def new_file(self, label, total_size):
-		self.label = label
+	def new_file(self, labels, total_size):
+		self.labels = labels
 		self.total_size = total_size
 		# Set initial_position to something in the
 		# case we're not counting from 0. For instance
@@ -43,6 +43,10 @@ class Progress(object):
 	def done(self, message):
 		self.display(done_message = message)
 
+	def output_labels(self):
+		self._stdout.write("%s -> %s\n" % (self.labels['source'], self.labels['destination']))
+		self._stdout.flush()
+
 	def display(self, new_file = False, done_message = None):
 		"""
 		display(new_file = False[/True], done = False[/True])
@@ -50,8 +54,7 @@ class Progress(object):
 		Override this method to provide a nicer output.
 		"""
 		if new_file:
-			self._stdout.write("%s  " % self.label[:30].ljust(30))
-			self._stdout.flush()
+			self.output_labels()
 			self.last_milestone = 0
 			return
 
@@ -82,14 +85,14 @@ class ProgressANSI(Progress):
 	ANSI_restore_cursor_pos = SCI + "u"
 	ANSI_move_cursor_to_column = SCI + "%uG"
 	ANSI_erase_to_eol = SCI + "0K"
+	ANSI_erase_current_line = SCI + "2K"
 
 	def display(self, new_file = False, done_message = None):
 		"""
 		display(new_file = False[/True], done_message = None)
 		"""
 		if new_file:
-			self._stdout.write("%s  " % self.label[-30:].ljust(30))
-			#self._stdout.write(self.ANSI_hide_cursor)
+			self.output_labels()
 			self._stdout.write(self.ANSI_save_cursor_pos)
 			self._stdout.flush()
 			return
@@ -111,6 +114,39 @@ class ProgressANSI(Progress):
 			"speed_coeff" : print_speed[1]
 		})
 
+		if done_message:
+			self._stdout.write("  %s\n" % done_message)
+
+		self._stdout.flush()
+
+class ProgressCR(Progress):
+    ## Uses CR char (Carriage Return) just like other progress bars do.
+	CR_char = chr(13)
+
+	def display(self, new_file = False, done_message = None):
+		"""
+		display(new_file = False[/True], done_message = None)
+		"""
+		if new_file:
+			self.output_labels()
+			return
+
+		timedelta = self.time_current - self.time_start
+		sec_elapsed = timedelta.days * 86400 + timedelta.seconds + float(timedelta.microseconds)/1000000.0
+		if (sec_elapsed > 0):
+			print_speed = formatSize((self.current_position - self.initial_position) / sec_elapsed, True, True)
+		else:
+			print_speed = (0, "")
+		self._stdout.write(self.CR_char)
+		output = " %(current)s of %(total)s   %(percent)3d%% in %(elapsed)4ds  %(speed)7.2f %(speed_coeff)sB/s" % {
+			"current" : str(self.current_position).rjust(len(str(self.total_size))),
+			"total" : self.total_size,
+			"percent" : self.total_size and (self.current_position * 100 / self.total_size) or 0,
+			"elapsed" : sec_elapsed,
+			"speed" : print_speed[0],
+			"speed_coeff" : print_speed[1]
+		}
+		self._stdout.write(output)
 		if done_message:
 			self._stdout.write("  %s\n" % done_message)
 

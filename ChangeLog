@@ -1,5 +1,11 @@
 2008-12-10  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Don't display download/upload completed message
+	  in --progress mode.
+	* S3/S3.py: Pass src/dst names down to Progress class.
+	* S3/Progress.py: added new class ProgressCR - apparently 
+	  ProgressANSI doesn't work on MacOS-X (and perhaps elsewhere).
+	* S3/Config.py: Default progress meter is now ProgressCR
 	* s3cmd: Updated email address for reporting bugs.
 	* TODO: Updated list.
 

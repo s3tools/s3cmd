@@ -194,14 +194,16 @@ class S3(object):
 		if self.config.acl_public:
 			headers["x-amz-acl"] = "public-read"
 		request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
-		response = self.send_file(request, file)
+		labels = { 'source' : file.name, 'destination' : uri }
+		response = self.send_file(request, file, labels)
 		return response
 
 	def object_get(self, uri, stream, start_position = 0):
 		if uri.type != "s3":
 			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 		request = self.create_request("OBJECT_GET", uri = uri)
-		response = self.recv_file(request, stream, start_position)
+		labels = { 'source' : uri, 'destination' : stream.name }
+		response = self.recv_file(request, stream, labels, start_position)
 		return response
 
 	def object_delete(self, uri):
@@ -391,11 +393,11 @@ class S3(object):
 
 		return response
 
-	def send_file(self, request, file, throttle = 0, retries = _max_retries):
+	def send_file(self, request, file, labels, throttle = 0, retries = _max_retries):
 		method_string, resource, headers = request
 		size_left = size_total = headers.get("content-length")
 		if self.config.progress_meter:
-			progress = self.config.progress_class(file.name, size_total)
+			progress = self.config.progress_class(labels, size_total)
 		else:
 			info("Sending file '%s', please wait..." % file.name)
 		timestamp_start = time.time()
@@ -414,7 +416,7 @@ class S3(object):
 				warning("Waiting %d sec..." % self._fail_wait(retries))
 				time.sleep(self._fail_wait(retries))
 				# Connection error -> same throttle value
-				return self.send_file(request, file, throttle, retries - 1)
+				return self.send_file(request, file, labels, throttle, retries - 1)
 			else:
 				raise S3UploadError("Upload failed for: %s" % resource['uri'])
 		file.seek(0)
@@ -449,7 +451,7 @@ class S3(object):
 				warning("Waiting %d sec..." % self._fail_wait(retries))
 				time.sleep(self._fail_wait(retries))
 				# Connection error -> same throttle value
-				return self.send_file(request, file, throttle, retries - 1)
+				return self.send_file(request, file, labels, throttle, retries - 1)
 			else:
 				debug("Giving up on '%s' %s" % (file.name, e))
 				raise S3UploadError("Upload failed for: %s" % resource['uri'])
@@ -471,7 +473,7 @@ class S3(object):
 			redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
 			self.set_hostname(redir_bucket, redir_hostname)
 			warning("Redirected to: %s" % (redir_hostname))
-			return self.send_file(request, file)
+			return self.send_file(request, file, labels)
 
 		# S3 from time to time doesn't send ETag back in a response :-(
 		# Force re-upload here.
@@ -483,7 +485,7 @@ class S3(object):
 			warning("MD5 Sums don't match!")
 			if retries:
 				warning("Retrying upload of %s" % (file.name))
-				return self.send_file(request, file, throttle, retries - 1)
+				return self.send_file(request, file, labels, throttle, retries - 1)
 			else:
 				warning("Too many failures. Giving up on '%s'" % (file.name))
 				raise S3UploadError
@@ -492,10 +494,10 @@ class S3(object):
 			raise S3Error(response)
 		return response
 
-	def recv_file(self, request, stream, start_position = 0, retries = _max_retries):
+	def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
 		method_string, resource, headers = request
 		if self.config.progress_meter:
-			progress = self.config.progress_class(stream.name, 0)
+			progress = self.config.progress_class(labels, 0)
 		else:
 			info("Receiving file '%s', please wait..." % stream.name)
 		timestamp_start = time.time()
@@ -523,7 +525,7 @@ class S3(object):
 				warning("Waiting %d sec..." % self._fail_wait(retries))
 				time.sleep(self._fail_wait(retries))
 				# Connection error -> same throttle value
-				return self.recv_file(request, stream, start_position, retries - 1)
+				return self.recv_file(request, stream, labels, start_position, retries - 1)
 			else:
 				raise S3DownloadError("Download failed for: %s" % resource['uri'])
 
@@ -534,7 +536,7 @@ class S3(object):
 			redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
 			self.set_hostname(redir_bucket, redir_hostname)
 			warning("Redirected to: %s" % (redir_hostname))
-			return self.recv_file(request, stream)
+			return self.recv_file(request, stream, labels)
 
 		if response["status"] < 200 or response["status"] > 299:
 			raise S3Error(response)
@@ -572,7 +574,7 @@ class S3(object):
 				warning("Waiting %d sec..." % self._fail_wait(retries))
 				time.sleep(self._fail_wait(retries))
 				# Connection error -> same throttle value
-				return self.recv_file(request, stream, current_position, retries - 1)
+				return self.recv_file(request, stream, labels, current_position, retries - 1)
 			else:
 				raise S3DownloadError("Download failed for: %s" % resource['uri'])
 
