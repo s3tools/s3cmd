@@ -11,12 +11,10 @@ TODO list for s3cmd project
 
 - After 1.0.0
   - Speed up upload / download with multiple threads.
-
-- Treat objects with "/" in their name as directories
-  - Will need local cache for bucket listings
-  - More user friendly 'del' operation that would work
-    with "directories"
-  - Recursion for some commands
+  - Sync should be able to update metadata (UID, timstamps, etc)
+    if only these change (i.e. same content, different metainfo).
+  - Sync must backup non-files as well. At least directories, 
+    symlinks and device nodes.
 
 - Implement GPG for sync
   (it's not that easy since it won't be easy to compare
@@ -26,6 +24,9 @@ TODO list for s3cmd project
    the metadata encrypted in each object header where we'll
    have to do large number for object/HEAD requests. tough 
    call).
+  Or we can only compare local timestamps with remote object 
+  timestamps. If the local one is older we'll *assume* it 
+  hasn't been changed.
 
 - Keep man page up to date and write some more documentation
   - Yeah, right ;-)

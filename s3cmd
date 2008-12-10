@@ -1176,7 +1176,7 @@ if __name__ == '__main__':
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     An unexpected error has occurred.
   Please report the following lines to:
-  s3tools-general@lists.sourceforge.net
+   s3tools-bugs@lists.sourceforge.net
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 """)
@@ -1188,7 +1188,7 @@ if __name__ == '__main__':
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     An unexpected error has occurred.
     Please report the above lines to:
-  s3tools-general@lists.sourceforge.net
+   s3tools-bugs@lists.sourceforge.net
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 """)
 		sys.exit(1)
