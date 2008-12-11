@@ -231,43 +231,87 @@ def cmd_object_put(args):
 			os.remove(real_filename)
 
 def cmd_object_get(args):
-	s3 = S3(Config())
+	cfg = Config()
+	s3 = S3(cfg)
 
-	if not S3Uri(args[0]).type == 's3':
-		raise ParameterError("Expecting S3 URI instead of '%s'" % args[0])
+	## Check arguments:
+	## if not --recursive:
+	##   - first N arguments must be S3Uri
+	##   - if the last one is S3 make current dir the destination_base
+	##   - if the last one is a directory:
+	##       - take all 'basenames' of the remote objects and
+	##         make the destination name be 'destination_base'+'basename'
+	##   - if the last one is a file or not existing:
+	##       - if the number of sources (N, above) == 1 treat it
+	##         as a filename and save the object there.
+	##       - if there's more sources -> Error
+	## if --recursive:
+	##   - first N arguments must be S3Uri
+	##       - for each Uri get a list of remote objects with that Uri as a prefix
+	##       - apply exclude/include rules
+	##       - each list item will have MD5sum, Timestamp and pointer to S3Uri
+	##         used as a prefix.
+	##   - the last arg may be a local directory - destination_base
+	##   - if the last one is S3 make current dir the destination_base
+	##   - if the last one doesn't exist check remote list:
+	##       - if there is only one item and its_prefix==its_name 
+	##         download that item to the name given in last arg.
+	##       - if there are more remote items use the last arg as a destination_base
+	##         and try to create the directory (incl. all parents).
+	##
+	## In both cases we end up with a list mapping remote object names (keys) to local file names.
 
-	destination_dir = None
-	destination_file = None
-	if len(args) > 1:
-		if S3Uri(args[-1]).type == 's3':
-			# all S3, use object names to local dir
-			check_args_type(args, type="s3", verbose_type="S3 URI")	# May raise ParameterError
+	## Each item will contain the following attributes
+	# 'remote_uri' 'local_filename' 'remote_label' 'local_label'
+	download_list = [ ]
+
+	remote_uris = []
+
+	if len(args) == 0:
+		raise ParameterError("Nothing to download. Expecting S3 URI.")
+
+	if S3Uri(args[-1]).type != 's3':
+		destination_base = args.pop()
+	else:
+		destination_base = "."
+
+	if len(args) == 0:
+		raise ParameterError("Nothing to download. Expecting S3 URI.")
+
+	for arg in args:
+		uri = S3Uri(arg)
+		if not uri.type == 's3':
+			raise ParameterError("Expecting S3 URI instead of '%s'" % arg)
+		remote_uris.append(uri)
+
+	if cfg.recursive:
+		raise NotImplementedError("Recursive get is not yet implemented")
+	else:
+		remote_keys = []
+		if not os.path.isdir(destination_base) or destination_base == '-':
+			if len(remote_uris) > 1:
+				raise ParameterError("Destination must be a directory when downloading multiple sources.")
+			download_item = {
+				'remote_uri' : remote_uris[0],
+				'local_filename' : destination_base
+			}
+			remote_keys.append(download_item)
 		else:
-			if (len(args) > 2):
-				# last must be dir, all preceding S3
-				if not os.path.isdir(args[-1]):
-					raise ParameterError("Last parameter must be a directory")
-				destination_dir = args.pop()
-				check_args_type(args, type="s3", verbose_type="S3 URI")	# May raise ParameterError
-			else:
-				# last must be a dir or a filename
-				if os.path.isdir(args[-1]):
-					destination_dir = args.pop()
-				else:
-					destination_file = args.pop()
+			if os.path.isdir(destination_base) and destination_base[-1] != os.path.sep:
+				destination_base += os.path.sep
+			for uri in remote_uris:
+				download_item = {
+					'remote_uri' : uri,
+					'local_filename' : destination_base + uri.basename(),
+				}
+				remote_keys.append(download_item)
 
-	while (len(args)):
-		uri_arg = args.pop(0)
-		uri = S3Uri(uri_arg)
+	for item in remote_keys:
+		uri = item['remote_uri']
+		destination = item['local_filename']
 
 		start_position = 0
-		if destination_file:
-			destination = destination_file
-		elif destination_dir:
-			destination = destination_dir + "/" + uri.object()
-		else:
-			# By default the destination filename is the object name
-			destination = uri.object()
+
 		if destination == "-":
 			## stdout
 			dst_stream = sys.stdout
@@ -418,7 +462,7 @@ def _get_filelist_local(local_uri):
 	return loc_list
 
 def _get_filelist_remote(remote_uri):
-	info("Retrieving list of remote files...")
+	info("Retrieving list of remote files for %s ..." % remote_uri)
 
 	s3 = S3(Config())
 	response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object(), recursive = True)
@@ -430,12 +474,12 @@ def _get_filelist_remote(remote_uri):
 		key = object['Key'][rem_base_len:]
 		rem_list[key] = { 
 			'size' : int(object['Size']),
-			# 'mtime' : dateS3toUnix(object['LastModified']), ## That's upload time, not our lastmod time :-(
+			'timestamp' : dateS3toUnix(object['LastModified']), ## Sadly it's upload time, not our lastmod time :-(
 			'md5' : object['ETag'][1:-1],
-			'object_key' : object['Key']
+			'object_key' : object['Key'],
 		}
 	return rem_list
-	
+
 def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 	info("Verifying checksums...")
 	cfg = Config()

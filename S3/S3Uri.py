@@ -42,6 +42,9 @@ class S3Uri(object):
 	def public_url(self):
 		raise ValueError("This S3 URI does not have Anonymous URL representation")
 
+	def basename(self):
+		return self.__unicode__().split("/")[-1]
+
 class S3UriS3(S3Uri):
 	type = "s3"
 	_re = re.compile("^s3://([^/]+)/?(.*)", re.IGNORECASE)
