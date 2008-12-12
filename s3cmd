@@ -1215,8 +1215,13 @@ if __name__ == '__main__':
 
 		main()
 		sys.exit(0)
+
 	except SystemExit, e:
 		sys.exit(e.code)
+
+	except KeyboardInterrupt:
+		sys.stderr.write("See ya!\n")
+		sys.exit(1)
 
 	except Exception, e:
 		sys.stderr.write("""
@@ -1227,10 +1232,23 @@ if __name__ == '__main__':
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 """)
-		sys.stderr.write("S3cmd:  %s\n" % PkgInfo.version)
-		sys.stderr.write("Python: %s\n" % sys.version.replace('\n', ' '))
+		tb = traceback.format_exc(sys.exc_info())
+		e_class = str(e.__class__)
+		e_class = e_class[e_class.rfind(".")+1 : -2]
+		sys.stderr.write("Problem: %s: %s\n" % (e_class, str(e)))
+		try:
+			sys.stderr.write("S3cmd:   %s\n" % PkgInfo.version)
+		except NameError:
+			sys.stderr.write("S3cmd:   unknown version. Module import problem?\n")
+		sys.stderr.write("Python:  %s\n" % sys.version.replace('\n', ' '))
 		sys.stderr.write("\n")
-		sys.stderr.write(traceback.format_exc(sys.exc_info())+"\n")
+		sys.stderr.write(tb)
+		if type(e) == ImportError:
+			sys.stderr.write("\n")
+			sys.stderr.write("Your sys.path contains these entries:\n")
+			for path in sys.path:
+				sys.stderr.write("\t%s\n" % path)
+			sys.stderr.write("Now the question is where has S3/S3.py been installed?\n")
 		sys.stderr.write("""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     An unexpected error has occurred.
