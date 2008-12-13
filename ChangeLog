@@ -1,3 +1,8 @@
+2008-12-14  Michal Ludvig  <michal@logix.cz>
+
+	* S3/Progress.py: Restructured import Utils to avoid import
+	  conflicts.
+
 2008-12-12  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Better Exception output. Print sys.path on ImportError,

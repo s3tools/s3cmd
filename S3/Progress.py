@@ -5,7 +5,7 @@
 
 import sys
 import datetime
-from Utils import formatSize
+import Utils
 
 class Progress(object):
 	_stdout = sys.stdout
@@ -59,11 +59,11 @@ class Progress(object):
 			return
 
 		if self.current_position == self.total_size:
-			print_size = formatSize(self.current_position, True)
+			print_size = Utils.formatSize(self.current_position, True)
 			if print_size[1] != "": print_size[1] += "B"
 			timedelta = self.time_current - self.time_start
 			sec_elapsed = timedelta.days * 86400 + timedelta.seconds + float(timedelta.microseconds)/1000000.0
-			print_speed = formatSize((self.current_position - self.initial_position) / sec_elapsed, True, True)
+			print_speed = Utils.formatSize((self.current_position - self.initial_position) / sec_elapsed, True, True)
 			self._stdout.write("100%%  %s%s in %.2fs (%.2f %sB/s)\n" % 
 				(print_size[0], print_size[1], sec_elapsed, print_speed[0], print_speed[1]))
 			self._stdout.flush()
@@ -100,7 +100,7 @@ class ProgressANSI(Progress):
 		timedelta = self.time_current - self.time_start
 		sec_elapsed = timedelta.days * 86400 + timedelta.seconds + float(timedelta.microseconds)/1000000.0
 		if (sec_elapsed > 0):
-			print_speed = formatSize((self.current_position - self.initial_position) / sec_elapsed, True, True)
+			print_speed = Utils.formatSize((self.current_position - self.initial_position) / sec_elapsed, True, True)
 		else:
 			print_speed = (0, "")
 		self._stdout.write(self.ANSI_restore_cursor_pos)
@@ -134,7 +134,7 @@ class ProgressCR(Progress):
 		timedelta = self.time_current - self.time_start
 		sec_elapsed = timedelta.days * 86400 + timedelta.seconds + float(timedelta.microseconds)/1000000.0
 		if (sec_elapsed > 0):
-			print_speed = formatSize((self.current_position - self.initial_position) / sec_elapsed, True, True)
+			print_speed = Utils.formatSize((self.current_position - self.initial_position) / sec_elapsed, True, True)
 		else:
 			print_speed = (0, "")
 		self._stdout.write(self.CR_char)
