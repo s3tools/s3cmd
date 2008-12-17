@@ -2,16 +2,20 @@ TODO list for s3cmd project
 ===========================
 
 - For 0.9.9
-  - Add --include/--include-from/--rinclude* for sync
   - Recursive processing / multiple sources with most commands.
     - Incl. recursive cp/mv on remote "folders".
   - Sanitize put/get behaviour.
     For instance 'get s3://../blah/x.jpg' should save it to
 	x.jpg and not attempt blah/x.jpg.
+    Similar thing, 'put /foo/bar/xyz.jpg s3://bucket/dome/path/'
+    should save it to s3://bucket/dome/path/xyz.jpg
   - Document --recursive and --force for buckets
+  - Allow change /tmp to somewhere else
+
+- For 1.0.0
+  - Add --include/--include-from/--rinclude* for sync
   - Add 'setacl' command.
   - Add commands for CloudFront.
-  - Allow change /tmp to somewhere else
 
 - After 1.0.0
   - Speed up upload / download with multiple threads.
