@@ -208,10 +208,11 @@ def cmd_object_put(args):
 		uri_final = S3Uri(uri_arg_final)
 		extra_headers = {}
 		real_filename = file
+		seq_label = "[%d of %d]" % (seq, total)
 		if Config().encrypt:
 			exitcode, real_filename, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(file)
 		try:
-			response = s3.object_put(real_filename, uri_final, extra_headers)
+			response = s3.object_put(real_filename, uri_final, extra_headers, extra_label = seq_label)
 		except S3UploadError, e:
 			error("Upload of '%s' failed too many times. Skipping that file." % real_filename)
 			continue
@@ -220,9 +221,9 @@ def cmd_object_put(args):
 			continue
 		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
 		if not Config().progress_meter:
-			output("File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) [%d of %d]" %
+			output("File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
 				(file, uri_final, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
-				seq, total))
+				seq_label))
 		if Config().acl_public:
 			output("Public URL of the object is: %s" %
 				(uri_final.public_url()))
@@ -639,6 +640,7 @@ def cmd_sync_remote2local(src, dst):
 		seq += 1
 		uri = S3Uri(src_base + file)
 		dst_file = dst_base + file
+		seq_label = "[%d of %d]" % (seq, total_count)
 		try:
 			dst_dir = os.path.dirname(dst_file)
 			if not dir_cache.has_key(dst_dir):
@@ -658,7 +660,7 @@ def cmd_sync_remote2local(src, dst):
 				os.close(os.open(dst_file, open_flags))
 				# Yeah I know there is a race condition here. Sadly I don't know how to open() in exclusive mode.
 				dst_stream = open(dst_file, "wb")
-				response = s3.object_get(uri, dst_stream)
+				response = s3.object_get(uri, dst_stream, extra_label = seq_label)
 				dst_stream.close()
 				if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
 					attrs = _parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
@@ -699,9 +701,9 @@ def cmd_sync_remote2local(src, dst):
 			continue
 		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
 		if not Config().progress_meter:
-			output("File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) [%d of %d]" %
+			output("File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
 				(uri, dst_file, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
-				seq, total_count))
+				seq_label))
 		total_size += response["size"]
 
 	total_elapsed = time.time() - timestamp_start
@@ -786,11 +788,12 @@ def cmd_sync_local2remote(src, dst):
 		seq += 1
 		src = loc_list[file]['full_name']
 		uri = S3Uri(dst_base + file)
+		seq_label = "[%d of %d]" % (seq, total_count)
 		if cfg.preserve_attrs:
 			attr_header = _build_attr_header(src)
 			debug(attr_header)
 		try:
-			response = s3.object_put(src, uri, attr_header)
+			response = s3.object_put(src, uri, attr_header, extra_label = seq_label)
 		except S3UploadError, e:
 			error("%s: upload failed too many times. Skipping that file." % src)
 			continue
@@ -799,9 +802,9 @@ def cmd_sync_local2remote(src, dst):
 			continue
 		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
 		if not cfg.progress_meter:
-			output("File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) [%d of %d]" %
+			output("File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
 				(src, uri, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
-				seq, total_count))
+				seq_label))
 		total_size += response["size"]
 
 	total_elapsed = time.time() - timestamp_start

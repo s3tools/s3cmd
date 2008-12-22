@@ -1,5 +1,7 @@
 2008-12-22  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd, S3/S3.py, S3/Progress.py: Display "[X of Y]"
+	  in --progress mode.
 	* s3cmd, S3/Config.py: Implemented recursive [get].
 	  Added --skip-existing option for [get] and [sync]. 
 

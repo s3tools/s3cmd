@@ -167,7 +167,7 @@ class S3(object):
 		response['bucket-location'] = getTextFromXml(response['data'], "LocationConstraint") or "any"
 		return response
 
-	def object_put(self, filename, uri, extra_headers = None):
+	def object_put(self, filename, uri, extra_headers = None, extra_label = ""):
 		# TODO TODO
 		# Make it consistent with stream-oriented object_get()
 		if uri.type != "s3":
@@ -194,15 +194,15 @@ class S3(object):
 		if self.config.acl_public:
 			headers["x-amz-acl"] = "public-read"
 		request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
-		labels = { 'source' : file.name, 'destination' : uri }
+		labels = { 'source' : file.name, 'destination' : uri, 'extra' : extra_label }
 		response = self.send_file(request, file, labels)
 		return response
 
-	def object_get(self, uri, stream, start_position = 0):
+	def object_get(self, uri, stream, start_position = 0, extra_label = ""):
 		if uri.type != "s3":
 			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 		request = self.create_request("OBJECT_GET", uri = uri)
-		labels = { 'source' : uri, 'destination' : stream.name }
+		labels = { 'source' : uri, 'destination' : stream.name, 'extra' : extra_label }
 		response = self.recv_file(request, stream, labels, start_position)
 		return response
 
