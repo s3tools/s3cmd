@@ -1,3 +1,8 @@
+2008-12-22  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd, S3/Config.py: Implemented recursive [get].
+	  Added --skip-existing option for [get] and [sync]. 
+
 2008-12-17  Michal Ludvig  <michal@logix.cz>
 
 	* TODO: Updated

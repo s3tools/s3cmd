@@ -25,6 +25,7 @@ class Config(object):
 	human_readable_sizes = False
 	force = False
 	get_continue = False
+	skip_existing = False
 	recursive = False
 	acl_public = False
 	proxy_host = ""

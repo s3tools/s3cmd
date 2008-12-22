@@ -263,14 +263,14 @@ def cmd_object_get(args):
 
 	## Each item will contain the following attributes
 	# 'remote_uri' 'local_filename' 'remote_label' 'local_label'
-	download_list = [ ]
+	download_list = []
 
 	remote_uris = []
 
 	if len(args) == 0:
 		raise ParameterError("Nothing to download. Expecting S3 URI.")
 
-	if S3Uri(args[-1]).type != 's3':
+	if S3Uri(args[-1]).type == 'file':
 		destination_base = args.pop()
 	else:
 		destination_base = "."
@@ -284,10 +284,26 @@ def cmd_object_get(args):
 			raise ParameterError("Expecting S3 URI instead of '%s'" % arg)
 		remote_uris.append(uri)
 
+	remote_keys = []
 	if cfg.recursive:
-		raise NotImplementedError("Recursive get is not yet implemented")
+		if not os.path.isdir(destination_base):
+			raise ParameterError("Destination must be a directory for recursive get.")
+		if destination_base[-1] != os.path.sep:
+			destination_base += os.path.sep
+		for uri in remote_uris:
+			objectlist = _get_filelist_remote(uri)
+			for key in objectlist.iterkeys():
+				object = S3Uri(objectlist[key]['object_uri_str'])
+				## Remove leading '/' from remote filenames
+				if key.find("/") == 0:
+					key = key[1:]
+				destination = destination_base + key
+				download_item = {
+					'remote_uri' : object,
+					'local_filename' : destination
+				}
+				remote_keys.append(download_item)
 	else:
-		remote_keys = []
 		if not os.path.isdir(destination_base) or destination_base == '-':
 			if len(remote_uris) > 1:
 				raise ParameterError("Destination must be a directory when downloading multiple sources.")
@@ -319,7 +335,16 @@ def cmd_object_get(args):
 			## File
 			try:
 				file_exists = os.path.exists(destination)
-				dst_stream = open(destination, "ab")
+				try:
+					dst_stream = open(destination, "ab")
+				except IOError, e:
+					if e.errno == errno.ENOENT:
+						basename = destination[:destination.rindex(os.path.sep)]
+						info("Creating directory: %s" % basename)
+						os.makedirs(basename)
+						dst_stream = open(destination, "ab")
+					else:
+						raise
 				if file_exists:
 					if Config().get_continue:
 						start_position = dst_stream.tell()
@@ -327,9 +352,12 @@ def cmd_object_get(args):
 						start_position = 0L
 						dst_stream.seek(0L)
 						dst_stream.truncate()
+					elif Config().skip_existing:
+						info("Skipping over existing file: %s" % (destination))
+						continue
 					else:
 						dst_stream.close()
-						raise ParameterError("File %s already exists. Use either --force or --continue or give it a new name." % destination)
+						raise ParameterError("File %s already exists. Use either of --force / --continue / --skip-existing or give it a new name." % destination)
 			except IOError, e:
 				error("Skipping %s: %s" % (destination, e.strerror))
 				continue
@@ -470,14 +498,27 @@ def _get_filelist_remote(remote_uri):
 	rem_base = remote_uri.object()
 	rem_base_len = len(rem_base)
 	rem_list = {}
+	break_now = False
 	for object in response['list']:
-		key = object['Key'][rem_base_len:]
+		if object['Key'] == rem_base and object['Key'][-1] != os.path.sep:
+			## We asked for one file and we got that file :-)
+			key = os.path.basename(object['Key'])
+			object_uri_str = remote_uri.uri()
+			break_now = True
+			rem_list = {}	## Remove whatever has already been put to rem_list
+		else:
+			key = object['Key'][rem_base_len:]		## Beware - this may be '' if object['Key']==rem_base !!
+			object_uri_str = remote_uri.uri() + key
 		rem_list[key] = { 
 			'size' : int(object['Size']),
 			'timestamp' : dateS3toUnix(object['LastModified']), ## Sadly it's upload time, not our lastmod time :-(
 			'md5' : object['ETag'][1:-1],
 			'object_key' : object['Key'],
+			'object_uri_str' : object_uri_str,
+			'base_uri' : remote_uri,
 		}
+		if break_now:
+			break
 	return rem_list
 
 def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
@@ -510,6 +551,15 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 		else:
 			debug("PASS: %s" % (os.sep + file))
 		if dst_list.has_key(file):
+			## Was --skip-existing requested?
+			if cfg.skip_existing:
+				debug("IGNR: %s (used --skip-existing)" % (file))
+				exists_list[file] = src_list[file]
+				del(src_list[file])
+				## Remove from destination-list, all that is left there will be deleted
+				del(dst_list[file])
+				continue
+
 			## Check size first
 			if dst_list[file]['size'] == src_list[file]['size']:
 				#debug("%s same size: %s" % (file, dst_list[file]['size']))
@@ -1034,6 +1084,7 @@ def main():
 	optparser.add_option(      "--no-encrypt", dest="encrypt", action="store_false", help="Don't encrypt files.")
 	optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations.")
 	optparser.add_option(      "--continue", dest="get_continue", action="store_true", help="Continue getting a partially downloaded file (only for [get] command).")
+	optparser.add_option(      "--skip-existing", dest="skip_existing", action="store_true", help="Skip over files that exist at the destination (only for [get] and [sync] commands).")
 	optparser.add_option("-r", "--recursive", dest="recursive", action="store_true", help="Recursive upload, download or removal.")
 	optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read for anyone.")
 	optparser.add_option(      "--acl-private", dest="acl_public", action="store_false", help="Store objects with default ACL allowing access for you only.")
