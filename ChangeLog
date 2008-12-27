@@ -1,3 +1,8 @@
+2008-12-26  Michal Ludvig  <michal@logix.cz>
+
+	* setup.cfg: Remove explicit install prefix. That should fix
+	  Mac OS X and Windows "setup.py install" runs.
+
 2008-12-22  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd, S3/S3.py, S3/Progress.py: Display "[X of Y]"
