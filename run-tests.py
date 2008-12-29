@@ -185,10 +185,10 @@ test_s3cmd("Buckets list", ["ls"],
 
 
 ## ====== Sync to S3
+exclude_unicode_args = []
 if have_unicode:
-	test_s3cmd("Sync to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--no-encrypt'])
-else:
-	test_s3cmd("Sync to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--exclude', 'unicode/*', '--no-encrypt'])
+	exclude_unicode_args = [ '--exclude', 'unicode/*' ]
+test_s3cmd("Sync to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--no-encrypt'] + exclude_unicode_args)
 
 
 ## ====== List bucket content
@@ -238,7 +238,7 @@ if have_wget:
 
 
 ## ====== Sync more to S3
-test_s3cmd("Sync more to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '*.png', '--no-encrypt'])
+test_s3cmd("Sync more to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '*.png', '--no-encrypt'] + exclude_unicode_args)
 
 
 ## ====== Rename within S3
