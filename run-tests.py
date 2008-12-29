@@ -41,7 +41,8 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 		print "----"
 		print stdout
 		print "----"
-		return 1
+		#return 1
+		sys.exit(1)
 	def success(message = ""):
 		global count_pass
 		if message:
@@ -186,7 +187,7 @@ test_s3cmd("Buckets list", ["ls"],
 
 ## ====== Sync to S3
 exclude_unicode_args = []
-if have_unicode:
+if not have_unicode:
 	exclude_unicode_args = [ '--exclude', 'unicode/*' ]
 test_s3cmd("Sync to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--no-encrypt'] + exclude_unicode_args)
 
@@ -253,6 +254,13 @@ test_s3cmd("Rename (NoSuchKey)", ['mv', 's3://s3cmd-autotest-1/xyz/etc/logo.png'
 	must_not_find = [ 'Object s3://s3cmd-autotest-1/xyz/etc/logo.png moved to s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG' ])
 
 
+## ====== Sync more from S3
+test_s3cmd("Sync more from S3", ['sync', '--delete-removed', 's3://s3cmd-autotest-1/xyz', 'testsuite-out'],
+	must_find = [ "deleted 'testsuite-out/etc/logo.png'", "stored as testsuite-out/etc2/Logo.PNG (22059 bytes", 
+	              "stored as testsuite-out/.svn/format " ],
+	must_not_find_re = [ "not-deleted.*etc/logo.png" ])
+
+
 ## ====== Make dst dir for get
 test_rmdir("Remove dst dir for get", "testsuite-out")
 
@@ -270,13 +278,6 @@ test_mkdir("Make dst dir for get", "testsuite-out")
 ## ====== Get multiple files
 test_s3cmd("Get multiple files", ['get', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG', 's3://s3cmd-autotest-1/xyz/etc/AtomicClockRadio.ttf', 'testsuite-out'],
 	must_find = [ u"saved as 'testsuite-out/Logo.PNG'", u"saved as 'testsuite-out/AtomicClockRadio.ttf'" ])
-
-
-## ====== Sync more from S3
-test_s3cmd("Sync more from S3", ['sync', '--delete-removed', 's3://s3cmd-autotest-1/xyz', 'testsuite-out'],
-	must_find = [ "deleted 'testsuite-out/etc/logo.png'", "stored as testsuite-out/etc2/Logo.PNG (22059 bytes", 
-	              "stored as testsuite-out/.svn/format " ],
-	must_not_find_re = [ "not-deleted.*etc/logo.png" ])
 
 
 ## ====== Copy between buckets

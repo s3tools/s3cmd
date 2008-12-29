@@ -3,6 +3,7 @@
 	* s3cmd: Replace unknown Unicode characters with '?'
 	  to avoid UnicodeEncodeError's. Also make all output strings
 	  unicode.
+	* run-tests.py: Exit on failed test. Fixed order of tests.
 
 2008-12-29  Michal Ludvig  <michal@logix.cz>
 
