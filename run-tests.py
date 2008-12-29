@@ -7,6 +7,7 @@
 ## License: GPL Version 2
 
 import sys
+import os
 import re
 from subprocess import Popen, PIPE, STDOUT
 
@@ -76,7 +77,9 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 
 def test_s3cmd(label, cmd_args = [], **kwargs):
 	if not cmd_args[0].endswith("s3cmd"):
-		cmd_args.insert(0, "./s3cmd")
+		cmd_args.insert(0, "python")
+		cmd_args.insert(1, "s3cmd")
+
 	return test(label, cmd_args, **kwargs)
 
 test_s3cmd("Remove test buckets", ['rb', '-r', 's3://s3cmd-autotest-1', 's3://s3cmd-autotest-2', 's3://s3cmd-Autotest-3'],
@@ -98,31 +101,56 @@ test_s3cmd("Invalid bucket name", ["mb", "--bucket-location=EU", "s3://s3cmd-Aut
 test_s3cmd("Buckets list", ["ls"], 
 	must_find = [ "autotest-1", "autotest-2", "Autotest-3" ], must_not_find_re = "Autotest-EU")
 
-test_s3cmd("Sync to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--no-encrypt'])
+if os.name != "nt":
+	## Full testsuite - POSIX (Unix, Linux, ...)
+	test_s3cmd("Sync to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--no-encrypt'])
 
-test_s3cmd("Check bucket content (-r)", ['ls', '--recursive', 's3://s3cmd-autotest-1'],
-	must_find = [ u"s3://s3cmd-autotest-1/xyz/unicode/ŪņЇЌœđЗ/☺ unicode € rocks ™" ],
-	must_not_find = [ "logo.png" ])
+	test_s3cmd("List bucket content", ['ls', 's3://s3cmd-autotest-1/xyz/'],
+		must_find_re = [ u"D s3://s3cmd-autotest-1/xyz/unicode/$" ],
+		must_not_find = [ u"ŪņЇЌœđЗ/☺ unicode € rocks ™" ])
 
-test_s3cmd("Check bucket content", ['ls', 's3://s3cmd-autotest-1/xyz/'],
-	must_find_re = [ u"D s3://s3cmd-autotest-1/xyz/unicode/$" ],
-	must_not_find = [ u"ŪņЇЌœđЗ/☺ unicode € rocks ™" ])
+	test_s3cmd("List bucket recursive", ['ls', '--recursive', 's3://s3cmd-autotest-1'],
+		must_find = [ u"s3://s3cmd-autotest-1/xyz/binary/random-crap.md5",
+		              u"s3://s3cmd-autotest-1/xyz/unicode/ŪņЇЌœđЗ/☺ unicode € rocks ™" ],
+		must_not_find = [ "logo.png" ])
 
-# test_s3cmd("Recursive put", ['put', '--recursive', 'testsuite/etc', 's3://s3cmd-autotest-1/xyz/'])
+	# test_s3cmd("Recursive put", ['put', '--recursive', 'testsuite/etc', 's3://s3cmd-autotest-1/xyz/'])
 
-test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public', 'testsuite/etc/logo.png', 's3://s3cmd-autotest-1/xyz/etc/logo.png'],
-	must_find = [ "stored as s3://s3cmd-autotest-1/xyz/etc/logo.png" ])
+	test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public', 'testsuite/etc/logo.png', 's3://s3cmd-autotest-1/xyz/etc/logo.png'],
+		must_find = [ "stored as s3://s3cmd-autotest-1/xyz/etc/logo.png" ])
 
-test("Removing local target", ['rm', '-rf', 'testsuite-out'])
+	test("Removing local target", ['rm', '-rf', 'testsuite-out'])
 
-test_s3cmd("Sync from S3", ['sync', 's3://s3cmd-autotest-1/xyz', 'testsuite-out'],
-	must_find = [ "stored as testsuite-out/etc/logo.png ", u"unicode/ŪņЇЌœđЗ/☺ unicode € rocks ™" ])
+	test_s3cmd("Sync from S3", ['sync', 's3://s3cmd-autotest-1/xyz', 'testsuite-out'],
+		must_find = [ "stored as testsuite-out/etc/logo.png ", u"unicode/ŪņЇЌœđЗ/☺ unicode € rocks ™" ])
 
-test("Retrieve public URL", ['wget', 'http://s3cmd-autotest-1.s3.amazonaws.com/xyz/etc/logo.png'],
-	must_find_re = [ 'logo.png.*saved \[22059/22059\]' ])
+	test("Retrieve public URL", ['wget', 'http://s3cmd-autotest-1.s3.amazonaws.com/xyz/etc/logo.png'],
+		must_find_re = [ 'logo.png.*saved \[22059/22059\]' ])
 
-test_s3cmd("Sync more to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '*.png', '--no-encrypt'])
+	test_s3cmd("Sync more to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '*.png', '--no-encrypt'])
 
+else:
+	## Reduced testsuite - Windows NT+
+	test_s3cmd("Sync to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--exclude', 'unicode/*', '--no-encrypt'])
+
+	test_s3cmd("Check bucket content (-r)", ['ls', '--recursive', 's3://s3cmd-autotest-1'],
+		must_find = [ u"s3://s3cmd-autotest-1/xyz/binary/random-crap.md5" ],
+		must_not_find = [ "logo.png" ])
+
+	test_s3cmd("Check bucket content", ['ls', 's3://s3cmd-autotest-1/xyz/'],
+		must_find_re = [ u"D s3://s3cmd-autotest-1/xyz/binary/$" ],
+		must_not_find = [ u"random-crap.md5" ])
+
+	test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public', 'testsuite/etc/logo.png', 's3://s3cmd-autotest-1/xyz/etc/logo.png'],
+		must_find = [ "stored as s3://s3cmd-autotest-1/xyz/etc/logo.png" ])
+
+	if os.path.isdir("testsuite-out"):
+		test("Removing local target", ['rmdir', '/s/q', 'testsuite-out'])
+
+	test_s3cmd("Sync from S3", ['sync', 's3://s3cmd-autotest-1/xyz', 'testsuite-out'],
+		must_find = [ "stored as testsuite-out/etc/logo.png " ])
+
+## Common for POSIX and Win32
 test_s3cmd("Rename within S3", ['mv', 's3://s3cmd-autotest-1/xyz/etc/logo.png', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG'],
 	must_find = [ 'Object s3://s3cmd-autotest-1/xyz/etc/logo.png moved to s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG' ])
 
@@ -142,8 +170,9 @@ test_s3cmd("Copy between buckets", ['cp', 's3://s3cmd-autotest-1/xyz/etc2/Logo.P
 test_s3cmd("Simple delete", ['del', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG'],
 	must_find = [ "Object s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG deleted" ])
 
-test_s3cmd("Recursive delete", ['del', '--recursive', 's3://s3cmd-autotest-1/xyz/unicode'],
-	must_find_re = [ "Object.*unicode/ŪņЇЌœđЗ/.*deleted" ])
+if os.name != "nt":
+	test_s3cmd("Recursive delete", ['del', '--recursive', 's3://s3cmd-autotest-1/xyz/unicode'],
+		must_find_re = [ "Object.*unicode/ŪņЇЌœđЗ/.*deleted" ])
 
 test_s3cmd("Recursive delete all", ['del', '--recursive', '--force', 's3://s3cmd-autotest-1'],
 	must_find_re = [ "Object.*binary/random-crap deleted" ])

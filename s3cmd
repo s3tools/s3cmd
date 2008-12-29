@@ -11,7 +11,6 @@ import time
 import os
 import re
 import errno
-import pwd, grp
 import glob
 import traceback
 import codecs
@@ -466,7 +465,7 @@ def _get_filelist_local(local_uri):
 		loc_base = os.path.join(local_path, "")
 		filelist = os.walk(local_path)
 	else:
-		loc_base = "./"
+		loc_base = "." + os.path.sep
 		filelist = [( '.', [], [local_path] )]
 	loc_base_len = len(loc_base)
 	loc_list = {}
@@ -719,6 +718,7 @@ def cmd_sync_remote2local(src, dst):
 
 def cmd_sync_local2remote(src, dst):
 	def _build_attr_header(src):
+		import pwd, grp
 		attrs = {}
 		st = os.stat_result(os.stat(src))
 		for attr in cfg.preserve_attrs_list:
@@ -789,6 +789,7 @@ def cmd_sync_local2remote(src, dst):
 		src = loc_list[file]['full_name']
 		uri = S3Uri(dst_base + file)
 		seq_label = "[%d of %d]" % (seq, total_count)
+		attr_header = None
 		if cfg.preserve_attrs:
 			attr_header = _build_attr_header(src)
 			debug(attr_header)
@@ -1073,8 +1074,11 @@ def main():
 	#optparser.disable_interspersed_args()
 
 	if os.getenv("HOME"):
-		optparser.set_defaults(config=os.getenv("HOME")+"/.s3cfg")
+		config_file = os.path.join(os.getenv("HOME"), ".s3cfg")
+	elif os.name == "nt" and os.getenv("USERPROFILE"):
+		config_file = os.path.join(os.getenv("USERPROFILE"), "Application Data", "s3cmd.ini")
 
+	optparser.set_defaults(config=config_file)
 	optparser.set_defaults(verbosity = default_verbosity)
 
 	optparser.add_option(      "--configure", dest="run_configure", action="store_true", help="Invoke interactive (re)configuration tool.")
@@ -1162,6 +1166,15 @@ def main():
 
 	## We may need a way to display progress meter on STDERR or somewhere else
 	Progress._stdout = _stdout
+
+	## Unsupported features on Win32 platform
+	if os.name == "nt":
+		if cfg.preserve_attrs:
+			error("Option --preserve is not yet supported on MS Windows platform. Assuming --no-preserve.")
+			cfg.preserve_attrs = False
+		if cfg.progress_meter:
+			error("Option --progress is not yet supported on MS Windows platform. Assuming --no-progress.")
+			cfg.progress_meter = False
 
 	## Update Config with other parameters
 	for option in cfg.option_list():

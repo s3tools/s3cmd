@@ -1,3 +1,7 @@
+2008-12-29  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd, run-tests.py: Make it work on Windows.
+
 2008-12-26  Michal Ludvig  <michal@logix.cz>
 
 	* setup.cfg: Remove explicit install prefix. That should fix
