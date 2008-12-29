@@ -1,5 +1,6 @@
 2008-12-29  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Improved wildcard get.
 	* run-tests.py: Improved testsuite, added parameters support
 	  to run only specified tests, cleaned up win/posix integration.
 	* S3/Exception.py: Python 2.4 doesn't automatically set 

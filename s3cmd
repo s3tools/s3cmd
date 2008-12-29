@@ -261,8 +261,8 @@ def cmd_object_get(args):
 	##
 	## In both cases we end up with a list mapping remote object names (keys) to local file names.
 
-	## Each item will contain the following attributes
-	# 'remote_uri' 'local_filename' 'remote_label' 'local_label'
+	## Each item will be a dict with the following attributes
+	# {'remote_uri', 'local_filename'}
 	download_list = []
 
 	remote_uris = []
@@ -316,15 +316,42 @@ def cmd_object_get(args):
 			if os.path.isdir(destination_base) and destination_base[-1] != os.path.sep:
 				destination_base += os.path.sep
 			for uri in remote_uris:
-				download_item = {
-					'remote_uri' : uri,
-					'local_filename' : destination_base + uri.basename(),
-				}
-				remote_keys.append(download_item)
+				uri_str = str(uri)
+				## Wildcards used on remote side?
+				## If yes we'll need a bucket listing...
+				if uri_str.find('*') > -1 or uri_str.find('?') > -1:
+					first_wildcard = uri_str.find('*')
+					first_questionmark = uri_str.find('?')
+					if first_questionmark > -1 and first_questionmark < first_wildcard:
+						first_wildcard = first_questionmark
+					prefix = uri_str[:first_wildcard]
+					rest = uri_str[first_wildcard+1:]
+					## Only request recursive listing if the 'rest' of the URI,
+					## i.e. the part after first wildcard, contains '/'
+					need_recursion = rest.find('/') > -1
+					objectlist = _get_filelist_remote(S3Uri(prefix), recursive = need_recursion)
+					if destination_base[-1] != os.path.sep:
+						destination_base += os.path.sep
+					for object in objectlist:
+						download_item = {
+							'remote_uri' : S3Uri(objectlist[object]['object_uri_str']),
+							'local_filename' : destination_base + object,
+						}
+						remote_keys.append(download_item)
+				else:
+					download_item = {
+						'remote_uri' : uri,
+						'local_filename' : destination_base + uri.basename(),
+					}
+					remote_keys.append(download_item)
 
+	total_count = len(remote_keys)
+	seq = 0
 	for item in remote_keys:
+		seq += 1
 		uri = item['remote_uri']
 		destination = item['local_filename']
+		seq_label = "[%d of %d]" % (seq, total_count)
 
 		start_position = 0
 
@@ -361,7 +388,7 @@ def cmd_object_get(args):
 			except IOError, e:
 				error("Skipping %s: %s" % (destination, e.strerror))
 				continue
-		response = s3.object_get(uri, dst_stream, start_position = start_position)
+		response = s3.object_get(uri, dst_stream, start_position = start_position, extra_label = seq_label)
 		if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
 			gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
 			response["size"] = os.stat(destination)[6]
@@ -489,21 +516,40 @@ def _get_filelist_local(local_uri):
 			}
 	return loc_list
 
-def _get_filelist_remote(remote_uri):
+def _get_filelist_remote(remote_uri, recursive = True):
+	## If remote_uri ends with '/' then all remote files will have 
+	## the remote_uri prefix removed in the relative path.
+	## If, on the other hand, the remote_uri ends with something else
+	## (probably alphanumeric symbol) we'll use the last path part 
+	## in the relative path.
+	##
+	## Complicated, eh? See an example:
+	## _get_filelist_remote("s3://bckt/abc/def") may yield:
+	## { 'def/file1.jpg' : {}, 'def/xyz/blah.txt' : {} }
+	## _get_filelist_remote("s3://bckt/abc/def/") will yield:
+	## { 'file1.jpg' : {}, 'xyz/blah.txt' : {} }
+	## Furthermore a prefix-magic can restrict the return list:
+	## _get_filelist_remote("s3://bckt/abc/def/x") yields:
+	## { 'xyz/blah.txt' : {} }
+
 	info("Retrieving list of remote files for %s ..." % remote_uri)
 
 	s3 = S3(Config())
-	response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object(), recursive = True)
+	response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object(), recursive = recursive)
 
-	rem_base = remote_uri.object()
+	rem_base_original = rem_base = remote_uri.object()
+	remote_uri_original = remote_uri
+	if rem_base != '' and rem_base[-1] != '/':
+		rem_base = rem_base[:rem_base.rfind('/')+1]
+		remote_uri = S3Uri("s3://%s/%s" % (remote_uri.bucket(), rem_base))
 	rem_base_len = len(rem_base)
 	rem_list = {}
 	break_now = False
 	for object in response['list']:
-		if object['Key'] == rem_base and object['Key'][-1] != os.path.sep:
+		if object['Key'] == rem_base_original and object['Key'][-1] != os.path.sep:
 			## We asked for one file and we got that file :-)
 			key = os.path.basename(object['Key'])
-			object_uri_str = remote_uri.uri()
+			object_uri_str = remote_uri_original.uri()
 			break_now = True
 			rem_list = {}	## Remove whatever has already been put to rem_list
 		else:
