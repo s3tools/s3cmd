@@ -1,3 +1,9 @@
+2008-12-30  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Replace unknown Unicode characters with '?'
+	  to avoid UnicodeEncodeError's. Also make all output strings
+	  unicode.
+
 2008-12-29  Michal Ludvig  <michal@logix.cz>
 
 	* TODO, NEWS: Updated

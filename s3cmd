@@ -14,21 +14,17 @@ import errno
 import glob
 import traceback
 import codecs
+import locale
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
 from logging import debug, info, warning, error
 from distutils.spawn import find_executable
 
-## Output native on TTY, UTF-8 otherwise (redirects)
-#_stdout = sys.stdout.isatty() and sys.stdout or codecs.getwriter("utf-8")(sys.stdout)
-#_stderr = sys.stderr.isatty() and sys.stderr or codecs.getwriter("utf-8")(sys.stderr)
 ## Output UTF-8 in all cases
-_stdout = codecs.getwriter("utf-8")(sys.stdout)
-_stderr = codecs.getwriter("utf-8")(sys.stderr)
-## Leave it to the terminal
-#_stdout = sys.stdout
-#_stderr = sys.stderr
+encoding = locale.getpreferredencoding() or "utf-8"
+_stdout = codecs.getwriter(encoding)(sys.stdout, "replace")
+_stderr = codecs.getwriter(encoding)(sys.stderr, "replace")
 
 def output(message):
 	_stdout.write(message + "\n")
@@ -57,8 +53,8 @@ def subcmd_bucket_usage_all(s3):
 			buckets_size += size
 	total_size, size_coeff = formatSize(buckets_size, Config().human_readable_sizes)
 	total_size_str = str(total_size) + size_coeff 
-	output("".rjust(8, "-"))
-	output("%s Total" % (total_size_str.ljust(8)))
+	output(u"".rjust(8, "-"))
+	output(u"%s Total" % (total_size_str.ljust(8)))
 
 def subcmd_bucket_usage(s3, uri):
 	bucket = uri.bucket()
@@ -80,7 +76,7 @@ def subcmd_bucket_usage(s3, uri):
 		bucket_size += size
 	total_size, size_coeff = formatSize(bucket_size, Config().human_readable_sizes)
 	total_size_str = str(total_size) + size_coeff 
-	output("%s %s" % (total_size_str.ljust(8), uri))
+	output(u"%s %s" % (total_size_str.ljust(8), uri))
 	return bucket_size
 
 def cmd_ls(args):
@@ -99,13 +95,13 @@ def cmd_buckets_list_all_all(args):
 
 	for bucket in response["list"]:
 		subcmd_bucket_list(s3, S3Uri("s3://" + bucket["Name"]))
-		output("")
+		output(u"")
 
 
 def subcmd_buckets_list_all(s3):
 	response = s3.list_all_buckets()
 	for bucket in response["list"]:
-		output("%s  s3://%s" % (
+		output(u"%s  s3://%s" % (
 			formatDateTime(bucket["CreationDate"]),
 			bucket["Name"],
 			))
@@ -114,7 +110,7 @@ def subcmd_bucket_list(s3, uri):
 	bucket = uri.bucket()
 	prefix = uri.object()
 
-	debug("Bucket 's3://%s':" % bucket)
+	debug(u"Bucket 's3://%s':" % bucket)
 	if prefix.endswith('*'):
 		prefix = prefix[:-1]
 	try:
@@ -127,13 +123,13 @@ def subcmd_bucket_list(s3, uri):
 			raise
 
 	for prefix in response['common_prefixes']:
-		output("%s %s" % (
+		output(u"%s %s" % (
 			"D".rjust(28),
 			uri.compose_uri(bucket, prefix["Prefix"])))
 
 	for object in response["list"]:
 		size, size_coeff = formatSize(object["Size"], Config().human_readable_sizes)
-		output("%s  %s%s  %s" % (
+		output(u"%s  %s%s  %s" % (
 			formatDateTime(object["LastModified"]),
 			str(size).rjust(8), size_coeff.ljust(1),
 			uri.compose_uri(bucket, object["Key"]),
@@ -147,7 +143,7 @@ def cmd_bucket_create(args):
 			raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % arg)
 		try:
 			response = s3.bucket_create(uri.bucket(), cfg.bucket_location)
-			output("Bucket '%s' created" % uri.uri())
+			output(u"Bucket '%s' created" % uri.uri())
 		except S3Error, e:
 			if S3.codes.has_key(e.info["Code"]):
 				error(S3.codes[e.info["Code"]] % uri.bucket())
@@ -161,7 +157,7 @@ def cmd_bucket_delete(args):
 			response = s3.bucket_delete(uri.bucket())
 		except S3Error, e:
 			if e.info['Code'] == 'BucketNotEmpty' and (cfg.force or cfg.recursive):
-				warning("Bucket is not empty. Removing all the objects from it first. This may take some time...")
+				warning(u"Bucket is not empty. Removing all the objects from it first. This may take some time...")
 				subcmd_object_del_uri(uri, recursive = True)
 				return _bucket_delete_one(uri)
 			elif S3.codes.has_key(e.info["Code"]):
@@ -176,7 +172,7 @@ def cmd_bucket_delete(args):
 		if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
 			raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % arg)
 		_bucket_delete_one(uri)
-		output("Bucket '%s' removed" % uri.uri())
+		output(u"Bucket '%s' removed" % uri.uri())
 
 def cmd_object_put(args):
 	s3 = S3(Config())
@@ -189,11 +185,11 @@ def cmd_object_put(args):
 		raise ParameterError("Expecting S3 URI instead of '%s'" % uri_arg)
 
 	if len(args) > 1 and uri.object() != "" and not Config().force:
-		error("When uploading multiple files the last argument must")
-		error("be a S3 URI specifying just the bucket name")
-		error("WITHOUT object name!")
-		error("Alternatively use --force argument and the specified")
-		error("object name will be prefixed to all stored filenames.")
+		error(u"When uploading multiple files the last argument must")
+		error(u"be a S3 URI specifying just the bucket name")
+		error(u"WITHOUT object name!")
+		error(u"Alternatively use --force argument and the specified")
+		error(u"object name will be prefixed to all stored filenames.")
 		sys.exit(1)
 	
 	seq = 0
@@ -213,21 +209,21 @@ def cmd_object_put(args):
 		try:
 			response = s3.object_put(real_filename, uri_final, extra_headers, extra_label = seq_label)
 		except S3UploadError, e:
-			error("Upload of '%s' failed too many times. Skipping that file." % real_filename)
+			error(u"Upload of '%s' failed too many times. Skipping that file." % real_filename)
 			continue
 		except InvalidFileError, e:
-			warning("File can not be uploaded: %s" % e)
+			warning(u"File can not be uploaded: %s" % e)
 			continue
 		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
 		if not Config().progress_meter:
-			output("File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+			output(u"File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
 				(file, uri_final, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
 				seq_label))
 		if Config().acl_public:
-			output("Public URL of the object is: %s" %
+			output(u"Public URL of the object is: %s" %
 				(uri_final.public_url()))
 		if Config().encrypt and real_filename != file:
-			debug("Removing temporary encrypted file: %s" % real_filename)
+			debug(u"Removing temporary encrypted file: %s" % real_filename)
 			os.remove(real_filename)
 
 def cmd_object_get(args):
@@ -386,7 +382,7 @@ def cmd_object_get(args):
 						dst_stream.close()
 						raise ParameterError("File %s already exists. Use either of --force / --continue / --skip-existing or give it a new name." % destination)
 			except IOError, e:
-				error("Skipping %s: %s" % (destination, e.strerror))
+				error(u"Skipping %s: %s" % (destination, e.strerror))
 				continue
 		response = s3.object_get(uri, dst_stream, start_position = start_position, extra_label = seq_label)
 		if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
@@ -394,7 +390,7 @@ def cmd_object_get(args):
 			response["size"] = os.stat(destination)[6]
 		if not Config().progress_meter and destination != "-":
 			speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
-			output("File %s saved as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s)" %
+			output(u"File %s saved as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s)" %
 				(uri, destination, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1]))
 
 def cmd_object_del(args):
@@ -420,13 +416,13 @@ def subcmd_object_del_uri(uri, recursive = None):
 		uri_base = 's3://' + uri.bucket() + "/"
 		for idx in filelist:
 			object = filelist[idx]
-			debug("Adding URI " + uri_base + object['object_key'])
+			debug(u"Adding URI " + uri_base + object['object_key'])
 			uri_list.append(S3Uri(uri_base + object['object_key']))
 	else:
 		uri_list.append(uri)
 	for _uri in uri_list:
 		response = s3.object_delete(_uri)
-		output("Object %s deleted" % _uri)
+		output(u"Object %s deleted" % _uri)
 
 def subcmd_cp_mv(args, process_fce, message):
 	src_uri = S3Uri(args.pop(0))
@@ -444,7 +440,7 @@ def subcmd_cp_mv(args, process_fce, message):
 	response = process_fce(src_uri, dst_uri) 
 	output(message % { "src" : src_uri, "dst" : dst_uri})
 	if Config().acl_public:
-		output("Public URL is: %s" % dst_uri.public_url())
+		output(u"Public URL is: %s" % dst_uri.public_url())
 
 def cmd_cp(args):
 	s3 = S3(Config())
@@ -466,18 +462,18 @@ def cmd_info(args):
 		try:
 			if uri.has_object():
 				info = s3.object_info(uri)
-				output("%s (object):" % uri.uri())
-				output("   File size: %s" % info['headers']['content-length'])
-				output("   Last mod:  %s" % info['headers']['last-modified'])
-				output("   MIME type: %s" % info['headers']['content-type'])
-				output("   MD5 sum:   %s" % info['headers']['etag'].strip('"'))
+				output(u"%s (object):" % uri.uri())
+				output(u"   File size: %s" % info['headers']['content-length'])
+				output(u"   Last mod:  %s" % info['headers']['last-modified'])
+				output(u"   MIME type: %s" % info['headers']['content-type'])
+				output(u"   MD5 sum:   %s" % info['headers']['etag'].strip('"'))
 			else:
 				info = s3.bucket_info(uri)
-				output("%s (bucket):" % uri.uri())
-				output("   Location:  %s" % info['bucket-location'])
+				output(u"%s (bucket):" % uri.uri())
+				output(u"   Location:  %s" % info['bucket-location'])
 			acl = s3.get_acl(uri)
 			for user in acl.keys():
-				output("   ACL:       %s: %s" % (user, acl[user]))
+				output(u"   ACL:       %s: %s" % (user, acl[user]))
 		except S3Error, e:
 			if S3.codes.has_key(e.info["Code"]):
 				error(S3.codes[e.info["Code"]] % uri.bucket())
@@ -576,7 +572,7 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 		logging.root.setLevel(logging.DEBUG)
 	for file in src_list.keys():
 		if not cfg.debug_syncmatch:
-			debug("CHECK: %s" % (os.sep + file))
+			debug(u"CHECK: %s" % (os.sep + file))
 		excluded = False
 		for r in cfg.exclude:
 			## all paths start with '/' from the base dir
@@ -585,8 +581,8 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 				## therefore this awkward excluded switch :-(
 				excluded = True
 				if cfg.debug_syncmatch:
-					debug("EXCL: %s" % (os.sep + file))
-					debug("RULE: '%s'" % (cfg.debug_exclude[r]))
+					debug(u"EXCL: %s" % (os.sep + file))
+					debug(u"RULE: '%s'" % (cfg.debug_exclude[r]))
 				else:
 					info("%s: excluded" % file)
 				break
@@ -595,11 +591,11 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 			del(src_list[file])
 			continue
 		else:
-			debug("PASS: %s" % (os.sep + file))
+			debug(u"PASS: %s" % (os.sep + file))
 		if dst_list.has_key(file):
 			## Was --skip-existing requested?
 			if cfg.skip_existing:
-				debug("IGNR: %s (used --skip-existing)" % (file))
+				debug(u"IGNR: %s (used --skip-existing)" % (file))
 				exists_list[file] = src_list[file]
 				del(src_list[file])
 				## Remove from destination-list, all that is left there will be deleted
@@ -608,7 +604,7 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 
 			## Check size first
 			if dst_list[file]['size'] == src_list[file]['size']:
-				#debug("%s same size: %s" % (file, dst_list[file]['size']))
+				#debug(u"%s same size: %s" % (file, dst_list[file]['size']))
 				## ... same size, check MD5
 				if src_is_local_and_dst_is_remote:
 					src_md5 = Utils.hash_file_md5(src_list[file]['full_name'])
@@ -617,22 +613,22 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 					src_md5 = src_list[file]['md5']
 					dst_md5 = Utils.hash_file_md5(dst_list[file]['full_name'])
 				if src_md5 == dst_md5:
-					#debug("%s md5 matches: %s" % (file, dst_md5))
+					#debug(u"%s md5 matches: %s" % (file, dst_md5))
 					## Checksums are the same.
 					## Remove from source-list, all that is left there will be transferred
-					debug("IGNR: %s (transfer not needed: MD5 OK, Size OK)" % file)
+					debug(u"IGNR: %s (transfer not needed: MD5 OK, Size OK)" % file)
 					exists_list[file] = src_list[file]
 					del(src_list[file])
 				else:
-					debug("XFER: %s (md5 mismatch: src=%s dst=%s)" % (file, src_md5, dst_md5))
+					debug(u"XFER: %s (md5 mismatch: src=%s dst=%s)" % (file, src_md5, dst_md5))
 			else:
-				debug("XFER: %s (size mismatch: src=%s dst=%s)" % (file, src_list[file]['size'], dst_list[file]['size']))
+				debug(u"XFER: %s (size mismatch: src=%s dst=%s)" % (file, src_list[file]['size'], dst_list[file]['size']))
                         
 			## Remove from destination-list, all that is left there will be deleted
-			#debug("%s removed from destination list" % file)
+			#debug(u"%s removed from destination list" % file)
 			del(dst_list[file])
 	if cfg.debug_syncmatch:
-		warning("Exiting because of --debug-syncmatch")
+		warning(u"Exiting because of --debug-syncmatch")
 		sys.exit(0)
 
 	return src_list, dst_list, exists_list, exclude_list
@@ -669,9 +665,9 @@ def cmd_sync_remote2local(src, dst):
 	for file in loc_list:
 		if cfg.delete_removed:
 			os.unlink(dst_base + file)
-			output("deleted '%s'" % (dst_base + file))
+			output(u"deleted '%s'" % (dst_base + file))
 		else:
-			output("not-deleted '%s'" % file)
+			output(u"not-deleted '%s'" % file)
 
 	total_size = 0
 	total_count = len(rem_list)
@@ -691,7 +687,7 @@ def cmd_sync_remote2local(src, dst):
 			if not dir_cache.has_key(dst_dir):
 				dir_cache[dst_dir] = Utils.mkdir_with_parents(dst_dir)
 			if dir_cache[dst_dir] == False:
-				warning("%s: destination directory not writable: %s" % (file, dst_dir))
+				warning(u"%s: destination directory not writable: %s" % (file, dst_dir))
 				continue
 			try:
 				open_flags = os.O_CREAT
@@ -700,7 +696,7 @@ def cmd_sync_remote2local(src, dst):
 				else:
 					open_flags |= os.O_EXCL
 
-				debug("dst_file=%s" % dst_file)
+				debug(u"dst_file=%s" % dst_file)
 				# This will have failed should the file exist
 				os.close(os.open(dst_file, open_flags))
 				# Yeah I know there is a race condition here. Sadly I don't know how to open() in exclusive mode.
@@ -720,21 +716,21 @@ def cmd_sync_remote2local(src, dst):
 				try: dst_stream.close()
 				except: pass
 				if e.errno == errno.EEXIST:
-					warning("%s exists - not overwriting" % (dst_file))
+					warning(u"%s exists - not overwriting" % (dst_file))
 					continue
 				if e.errno in (errno.EPERM, errno.EACCES):
-					warning("%s not writable: %s" % (dst_file, e.strerror))
+					warning(u"%s not writable: %s" % (dst_file, e.strerror))
 					continue
 				raise e
 			except KeyboardInterrupt:
 				try: dst_stream.close()
 				except: pass
-				warning("Exiting after keyboard interrupt")
+				warning(u"Exiting after keyboard interrupt")
 				return
 			except Exception, e:
 				try: dst_stream.close()
 				except: pass
-				error("%s: %s" % (file, e))
+				error(u"%s: %s" % (file, e))
 				continue
 			# We have to keep repeating this call because 
 			# Python 2.4 doesn't support try/except/finally
@@ -742,11 +738,11 @@ def cmd_sync_remote2local(src, dst):
 			try: dst_stream.close()
 			except: pass
 		except S3DownloadError, e:
-			error("%s: download failed too many times. Skipping that file." % file)
+			error(u"%s: download failed too many times. Skipping that file." % file)
 			continue
 		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
 		if not Config().progress_meter:
-			output("File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+			output(u"File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
 				(uri, dst_file, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
 				seq_label))
 		total_size += response["size"]
@@ -774,14 +770,14 @@ def cmd_sync_local2remote(src, dst):
 				except KeyError:
 					attr = "uid"
 					val = st.st_uid
-					warning("%s: Owner username not known. Storing UID=%d instead." % (src, val))
+					warning(u"%s: Owner username not known. Storing UID=%d instead." % (src, val))
 			elif attr == 'gname':
 				try:
 					val = grp.getgrgid(st.st_gid).gr_name
 				except KeyError:
 					attr = "gid"
 					val = st.st_gid
-					warning("%s: Owner groupname not known. Storing GID=%d instead." % (src, val))
+					warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (src, val))
 			else:
 				val = getattr(st, 'st_' + attr)
 			attrs[attr] = val
@@ -792,9 +788,9 @@ def cmd_sync_local2remote(src, dst):
 	s3 = S3(cfg)
 
 	if cfg.encrypt:
-		error("S3cmd 'sync' doesn't support GPG encryption, sorry.")
-		error("Either use unconditional 's3cmd put --recursive'")
-		error("or disable encryption with --no-encrypt parameter.")
+		error(u"S3cmd 'sync' doesn't support GPG encryption, sorry.")
+		error(u"Either use unconditional 's3cmd put --recursive'")
+		error(u"or disable encryption with --no-encrypt parameter.")
 		sys.exit(1)
 
 
@@ -817,9 +813,9 @@ def cmd_sync_local2remote(src, dst):
 		uri = S3Uri("s3://" + dst_uri.bucket()+"/"+rem_list[file]['object_key'])
 		if cfg.delete_removed:
 			response = s3.object_delete(uri)
-			output("deleted '%s'" % uri)
+			output(u"deleted '%s'" % uri)
 		else:
-			output("not-deleted '%s'" % uri)
+			output(u"not-deleted '%s'" % uri)
 
 	total_size = 0
 	total_count = len(loc_list)
@@ -842,14 +838,14 @@ def cmd_sync_local2remote(src, dst):
 		try:
 			response = s3.object_put(src, uri, attr_header, extra_label = seq_label)
 		except S3UploadError, e:
-			error("%s: upload failed too many times. Skipping that file." % src)
+			error(u"%s: upload failed too many times. Skipping that file." % src)
 			continue
 		except InvalidFileError, e:
-			warning("File can not be uploaded: %s" % e)
+			warning(u"File can not be uploaded: %s" % e)
 			continue
 		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
 		if not cfg.progress_meter:
-			output("File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+			output(u"File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
 				(src, uri, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
 				seq_label))
 		total_size += response["size"]
@@ -923,7 +919,7 @@ def gpg_decrypt(filename, gpgenc_header = "", in_place = True):
 	command = resolve_list(cfg.gpg_decrypt.split(" "), args)
 	code = gpg_command(command, cfg.gpg_passphrase)
 	if code == 0 and in_place:
-		debug("Renaming %s to %s" % (tmp_filename, filename))
+		debug(u"Renaming %s to %s" % (tmp_filename, filename))
 		os.unlink(filename)
 		os.rename(tmp_filename, filename)
 		tmp_filename = filename
@@ -952,8 +948,8 @@ def run_configure(config_file):
 
 	try:
 		while 1:
-			output("\nEnter new values or accept defaults in brackets with Enter.")
-			output("Refer to user manual for detailed description of all options.")
+			output(u"\nEnter new values or accept defaults in brackets with Enter.")
+			output(u"Refer to user manual for detailed description of all options.")
 			for option in options:
 				prompt = option[1]
 				## Option-specific handling
@@ -974,7 +970,7 @@ def run_configure(config_file):
 					pass
 
 				if len(option) >= 3:
-					output("\n%s" % option[2])
+					output(u"\n%s" % option[2])
 
 				val = raw_input(prompt + ": ")
 				if val != "":
@@ -982,19 +978,19 @@ def run_configure(config_file):
 						# Turn 'Yes' into True, everything else into False
 						val = val.lower().startswith('y')
 					setattr(cfg, option[0], val)
-			output("\nNew settings:")
+			output(u"\nNew settings:")
 			for option in options:
-				output("  %s: %s" % (option[1], getattr(cfg, option[0])))
+				output(u"  %s: %s" % (option[1], getattr(cfg, option[0])))
 			val = raw_input("\nTest access with supplied credentials? [Y/n] ")
 			if val.lower().startswith("y") or val == "":
 				try:
-					output("Please wait...")
+					output(u"Please wait...")
 					S3(Config()).bucket_list("", "")
-					output("Success. Your access key and secret key worked fine :-)")
+					output(u"Success. Your access key and secret key worked fine :-)")
 
-					output("\nNow verifying that encryption works...")
+					output(u"\nNow verifying that encryption works...")
 					if not getattr(cfg, "gpg_command") or not getattr(cfg, "gpg_passphrase"):
-						output("Not configured. Never mind.")
+						output(u"Not configured. Never mind.")
 					else:
 						if not getattr(cfg, "gpg_command"):
 							raise Exception("Path to GPG program not set")
@@ -1020,7 +1016,7 @@ def run_configure(config_file):
 							raise Exception("Encryption verification error.")
 
 				except Exception, e:
-					error("Test failed: %s" % (e))
+					error(u"Test failed: %s" % (e))
 					val = raw_input("\nRetry configuration? [Y/n] ")
 					if val.lower().startswith("y") or val == "":
 						continue
@@ -1044,14 +1040,14 @@ def run_configure(config_file):
 		os.umask(old_mask)
 		cfg.dump_config(f)
 		f.close()
-		output("Configuration saved to '%s'" % config_file)
+		output(u"Configuration saved to '%s'" % config_file)
 
 	except (EOFError, KeyboardInterrupt):
-		output("\nConfiguration aborted. Changes were NOT saved.")
+		output(u"\nConfiguration aborted. Changes were NOT saved.")
 		return
 	
 	except IOError, e:
-		error("Writing config file failed: %s: %s" % (config_file, e.strerror))
+		error(u"Writing config file failed: %s: %s" % (config_file, e.strerror))
 		sys.exit(1)
 
 def process_exclude_from_file(exf, exclude_array):
@@ -1060,7 +1056,7 @@ def process_exclude_from_file(exf, exclude_array):
 		ex = ex.strip()
 		if re.match("^#", ex) or re.match("^\s*$", ex):
 			continue
-		debug("adding rule: %s" % ex)
+		debug(u"adding rule: %s" % ex)
 		exclude_array.append(ex)
 
 commands = {}
@@ -1181,12 +1177,12 @@ def main():
 	                    stream = _stderr)
 	
 	if options.show_version:
-		output("s3cmd version %s" % PkgInfo.version)
+		output(u"s3cmd version %s" % PkgInfo.version)
 		sys.exit(0)
 
 	## Now finally parse the config file
 	if not options.config:
-		error("Can't find a config file. Please use --config option.")
+		error(u"Can't find a config file. Please use --config option.")
 		sys.exit(1)
 
 	try:
@@ -1195,9 +1191,9 @@ def main():
 		if options.run_configure:
 			cfg = Config()
 		else:
-			error("%s: %s"  % (options.config, e.strerror))
-			error("Configuration file not available.")
-			error("Consider using --configure parameter to create one.")
+			error(u"%s: %s"  % (options.config, e.strerror))
+			error(u"Configuration file not available.")
+			error(u"Consider using --configure parameter to create one.")
 			sys.exit(1)
 
 	## And again some logging level adjustments
@@ -1216,17 +1212,17 @@ def main():
 	## Unsupported features on Win32 platform
 	if os.name == "nt":
 		if cfg.preserve_attrs:
-			error("Option --preserve is not yet supported on MS Windows platform. Assuming --no-preserve.")
+			error(u"Option --preserve is not yet supported on MS Windows platform. Assuming --no-preserve.")
 			cfg.preserve_attrs = False
 		if cfg.progress_meter:
-			error("Option --progress is not yet supported on MS Windows platform. Assuming --no-progress.")
+			error(u"Option --progress is not yet supported on MS Windows platform. Assuming --no-progress.")
 			cfg.progress_meter = False
 
 	## Update Config with other parameters
 	for option in cfg.option_list():
 		try:
 			if getattr(options, option) != None:
-				debug("Updating %s -> %s" % (option, getattr(options, option)))
+				debug(u"Updating %s -> %s" % (option, getattr(options, option)))
 				cfg.update_option(option, getattr(options, option))
 		except AttributeError:
 			## Some Config() options are not settable from command line
@@ -1238,12 +1234,12 @@ def main():
 
 	if options.exclude_from:
 		for exf in options.exclude_from:
-			debug("processing --exclude-from %s" % exf)
+			debug(u"processing --exclude-from %s" % exf)
 			process_exclude_from_file(exf, options.exclude)
 
 	if options.exclude:
 		for ex in options.exclude:
-			debug("processing rule: %s" % ex)
+			debug(u"processing rule: %s" % ex)
 			exc = re.compile(glob.fnmatch.translate(ex))
 			cfg.exclude.append(exc)
 			if options.debug_syncmatch:
@@ -1255,20 +1251,20 @@ def main():
 
 	if options.rexclude_from:
 		for exf in options.rexclude_from:
-			debug("processing --rexclude-from %s" % exf)
+			debug(u"processing --rexclude-from %s" % exf)
 			process_exclude_from_file(exf, options.rexclude)
 
 	if options.rexclude:
 		for ex in options.rexclude:
-			debug("processing rule: %s" % ex)
+			debug(u"processing rule: %s" % ex)
 			exc = re.compile(ex)
 			cfg.exclude.append(exc)
 			if options.debug_syncmatch:
 				cfg.debug_exclude[exc] = ex
 
 	if cfg.encrypt and cfg.gpg_passphrase == "":
-		error("Encryption requested but no passphrase set in config file.")
-		error("Please re-run 's3cmd --configure' and supply it.")
+		error(u"Encryption requested but no passphrase set in config file.")
+		error(u"Please re-run 's3cmd --configure' and supply it.")
 		sys.exit(1)
 
 	if options.dump_config:
@@ -1280,7 +1276,7 @@ def main():
 		sys.exit(0)
 
 	if len(args) < 1:
-		error("Missing command. Please run with --help for more information.")
+		error(u"Missing command. Please run with --help for more information.")
 		sys.exit(1)
 
 	## Unicodise all remaining arguments:
@@ -1288,28 +1284,28 @@ def main():
 
 	command = args.pop(0)
 	try:
-		debug("Command: %s" % commands[command]["cmd"])
+		debug(u"Command: %s" % commands[command]["cmd"])
 		## We must do this lookup in extra step to 
 		## avoid catching all KeyError exceptions
 		## from inner functions.
 		cmd_func = commands[command]["func"]
 	except KeyError, e:
-		error("Invalid command: %s" % e)
+		error(u"Invalid command: %s" % e)
 		sys.exit(1)
 
 	if len(args) < commands[command]["argc"]:
-		error("Not enough paramters for command '%s'" % command)
+		error(u"Not enough paramters for command '%s'" % command)
 		sys.exit(1)
 
 	try:
 		cmd_func(args)
 	except S3Error, e:
-		error("S3 error: %s" % e)
+		error(u"S3 error: %s" % e)
 		if e.info.has_key("Message"):
 			error(e.info['Message'])
 		sys.exit(1)
 	except ParameterError, e:
-		error("Parameter problem: %s" % e)
+		error(u"Parameter problem: %s" % e)
 		sys.exit(1)
 
 if __name__ == '__main__':
