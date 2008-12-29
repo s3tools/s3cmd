@@ -1,6 +1,11 @@
 s3cmd 0.9.9-pre4
 ================
-* Support for non-recursive 'ls'
+* Support for non-recursive [ls]
+* Support for multiple sources and recursive [get].
+* Improved wildcard [get].
+* New option --skip-existing for [get] and [sync].
+* Improved Progress class (fixes Mac OS X)
+* Fixed installation on Windows and Mac OS X.
 
 s3cmd 0.9.9-pre3
 ================

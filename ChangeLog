@@ -1,5 +1,6 @@
 2008-12-29  Michal Ludvig  <michal@logix.cz>
 
+	* TODO, NEWS: Updated
 	* s3cmd: Improved wildcard get.
 	* run-tests.py: Improved testsuite, added parameters support
 	  to run only specified tests, cleaned up win/posix integration.
