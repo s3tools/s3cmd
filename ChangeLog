@@ -1,5 +1,10 @@
 2008-12-29  Michal Ludvig  <michal@logix.cz>
 
+	* run-tests.py: Improved testsuite, added parameters support
+	  to run only specified tests, cleaned up win/posix integration.
+
+2008-12-29  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd, run-tests.py: Make it work on Windows.
 
 2008-12-26  Michal Ludvig  <michal@logix.cz>
