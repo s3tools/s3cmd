@@ -10,6 +10,7 @@ import sys
 import os
 import re
 from subprocess import Popen, PIPE, STDOUT
+import locale
 
 count_pass = 0
 count_fail = 0
@@ -33,7 +34,7 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 	def failure(message = ""):
 		global count_fail
 		if message:
-			message = "  (%s)" % message
+			message = "  (%r)" % message
 		print "\x1b[31;1mFAIL%s\x1b[0m" % (message)
 		count_fail += 1
 		print "----"
@@ -46,14 +47,14 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 	def success(message = ""):
 		global count_pass
 		if message:
-			message = "  (%s)" % message
+			message = "  (%r)" % message
 		print "\x1b[32;1mOK\x1b[0m%s" % (message)
 		count_pass += 1
 		return 0
 	def skip(message = ""):
 		global count_skip
 		if message:
-			message = "  (%s)" % message
+			message = "  (%r)" % message
 		print "\x1b[33;1mSKIP\x1b[0m%s" % (message)
 		count_skip += 1
 		return 0
@@ -62,7 +63,7 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 			_list = [_list]
 
 		if regexps == False:
-			_list = [re.escape(item.encode("utf-8")) for item in _list]
+			_list = [re.escape(item.encode(locale.getpreferredencoding(), "replace")) for item in _list]
 
 		return [re.compile(item, re.MULTILINE) for item in _list]
 

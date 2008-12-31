@@ -1,11 +1,21 @@
 2008-12-31  Michal Ludvig  <michal@logix.cz>
 
+	* run-tests.py: Don't assume utf-8, use preferred encoding 
+	  instead.
 	* s3cmd, S3/Utils.py, S3/Exceptions.py, S3/Progress.py,
 	  S3/Config.py, S3/S3.py: Added --encoding switch and 
 	  Config.encoding variable. Don't assume utf-8 for filesystem
 	  and terminal output anymore.
 	* s3cmd: Avoid ZeroDivisionError on fast links.
 	* s3cmd: Unicodised all info() output.
+
+2008-12-30  Michal Ludvig  <michal@logix.cz>
+
+	* Released version 0.9.9-pre4
+	  ---------------------------
+
+	* S3/PkgInfo.py: Bumped up version to 0.9.9-pre4
+	* NEWS: Updated.
 
 2008-12-30  Michal Ludvig  <michal@logix.cz>
 
