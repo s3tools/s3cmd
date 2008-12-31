@@ -6,6 +6,7 @@ short_description = "S3cmd is a tool for managing Amazon S3 storage space."
 long_description = """
 S3cmd lets you copy files from/to Amazon S3 
 (Simple Storage Service) using a simple to use
-command line client.
+command line client. Supports rsync-like backup,
+encryption, etc.
 """
 

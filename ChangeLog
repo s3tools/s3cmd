@@ -1,5 +1,10 @@
 2008-12-31  Michal Ludvig  <michal@logix.cz>
 
+	* Released version 0.9.9-pre4
+	  ---------------------------
+
+2008-12-31  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd: Reworked internal handling of unicode vs encoded filenames.
 	  Should replace unknown characters with '?' instead of baling out.
 
@@ -25,11 +30,6 @@
 	  and terminal output anymore.
 	* s3cmd: Avoid ZeroDivisionError on fast links.
 	* s3cmd: Unicodised all info() output.
-
-2008-12-30  Michal Ludvig  <michal@logix.cz>
-
-	* Released version 0.9.9-pre4
-	  ---------------------------
 
 2008-12-30  Michal Ludvig  <michal@logix.cz>
 
