@@ -851,7 +851,8 @@ def cmd_sync_local2remote(src, dst):
 		total_size += response["size"]
 
 	total_elapsed = time.time() - timestamp_start
-	speed_fmt = formatSize(total_size/total_elapsed, human_readable = True, floating_point = True)
+	total_speed = total_elapsed and total_size/total_elapsed or 0.0
+	speed_fmt = formatSize(total_speed, human_readable = True, floating_point = True)
 
 	# Only print out the result if any work has been done or 
 	# if the user asked for verbose output

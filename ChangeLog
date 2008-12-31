@@ -1,5 +1,6 @@
 2008-12-31  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Avoid ZeroDivisionError on fast links.
 	* s3cmd: Unicodised all info() output.
 
 2008-12-30  Michal Ludvig  <michal@logix.cz>
