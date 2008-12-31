@@ -8,7 +8,10 @@ import time
 import re
 import string
 import random
-import md5
+try:
+	import hashlib as hash
+except ImportError:
+	import md5 as hash
 import errno
 
 from logging import debug, info, warning, error
@@ -146,7 +149,7 @@ def mktmpfile(prefix = "/tmp/tmpfile-", randchars = 20):
 	return mktmpsomething(prefix, randchars, createfunc)
 
 def hash_file_md5(filename):
-	h = md5.new()
+	h = hash.md5()
 	f = open(filename, "rb")
 	while True:
 		# Hash 32kB chunks

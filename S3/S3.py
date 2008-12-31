@@ -7,14 +7,18 @@ import sys
 import os, os.path
 import base64
 import time
-import md5
-import sha
-import hmac
 import httplib
 import logging
 import mimetypes
 from logging import debug, info, warning, error
 from stat import ST_SIZE
+
+try:
+	from hashlib import md5, sha1
+except ImportError:
+	import md5
+	import sha as sha1
+import hmac
 
 from Utils import *
 from SortedDict import SortedDict
@@ -420,7 +424,7 @@ class S3(object):
 			else:
 				raise S3UploadError("Upload failed for: %s" % resource['uri'])
 		file.seek(0)
-		md5_hash = md5.new()
+		md5_hash = md5()
 		try:
 			while (size_left > 0):
 				debug("SendFile: Reading up to %d bytes from '%s'" % (self.config.send_chunk, file.name))
@@ -544,7 +548,7 @@ class S3(object):
 		if start_position == 0:
 			# Only compute MD5 on the fly if we're downloading from beginning
 			# Otherwise we'd get a nonsense.
-			md5_hash = md5.new()
+			md5_hash = md5()
 		size_left = int(response["headers"]["content-length"])
 		size_total = start_position + size_left
 		current_position = start_position
@@ -626,7 +630,7 @@ class S3(object):
 			h += "/" + resource['bucket']
 		h += resource['uri']
 		debug("SignHeaders: " + repr(h))
-		return base64.encodestring(hmac.new(self.config.secret_key, h, sha).digest()).strip()
+		return base64.encodestring(hmac.new(self.config.secret_key, h, sha1).digest()).strip()
 
 	@staticmethod
 	def check_bucket_name(bucket, dns_strict = True):
