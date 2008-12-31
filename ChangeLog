@@ -1,5 +1,11 @@
 2008-12-31  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Reworked internal handling of unicode vs encoded filenames.
+	  Should replace unknown characters with '?' instead of baling out.
+
+2008-12-31  Michal Ludvig  <michal@logix.cz>
+
+	* run-tests.py: Display system encoding in use.
 	* s3cmd: Print a nice error message when --exclude-from
 	  file is not readable.
 	* S3/PkgInfo.py: Bumped up version to 0.9.9-pre4

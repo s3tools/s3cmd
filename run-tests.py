@@ -37,16 +37,19 @@ encoding = locale.getpreferredencoding()
 if not encoding:
 	print "Guessing current system encoding failed. Consider setting $LANG variable."
 	sys.exit(1)
+else:
+	print "System encoding: " + encoding
 
 have_encoding = os.path.isdir('testsuite/encodings/' + encoding)
 if not have_encoding and os.path.isfile('testsuite/encodings/%s.tar.gz' % encoding):
-	os.system("tar xvz -C testsuite/encodings -f testsuite/encodings/UTF-8.tar.gz")
+	os.system("tar xvz -C testsuite/encodings -f testsuite/encodings/%s.tar.gz" % encoding)
 	have_encoding = os.path.isdir('testsuite/encodings/' + encoding)
 
 if have_encoding:
 	enc_base_remote = "s3://s3cmd-autotest-1/xyz/%s/" % encoding
 	enc_pattern = patterns[encoding]
-	print "System encoding: " + encoding
+else:
+	print encoding + " specific files not found."
 
 def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = []):
 	def failure(message = ""):
@@ -259,7 +262,7 @@ if have_wget:
 
 
 ## ====== Sync more to S3
-test_s3cmd("Sync more to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings' ])
+test_s3cmd("Sync more to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--no-encrypt' ])
 
 
 ## ====== Rename within S3

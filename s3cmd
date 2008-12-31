@@ -341,7 +341,8 @@ def cmd_object_get(args):
 	for item in remote_keys:
 		seq += 1
 		uri = item['remote_uri']
-		destination = item['local_filename']
+		## Encode / Decode destination with "replace" to make sure it's compatible with current encoding
+		destination = unicodise_safe(item['local_filename'])
 		seq_label = "[%d of %d]" % (seq, total_count)
 
 		start_position = 0
@@ -478,7 +479,7 @@ def cmd_info(args):
 
 def _get_filelist_local(local_uri):
 	info(u"Compiling list of local files...")
-	local_path = local_uri.path()
+	local_path = deunicodise(local_uri.path())
 	if os.path.isdir(local_path):
 		loc_base = os.path.join(local_path, "")
 		filelist = os.walk(local_path)
@@ -497,9 +498,10 @@ def _get_filelist_local(local_uri):
 				## Synchronize symlinks... one day
 				## for now skip over
 				continue
-			file = full_name[loc_base_len:]
+			file = unicodise(full_name[loc_base_len:])
 			sr = os.stat_result(os.lstat(full_name))
 			loc_list[file] = {
+				'full_name_unicoded' : unicodise(full_name),
 				'full_name' : full_name,
 				'size' : sr.st_size, 
 				'mtime' : sr.st_mtime,
@@ -757,6 +759,7 @@ def cmd_sync_local2remote(src, dst):
 	def _build_attr_header(src):
 		import pwd, grp
 		attrs = {}
+		src = deunicodise(src)
 		st = os.stat_result(os.stat(src))
 		for attr in cfg.preserve_attrs_list:
 			if attr == 'uname':
@@ -823,17 +826,17 @@ def cmd_sync_local2remote(src, dst):
 	file_list.sort()
 	for file in file_list:
 		seq += 1
-		src = loc_list[file]['full_name']
+		src = loc_list[file]
 		uri = S3Uri(dst_base + file)
 		seq_label = "[%d of %d]" % (seq, total_count)
 		attr_header = None
 		if cfg.preserve_attrs:
-			attr_header = _build_attr_header(src)
+			attr_header = _build_attr_header(src['full_name'])
 			debug(attr_header)
 		try:
-			response = s3.object_put(src, uri, attr_header, extra_label = seq_label)
+			response = s3.object_put(src['full_name'], uri, attr_header, extra_label = seq_label)
 		except S3UploadError, e:
-			error(u"%s: upload failed too many times. Skipping that file." % src)
+			error(u"%s: upload failed too many times. Skipping that file." % src['full_name_unicode'])
 			continue
 		except InvalidFileError, e:
 			warning(u"File can not be uploaded: %s" % e)
