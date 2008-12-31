@@ -17,7 +17,7 @@ try:
 	from hashlib import md5, sha1
 except ImportError:
 	from md5 import md5
-	from sha import sha as sha1
+	import sha as sha1
 import hmac
 
 from Utils import *

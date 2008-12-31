@@ -768,14 +768,14 @@ def cmd_sync_local2remote(src, dst):
 				except KeyError:
 					attr = "uid"
 					val = st.st_uid
-					warning(u"%s: Owner username not known. Storing UID=%d instead." % (src, val))
+					warning(u"%s: Owner username not known. Storing UID=%d instead." % (unicodise(src), val))
 			elif attr == 'gname':
 				try:
 					val = grp.getgrgid(st.st_gid).gr_name
 				except KeyError:
 					attr = "gid"
 					val = st.st_gid
-					warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (src, val))
+					warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (unicodise(src), val))
 			else:
 				val = getattr(st, 'st_' + attr)
 			attrs[attr] = val
