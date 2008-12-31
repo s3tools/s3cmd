@@ -1,5 +1,6 @@
 2008-12-31  Michal Ludvig  <michal@logix.cz>
 
+	* testsuite: reorganised UTF-8 files
 	* run-tests.py: Don't assume utf-8, use preferred encoding 
 	  instead.
 	* s3cmd, S3/Utils.py, S3/Exceptions.py, S3/Progress.py,
