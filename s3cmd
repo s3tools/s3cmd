@@ -1047,7 +1047,11 @@ def run_configure(config_file):
 		sys.exit(1)
 
 def process_exclude_from_file(exf, exclude_array):
-	exfi = open(exf, "rt")
+	try:
+		exfi = open(exf, "rt")
+	except IOError, e:
+		error(e)
+		sys.exit(1)
 	for ex in exfi:
 		ex = ex.strip()
 		if re.match("^#", ex) or re.match("^\s*$", ex):
