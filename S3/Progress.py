@@ -44,7 +44,7 @@ class Progress(object):
 		self.display(done_message = message)
 
 	def output_labels(self):
-		self._stdout.write("%(source)s -> %(destination)s  %(extra)s\n" % self.labels)
+		self._stdout.write(u"%(source)s -> %(destination)s  %(extra)s\n" % self.labels)
 		self._stdout.flush()
 
 	def display(self, new_file = False, done_message = None):

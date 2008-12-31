@@ -363,7 +363,7 @@ def cmd_object_get(args):
 				except IOError, e:
 					if e.errno == errno.ENOENT:
 						basename = destination[:destination.rindex(os.path.sep)]
-						info("Creating directory: %s" % basename)
+						info(u"Creating directory: %s" % basename)
 						os.makedirs(basename)
 						dst_stream = open(destination, "ab")
 					else:
@@ -376,11 +376,11 @@ def cmd_object_get(args):
 						dst_stream.seek(0L)
 						dst_stream.truncate()
 					elif Config().skip_existing:
-						info("Skipping over existing file: %s" % (destination))
+						info(u"Skipping over existing file: %s" % (destination))
 						continue
 					else:
 						dst_stream.close()
-						raise ParameterError("File %s already exists. Use either of --force / --continue / --skip-existing or give it a new name." % destination)
+						raise ParameterError(u"File %s already exists. Use either of --force / --continue / --skip-existing or give it a new name." % destination)
 			except IOError, e:
 				error(u"Skipping %s: %s" % (destination, e.strerror))
 				continue
@@ -482,7 +482,7 @@ def cmd_info(args):
 				raise
 
 def _get_filelist_local(local_uri):
-	info("Compiling list of local files...")
+	info(u"Compiling list of local files...")
 	local_path = local_uri.path()
 	if os.path.isdir(local_path):
 		loc_base = os.path.join(local_path, "")
@@ -528,7 +528,7 @@ def _get_filelist_remote(remote_uri, recursive = True):
 	## _get_filelist_remote("s3://bckt/abc/def/x") yields:
 	## { 'xyz/blah.txt' : {} }
 
-	info("Retrieving list of remote files for %s ..." % remote_uri)
+	info(u"Retrieving list of remote files for %s ..." % remote_uri)
 
 	s3 = S3(Config())
 	response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object(), recursive = recursive)
@@ -564,7 +564,7 @@ def _get_filelist_remote(remote_uri, recursive = True):
 	return rem_list
 
 def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
-	info("Verifying checksums...")
+	info(u"Verifying checksums...")
 	cfg = Config()
 	exists_list = {}
 	exclude_list = {}
@@ -584,7 +584,7 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 					debug(u"EXCL: %s" % (os.sep + file))
 					debug(u"RULE: '%s'" % (cfg.debug_exclude[r]))
 				else:
-					info("%s: excluded" % file)
+					info(u"%s: excluded" % file)
 				break
 		if excluded:
 			exclude_list = src_list[file]
@@ -656,11 +656,11 @@ def cmd_sync_remote2local(src, dst):
 	loc_list = _get_filelist_local(dst_uri)
 	loc_count = len(loc_list)
 	
-	info("Found %d remote files, %d local files" % (rem_count, loc_count))
+	info(u"Found %d remote files, %d local files" % (rem_count, loc_count))
 
 	_compare_filelists(rem_list, loc_list, False)
 
-	info("Summary: %d remote files to download, %d local files to delete" % (len(rem_list), len(loc_list)))
+	info(u"Summary: %d remote files to download, %d local files to delete" % (len(rem_list), len(loc_list)))
 
 	for file in loc_list:
 		if cfg.delete_removed:
@@ -803,11 +803,11 @@ def cmd_sync_local2remote(src, dst):
 	rem_list = _get_filelist_remote(dst_uri)
 	rem_count = len(rem_list)
 
-	info("Found %d local files, %d remote files" % (loc_count, rem_count))
+	info(u"Found %d local files, %d remote files" % (loc_count, rem_count))
 
 	_compare_filelists(loc_list, rem_list, True)
 
-	info("Summary: %d local files to upload, %d remote files to delete" % (len(loc_list), len(rem_list)))
+	info(u"Summary: %d local files to upload, %d remote files to delete" % (len(loc_list), len(rem_list)))
 
 	for file in rem_list:
 		uri = S3Uri("s3://" + dst_uri.bucket()+"/"+rem_list[file]['object_key'])
@@ -902,7 +902,7 @@ def gpg_encrypt(filename):
 		"input_file" : filename, 
 		"output_file" : tmp_filename,
 	}
-	info("Encrypting file %(input_file)s to %(output_file)s..." % args)
+	info(u"Encrypting file %(input_file)s to %(output_file)s..." % args)
 	command = resolve_list(cfg.gpg_encrypt.split(" "), args)
 	code = gpg_command(command, cfg.gpg_passphrase)
 	return (code, tmp_filename, "gpg")
@@ -915,7 +915,7 @@ def gpg_decrypt(filename, gpgenc_header = "", in_place = True):
 		"input_file" : filename, 
 		"output_file" : tmp_filename,
 	}
-	info("Decrypting file %(input_file)s to %(output_file)s..." % args)
+	info(u"Decrypting file %(input_file)s to %(output_file)s..." % args)
 	command = resolve_list(cfg.gpg_decrypt.split(" "), args)
 	code = gpg_command(command, cfg.gpg_passphrase)
 	if code == 0 and in_place:
@@ -1344,19 +1344,19 @@ if __name__ == '__main__':
 		tb = traceback.format_exc(sys.exc_info())
 		e_class = str(e.__class__)
 		e_class = e_class[e_class.rfind(".")+1 : -2]
-		sys.stderr.write("Problem: %s: %s\n" % (e_class, str(e)))
+		sys.stderr.write(u"Problem: %s: %s\n" % (e_class, e))
 		try:
 			sys.stderr.write("S3cmd:   %s\n" % PkgInfo.version)
 		except NameError:
 			sys.stderr.write("S3cmd:   unknown version. Module import problem?\n")
 		sys.stderr.write("Python:  %s\n" % sys.version.replace('\n', ' '))
 		sys.stderr.write("\n")
-		sys.stderr.write(tb)
+		sys.stderr.write(unicode(tb, errors="replace"))
 		if type(e) == ImportError:
 			sys.stderr.write("\n")
 			sys.stderr.write("Your sys.path contains these entries:\n")
 			for path in sys.path:
-				sys.stderr.write("\t%s\n" % path)
+				sys.stderr.write(u"\t%s\n" % path)
 			sys.stderr.write("Now the question is where has S3/S3.py been installed?\n")
 		sys.stderr.write("""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
