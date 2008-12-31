@@ -21,14 +21,32 @@ run_tests = []
 exclude_tests = []
 
 if os.name == "posix":
-	have_unicode = True
 	have_wget = True
 elif os.name == "nt":
-	have_unicode = False
 	have_wget = False
 else:
 	print "Unknown platform: %s" % os.name
 	sys.exit(1)
+
+## Patterns for Unicode tests
+patterns = {}
+patterns['UTF-8'] = u"ŪņЇЌœđЗ/☺ unicode € rocks ™"
+patterns['GBK'] = u"12月31日/1-特色條目"
+
+encoding = locale.getpreferredencoding()
+if not encoding:
+	print "Guessing current system encoding failed. Consider setting $LANG variable."
+	sys.exit(1)
+
+have_encoding = os.path.isdir('testsuite/encodings/' + encoding)
+if not have_encoding and os.path.isfile('testsuite/encodings/%s.tar.gz' % encoding):
+	os.system("tar xvz -C testsuite/encodings -f testsuite/encodings/UTF-8.tar.gz")
+	have_encoding = os.path.isdir('testsuite/encodings/' + encoding)
+
+if have_encoding:
+	enc_base_remote = "s3://s3cmd-autotest-1/xyz/%s/" % encoding
+	enc_pattern = patterns[encoding]
+	print "System encoding: " + encoding
 
 def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = []):
 	def failure(message = ""):
@@ -63,7 +81,7 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 			_list = [_list]
 
 		if regexps == False:
-			_list = [re.escape(item.encode(locale.getpreferredencoding(), "replace")) for item in _list]
+			_list = [re.escape(item.encode(encoding, "replace")) for item in _list]
 
 		return [re.compile(item, re.MULTILINE) for item in _list]
 
@@ -187,18 +205,19 @@ test_s3cmd("Buckets list", ["ls"],
 
 
 ## ====== Sync to S3
-exclude_unicode_args = []
-if not have_unicode:
-	exclude_unicode_args = [ '--exclude', 'unicode/*' ]
-test_s3cmd("Sync to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--no-encrypt'] + exclude_unicode_args)
+test_s3cmd("Sync to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings' ])
+
+if have_encoding:
+	## ====== Sync UTF-8 / GBK / ... to S3
+	test_s3cmd("Sync %s to S3" % encoding, ['sync', 'testsuite/encodings/' + encoding, enc_base_remote, '--exclude', '.svn/*', '--no-encrypt' ])
 
 
 ## ====== List bucket content
 must_find_re = [ u"D s3://s3cmd-autotest-1/xyz/binary/$", u"D s3://s3cmd-autotest-1/xyz/etc/$" ]
 must_not_find = [ u"random-crap.md5", u".svn" ]
-if have_unicode:
-	must_find_re.append(u"D s3://s3cmd-autotest-1/xyz/unicode/$")
-	must_not_find.append(u"ŪņЇЌœđЗ/☺ unicode € rocks ™")
+if have_encoding:
+	must_find_re.append(u"D %s$" % enc_base_remote)
+	must_not_find.append(enc_pattern)
 test_s3cmd("List bucket content", ['ls', 's3://s3cmd-autotest-1/xyz/'],
 	must_find_re = must_find_re,
 	must_not_find = must_not_find)
@@ -206,8 +225,8 @@ test_s3cmd("List bucket content", ['ls', 's3://s3cmd-autotest-1/xyz/'],
 
 ## ====== List bucket recursive
 must_find = [ u"s3://s3cmd-autotest-1/xyz/binary/random-crap.md5" ]
-if have_unicode:
-	must_find.append(u"s3://s3cmd-autotest-1/xyz/unicode/ŪņЇЌœđЗ/☺ unicode € rocks ™")
+if have_encoding:
+	must_find.append(enc_base_remote + enc_pattern)
 test_s3cmd("List bucket recursive", ['ls', '--recursive', 's3://s3cmd-autotest-1'],
 	must_find = must_find,
 	must_not_find = [ "logo.png" ])
@@ -227,8 +246,8 @@ test_rmdir("Removing local target", 'testsuite-out')
 
 ## ====== Sync from S3
 must_find = [ "stored as testsuite-out/etc/logo.png " ]
-if have_unicode:
-	must_find.append(u"unicode/ŪņЇЌœđЗ/☺ unicode € rocks ™")
+if have_encoding:
+	must_find.append("stored as testsuite-out/" + encoding + "/" + enc_pattern)
 test_s3cmd("Sync from S3", ['sync', 's3://s3cmd-autotest-1/xyz', 'testsuite-out'],
 	must_find = must_find)
 
@@ -240,7 +259,7 @@ if have_wget:
 
 
 ## ====== Sync more to S3
-test_s3cmd("Sync more to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '*.png', '--no-encrypt'] + exclude_unicode_args)
+test_s3cmd("Sync more to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings' ])
 
 
 ## ====== Rename within S3
@@ -292,7 +311,7 @@ test_s3cmd("Simple delete", ['del', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG'],
 
 
 ## ====== Recursive delete
-test_s3cmd("Recursive delete", ['del', '--recursive', 's3://s3cmd-autotest-1/xyz/unicode'],
+test_s3cmd("Recursive delete", ['del', '--recursive', 's3://s3cmd-autotest-1/xyz/etc'],
 	must_find_re = [ "Object.*\.svn/format deleted" ])
 
 
