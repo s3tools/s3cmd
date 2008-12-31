@@ -21,13 +21,8 @@ from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatt
 from logging import debug, info, warning, error
 from distutils.spawn import find_executable
 
-## Output UTF-8 in all cases
-encoding = locale.getpreferredencoding() or "utf-8"
-_stdout = codecs.getwriter(encoding)(sys.stdout, "replace")
-_stderr = codecs.getwriter(encoding)(sys.stderr, "replace")
-
 def output(message):
-	_stdout.write(message + "\n")
+	sys.stdout.write(message + "\n")
 
 def check_args_type(args, type, verbose_type):
 	for arg in args:
@@ -353,7 +348,7 @@ def cmd_object_get(args):
 
 		if destination == "-":
 			## stdout
-			dst_stream = sys.stdout
+			dst_stream = sys.__stdout__
 		else:
 			## File
 			try:
@@ -1121,7 +1116,10 @@ def main():
 	elif os.name == "nt" and os.getenv("USERPROFILE"):
 		config_file = os.path.join(os.getenv("USERPROFILE"), "Application Data", "s3cmd.ini")
 
-	optparser.set_defaults(config=config_file)
+	preferred_encoding = locale.getpreferredencoding() or "UTF-8"
+
+	optparser.set_defaults(encoding = preferred_encoding)
+	optparser.set_defaults(config = config_file)
 	optparser.set_defaults(verbosity = default_verbosity)
 
 	optparser.add_option(      "--configure", dest="run_configure", action="store_true", help="Invoke interactive (re)configuration tool.")
@@ -1153,6 +1151,8 @@ def main():
 	optparser.add_option("-m", "--mime-type", dest="default_mime_type", type="mimetype", metavar="MIME/TYPE", help="Default MIME-type to be set for objects stored.")
 	optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")
 
+	optparser.add_option(      "--encoding", dest="encoding", metavar="ENCODING", help="Override autodetected terminal and filesystem encoding (character set). Autodetected: %s" % preferred_encoding)
+
 	optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form.")
 
 	optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default on TTY).")
@@ -1175,7 +1175,7 @@ def main():
 	## debugging/verbose output for config file parser on request
 	logging.basicConfig(level=options.verbosity,
 	                    format='%(levelname)s: %(message)s',
-	                    stream = _stderr)
+	                    stream = sys.stderr)
 	
 	if options.show_version:
 		output(u"s3cmd version %s" % PkgInfo.version)
@@ -1207,9 +1207,6 @@ def main():
 	## Can be overriden by actual --(no-)progress parameter
 	cfg.update_option('progress_meter', sys.stdout.isatty())
 
-	## We may need a way to display progress meter on STDERR or somewhere else
-	Progress._stdout = _stdout
-
 	## Unsupported features on Win32 platform
 	if os.name == "nt":
 		if cfg.preserve_attrs:
@@ -1228,6 +1225,10 @@ def main():
 		except AttributeError:
 			## Some Config() options are not settable from command line
 			pass
+
+	## Set output and filesystem encoding for printing out filenames.
+	sys.stdout = codecs.getwriter(cfg.encoding)(sys.stdout, "replace")
+	sys.stderr = codecs.getwriter(cfg.encoding)(sys.stderr, "replace")
 
 	## Process GLOB (shell wildcard style) excludes
 	if options.exclude is None:

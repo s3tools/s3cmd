@@ -13,6 +13,8 @@ import errno
 
 from logging import debug, info, warning, error
 
+import Config
+
 try:
 	import xml.etree.ElementTree as ET
 except ImportError:
@@ -181,21 +183,44 @@ def mkdir_with_parents(dir_name):
 			return False
 	return True
 
-def unicodise(string):
+def unicodise(string, encoding = None, errors = "replace"):
 	"""
 	Convert 'string' to Unicode or raise an exception.
 	"""
-	debug("Unicodising %r" % string)
+
+	if not encoding:
+		encoding = Config.Config().encoding
+
+	debug("Unicodising %r using %s" % (string, encoding))
 	if type(string) == unicode:
 		return string
 	try:
-		return string.decode("utf-8")
+		return string.decode(encoding, errors)
 	except UnicodeDecodeError:
 		raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
 
-def try_unicodise(string):
+def deunicodise(string, encoding = None, errors = "replace"):
+	"""
+	Convert unicode 'string' to <type str>, by default replacing
+	all invalid characters with '?' or raise an exception.
+	"""
+
+	if not encoding:
+		encoding = Config.Config().encoding
+
+	debug("DeUnicodising %r using %s" % (string, encoding))
+	if type(string) != unicode:
+		return str(string)
 	try:
-		return unicodise(string)
-	except UnicodeDecodeError:
-		return string
+		return string.encode(encoding, errors)
+	except UnicodeEncodeError:
+		raise UnicodeEncodeError("Conversion from unicode failed: %r" % string)
+
+def unicodise_safe(string, encoding = None):
+	"""
+	Convert 'string' to Unicode according to current encoding 
+	and replace all invalid characters with '?'
+	"""
+
+	return unicodise(deunicodise(string, encoding), encoding).replace(u'\ufffd', '?')
 

@@ -11,6 +11,7 @@ class Progress(object):
 	_stdout = sys.stdout
 
 	def __init__(self, labels, total_size):
+		self._stdout = sys.stdout
 		self.new_file(labels, total_size)
 	
 	def new_file(self, labels, total_size):

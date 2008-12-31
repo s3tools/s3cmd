@@ -174,12 +174,12 @@ class S3(object):
 			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 
 		if not os.path.isfile(filename):
-			raise InvalidFileError("%s is not a regular file" % filename)
+			raise InvalidFileError(u"%s is not a regular file" % unicodise(filename))
 		try:
 			file = open(filename, "rb")
 			size = os.stat(filename)[ST_SIZE]
 		except IOError, e:
-			raise InvalidFileError("%s: %s" % (filename, e.strerror))
+			raise InvalidFileError(u"%s: %s" % (unicodise(filename), e.strerror))
 		headers = SortedDict()
 		if extra_headers:
 			headers.update(extra_headers)
@@ -194,7 +194,7 @@ class S3(object):
 		if self.config.acl_public:
 			headers["x-amz-acl"] = "public-read"
 		request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
-		labels = { 'source' : file.name, 'destination' : uri, 'extra' : extra_label }
+		labels = { 'source' : unicodise(filename), 'destination' : unicodise(uri.uri()), 'extra' : extra_label }
 		response = self.send_file(request, file, labels)
 		return response
 

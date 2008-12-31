@@ -59,6 +59,7 @@ class Config(object):
 	exclude = []
 	# Dict mapping compiled REGEXPs back to their textual form
 	debug_exclude = {}
+	encoding = "utf-8"
 
 	## Creating a singleton
 	def __new__(self, configfile = None):

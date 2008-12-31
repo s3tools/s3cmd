@@ -13,11 +13,10 @@ except ImportError:
 
 class S3Exception(Exception):
 	def __init__(self, message = ""):
-		self.message = message
+		self.message = unicodise(message)
 
 	def __str__(self):
-		## Is this legal?
-		return unicode(self)
+		return deunicodise(self.message)
 
 	def __unicode__(self):
 		return self.message
