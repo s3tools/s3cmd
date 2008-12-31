@@ -3,7 +3,7 @@
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
 
-from Utils import getRootTagName
+from Utils import getRootTagName, unicodise, deunicodise
 from logging import debug, info, warning, error
 
 try:

@@ -1,5 +1,7 @@
 2008-12-31  Michal Ludvig  <michal@logix.cz>
 
+	* S3/PkgInfo.py: Bumped up version to 0.9.9-pre4
+	* S3/Exceptions.py: Added missing imports.
 	* NEWS: Updated.
 	* testsuite: reorganised UTF-8 files, added GBK encoding files,
 	  moved encoding-specific files to 'tar.gz' archives.
@@ -18,8 +20,6 @@
 
 	* Released version 0.9.9-pre4
 	  ---------------------------
-
-	* S3/PkgInfo.py: Bumped up version to 0.9.9-pre4
 
 2008-12-30  Michal Ludvig  <michal@logix.cz>
 
