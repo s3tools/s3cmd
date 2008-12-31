@@ -16,8 +16,8 @@ from stat import ST_SIZE
 try:
 	from hashlib import md5, sha1
 except ImportError:
-	import md5
-	import sha as sha1
+	from md5 import md5
+	from sha import sha as sha1
 import hmac
 
 from Utils import *

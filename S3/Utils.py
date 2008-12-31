@@ -9,9 +9,9 @@ import re
 import string
 import random
 try:
-	import hashlib as hash
+	from hashlib import md5
 except ImportError:
-	import md5 as hash
+	from md5 import md5
 import errno
 
 from logging import debug, info, warning, error
@@ -149,7 +149,7 @@ def mktmpfile(prefix = "/tmp/tmpfile-", randchars = 20):
 	return mktmpsomething(prefix, randchars, createfunc)
 
 def hash_file_md5(filename):
-	h = hash.md5()
+	h = md5()
 	f = open(filename, "rb")
 	while True:
 		# Hash 32kB chunks

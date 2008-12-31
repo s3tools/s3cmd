@@ -1,7 +1,7 @@
 2009-01-01  W. Tell  <w_tell -at- sourceforge>
 
 	* S3/S3.py, S3/Utils.py: Use 'hashlib' instead of md5 and sha 
-	  modules to avoid Python 2.6 warnings.
+	  modules to avoid Python 2.6 warnings. 
 
 2008-12-31  Michal Ludvig  <michal@logix.cz>
 
