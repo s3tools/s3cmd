@@ -1,5 +1,6 @@
 2008-12-31  Michal Ludvig  <michal@logix.cz>
 
+	* NEWS: Updated.
 	* testsuite: reorganised UTF-8 files, added GBK encoding files,
 	  moved encoding-specific files to 'tar.gz' archives.
 	* run-tests.py: Adapted to the above change.
@@ -19,7 +20,6 @@
 	  ---------------------------
 
 	* S3/PkgInfo.py: Bumped up version to 0.9.9-pre4
-	* NEWS: Updated.
 
 2008-12-30  Michal Ludvig  <michal@logix.cz>
 
