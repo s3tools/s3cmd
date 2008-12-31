@@ -6,7 +6,8 @@
 	* S3/Exceptions.py: Added missing imports.
 	* NEWS: Updated.
 	* testsuite: reorganised UTF-8 files, added GBK encoding files,
-	  moved encoding-specific files to 'tar.gz' archives.
+	  moved encoding-specific files to 'tar.gz' archives, removed 
+	  unicode dir.
 	* run-tests.py: Adapted to the above change.
 	* run-tests.sh: removed.
 	* testsuite/exclude.encodings: Added.
