@@ -7,6 +7,7 @@
 	  moved encoding-specific files to 'tar.gz' archives.
 	* run-tests.py: Adapted to the above change.
 	* run-tests.sh: removed.
+	* testsuite/exclude.encodings: Added.
 	* run-tests.py: Don't assume utf-8, use preferred encoding 
 	  instead.
 	* s3cmd, S3/Utils.py, S3/Exceptions.py, S3/Progress.py,
