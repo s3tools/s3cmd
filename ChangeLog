@@ -1,3 +1,8 @@
+2009-01-03  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Don't fail when neither $HOME nor %USERPROFILE% is set.
+	  (fixes #2483388)
+
 2009-01-01  W. Tell  <w_tell -at- sourceforge>
 
 	* S3/S3.py, S3/Utils.py: Use 'hashlib' instead of md5 and sha 

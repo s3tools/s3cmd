@@ -1118,6 +1118,7 @@ def main():
 	optparser = OptionParser(option_class=OptionMimeType, formatter=MyHelpFormatter())
 	#optparser.disable_interspersed_args()
 
+	config_file = None
 	if os.getenv("HOME"):
 		config_file = os.path.join(os.getenv("HOME"), ".s3cfg")
 	elif os.name == "nt" and os.getenv("USERPROFILE"):
