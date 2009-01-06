@@ -1,3 +1,9 @@
+2009-01-07  Michal Ludvig  <michal@logix.cz>
+
+	* S3/Utils.py: Reworked XML helpers - remove XMLNS before 
+	  parsing the input XML to avoid having all Tags prefixed
+	  with {XMLNS} by ElementTree.
+
 2009-01-03  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Don't fail when neither $HOME nor %USERPROFILE% is set.

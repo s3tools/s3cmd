@@ -23,25 +23,7 @@ try:
 except ImportError:
 	import elementtree.ElementTree as ET
 
-def stripTagXmlns(xmlns, tag):
-	"""
-	Returns a function that, given a tag name argument, removes
-	eventual ElementTree xmlns from it.
-
-	Example:
-		stripTagXmlns("{myXmlNS}tag") -> "tag"
-	"""
-	if not xmlns:
-		return tag
-	return re.sub(xmlns, "", tag)
-
-def fixupXPath(xmlns, xpath, max = 0):
-	if not xmlns:
-		return xpath
-	retval = re.subn("//", "//%s" % xmlns, xpath, max)[0]
-	return retval
-
-def parseNodes(nodes, xmlns = ""):
+def parseNodes(nodes):
 	## WARNING: Ignores text nodes from mixed xml/text.
 	## For instance <tag1>some text<tag2>other text</tag2></tag1>
 	## will be ignore "some text" node
@@ -49,9 +31,9 @@ def parseNodes(nodes, xmlns = ""):
 	for node in nodes:
 		retval_item = {}
 		for child in node.getchildren():
-			name = stripTagXmlns(xmlns, child.tag)
+			name = child.tag
 			if child.getchildren():
-				retval_item[name] = parseNodes([child], xmlns)
+				retval_item[name] = parseNodes([child])
 			else:
 				retval_item[name] = node.findtext(".//%s" % child.tag)
 		retval.append(retval_item)
@@ -62,26 +44,36 @@ def getNameSpace(element):
 		return ""
 	return re.compile("^(\{[^}]+\})").match(element.tag).groups()[0]
 
+def stripNameSpace(xml):
+	"""
+	removeNameSpace(xml) -- remove top-level AWS namespace
+	"""
+	r = re.compile('^(<?[^>]+?>\s?)(<\w+) xmlns=[\'"](http://[^\'"]+)[\'"](.*)', re.MULTILINE)
+	xmlns = r.match(xml).groups()[2]
+	xml = r.sub("\\1\\2\\4", xml)
+	return xml, xmlns
+
 def getTreeFromXml(xml):
+	xml, xmlns = stripNameSpace(xml)
 	tree = ET.fromstring(xml)
-	tree.xmlns = getNameSpace(tree)
+	tree.attrib['xmlns'] = xmlns
 	return tree
 	
 def getListFromXml(xml, node):
 	tree = getTreeFromXml(xml)
-	nodes = tree.findall('.//%s%s' % (tree.xmlns, node))
-	return parseNodes(nodes, tree.xmlns)
+	nodes = tree.findall('.//%s' % (node))
+	return parseNodes(nodes)
 	
 def getTextFromXml(xml, xpath):
 	tree = getTreeFromXml(xml)
 	if tree.tag.endswith(xpath):
 		return tree.text
 	else:
-		return tree.findtext(fixupXPath(tree.xmlns, xpath))
+		return tree.findtext(xpath)
 
 def getRootTagName(xml):
 	tree = getTreeFromXml(xml)
-	return stripTagXmlns(tree.xmlns, tree.tag)
+	return tree.tag
 
 def dateS3toPython(date):
 	date = re.compile("\.\d\d\dZ").sub(".000Z", date)
