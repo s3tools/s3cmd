@@ -25,6 +25,7 @@ from SortedDict import SortedDict
 from BidirMap import BidirMap
 from Config import Config
 from Exceptions import *
+from ACL import ACL
 
 class S3(object):
 	http_methods = BidirMap(
@@ -250,19 +251,10 @@ class S3(object):
 			request = self.create_request("OBJECT_GET", uri = uri, extra = "?acl")
 		else:
 			request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?acl")
-		acl = {}
+
 		response = self.send_request(request)
-		grants = getListFromXml(response['data'], "Grant")
-		for grant in grants:
-			if grant['Grantee'][0].has_key('DisplayName'):
-				user = grant['Grantee'][0]['DisplayName']
-			if grant['Grantee'][0].has_key('URI'):
-				user = grant['Grantee'][0]['URI']
-				if user == 'http://acs.amazonaws.com/groups/global/AllUsers':
-					user = "*anon*"
-			perm = grant['Permission']
-			acl[user] = perm
-		return acl
+		acl = ACL(response['data'])
+		return acl.getGrants()
 
 	## Low level methods
 	def urlencode_string(self, string):

@@ -1,5 +1,7 @@
 2009-01-07  Michal Ludvig  <michal@logix.cz>
 
+	* S3/ACL.py: New object for handling ACL issues.
+	* S3/S3.py: Moved most of S3.get_acl() to ACL class.
 	* S3/Utils.py: Reworked XML helpers - remove XMLNS before 
 	  parsing the input XML to avoid having all Tags prefixed
 	  with {XMLNS} by ElementTree.
