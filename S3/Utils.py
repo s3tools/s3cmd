@@ -39,24 +39,23 @@ def parseNodes(nodes):
 		retval.append(retval_item)
 	return retval
 
-def getNameSpace(element):
-	if not element.tag.startswith("{"):
-		return ""
-	return re.compile("^(\{[^}]+\})").match(element.tag).groups()[0]
-
 def stripNameSpace(xml):
 	"""
 	removeNameSpace(xml) -- remove top-level AWS namespace
 	"""
 	r = re.compile('^(<?[^>]+?>\s?)(<\w+) xmlns=[\'"](http://[^\'"]+)[\'"](.*)', re.MULTILINE)
-	xmlns = r.match(xml).groups()[2]
-	xml = r.sub("\\1\\2\\4", xml)
+	if r.match(xml):
+		xmlns = r.match(xml).groups()[2]
+		xml = r.sub("\\1\\2\\4", xml)
+	else:
+		xmlns = None
 	return xml, xmlns
 
 def getTreeFromXml(xml):
 	xml, xmlns = stripNameSpace(xml)
 	tree = ET.fromstring(xml)
-	tree.attrib['xmlns'] = xmlns
+	if xmlns:
+		tree.attrib['xmlns'] = xmlns
 	return tree
 	
 def getListFromXml(xml, node):
