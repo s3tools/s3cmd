@@ -238,26 +238,49 @@ test_s3cmd("List bucket recursive", ['ls', '--recursive', 's3://s3cmd-autotest-1
 # test_s3cmd("Recursive put", ['put', '--recursive', 'testsuite/etc', 's3://s3cmd-autotest-1/xyz/'])
 
 
-## ====== Put public, guess MIME
-test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public', 'testsuite/etc/logo.png', 's3://s3cmd-autotest-1/xyz/etc/logo.png'],
-	must_find = [ "stored as s3://s3cmd-autotest-1/xyz/etc/logo.png" ])
-
-
 ## ====== rmdir local
 test_rmdir("Removing local target", 'testsuite-out')
 
 
 ## ====== Sync from S3
-must_find = [ "stored as testsuite-out/etc/logo.png " ]
+must_find = [ "stored as testsuite-out/binary/random-crap.md5 " ]
 if have_encoding:
 	must_find.append("stored as testsuite-out/" + encoding + "/" + enc_pattern)
 test_s3cmd("Sync from S3", ['sync', 's3://s3cmd-autotest-1/xyz', 'testsuite-out'],
 	must_find = must_find)
 
 
+## ====== Put public, guess MIME
+test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public', 'testsuite/etc/logo.png', 's3://s3cmd-autotest-1/xyz/etc/logo.png'],
+	must_find = [ "stored as s3://s3cmd-autotest-1/xyz/etc/logo.png" ])
+
+
 ## ====== Retrieve from URL
 if have_wget:
-	test("Retrieve from URL", ['wget', 'http://s3cmd-autotest-1.s3.amazonaws.com/xyz/etc/logo.png'],
+	test("Retrieve from URL", ['wget', '-O', 'testsuite-out/logo.png', 'http://s3cmd-autotest-1.s3.amazonaws.com/xyz/etc/logo.png'],
+		must_find_re = [ 'logo.png.*saved \[22059/22059\]' ])
+
+
+## ====== Change ACL to Private
+test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', 's3://s3cmd-autotest-1/xyz/etc/l*.png'],
+	must_find = [ "logo.png: ACL set to Private" ])
+
+
+## ====== Verify Private ACL
+if have_wget:
+	test("Verify Private ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://s3cmd-autotest-1.s3.amazonaws.com/xyz/etc/logo.png'],
+		retcode = 1,
+		must_find_re = [ 'ERROR 403: Forbidden' ])
+
+
+## ====== Change ACL to Public
+test_s3cmd("Change ACL to Public", ['setacl', '--acl-public', '--recursive', 's3://s3cmd-autotest-1/xyz/etc/', '-v'],
+	must_find = [ "logo.png: ACL set to Public" ])
+
+
+## ====== Verify Public ACL
+if have_wget:
+	test("Verify Public ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://s3cmd-autotest-1.s3.amazonaws.com/xyz/etc/logo.png'],
 		must_find_re = [ 'logo.png.*saved \[22059/22059\]' ])
 
 
@@ -279,7 +302,7 @@ test_s3cmd("Rename (NoSuchKey)", ['mv', 's3://s3cmd-autotest-1/xyz/etc/logo.png'
 
 ## ====== Sync more from S3
 test_s3cmd("Sync more from S3", ['sync', '--delete-removed', 's3://s3cmd-autotest-1/xyz', 'testsuite-out'],
-	must_find = [ "deleted 'testsuite-out/etc/logo.png'", "stored as testsuite-out/etc2/Logo.PNG (22059 bytes", 
+	must_find = [ "deleted 'testsuite-out/logo.png'", "stored as testsuite-out/etc2/Logo.PNG (22059 bytes", 
 	              "stored as testsuite-out/.svn/format " ],
 	must_not_find_re = [ "not-deleted.*etc/logo.png" ])
 

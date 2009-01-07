@@ -2,6 +2,9 @@
 
 	* S3/S3.py: Some errors during file upload were incorrectly 
 	  interpreted as MD5 mismatch. (bug #2384990)
+	* S3/ACL.py: Move attributes from class to instance.
+	* run-tests.py: Tests for ACL.
+	* s3cmd: Minor messages changes.
 
 2009-01-07  Michal Ludvig  <michal@logix.cz>
 

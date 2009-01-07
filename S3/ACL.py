@@ -13,11 +13,12 @@ except ImportError:
 class Grantee(object):
 	ALL_USERS_URI = "http://acs.amazonaws.com/groups/global/AllUsers"
 
-	xsi_type = None
-	tag = None
-	name = None
-	display_name = None
-	permission = None
+	def __init__(self):
+		self.xsi_type = None
+		self.tag = None
+		self.name = None
+		self.display_name = None
+		self.permission = None
 
 	def __repr__(self):
 		return 'Grantee("%(tag)s", "%(name)s", "%(permission)s")' % { 
@@ -45,21 +46,24 @@ class Grantee(object):
 		return el
 
 class GranteeAnonRead(Grantee):
-	xsi_type = "Group"
-	tag = "URI"
-	name = Grantee.ALL_USERS_URI
-	permission = "READ"
+	def __init__(self):
+		Grantee.__init__(self)
+		self.xsi_type = "Group"
+		self.tag = "URI"
+		self.name = Grantee.ALL_USERS_URI
+		self.permission = "READ"
 
 class ACL(object):
 	EMPTY_ACL = "<AccessControlPolicy><Owner><ID></ID></Owner><AccessControlList></AccessControlList></AccessControlPolicy>"
 
-	grantees = []
-	owner_id = ""
-	owner_nick = ""
-
 	def __init__(self, xml = None):
 		if not xml:
 			xml = ACL.EMPTY_ACL
+
+		self.grantees = []
+		self.owner_id = ""
+		self.owner_nick = ""
+
 		tree = getTreeFromXml(xml)
 		self.parseOwner(tree)
 		self.parseGrants(tree)

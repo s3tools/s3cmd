@@ -898,9 +898,10 @@ def cmd_setacl(args):
 		seq_label = "[%d of %d]" % (seq, total_keys)
 		uri = key['remote_uri']
 		acl = s3.get_acl(uri)
+		debug(u"acl: %s - %r" % (uri, acl.grantees))
 		if cfg.acl_public:
 			if acl.isAnonRead():
-				info(u"%s: already Public, skippingi %s" % (uri, seq_label))
+				info(u"%s: already Public, skipping %s" % (uri, seq_label))
 				continue
 			acl.grantAnonRead()
 		else:
