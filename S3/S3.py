@@ -254,7 +254,7 @@ class S3(object):
 
 		response = self.send_request(request)
 		acl = ACL(response['data'])
-		return acl.getGrantList()
+		return acl
 
 	## Low level methods
 	def urlencode_string(self, string):

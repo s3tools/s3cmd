@@ -169,6 +169,65 @@ def cmd_bucket_delete(args):
 		_bucket_delete_one(uri)
 		output(u"Bucket '%s' removed" % uri.uri())
 
+def fetch_remote_keys(args):
+	remote_uris = []
+	remote_keys = []
+
+	for arg in args:
+		uri = S3Uri(arg)
+		if not uri.type == 's3':
+			raise ParameterError("Expecting S3 URI instead of '%s'" % arg)
+		remote_uris.append(uri)
+
+	if cfg.recursive:
+		for uri in remote_uris:
+			objectlist = _get_filelist_remote(uri)
+			for key in objectlist.iterkeys():
+				object = S3Uri(objectlist[key]['object_uri_str'])
+				## Remove leading '/' from remote filenames
+				if key.find("/") == 0:
+					key = key[1:]
+				download_item = {
+					'remote_uri' : object,
+					'key' : key
+				}
+				remote_keys.append(download_item)
+	else:
+		for uri in remote_uris:
+			uri_str = str(uri)
+			## Wildcards used in remote URI?
+			## If yes we'll need a bucket listing...
+			if uri_str.find('*') > -1 or uri_str.find('?') > -1:
+				first_wildcard = uri_str.find('*')
+				first_questionmark = uri_str.find('?')
+				if first_questionmark > -1 and first_questionmark < first_wildcard:
+					first_wildcard = first_questionmark
+				prefix = uri_str[:first_wildcard]
+				rest = uri_str[first_wildcard+1:]
+				## Only request recursive listing if the 'rest' of the URI,
+				## i.e. the part after first wildcard, contains '/'
+				need_recursion = rest.find('/') > -1
+				objectlist = _get_filelist_remote(S3Uri(prefix), recursive = need_recursion)
+				for key in objectlist:
+					## Check whether the 'key' matches the requested wildcards
+					if glob.fnmatch.fnmatch(objectlist[key]['object_uri_str'], uri_str):
+						download_item = {
+							'remote_uri' : S3Uri(objectlist[key]['object_uri_str']),
+							'key' : key,
+						}
+						remote_keys.append(download_item)
+			else:
+				## No wildcards - simply append the given URI to the list
+				key = os.path.basename(uri.object())
+				if not key:
+					raise ParameterError(u"Expecting S3 URI with a filename or --recursive: %s" % uri.uri())
+				download_item = {
+					'remote_uri' : uri,
+					'key' : key
+				}
+				remote_keys.append(download_item)
+	return remote_keys
+
 def cmd_object_put(args):
 	s3 = S3(Config())
 
@@ -256,8 +315,6 @@ def cmd_object_get(args):
 	# {'remote_uri', 'local_filename'}
 	download_list = []
 
-	remote_uris = []
-
 	if len(args) == 0:
 		raise ParameterError("Nothing to download. Expecting S3 URI.")
 
@@ -269,74 +326,22 @@ def cmd_object_get(args):
 	if len(args) == 0:
 		raise ParameterError("Nothing to download. Expecting S3 URI.")
 
-	for arg in args:
-		uri = S3Uri(arg)
-		if not uri.type == 's3':
-			raise ParameterError("Expecting S3 URI instead of '%s'" % arg)
-		remote_uris.append(uri)
+	remote_keys = fetch_remote_keys(args)
+	total_count = len(remote_keys)
 
-	remote_keys = []
-	if cfg.recursive:
-		if not os.path.isdir(destination_base):
-			raise ParameterError("Destination must be a directory for recursive get.")
+	if not os.path.isdir(destination_base) or destination_base == '-':
+		## We were either given a file name (existing or not) or want STDOUT
+		if total_count > 1:
+			raise ParameterError("Destination must be a directory when downloading multiple sources.")
+		remote_keys[0]['local_filename'] = destination_base
+	elif os.path.isdir(destination_base):
 		if destination_base[-1] != os.path.sep:
 			destination_base += os.path.sep
-		for uri in remote_uris:
-			objectlist = _get_filelist_remote(uri)
-			for key in objectlist.iterkeys():
-				object = S3Uri(objectlist[key]['object_uri_str'])
-				## Remove leading '/' from remote filenames
-				if key.find("/") == 0:
-					key = key[1:]
-				destination = destination_base + key
-				download_item = {
-					'remote_uri' : object,
-					'local_filename' : destination
-				}
-				remote_keys.append(download_item)
+		for key in remote_keys:
+			key['local_filename'] = destination_base + key['key']
 	else:
-		if not os.path.isdir(destination_base) or destination_base == '-':
-			if len(remote_uris) > 1:
-				raise ParameterError("Destination must be a directory when downloading multiple sources.")
-			download_item = {
-				'remote_uri' : remote_uris[0],
-				'local_filename' : destination_base
-			}
-			remote_keys.append(download_item)
-		else:
-			if os.path.isdir(destination_base) and destination_base[-1] != os.path.sep:
-				destination_base += os.path.sep
-			for uri in remote_uris:
-				uri_str = str(uri)
-				## Wildcards used on remote side?
-				## If yes we'll need a bucket listing...
-				if uri_str.find('*') > -1 or uri_str.find('?') > -1:
-					first_wildcard = uri_str.find('*')
-					first_questionmark = uri_str.find('?')
-					if first_questionmark > -1 and first_questionmark < first_wildcard:
-						first_wildcard = first_questionmark
-					prefix = uri_str[:first_wildcard]
-					rest = uri_str[first_wildcard+1:]
-					## Only request recursive listing if the 'rest' of the URI,
-					## i.e. the part after first wildcard, contains '/'
-					need_recursion = rest.find('/') > -1
-					objectlist = _get_filelist_remote(S3Uri(prefix), recursive = need_recursion)
-					if destination_base[-1] != os.path.sep:
-						destination_base += os.path.sep
-					for object in objectlist:
-						download_item = {
-							'remote_uri' : S3Uri(objectlist[object]['object_uri_str']),
-							'local_filename' : destination_base + object,
-						}
-						remote_keys.append(download_item)
-				else:
-					download_item = {
-						'remote_uri' : uri,
-						'local_filename' : destination_base + uri.basename(),
-					}
-					remote_keys.append(download_item)
+		raise InternalError("WTF? Is it a dir or not? -- %s" % destination_base)
 
-	total_count = len(remote_keys)
 	seq = 0
 	for item in remote_keys:
 		seq += 1
@@ -468,8 +473,11 @@ def cmd_info(args):
 				output(u"%s (bucket):" % uri.uri())
 				output(u"   Location:  %s" % info['bucket-location'])
 			acl = s3.get_acl(uri)
-			for user in acl.keys():
-				output(u"   ACL:       %s: %s" % (user, acl[user]))
+			acl_list = acl.getGrantList()
+			for user in acl_list:
+				output(u"   ACL:       %s: %s" % (user, acl_list[user]))
+			if acl.isAnonRead():
+				output(u"   URL:       %s" % uri.public_url())
 		except S3Error, e:
 			if S3.codes.has_key(e.info["Code"]):
 				error(S3.codes[e.info["Code"]] % uri.bucket())
