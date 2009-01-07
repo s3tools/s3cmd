@@ -430,7 +430,7 @@ class S3(object):
 		md5_hash = md5()
 		try:
 			while (size_left > 0):
-				debug("SendFile: Reading up to %d bytes from '%s'" % (self.config.send_chunk, file.name))
+				#debug("SendFile: Reading up to %d bytes from '%s'" % (self.config.send_chunk, file.name))
 				data = file.read(self.config.send_chunk)
 				md5_hash.update(data)
 				conn.send(data)
@@ -448,6 +448,7 @@ class S3(object):
 			response["data"] = http_response.read()
 			response["size"] = size_total
 			conn.close()
+			debug(u"Response: %s" % response)
 		except Exception, e:
 			if self.config.progress_meter:
 				progress.done("failed")
@@ -487,6 +488,20 @@ class S3(object):
 		if not response['headers'].has_key('etag'):
 			response['headers']['etag'] = '' 
 
+		if response["status"] < 200 or response["status"] > 299:
+			if response["status"] >= 500:
+				## AWS internal error - retry
+				if retries:
+					warning("Upload failed: %s (%s)" % (resource['uri'], S3Error(response)))
+					warning("Waiting %d sec..." % self._fail_wait(retries))
+					time.sleep(self._fail_wait(retries))
+					return self.send_file(request, file, labels, throttle, retries - 1)
+				else:
+					warning("Too many failures. Giving up on '%s'" % (file.name))
+					raise S3UploadError
+			## Non-recoverable error
+			raise S3Error(response)
+
 		debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
 		if response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
 			warning("MD5 Sums don't match!")
@@ -497,8 +512,6 @@ class S3(object):
 				warning("Too many failures. Giving up on '%s'" % (file.name))
 				raise S3UploadError
 
-		if response["status"] < 200 or response["status"] > 299:
-			raise S3Error(response)
 		return response
 
 	def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
