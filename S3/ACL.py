@@ -51,18 +51,25 @@ class GranteeAnonRead(Grantee):
 	permission = "READ"
 
 class ACL(object):
-	EMPTY_ACL = "<AccessControlPolicy><AccessControlList></AccessControlList></AccessControlPolicy>"
+	EMPTY_ACL = "<AccessControlPolicy><Owner><ID></ID></Owner><AccessControlList></AccessControlList></AccessControlPolicy>"
 
 	grantees = []
+	owner_id = ""
+	owner_nick = ""
 
 	def __init__(self, xml = None):
 		if not xml:
 			xml = ACL.EMPTY_ACL
-		self.tree = getTreeFromXml(xml)
-		self.parseGrants()
-	
-	def parseGrants(self):
-		for grant in self.tree.findall(".//Grant"):
+		tree = getTreeFromXml(xml)
+		self.parseOwner(tree)
+		self.parseGrants(tree)
+
+	def parseOwner(self, tree):
+		self.owner_id = tree.findtext(".//Owner//ID")
+		self.owner_nick = tree.findtext(".//Owner//DisplayName")
+
+	def parseGrants(self, tree):
+		for grant in tree.findall(".//Grant"):
 			grantee = Grantee()
 			g = grant.find(".//Grantee")
 			grantee.xsi_type = g.attrib['{http://www.w3.org/2001/XMLSchema-instance}type']
@@ -87,6 +94,9 @@ class ACL(object):
 			acl[user] = grantee.permission
 		return acl
 
+	def getOwner(self):
+		return { 'id' : self.owner_id, 'nick' : self.owner_nick }
+
 	def isAnonRead(self):
 		for grantee in self.grantees:
 			if grantee.isAnonRead():
@@ -103,6 +113,8 @@ class ACL(object):
 	def __str__(self):
 		tree = getTreeFromXml(ACL.EMPTY_ACL)
 		tree.attrib['xmlns'] = "http://s3.amazonaws.com/doc/2006-03-01/"
+		owner = tree.find(".//Owner//ID")
+		owner.text = self.owner_id
 		acl = tree.find(".//AccessControlList")
 		for grantee in self.grantees:
 			acl.append(grantee.getElement())

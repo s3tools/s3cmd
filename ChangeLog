@@ -1,5 +1,12 @@
 2009-01-07  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: New command 'setacl'.
+	* S3/S3.py: Implemented set_acl().
+	* S3/ACL.py: Fill in <Owner/> tag in ACL XML.
+	* NEWS: Info about 'setacl'.
+
+2009-01-07  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd: Factored remote_keys generation from cmd_object_get()
 	  to fetch_remote_keys().
 	* s3cmd: Display Public URL in 'info' for AnonRead objects.

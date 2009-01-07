@@ -256,6 +256,17 @@ class S3(object):
 		acl = ACL(response['data'])
 		return acl
 
+	def set_acl(self, uri, acl):
+		if uri.has_object():
+			request = self.create_request("OBJECT_PUT", uri = uri, extra = "?acl")
+		else:
+			request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(), extra = "?acl")
+
+		body = str(acl)
+		debug(u"set_acl(%s): acl-xml: %s" % (uri, body))
+		response = self.send_request(request, body)
+		return response
+
 	## Low level methods
 	def urlencode_string(self, string):
 		if type(string) == unicode:

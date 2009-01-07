@@ -884,7 +884,34 @@ def cmd_sync(args):
 		return cmd_sync_local2remote(src, dst)
 	if S3Uri(src).type == "s3" and S3Uri(dst).type == "file":
 		return cmd_sync_remote2local(src, dst)
-	
+
+def cmd_setacl(args):
+	s3 = S3(cfg)
+
+	set_to_acl = cfg.acl_public and "Public" or "Private"
+
+	remote_keys = fetch_remote_keys(args)
+	total_keys = len(remote_keys)
+	seq = 0
+	for key in remote_keys:
+		seq += 1
+		seq_label = "[%d of %d]" % (seq, total_keys)
+		uri = key['remote_uri']
+		acl = s3.get_acl(uri)
+		if cfg.acl_public:
+			if acl.isAnonRead():
+				info(u"%s: already Public, skippingi %s" % (uri, seq_label))
+				continue
+			acl.grantAnonRead()
+		else:
+			if not acl.isAnonRead():
+				info(u"%s: already Private, skipping %s" % (uri, seq_label))
+				continue
+			acl.revokeAnonRead()
+		retsponse = s3.set_acl(uri, acl)
+		if retsponse['status'] == 200:
+			output(u"%s: ACL set to %s  %s" % (uri, set_to_acl, seq_label))
+
 def resolve_list(lst, args):
 	retval = []
 	for item in lst:
@@ -1085,7 +1112,7 @@ commands_list = [
 	{"cmd":"info", "label":"Get various information about Buckets or Objects", "param":"s3://BUCKET[/OBJECT]", "func":cmd_info, "argc":1},
 	{"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
 	{"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
-	#{"cmd":"setacl", "label":"Modify Access control list for Bucket or Object", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
+	{"cmd":"setacl", "label":"Modify Access control list for Bucket or Object", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
 	]
 
 def format_commands(progname):
