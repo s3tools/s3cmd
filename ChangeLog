@@ -1,3 +1,9 @@
+2009-01-13  Michal Ludvig  <michal@logix.cz>
+
+	* TODO: Updated.
+	* s3cmd: renamed (fetch_)remote_keys to remote_list and
+	  a few other renames for consistency.
+
 2009-01-08  Michal Ludvig  <michal@logix.cz>
 
 	* S3/S3.py: Some errors during file upload were incorrectly 

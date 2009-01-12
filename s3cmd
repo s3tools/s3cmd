@@ -169,9 +169,9 @@ def cmd_bucket_delete(args):
 		_bucket_delete_one(uri)
 		output(u"Bucket '%s' removed" % uri.uri())
 
-def fetch_remote_keys(args):
+def fetch_remote_list(args):
 	remote_uris = []
-	remote_keys = []
+	remote_list = []
 
 	for arg in args:
 		uri = S3Uri(arg)
@@ -191,7 +191,7 @@ def fetch_remote_keys(args):
 					'remote_uri' : object,
 					'key' : key
 				}
-				remote_keys.append(download_item)
+				remote_list.append(download_item)
 	else:
 		for uri in remote_uris:
 			uri_str = str(uri)
@@ -215,7 +215,7 @@ def fetch_remote_keys(args):
 							'remote_uri' : S3Uri(objectlist[key]['object_uri_str']),
 							'key' : key,
 						}
-						remote_keys.append(download_item)
+						remote_list.append(download_item)
 			else:
 				## No wildcards - simply append the given URI to the list
 				key = os.path.basename(uri.object())
@@ -225,8 +225,8 @@ def fetch_remote_keys(args):
 					'remote_uri' : uri,
 					'key' : key
 				}
-				remote_keys.append(download_item)
-	return remote_keys
+				remote_list.append(download_item)
+	return remote_list
 
 def cmd_object_put(args):
 	s3 = S3(Config())
@@ -326,29 +326,29 @@ def cmd_object_get(args):
 	if len(args) == 0:
 		raise ParameterError("Nothing to download. Expecting S3 URI.")
 
-	remote_keys = fetch_remote_keys(args)
-	total_count = len(remote_keys)
+	remote_list = fetch_remote_list(args)
+	remote_count = len(remote_list)
 
 	if not os.path.isdir(destination_base) or destination_base == '-':
 		## We were either given a file name (existing or not) or want STDOUT
-		if total_count > 1:
+		if remote_count > 1:
 			raise ParameterError("Destination must be a directory when downloading multiple sources.")
-		remote_keys[0]['local_filename'] = destination_base
+		remote_list[0]['local_filename'] = destination_base
 	elif os.path.isdir(destination_base):
 		if destination_base[-1] != os.path.sep:
 			destination_base += os.path.sep
-		for key in remote_keys:
+		for key in remote_list:
 			key['local_filename'] = destination_base + key['key']
 	else:
 		raise InternalError("WTF? Is it a dir or not? -- %s" % destination_base)
 
 	seq = 0
-	for item in remote_keys:
+	for item in remote_list:
 		seq += 1
 		uri = item['remote_uri']
 		## Encode / Decode destination with "replace" to make sure it's compatible with current encoding
 		destination = unicodise_safe(item['local_filename'])
-		seq_label = "[%d of %d]" % (seq, total_count)
+		seq_label = "[%d of %d]" % (seq, remote_count)
 
 		start_position = 0
 
@@ -890,12 +890,12 @@ def cmd_setacl(args):
 
 	set_to_acl = cfg.acl_public and "Public" or "Private"
 
-	remote_keys = fetch_remote_keys(args)
-	total_keys = len(remote_keys)
+	remote_list = fetch_remote_list(args)
+	remote_count = len(remote_list)
 	seq = 0
-	for key in remote_keys:
+	for key in remote_list:
 		seq += 1
-		seq_label = "[%d of %d]" % (seq, total_keys)
+		seq_label = "[%d of %d]" % (seq, remote_count)
 		uri = key['remote_uri']
 		acl = s3.get_acl(uri)
 		debug(u"acl: %s - %r" % (uri, acl.grantees))

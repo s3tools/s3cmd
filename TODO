@@ -17,8 +17,8 @@ TODO list for s3cmd project
 
 - For 1.0.0
   - Add --include/--include-from/--rinclude* for sync
-  - Add 'setacl' command.
   - Add commands for CloudFront.
+  - Add 'geturl' command, both Unicode and urlencoded output.
 
 - After 1.0.0
   - Speed up upload / download with multiple threads.
@@ -29,7 +29,7 @@ TODO list for s3cmd project
   - Keep backup files remotely on put/sync-to if requested 
     (move the old 'object' to e.g. 'object~' and only then upload 
      the new one). Could be more advanced to keep, say, last 5 
-	 copies, etc.
+     copies, etc.
 
 - Implement GPG for sync
   (it's not that easy since it won't be easy to compare
