@@ -21,6 +21,10 @@ from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatt
 from logging import debug, info, warning, error
 from distutils.spawn import find_executable
 
+error("This s3cmd from SVN is broken!")
+error("Use revision 335 or s3cmd-0.9.9-pre4")
+sys.exit(1)
+
 def output(message):
 	sys.stdout.write(message + "\n")
 
