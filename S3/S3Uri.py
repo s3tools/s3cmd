@@ -3,6 +3,7 @@
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
 
+import os
 import re
 import sys
 from BidirMap import BidirMap
@@ -116,6 +117,12 @@ class S3UriFile(S3Uri):
 
 	def uri(self):
 		return "/".join(["file:/", self.path()])
+
+	def isdir(self):
+		return os.path.isdir(self.path())
+
+	def dirname(self):
+		return os.path.dirname(self.path())
 
 if __name__ == "__main__":
 	uri = S3Uri("s3://bucket/object")
