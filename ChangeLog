@@ -1,3 +1,8 @@
+2009-01-16  Michal Ludvig  <michal@logix.cz>
+
+	* S3/CloudFront.py: New module for CloudFront support.
+	* s3cmd, S3/Config.py, S3/Exceptions.py: Wire in CF support.
+
 2009-01-13  Michal Ludvig  <michal@logix.cz>
 
 	* TODO: Updated.

@@ -21,6 +21,9 @@ from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatt
 from logging import debug, info, warning, error
 from distutils.spawn import find_executable
 
+commands = {}
+commands_list = []
+
 def output(message):
 	sys.stdout.write(message + "\n")
 
@@ -1098,8 +1101,8 @@ def process_exclude_from_file(exf, exclude_array):
 		debug(u"adding rule: %s" % ex)
 		exclude_array.append(ex)
 
-commands = {}
-commands_list = [
+def get_commands_list():
+	return [
 	{"cmd":"mb", "label":"Make bucket", "param":"s3://BUCKET", "func":cmd_bucket_create, "argc":1},
 	{"cmd":"rb", "label":"Remove bucket", "param":"s3://BUCKET", "func":cmd_bucket_delete, "argc":1},
 	{"cmd":"ls", "label":"List objects or buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_ls, "argc":0},
@@ -1114,6 +1117,12 @@ commands_list = [
 	{"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
 	{"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
 	{"cmd":"setacl", "label":"Modify Access control list for Bucket or Object", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
+	## CloudFront commands
+	{"cmd":"cflist", "label":"List CloudFront distribution points", "param":"", "func":CfCmd.list, "argc":0},
+	#{"cmd":"cfcreate", "label":"Create CloudFront distribution point", "param":"s3://BUCKET", "func":cmd_cf_create, "argc":1},
+	#{"cmd":"cfdelete", "label":"Delete CloudFront distribution point", "param":"cf://DIST_ID", "func":cmd_cf_delete, "argc":1},
+	#{"cmd":"cfinfo", "label":"Display CloudFront distribution point parameters", "param":"cf://DIST_ID", "func":cmd_cf_info, "argc":1},
+	#{"cmd":"cfmodify", "label":"Change CloudFront distribution point parameters", "param":"cf://DIST_ID", "func":cmd_cf_modify, "argc":1},
 	]
 
 def format_commands(progname):
@@ -1145,6 +1154,9 @@ def main():
 		sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
 		sys.exit(1)
 
+	global commands_list, commands
+	commands_list = get_commands_list()
+	commands = {}
 	## Populate "commands" from "commands_list"
 	for cmd in commands_list:
 		if cmd.has_key("cmd"):
@@ -1347,8 +1359,6 @@ def main():
 		cmd_func(args)
 	except S3Error, e:
 		error(u"S3 error: %s" % e)
-		if e.info.has_key("Message"):
-			error(e.info['Message'])
 		sys.exit(1)
 	except ParameterError, e:
 		error(u"Parameter problem: %s" % e)
@@ -1367,6 +1377,7 @@ if __name__ == '__main__':
 		from S3.Exceptions import *
 		from S3.Utils import unicodise
 		from S3.Progress import Progress
+		from S3.CloudFront import Cmd as CfCmd
 
 		main()
 		sys.exit(0)

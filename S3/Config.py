@@ -17,6 +17,8 @@ class Config(object):
 	host_base = "s3.amazonaws.com"
 	host_bucket = "%(bucket)s.s3.amazonaws.com"
 	simpledb_host = "sdb.amazonaws.com"
+	cloudfront_host = "cloudfront.amazonaws.com"
+	cloudfront_resource = "/2008-06-30/distribution"
 	verbosity = logging.WARNING
 	progress_meter = True
 	progress_class = Progress.ProgressCR
