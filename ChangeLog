@@ -1,6 +1,7 @@
 2009-01-17  Michal Ludvig  <michal@logix.cz>
 
 	* S3/Utils.py: Added getDictFromTree() and appendXmlTextNode()
+	* S3/S3Uri.py: Added some convenience methods to S3UriS3() 
 
 2009-01-16  Michal Ludvig  <michal@logix.cz>
 

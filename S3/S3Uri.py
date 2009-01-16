@@ -71,11 +71,20 @@ class S3UriS3(S3Uri):
 	def uri(self):
 		return "/".join(["s3:/", self._bucket, self._object])
 	
+	def is_dns_compatible(self):
+		return S3.check_bucket_name_dns_conformity(self._bucket)
+
 	def public_url(self):
-		if S3.check_bucket_name_dns_conformity(self._bucket):
+		if self.is_dns_compatible():
 			return "http://%s.s3.amazonaws.com/%s" % (self._bucket, self._object)
 		else:
 			return "http://s3.amazonaws.com/%s/%s" % (self._bucket, self._object)
+
+	def host_name(self):
+		if self.is_dns_compatible():
+			return "%s.s3.amazonaws.com" % (self._bucket)
+		else:
+			return "s3.amazonaws.com"
 
 	@staticmethod
 	def compose_uri(bucket, object = ""):
