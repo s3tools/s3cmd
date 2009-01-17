@@ -124,7 +124,7 @@ class DistributionConfig(object):
 	##	<Enabled>true</Enabled>
 	## </DistributionConfig>
 
-	EMPTY_CONFIG = "<DistributionConfig></DistributionConfig>"
+	EMPTY_CONFIG = "<DistributionConfig><Origin/><CallerReference/><Enabled>true</Enabled></DistributionConfig>"
 	xmlns = "http://cloudfront.amazonaws.com/doc/2008-06-30/"
 	def __init__(self, xml = None, tree = None):
 		if not xml:
@@ -140,16 +140,22 @@ class DistributionConfig(object):
 	def parse(self, tree):
 		self.info = getDictFromTree(tree)
 		self.info['Enabled'] = (self.info['Enabled'].lower() == "true")
+		if not self.info.has_key("CNAME"):
+			self.info['CNAME'] = []
+		if type(self.info['CNAME']) != list:
+			self.info['CNAME'] = [self.info['CNAME']]
 		self.info['CNAME'] = [cname.lower() for cname in self.info['CNAME']]
+		if not self.info.has_key("Comment"):
+			self.info['Comment'] = ""
 
 	def __str__(self):
-		tree = getTreeFromXml(DistributionConfig.EMPTY_CONFIG)
+		tree = ET.Element("DistributionConfig")
 		tree.attrib['xmlns'] = DistributionConfig.xmlns
 
 		## Retain the order of the following calls!
 		appendXmlTextNode("Origin", self.info['Origin'], tree)
 		appendXmlTextNode("CallerReference", self.info['CallerReference'], tree)
-		if self.Comment:
+		if self.info['Comment']:
 			appendXmlTextNode("Comment", self.info['Comment'], tree)
 		for cname in self.info['CNAME']:
 			appendXmlTextNode("CNAME", cname.lower(), tree)
@@ -186,14 +192,14 @@ class CloudFront(object):
 		return response
 	
 	def CreateDistribution(self, uri, cnames = []):
-		dist_conf = DistributionConfig()
-		dist_conf.info['Enabled'] = True
-		dist_conf.info['Origin'] = uri.host_name()
-		dist_conf.info['CallerReference'] = str(uri)
-		dist_conf.info['Comment'] = uri.public_url()
+		dist_config = DistributionConfig()
+		dist_config.info['Enabled'] = True
+		dist_config.info['Origin'] = uri.host_name()
+		dist_config.info['CallerReference'] = str(uri)
+		dist_config.info['Comment'] = uri.public_url()
 		if cnames:
-			dist_conf.info['Cnames'] = cnames
-		request_body = str(dist_conf)
+			dist_config.info['Cnames'] = cnames
+		request_body = str(dist_config)
 		debug("CreateDistribution(): request_body: %s" % request_body)
 		response = self.send_request("CreateDist", body = request_body)
 		response['distribution'] = Distribution(response['data'])
@@ -202,9 +208,29 @@ class CloudFront(object):
 	def DeleteDistribution(self, cfuri):
 		if cfuri.type != "cf":
 			raise ValueError("Expected CFUri instead of: %s" % cfuri)
-		raise NotImplementedError()
-		# DisableDistribution
-		# response = self.send_request("DeleteDist", dist_id = cfuri.dist_id())
+		# Get current dist status (enabled/disabled) and Etag
+		info("Checking current status of %s" % cfuri)
+		response = self.GetDistConfig(cfuri)
+		if response['dist_config'].info['Enabled']:
+			info("Distribution is ENABLED. Disabling first.")
+			response['dist_config'].info['Enabled'] = False
+			response = self.SetDistConfig(cfuri, response['dist_config'], 
+			                              response['headers']['etag'])
+			warning("Waiting for Distribution to become disabled.")
+			warning("This may take several minutes, please wait.")
+			while True:
+				response = self.GetDistInfo(cfuri)
+				d = response['distribution']
+				if d.info['Status'] == "Deployed" and d.info['Enabled'] == False:
+					info("Distribution is now disabled")
+					break
+				warning("Still waiting...")
+				time.sleep(10)
+		headers = {}
+		headers['if-match'] = response['headers']['etag']
+		response = self.send_request("DeleteDist", dist_id = cfuri.dist_id(),
+		                             headers = headers)
+		return response
 	
 	def GetDistInfo(self, cfuri):
 		if cfuri.type != "cf":
@@ -213,13 +239,32 @@ class CloudFront(object):
 		response['distribution'] = Distribution(response['data'])
 		return response
 
+	def GetDistConfig(self, cfuri):
+		if cfuri.type != "cf":
+			raise ValueError("Expected CFUri instead of: %s" % cfuri)
+		response = self.send_request("GetDistConfig", dist_id = cfuri.dist_id())
+		response['dist_config'] = DistributionConfig(response['data'])
+		return response
+	
+	def SetDistConfig(self, cfuri, dist_config, etag = None):
+		if etag == None:
+			debug("SetDistConfig(): Etag not set. Fetching it first.")
+			etag = self.GetDistConfig(cfuri)['headers']['etag']
+		debug("SetDistConfig(): Etag = %s" % etag)
+		request_body = str(dist_config)
+		debug("SetDistConfig(): request_body: %s" % request_body)
+		headers = {}
+		headers['if-match'] = etag
+		response = self.send_request("SetDistConfig", dist_id = cfuri.dist_id(),
+		                             body = request_body, headers = headers)
+		return response
+
 	## --------------------------------------------------
 	## Low-level methods for handling CloudFront requests
 	## --------------------------------------------------
 
-	def send_request(self, op_name, dist_id = None, body = None, retries = _max_retries):
+	def send_request(self, op_name, dist_id = None, body = None, headers = {}, retries = _max_retries):
 		operation = self.operations[op_name]
-		headers = {}
 		if body:
 			headers['content-type'] = 'text/plain'
 		request = self.create_request(operation, dist_id, headers)
@@ -352,3 +397,18 @@ class Cmd(object):
 			pretty_output("DomainName", d.info['DomainName'])
 			pretty_output("Status", d.info['Status'])
 			pretty_output("Enabled", dc.info['Enabled'])
+	
+	@staticmethod
+	def delete(args):
+		cf = CloudFront(Config())
+		cfuris = []
+		for arg in args:
+			cfuris.append(S3Uri(arg))
+			if cfuris[-1].type != 'cf':
+				raise ParameterError("CloudFront URI required instead of: %s" % arg)
+		for cfuri in cfuris:
+			response = cf.DeleteDistribution(cfuri)
+			if response['status'] >= 400:
+				output("Distribution %s deleted" % cfuri)
+			else:
+				error("Distribution %s could not be deleted: %s" % (cfuri, response['reason']))

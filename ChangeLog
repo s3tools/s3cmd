@@ -1,5 +1,12 @@
 2009-01-18  Michal Ludvig  <michal@logix.cz>
 
+	* S3/CloudFront.py: Implemented DeleteDistribution(),
+	  GetDistConfig() and SetDistConfig(), 
+	  fixed CreateDistribution().
+	* s3cmd: Enabled cfdelete.
+
+2009-01-18  Michal Ludvig  <michal@logix.cz>
+
 	* S3/CloudFront.py: Added Cmd.info() that handles both 
 	  cflist and cfinfo commands (in fact they're aliases).
 	  Made DistributionConfig() class consistent with other
