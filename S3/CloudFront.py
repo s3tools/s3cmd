@@ -24,7 +24,7 @@ except ImportError:
 from Config import Config
 from Exceptions import *
 from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython
-from S3Uri import S3Uri
+from S3Uri import S3Uri, S3UriS3
 
 def output(message):
 	sys.stdout.write(message + "\n")
@@ -45,7 +45,7 @@ class DistributionSummary(object):
 	##	<Origin>example.bucket.s3.amazonaws.com</Origin>
 	##	<Enabled>true</Enabled>
 	## </DistributionSummary>
-	
+
 	def __init__(self, tree):
 		if tree.tag != "DistributionSummary":
 			raise ValueError("Expected <DistributionSummary /> xml, got: <%s />" % tree.tag)
@@ -54,6 +54,9 @@ class DistributionSummary(object):
 	def parse(self, tree):
 		self.info = getDictFromTree(tree)
 		self.info['Enabled'] = (self.info['Enabled'].lower() == "true")
+
+	def uri(self):
+		return S3Uri("cf://%s" % self.info['Id'])
 
 class DistributionList(object):
 	## Example:
@@ -107,6 +110,9 @@ class Distribution(object):
 		self.info['LastModifiedTime'] = dateS3toPython(self.info['LastModifiedTime'])
 
 		self.info['DistributionConfig'] = DistributionConfig(tree = tree.find(".//DistributionConfig"))
+	
+	def uri(self):
+		return S3Uri("cf://%s" % self.info['Id'])
 
 class DistributionConfig(object):
 	## Example:
@@ -132,27 +138,22 @@ class DistributionConfig(object):
 		self.parse(tree)
 
 	def parse(self, tree):
-		self.Origin = tree.findtext(".//Origin") or ""
-		self.CallerReference = tree.findtext(".//CallerReference") or ""
-		self.Comment = tree.findtext(".//Comment") or ""
-		self.Cnames = []
-		for cname in tree.findall(".//CNAME"):
-			self.Cnames.append(cname.text.lower())
-		enabled = tree.findtext(".//Enabled") or ""
-		self.Enabled = (enabled.lower() == "true")
+		self.info = getDictFromTree(tree)
+		self.info['Enabled'] = (self.info['Enabled'].lower() == "true")
+		self.info['CNAME'] = [cname.lower() for cname in self.info['CNAME']]
 
 	def __str__(self):
 		tree = getTreeFromXml(DistributionConfig.EMPTY_CONFIG)
 		tree.attrib['xmlns'] = DistributionConfig.xmlns
 
 		## Retain the order of the following calls!
-		appendXmlTextNode("Origin", self.Origin, tree)
-		appendXmlTextNode("CallerReference", self.CallerReference, tree)
+		appendXmlTextNode("Origin", self.info['Origin'], tree)
+		appendXmlTextNode("CallerReference", self.info['CallerReference'], tree)
 		if self.Comment:
-			appendXmlTextNode("Comment", self.Comment, tree)
-		for cname in self.Cnames:
+			appendXmlTextNode("Comment", self.info['Comment'], tree)
+		for cname in self.info['CNAME']:
 			appendXmlTextNode("CNAME", cname.lower(), tree)
-		appendXmlTextNode("Enabled", str(self.Enabled).lower(), tree)
+		appendXmlTextNode("Enabled", str(self.info['Enabled']).lower(), tree)
 
 		return ET.tostring(tree)
 
@@ -186,15 +187,29 @@ class CloudFront(object):
 	
 	def CreateDistribution(self, uri, cnames = []):
 		dist_conf = DistributionConfig()
-		dist_conf.Enabled = True
-		dist_conf.Origin = uri.host_name()
-		dist_conf.CallerReference = str(uri)
-		dist_conf.Comment = uri.public_url()
+		dist_conf.info['Enabled'] = True
+		dist_conf.info['Origin'] = uri.host_name()
+		dist_conf.info['CallerReference'] = str(uri)
+		dist_conf.info['Comment'] = uri.public_url()
 		if cnames:
-			dist_conf.Cnames = cnames
+			dist_conf.info['Cnames'] = cnames
 		request_body = str(dist_conf)
 		debug("CreateDistribution(): request_body: %s" % request_body)
 		response = self.send_request("CreateDist", body = request_body)
+		response['distribution'] = Distribution(response['data'])
+		return response
+	
+	def DeleteDistribution(self, cfuri):
+		if cfuri.type != "cf":
+			raise ValueError("Expected CFUri instead of: %s" % cfuri)
+		raise NotImplementedError()
+		# DisableDistribution
+		# response = self.send_request("DeleteDist", dist_id = cfuri.dist_id())
+	
+	def GetDistInfo(self, cfuri):
+		if cfuri.type != "cf":
+			raise ValueError("Expected CFUri instead of: %s" % cfuri)
+		response = self.send_request("GetDistInfo", dist_id = cfuri.dist_id())
 		response['distribution'] = Distribution(response['data'])
 		return response
 
@@ -283,17 +298,34 @@ class Cmd(object):
 	"""
 	
 	@staticmethod
-	def list(args):
+	def info(args):
 		cf = CloudFront(Config())
-		response = cf.GetList()
-		for d in response['dist_list'].dist_summs:
-			pretty_output("Origin", d.info['Origin'])
-			pretty_output("DomainName", d.info['DomainName'])
-			pretty_output("Id", d.info['Id'])
-			pretty_output("Status", d.info['Status'])
-			pretty_output("Enabled", d.info['Enabled'])
-			output("")
-	
+		if not args:
+			response = cf.GetList()
+			for d in response['dist_list'].dist_summs:
+				pretty_output("Origin", S3UriS3.httpurl_to_s3uri(d.info['Origin']))
+				pretty_output("DistId", d.uri())
+				pretty_output("DomainName", d.info['DomainName'])
+				pretty_output("Status", d.info['Status'])
+				pretty_output("Enabled", d.info['Enabled'])
+				output("")
+		else:
+			cfuris = []
+			for arg in args:
+				cfuris.append(S3Uri(arg))
+				if cfuris[-1].type != 'cf':
+					raise ParameterError("CloudFront URI required instead of: %s" % arg)
+			for cfuri in cfuris:
+				response = cf.GetDistInfo(cfuri)
+				d = response['distribution']
+				dc = d.info['DistributionConfig']
+				pretty_output("Origin", S3UriS3.httpurl_to_s3uri(dc.info['Origin']))
+				pretty_output("DistId", d.uri())
+				pretty_output("DomainName", d.info['DomainName'])
+				pretty_output("Status", d.info['Status'])
+				pretty_output("Enabled", dc.info['Enabled'])
+				pretty_output("Etag", response['headers']['etag'])
+
 	@staticmethod
 	def create(args):
 		cf = CloudFront(Config())
@@ -315,9 +347,8 @@ class Cmd(object):
 			d = response['distribution']
 			dc = d.info['DistributionConfig']
 			output("Distribution created:")
-			#pretty_output("Origin", dc.info['Origin'])
-			pretty_output("Origin", dc.Origin)
+			pretty_output("Origin", S3UriS3.httpurl_to_s3uri(dc.info['Origin']))
+			pretty_output("DistId", d.uri())
 			pretty_output("DomainName", d.info['DomainName'])
-			pretty_output("Id", d.info['Id'])
 			pretty_output("Status", d.info['Status'])
-			pretty_output("Enabled", dc.Enabled)
+			pretty_output("Enabled", dc.info['Enabled'])

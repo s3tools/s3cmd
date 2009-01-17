@@ -1,5 +1,14 @@
 2009-01-18  Michal Ludvig  <michal@logix.cz>
 
+	* S3/CloudFront.py: Added Cmd.info() that handles both 
+	  cflist and cfinfo commands (in fact they're aliases).
+	  Made DistributionConfig() class consistent with other
+	  Distribution*() classes.
+	  Use S3Uri and CFUri in outputs.
+	* s3cmd: Enabled cfinfo command.
+
+2009-01-18  Michal Ludvig  <michal@logix.cz>
+
 	* S3/S3Uri.py: Added S3UriCloudFront.
 	  Added S3UriS3.httpurl_to_s3uri() static method.
 
