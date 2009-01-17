@@ -1,3 +1,8 @@
+2009-01-18  Michal Ludvig  <michal@logix.cz>
+
+	* S3/S3Uri.py: Added S3UriCloudFront.
+	  Added S3UriS3.httpurl_to_s3uri() static method.
+
 2009-01-17  Michal Ludvig  <michal@logix.cz>
 
 	* S3/CloudFront.py: Initial support for creating new Distros,
