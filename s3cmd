@@ -1122,7 +1122,7 @@ def get_commands_list():
 	{"cmd":"cfinfo", "label":"Display CloudFront distribution point parameters", "param":"[cf://DIST_ID]", "func":CfCmd.info, "argc":0},
 	{"cmd":"cfcreate", "label":"Create CloudFront distribution point", "param":"s3://BUCKET", "func":CfCmd.create, "argc":1},
 	{"cmd":"cfdelete", "label":"Delete CloudFront distribution point", "param":"cf://DIST_ID", "func":CfCmd.delete, "argc":1},
-	#{"cmd":"cfmodify", "label":"Change CloudFront distribution point parameters", "param":"cf://DIST_ID", "func":cmd_cf_modify, "argc":1},
+	{"cmd":"cfmodify", "label":"Change CloudFront distribution point parameters", "param":"cf://DIST_ID", "func":CfCmd.modify, "argc":1},
 	]
 
 def format_commands(progname):
@@ -1213,6 +1213,11 @@ def main():
 
 	optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default on TTY).")
 	optparser.add_option(      "--no-progress", dest="progress_meter", action="store_false", help="Don't display progress meter (default on non-TTY).")
+	optparser.add_option(      "--enable", dest="cf_enable", action="store_true", help="Enable given CloudFront distribution (only for [cfmodify] command)")
+	optparser.add_option(      "--disable", dest="cf_enable", action="store_false", help="Enable given CloudFront distribution (only for [cfmodify] command)")
+	optparser.add_option(      "--cf-add-cname", dest="cf_cnames_add", action="append", metavar="CNAME", help="Add given CNAME to a CloudFront distribution (only for [cfcreate] and [cfmodify] commands)")
+	optparser.add_option(      "--cf-remove-cname", dest="cf_cnames_remove", action="append", metavar="CNAME", help="Remove given CNAME from a CloudFront distribution (only for [cfmodify] command)")
+	optparser.add_option(      "--cf-comment", dest="cf_comment", action="store", metavar="COMMENT", help="Set COMMENT for a given CloudFront distribution (only for [cfcreate] and [cfmodify] commands)")
 	optparser.add_option("-v", "--verbose", dest="verbosity", action="store_const", const=logging.INFO, help="Enable verbose output.")
 	optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output.")
 	optparser.add_option(      "--version", dest="show_version", action="store_true", help="Show s3cmd version (%s) and exit." % (PkgInfo.version))
@@ -1276,10 +1281,20 @@ def main():
 	for option in cfg.option_list():
 		try:
 			if getattr(options, option) != None:
-				debug(u"Updating %s -> %s" % (option, getattr(options, option)))
+				debug(u"Updating Config.Config %s -> %s" % (option, getattr(options, option)))
 				cfg.update_option(option, getattr(options, option))
 		except AttributeError:
 			## Some Config() options are not settable from command line
+			pass
+	
+	## Update CloudFront options if some were set
+	for option in CfCmd.options.option_list():
+		try:
+			if getattr(options, option) != None:
+				debug(u"Updating CloudFront.Cmd %s -> %s" % (option, getattr(options, option)))
+				CfCmd.options.update_option(option, getattr(options, option))
+		except AttributeError:
+			## Some CloudFront.Cmd.Options() options are not settable from command line
 			pass
 
 	## Set output and filesystem encoding for printing out filenames.

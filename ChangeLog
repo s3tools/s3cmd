@@ -1,3 +1,11 @@
+2009-01-19  Michal Ludvig  <michal@logix.cz>
+
+	* S3/CloudFront.py: Implemented ModifyDistribution(),
+	  added support for CNAMEs, Comments and Enable/Disable.
+	* s3cmd: Enabled cfmodify, added --enable/--disable,
+	  --cf-add-cname/--cf-remove-cname, --cf-comment options.
+	  Added updating from 'options' to CfCmd.options.
+
 2009-01-18  Michal Ludvig  <michal@logix.cz>
 
 	* S3/CloudFront.py: Implemented DeleteDistribution(),

@@ -155,10 +155,10 @@ class DistributionConfig(object):
 		## Retain the order of the following calls!
 		appendXmlTextNode("Origin", self.info['Origin'], tree)
 		appendXmlTextNode("CallerReference", self.info['CallerReference'], tree)
-		if self.info['Comment']:
-			appendXmlTextNode("Comment", self.info['Comment'], tree)
 		for cname in self.info['CNAME']:
 			appendXmlTextNode("CNAME", cname.lower(), tree)
+		if self.info['Comment']:
+			appendXmlTextNode("Comment", self.info['Comment'], tree)
 		appendXmlTextNode("Enabled", str(self.info['Enabled']).lower(), tree)
 
 		return ET.tostring(tree)
@@ -191,20 +191,45 @@ class CloudFront(object):
 		## TODO: handle Truncated 
 		return response
 	
-	def CreateDistribution(self, uri, cnames = []):
+	def CreateDistribution(self, uri, cnames_add = [], comment = None):
 		dist_config = DistributionConfig()
 		dist_config.info['Enabled'] = True
 		dist_config.info['Origin'] = uri.host_name()
 		dist_config.info['CallerReference'] = str(uri)
-		dist_config.info['Comment'] = uri.public_url()
-		if cnames:
-			dist_config.info['Cnames'] = cnames
+		if comment == None:
+			dist_config.info['Comment'] = uri.public_url()
+		else:
+			dist_config.info['Comment'] = comment
+		for cname in cnames_add:
+			if dist_config.info['CNAME'].count(cname) == 0:
+				dist_config.info['CNAME'].append(cname)
 		request_body = str(dist_config)
 		debug("CreateDistribution(): request_body: %s" % request_body)
 		response = self.send_request("CreateDist", body = request_body)
 		response['distribution'] = Distribution(response['data'])
 		return response
 	
+	def ModifyDistribution(self, cfuri, cnames_add = [], cnames_remove = [],
+	                       comment = None, enabled = None):
+		if cfuri.type != "cf":
+			raise ValueError("Expected CFUri instead of: %s" % cfuri)
+		# Get current dist status (enabled/disabled) and Etag
+		info("Checking current status of %s" % cfuri)
+		response = self.GetDistConfig(cfuri)
+		dc = response['dist_config']
+		if enabled != None:
+			dc.info['Enabled'] = enabled
+		if comment != None:
+			dc.info['Comment'] = comment
+		for cname in cnames_add:
+			if dc.info['CNAME'].count(cname) == 0:
+				dc.info['CNAME'].append(cname)
+		for cname in cnames_remove:
+			while dc.info['CNAME'].count(cname) > 0:
+				dc.info['CNAME'].remove(cname)
+		response = self.SetDistConfig(cfuri, dc, response['headers']['etag'])
+		return response
+		
 	def DeleteDistribution(self, cfuri):
 		if cfuri.type != "cf":
 			raise ValueError("Expected CFUri instead of: %s" % cfuri)
@@ -342,6 +367,20 @@ class Cmd(object):
 	Class that implements CloudFront commands
 	"""
 	
+	class Options(object):
+		cf_cnames_add = []
+		cf_cnames_remove = []
+		cf_comment = None
+		cf_enable = None
+
+		def option_list(self):
+			return [opt for opt in dir(self) if opt.startswith("cf_")]
+
+		def update_option(self, option, value):
+			setattr(Cmd.options, option, value)
+
+	options = Options()
+
 	@staticmethod
 	def info(args):
 		cf = CloudFront(Config())
@@ -368,6 +407,8 @@ class Cmd(object):
 				pretty_output("DistId", d.uri())
 				pretty_output("DomainName", d.info['DomainName'])
 				pretty_output("Status", d.info['Status'])
+				pretty_output("CNAMEs", ", ".join(dc.info['CNAME']))
+				pretty_output("Comment", dc.info['Comment'])
 				pretty_output("Enabled", dc.info['Enabled'])
 				pretty_output("Etag", response['headers']['etag'])
 
@@ -388,16 +429,20 @@ class Cmd(object):
 			raise ParameterError("No valid bucket names found")
 		for uri in buckets:
 			info("Creating distribution from: %s" % uri)
-			response = cf.CreateDistribution(uri)
+			response = cf.CreateDistribution(uri, cnames_add = Cmd.options.cf_cnames_add, 
+			                                 comment = Cmd.options.cf_comment)
 			d = response['distribution']
 			dc = d.info['DistributionConfig']
 			output("Distribution created:")
 			pretty_output("Origin", S3UriS3.httpurl_to_s3uri(dc.info['Origin']))
 			pretty_output("DistId", d.uri())
 			pretty_output("DomainName", d.info['DomainName'])
+			pretty_output("CNAMEs", ", ".join(dc.info['CNAME']))
+			pretty_output("Comment", dc.info['Comment'])
 			pretty_output("Status", d.info['Status'])
 			pretty_output("Enabled", dc.info['Enabled'])
-	
+			pretty_output("Etag", response['headers']['etag'])
+
 	@staticmethod
 	def delete(args):
 		cf = CloudFront(Config())
@@ -409,6 +454,34 @@ class Cmd(object):
 		for cfuri in cfuris:
 			response = cf.DeleteDistribution(cfuri)
 			if response['status'] >= 400:
-				output("Distribution %s deleted" % cfuri)
-			else:
 				error("Distribution %s could not be deleted: %s" % (cfuri, response['reason']))
+			output("Distribution %s deleted" % cfuri)
+
+	@staticmethod
+	def modify(args):
+		cf = CloudFront(Config())
+		cfuri = S3Uri(args.pop(0))
+		if cfuri.type != 'cf':
+			raise ParameterError("CloudFront URI required instead of: %s" % arg)
+		if len(args):
+			raise ParameterError("Too many parameters. Modify one Distribution at a time.")
+
+		response = cf.ModifyDistribution(cfuri,
+		                                 cnames_add = Cmd.options.cf_cnames_add,
+		                                 cnames_remove = Cmd.options.cf_cnames_remove,
+		                                 comment = Cmd.options.cf_comment,
+		                                 enabled = Cmd.options.cf_enable)
+		if response['status'] >= 400:
+			error("Distribution %s could not be modified: %s" % (cfuri, response['reason']))
+		output("Distribution modified: %s" % cfuri)
+		response = cf.GetDistInfo(cfuri)
+		d = response['distribution']
+		dc = d.info['DistributionConfig']
+		pretty_output("Origin", S3UriS3.httpurl_to_s3uri(dc.info['Origin']))
+		pretty_output("DistId", d.uri())
+		pretty_output("DomainName", d.info['DomainName'])
+		pretty_output("Status", d.info['Status'])
+		pretty_output("CNAMEs", ", ".join(dc.info['CNAME']))
+		pretty_output("Comment", dc.info['Comment'])
+		pretty_output("Enabled", dc.info['Enabled'])
+		pretty_output("Etag", response['headers']['etag'])
