@@ -1,3 +1,9 @@
+2009-01-21  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Migrated 'sync' local->remote to the new
+	  scheme with fetch_{local,remote}_list().
+	  Enabled --dry-run for 'sync'.
+
 2009-01-20  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Migrated 'sync' remote->local to the new

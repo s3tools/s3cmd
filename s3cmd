@@ -21,10 +21,6 @@ from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatt
 from logging import debug, info, warning, error
 from distutils.spawn import find_executable
 
-error("This s3cmd from SVN is broken!")
-error("Use revision 335 or s3cmd-0.9.9-pre4")
-sys.exit(1)
-
 def output(message):
 	sys.stdout.write(message + "\n")
 
@@ -175,7 +171,7 @@ def cmd_bucket_delete(args):
 
 def fetch_local_list(args, recursive = None):
 	local_uris = []
-	local_list = {}
+	local_list = SortedDict()
 
 	if type(args) not in (list, tuple):
 		args = [args]
@@ -198,7 +194,7 @@ def fetch_local_list(args, recursive = None):
 
 def fetch_remote_list(args, require_attribs = False, recursive = None):
 	remote_uris = []
-	remote_list = {}
+	remote_list = SortedDict()
 
 	if type(args) not in (list, tuple):
 		args = [args]
@@ -531,27 +527,27 @@ def cmd_info(args):
 def _get_filelist_local(local_uri):
 	info(u"Compiling list of local files...")
 	if local_uri.isdir():
-		local_base = local_uri.basename()
+		local_base = deunicodise(local_uri.basename())
 		local_path = deunicodise(local_uri.path())
 		filelist = os.walk(local_path)
 	else:
 		local_base = ""
 		local_path = deunicodise(local_uri.dirname())
 		filelist = [( local_path, [], [deunicodise(local_uri.basename())] )]
-	loc_list = {}
+	loc_list = SortedDict()
 	for root, dirs, files in filelist:
 		rel_root = root.replace(local_path, local_base, 1)
-		## TODO: implement explicit exclude
 		for f in files:
 			full_name = os.path.join(root, f)
-			rel_name = os.path.join(rel_root, f)
 			if not os.path.isfile(full_name):
 				continue
 			if os.path.islink(full_name):
 				## Synchronize symlinks... one day
 				## for now skip over
 				continue
-			relative_file = unicodise(rel_name)
+			relative_file = unicodise(os.path.join(rel_root, f))
+			if relative_file.startswith('./'):
+				relative_file = relative_file[2:]
 			sr = os.stat_result(os.lstat(full_name))
 			loc_list[relative_file] = {
 				'full_name_unicode' : unicodise(full_name),
@@ -589,7 +585,7 @@ def _get_filelist_remote(remote_uri, recursive = True):
 		rem_base = rem_base[:rem_base.rfind('/')+1]
 		remote_uri = S3Uri("s3://%s/%s" % (remote_uri.bucket(), rem_base))
 	rem_base_len = len(rem_base)
-	rem_list = {}
+	rem_list = SortedDict()
 	break_now = False
 	for object in response['list']:
 		if object['Key'] == rem_base_original and object['Key'][-1] != os.path.sep:
@@ -616,7 +612,7 @@ def _get_filelist_remote(remote_uri, recursive = True):
 def _filelist_filter_exclude_include(src_list):
 	info(u"Applying --exclude/--include")
 	cfg = Config()
-	exclude_list = {}
+	exclude_list = SortedDict()
 	for file in src_list.keys():
 		debug(u"CHECK: %s" % file)
 		excluded = False
@@ -645,7 +641,7 @@ def _filelist_filter_exclude_include(src_list):
 def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 	info(u"Verifying attributes...")
 	cfg = Config()
-	exists_list = {}
+	exists_list = SortedDict()
 	if cfg.debug_syncmatch:
 		logging.root.setLevel(logging.DEBUG)
 
@@ -735,22 +731,21 @@ def cmd_sync_remote2local(args):
 
 	info(u"Summary: %d remote files to download, %d local files to delete" % (remote_count, local_count))
 
-	for file in local_list:
-		if cfg.delete_removed:
-			os.unlink(local_list[file]['full_name'])
-			output(u"deleted: %s" % local_list[file]['full_name'])
-		else:
-			info(u"deleted: %s" % local_list[file]['full_name'])
-
-	if cfg.verbosity == logging.DEBUG:
-		for key in exclude_list:
-			debug(u"excluded: %s" % unicodise(key))
-		for key in remote_list:
-			debug(u"download: %s" % unicodise(key))
-
 	if cfg.dry_run:
+		for key in exclude_list:
+			output(u"excluded: %s" % unicodise(key))
+		for key in local_list:
+			output(u"delete: %s" % local_list[key]['full_name_unicode'])
+		for key in remote_list:
+			output(u"download: %s -> %s" % (remote_list[key]['object_uri_str'], remote_list[key]['local_filename']))
+
 		warning(u"Exitting now because of --dry-run")
 		return
+
+	if cfg.delete_removed:
+		for key in local_list:
+			os.unlink(local_list[key]['full_name'])
+			output(u"deleted: %s" % local_list[key]['full_name_unicode'])
 
 	total_size = 0
 	total_elapsed = 0.0
@@ -839,7 +834,7 @@ def cmd_sync_remote2local(args):
 	else:
 		info(outstr)
 
-def cmd_sync_local2remote(src, dst):
+def cmd_sync_local2remote(args):
 	def _build_attr_header(src):
 		import pwd, grp
 		attrs = {}
@@ -870,57 +865,74 @@ def cmd_sync_local2remote(src, dst):
 	s3 = S3(cfg)
 
 	if cfg.encrypt:
-		error(u"S3cmd 'sync' doesn't support GPG encryption, sorry.")
+		error(u"S3cmd 'sync' doesn't yet support GPG encryption, sorry.")
 		error(u"Either use unconditional 's3cmd put --recursive'")
 		error(u"or disable encryption with --no-encrypt parameter.")
 		sys.exit(1)
 
+	destination_base = args[-1]
+	local_list = fetch_local_list(args[:-1], recursive = True)
+	remote_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
 
-	src_uri = S3Uri(src)
-	dst_uri = S3Uri(dst)
+	local_count = len(local_list)
+	remote_count = len(remote_list)
 
-	loc_list = _get_filelist_local(src_uri)
-	loc_count = len(loc_list)
-	
-	rem_list = _get_filelist_remote(dst_uri)
-	rem_count = len(rem_list)
+	info(u"Found %d local files, %d remote files" % (local_count, remote_count))
 
-	info(u"Found %d local files, %d remote files" % (loc_count, rem_count))
+	local_list, exclude_list = _filelist_filter_exclude_include(local_list)
 
-	_compare_filelists(loc_list, rem_list, True)
+	local_list, remote_list, existing_list = _compare_filelists(local_list, remote_list, True)
 
-	info(u"Summary: %d local files to upload, %d remote files to delete" % (len(loc_list), len(rem_list)))
+	local_count = len(local_list)
+	remote_count = len(remote_list)
 
-	for file in rem_list:
-		uri = S3Uri("s3://" + dst_uri.bucket()+"/"+rem_list[file]['object_key'])
-		if cfg.delete_removed:
-			response = s3.object_delete(uri)
-			output(u"deleted '%s'" % uri)
-		else:
-			output(u"not-deleted '%s'" % uri)
+	if not destination_base.endswith("/"):
+		if local_count > 1:
+			raise ParameterError("Destination S3 URI must end with '/' (ie must refer to a directory on the remote side).")
+		local_list[local_list.keys()[0]]['remote_uri'] = unicodise(destination_base)
+	else:
+		for key in local_list:
+			local_list[key]['remote_uri'] = unicodise(destination_base + key)
+
+	info(u"Summary: %d local files to upload, %d remote files to delete" % (local_count, remote_count))
+
+	if cfg.dry_run:
+		for key in exclude_list:
+			output(u"excluded: %s" % unicodise(key))
+		for key in remote_list:
+			output(u"deleted: %s" % remote_list[key]['object_uri_str'])
+		for key in local_list:
+			output(u"upload: %s -> %s" % (local_list[key]['full_name_unicode'], local_list[key]['remote_uri']))
+
+		warning(u"Exitting now because of --dry-run")
+		return
+
+	if cfg.delete_removed:
+		for key in remote_list:
+			uri = S3Uri(remote_list[key]['object_uri_str'])
+			s3.object_delete(uri)
+			output(u"deleted: '%s'" % uri)
 
 	total_size = 0
-	total_count = len(loc_list)
 	total_elapsed = 0.0
 	timestamp_start = time.time()
 	seq = 0
-	dst_base = dst_uri.uri()
-	if not dst_base[-1] == "/": dst_base += "/"
-	file_list = loc_list.keys()
+	file_list = local_list.keys()
 	file_list.sort()
 	for file in file_list:
 		seq += 1
-		src = loc_list[file]
-		uri = S3Uri(dst_base + file)
-		seq_label = "[%d of %d]" % (seq, total_count)
+		item = local_list[file]
+		src = item['full_name']
+		uri = S3Uri(item['remote_uri'])
+		seq_label = "[%d of %d]" % (seq, local_count)
 		attr_header = None
 		if cfg.preserve_attrs:
-			attr_header = _build_attr_header(src['full_name'])
+			attr_header = _build_attr_header(src)
 			debug(attr_header)
 		try:
-			response = s3.object_put(src['full_name'], uri, attr_header, extra_label = seq_label)
+			response = s3.object_put(src, uri, attr_header, extra_label = seq_label)
 		except S3UploadError, e:
-			error(u"%s: upload failed too many times. Skipping that file." % src['full_name_unicode'])
+			error(u"%s: upload failed too many times. Skipping that file." % item['full_name_unicode'])
 			continue
 		except InvalidFileError, e:
 			warning(u"File can not be uploaded: %s" % e)
@@ -928,8 +940,8 @@ def cmd_sync_local2remote(src, dst):
 		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
 		if not cfg.progress_meter:
 			output(u"File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
-				(src, uri, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
-				seq_label))
+				(item['full_name_unicode'], uri, response["size"], response["elapsed"], 
+				speed_fmt[0], speed_fmt[1], seq_label))
 		total_size += response["size"]
 
 	total_elapsed = time.time() - timestamp_start
@@ -1239,7 +1251,7 @@ def main():
 	optparser.add_option("-c", "--config", dest="config", metavar="FILE", help="Config file name. Defaults to %default")
 	optparser.add_option(      "--dump-config", dest="dump_config", action="store_true", help="Dump current configuration after parsing config files and command line options and exit.")
 
-	#optparser.add_option("-n", "--dry-run", dest="dry_run", action="store_true", help="Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though.")
+	optparser.add_option("-n", "--dry-run", dest="dry_run", action="store_true", help="Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though (only for [sync] command)")
 
 	optparser.add_option("-e", "--encrypt", dest="encrypt", action="store_true", help="Encrypt files before uploading to S3.")
 	optparser.add_option(      "--no-encrypt", dest="encrypt", action="store_false", help="Don't encrypt files.")
