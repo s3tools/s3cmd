@@ -8,6 +8,7 @@ import time
 import re
 import string
 import random
+import rfc822
 try:
 	from hashlib import md5
 except ImportError:
@@ -83,6 +84,12 @@ def dateS3toUnix(date):
 	## Currently the argument to strptime() is GMT but mktime() 
 	## treats it as "localtime". Anyway...
 	return time.mktime(dateS3toPython(date))
+
+def dateRFC822toPython(date):
+	return rfc822.parsedate(date)
+
+def dateRFC822toUnix(date):
+	return time.mktime(dateRFC822toPython(date))
 
 def formatSize(size, human_readable = False, floating_point = False):
 	size = floating_point and float(size) or int(size)
@@ -185,9 +192,9 @@ def unicodise(string, encoding = None, errors = "replace"):
 	if not encoding:
 		encoding = Config.Config().encoding
 
-	debug("Unicodising %r using %s" % (string, encoding))
 	if type(string) == unicode:
 		return string
+	debug("Unicodising %r using %s" % (string, encoding))
 	try:
 		return string.decode(encoding, errors)
 	except UnicodeDecodeError:
@@ -202,9 +209,9 @@ def deunicodise(string, encoding = None, errors = "replace"):
 	if not encoding:
 		encoding = Config.Config().encoding
 
-	debug("DeUnicodising %r using %s" % (string, encoding))
 	if type(string) != unicode:
 		return str(string)
+	debug("DeUnicodising %r using %s" % (string, encoding))
 	try:
 		return string.encode(encoding, errors)
 	except UnicodeEncodeError:

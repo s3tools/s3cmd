@@ -1,3 +1,14 @@
+2009-01-20  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Migrated 'sync' remote->local to the new
+	  scheme with fetch_{local,remote}_list().
+	  Changed fetch_remote_list() to return dict() compatible
+	  with fetch_local_list().
+	  Re-implemented --exclude / --include processing.
+	* S3/Utils.py: functions for parsing RFC822 dates (for HTTP
+	  header responses).
+	* S3/Config.py: placeholders for --include.
+
 2009-01-15  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd, S3/S3Uri.py, NEWS: Support for recursive 'put'.

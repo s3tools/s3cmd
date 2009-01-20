@@ -55,10 +55,14 @@ class Config(object):
 	default_mime_type = "binary/octet-stream"
 	guess_mime_type = False
 	debug_syncmatch = False
+	# List of checks to be performed for 'sync'
+	sync_checks = ['size', 'md5']	# 'weak-timestamp'
 	# List of compiled REGEXPs
 	exclude = []
+	include = []
 	# Dict mapping compiled REGEXPs back to their textual form
 	debug_exclude = {}
+	debug_include = {}
 	encoding = "utf-8"
 
 	## Creating a singleton

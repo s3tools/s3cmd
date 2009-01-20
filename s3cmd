@@ -173,32 +173,38 @@ def cmd_bucket_delete(args):
 		_bucket_delete_one(uri)
 		output(u"Bucket '%s' removed" % uri.uri())
 
-def fetch_local_list(args):
+def fetch_local_list(args, recursive = None):
 	local_uris = []
 	local_list = {}
+
+	if type(args) not in (list, tuple):
+		args = [args]
+
+	if recursive == None:
+		recursive = cfg.recursive
 
 	for arg in args:
 		uri = S3Uri(arg)
 		if not uri.type == 'file':
 			raise ParameterError("Expecting filename or directory instead of: %s" % arg)
-		if uri.isdir() and not cfg.recursive:
+		if uri.isdir() and not recursive:
 			raise ParameterError("Use --recursive to upload a directory: %s" % arg)
 		local_uris.append(uri)
 
 	for uri in local_uris:
-		filelist = _get_filelist_local(uri)
-		for key in filelist:
-			upload_item = {
-				'file_info' : filelist[key],
-				'relative_key' : key,
-			}
-			local_list[key] = filelist[key]
+		local_list.update(_get_filelist_local(uri))
 
 	return local_list
 
-def fetch_remote_list(args):
+def fetch_remote_list(args, require_attribs = False, recursive = None):
 	remote_uris = []
-	remote_list = []
+	remote_list = {}
+
+	if type(args) not in (list, tuple):
+		args = [args]
+
+	if recursive == None:
+		recursive = cfg.recursive
 
 	for arg in args:
 		uri = S3Uri(arg)
@@ -206,19 +212,15 @@ def fetch_remote_list(args):
 			raise ParameterError("Expecting S3 URI instead of '%s'" % arg)
 		remote_uris.append(uri)
 
-	if cfg.recursive:
+	if recursive:
 		for uri in remote_uris:
 			objectlist = _get_filelist_remote(uri)
-			for key in objectlist.iterkeys():
-				object = S3Uri(objectlist[key]['object_uri_str'])
+			for key in objectlist:
+				#object = S3Uri(objectlist[key]['object_uri_str'])
 				## Remove leading '/' from remote filenames
-				if key.find("/") == 0:
-					key = key[1:]
-				download_item = {
-					'remote_uri' : object,
-					'key' : key
-				}
-				remote_list.append(download_item)
+				#if key.find("/") == 0:
+				#	key = key[1:]
+				remote_list[key] = objectlist[key]
 	else:
 		for uri in remote_uris:
 			uri_str = str(uri)
@@ -238,21 +240,25 @@ def fetch_remote_list(args):
 				for key in objectlist:
 					## Check whether the 'key' matches the requested wildcards
 					if glob.fnmatch.fnmatch(objectlist[key]['object_uri_str'], uri_str):
-						download_item = {
-							'remote_uri' : S3Uri(objectlist[key]['object_uri_str']),
-							'key' : key,
-						}
-						remote_list.append(download_item)
+						remote_list[key] = objectlist[key]
 			else:
 				## No wildcards - simply append the given URI to the list
 				key = os.path.basename(uri.object())
 				if not key:
 					raise ParameterError(u"Expecting S3 URI with a filename or --recursive: %s" % uri.uri())
-				download_item = {
-					'remote_uri' : uri,
-					'key' : key
+				remote_item = {
+					'base_uri': uri,
+					'object_uri_str': unicode(uri),
+					'object_key': uri.object()
 				}
-				remote_list.append(download_item)
+				if require_attribs:
+					response = S3(cfg).object_info(uri)
+					remote_item.update({
+					'size': int(response['headers']['content-length']),
+					'md5': response['headers']['etag'].strip('"\''),
+					'timestamp' : Utils.dateRFC822toUnix(response['headers']['date'])
+					})
+				remote_list[key] = remote_item
 	return remote_list
 
 def cmd_object_put(args):
@@ -362,26 +368,27 @@ def cmd_object_get(args):
 	if len(args) == 0:
 		raise ParameterError("Nothing to download. Expecting S3 URI.")
 
-	remote_list = fetch_remote_list(args)
+	remote_list = fetch_remote_list(args, require_attribs = False)
 	remote_count = len(remote_list)
 
 	if not os.path.isdir(destination_base) or destination_base == '-':
 		## We were either given a file name (existing or not) or want STDOUT
 		if remote_count > 1:
 			raise ParameterError("Destination must be a directory when downloading multiple sources.")
-		remote_list[0]['local_filename'] = destination_base
+		remote_list[remote_list.keys()[0]]['local_filename'] = deunicodise(destination_base)
 	elif os.path.isdir(destination_base):
 		if destination_base[-1] != os.path.sep:
 			destination_base += os.path.sep
 		for key in remote_list:
-			key['local_filename'] = destination_base + key['key']
+			remote_list[key]['local_filename'] = destination_base + key
 	else:
 		raise InternalError("WTF? Is it a dir or not? -- %s" % destination_base)
 
 	seq = 0
-	for item in remote_list:
+	for key in remote_list:
 		seq += 1
-		uri = item['remote_uri']
+		item = remote_list[key]
+		uri = S3Uri(item['object_uri_str'])
 		## Encode / Decode destination with "replace" to make sure it's compatible with current encoding
 		destination = unicodise_safe(item['local_filename'])
 		seq_label = "[%d of %d]" % (seq, remote_count)
@@ -606,35 +613,45 @@ def _get_filelist_remote(remote_uri, recursive = True):
 			break
 	return rem_list
 
-def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
-	info(u"Verifying checksums...")
+def _filelist_filter_exclude_include(src_list):
+	info(u"Applying --exclude/--include")
 	cfg = Config()
-	exists_list = {}
 	exclude_list = {}
-	if cfg.debug_syncmatch:
-		logging.root.setLevel(logging.DEBUG)
 	for file in src_list.keys():
-		if not cfg.debug_syncmatch:
-			debug(u"CHECK: %s" % (os.sep + file))
+		debug(u"CHECK: %s" % file)
 		excluded = False
 		for r in cfg.exclude:
-			## all paths start with '/' from the base dir
-			if r.search(os.sep + file):
-				## Can't directly 'continue' to the outer loop
-				## therefore this awkward excluded switch :-(
+			if r.search(file):
 				excluded = True
-				if cfg.debug_syncmatch:
-					debug(u"EXCL: %s" % (os.sep + file))
-					debug(u"RULE: '%s'" % (cfg.debug_exclude[r]))
-				else:
-					info(u"%s: excluded" % file)
+				debug(u"EXCL-MATCH: '%s'" % (cfg.debug_exclude[r]))
 				break
 		if excluded:
-			exclude_list = src_list[file]
+			## No need to check for --include if not excluded
+			for r in cfg.include:
+				if r.search(file):
+					excluded = False
+					debug(u"INCL-MATCH: '%s'" % (cfg.debug_include[r]))
+					break
+		if excluded:
+			## Still excluded - ok, action it
+			debug(u"EXCLUDE: %s" % file)
+			exclude_list[file] = src_list[file]
 			del(src_list[file])
 			continue
 		else:
-			debug(u"PASS: %s" % (os.sep + file))
+			debug(u"PASS: %s" % (file))
+	return src_list, exclude_list
+
+def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
+	info(u"Verifying attributes...")
+	cfg = Config()
+	exists_list = {}
+	if cfg.debug_syncmatch:
+		logging.root.setLevel(logging.DEBUG)
+
+	for file in src_list.keys():
+		if not cfg.debug_syncmatch:
+			debug(u"CHECK: %s" % file)
 		if dst_list.has_key(file):
 			## Was --skip-existing requested?
 			if cfg.skip_existing:
@@ -645,9 +662,13 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 				del(dst_list[file])
 				continue
 
+			attribs_match = True
 			## Check size first
-			if dst_list[file]['size'] == src_list[file]['size']:
-				#debug(u"%s same size: %s" % (file, dst_list[file]['size']))
+			if 'size' in cfg.sync_checks and dst_list[file]['size'] != src_list[file]['size']:
+				debug(u"XFER: %s (size mismatch: src=%s dst=%s)" % (file, src_list[file]['size'], dst_list[file]['size']))
+				attribs_match = False
+			
+			if attribs_match and 'md5' in cfg.sync_checks:
 				## ... same size, check MD5
 				if src_is_local_and_dst_is_remote:
 					src_md5 = Utils.hash_file_md5(src_list[file]['full_name'])
@@ -655,28 +676,27 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 				else:
 					src_md5 = src_list[file]['md5']
 					dst_md5 = Utils.hash_file_md5(dst_list[file]['full_name'])
-				if src_md5 == dst_md5:
-					#debug(u"%s md5 matches: %s" % (file, dst_md5))
-					## Checksums are the same.
-					## Remove from source-list, all that is left there will be transferred
-					debug(u"IGNR: %s (transfer not needed: MD5 OK, Size OK)" % file)
-					exists_list[file] = src_list[file]
-					del(src_list[file])
-				else:
+				if src_md5 != dst_md5:
+					## Checksums are different.
+					attribs_match = False
 					debug(u"XFER: %s (md5 mismatch: src=%s dst=%s)" % (file, src_md5, dst_md5))
-			else:
-				debug(u"XFER: %s (size mismatch: src=%s dst=%s)" % (file, src_list[file]['size'], dst_list[file]['size']))
-                        
+
+			if attribs_match:
+				## Remove from source-list, all that is left there will be transferred
+				debug(u"IGNR: %s (transfer not needed)" % file)
+				exists_list[file] = src_list[file]
+				del(src_list[file])
+
 			## Remove from destination-list, all that is left there will be deleted
-			#debug(u"%s removed from destination list" % file)
 			del(dst_list[file])
+
 	if cfg.debug_syncmatch:
 		warning(u"Exiting because of --debug-syncmatch")
-		sys.exit(0)
+		sys.exit(1)
 
-	return src_list, dst_list, exists_list, exclude_list
+	return src_list, dst_list, exists_list
 
-def cmd_sync_remote2local(src, dst):
+def cmd_sync_remote2local(args):
 	def _parse_attrs_header(attrs_header):
 		attrs = {}
 		for attr in attrs_header.split("/"):
@@ -686,45 +706,65 @@ def cmd_sync_remote2local(src, dst):
 		
 	s3 = S3(Config())
 
-	src_uri = S3Uri(src)
-	dst_uri = S3Uri(dst)
+	destination_base = args[-1]
+	local_list = fetch_local_list(destination_base, recursive = True)
+	remote_list = fetch_remote_list(args[:-1], recursive = True, require_attribs = True)
 
-	src_base = src_uri.uri()
-	dst_base = dst_uri.path()
-	if not src_base[-1] == "/": src_base += "/"
+	local_count = len(local_list)
+	remote_count = len(remote_list)
 
-	rem_list = _get_filelist_remote(src_uri)
-	rem_count = len(rem_list)
+	info(u"Found %d remote files, %d local files" % (remote_count, local_count))
 
-	loc_list = _get_filelist_local(dst_uri)
-	loc_count = len(loc_list)
-	
-	info(u"Found %d remote files, %d local files" % (rem_count, loc_count))
+	remote_list, exclude_list = _filelist_filter_exclude_include(remote_list)
 
-	_compare_filelists(rem_list, loc_list, False)
+	remote_list, local_list, existing_list = _compare_filelists(remote_list, local_list, False)
 
-	info(u"Summary: %d remote files to download, %d local files to delete" % (len(rem_list), len(loc_list)))
+	local_count = len(local_list)
+	remote_count = len(remote_list)
 
-	for file in loc_list:
+	if not os.path.isdir(destination_base):
+		## We were either given a file name (existing or not) or want STDOUT
+		if remote_count > 1:
+			raise ParameterError("Destination must be a directory when downloading multiple sources.")
+		remote_list[remote_list.keys()[0]]['local_filename'] = deunicodise(destination_base)
+	else:
+		if destination_base[-1] != os.path.sep:
+			destination_base += os.path.sep
+		for key in remote_list:
+			remote_list[key]['local_filename'] = deunicodise(destination_base + key)
+
+	info(u"Summary: %d remote files to download, %d local files to delete" % (remote_count, local_count))
+
+	for file in local_list:
 		if cfg.delete_removed:
-			os.unlink(dst_base + file)
-			output(u"deleted '%s'" % (dst_base + file))
+			os.unlink(local_list[file]['full_name'])
+			output(u"deleted: %s" % local_list[file]['full_name'])
 		else:
-			output(u"not-deleted '%s'" % file)
+			info(u"deleted: %s" % local_list[file]['full_name'])
+
+	if cfg.verbosity == logging.DEBUG:
+		for key in exclude_list:
+			debug(u"excluded: %s" % unicodise(key))
+		for key in remote_list:
+			debug(u"download: %s" % unicodise(key))
+
+	if cfg.dry_run:
+		warning(u"Exitting now because of --dry-run")
+		return
 
 	total_size = 0
-	total_count = len(rem_list)
 	total_elapsed = 0.0
 	timestamp_start = time.time()
 	seq = 0
 	dir_cache = {}
-	file_list = rem_list.keys()
+	file_list = remote_list.keys()
 	file_list.sort()
 	for file in file_list:
 		seq += 1
-		uri = S3Uri(src_base + file)
-		dst_file = dst_base + file
-		seq_label = "[%d of %d]" % (seq, total_count)
+		item = remote_list[file]
+		uri = S3Uri(item['object_uri_str'])
+		dst_file = item['local_filename']
+		seq_label = "[%d of %d]" % (seq, remote_count)
 		try:
 			dst_dir = os.path.dirname(dst_file)
 			if not dir_cache.has_key(dst_dir):
@@ -734,10 +774,8 @@ def cmd_sync_remote2local(src, dst):
 				continue
 			try:
 				open_flags = os.O_CREAT
-				if cfg.force:
-					open_flags |= os.O_TRUNC
-				else:
-					open_flags |= os.O_EXCL
+				open_flags |= os.O_TRUNC
+				# open_flags |= os.O_EXCL
 
 				debug(u"dst_file=%s" % dst_file)
 				# This will have failed should the file exist
@@ -907,21 +945,14 @@ def cmd_sync_local2remote(src, dst):
 		info(outstr)
 
 def cmd_sync(args):
-	src = args.pop(0)
-	dst = args.pop(0)
-	if (len(args)):
-		raise ParameterError("Too many parameters! Expected: %s" % commands['sync']['param'])
+	if (len(args) < 2):
+		raise ParameterError("Too few parameters! Expected: %s" % commands['sync']['param'])
 
-	if S3Uri(src).type == "s3" and not src.endswith('/'):
-		src += "/"
-
-	if not dst.endswith('/'):
-		dst += "/"
-
-	if S3Uri(src).type == "file" and S3Uri(dst).type == "s3":
-		return cmd_sync_local2remote(src, dst)
-	if S3Uri(src).type == "s3" and S3Uri(dst).type == "file":
-		return cmd_sync_remote2local(src, dst)
+	if S3Uri(args[0]).type == "file" and S3Uri(args[-1]).type == "s3":
+		return cmd_sync_local2remote(args)
+	if S3Uri(args[0]).type == "s3" and S3Uri(args[-1]).type == "file":
+		return cmd_sync_remote2local(args)
+	raise ParameterError("Invalid source/destination: '%s'" % "' '".join(args))
 
 def cmd_setacl(args):
 	s3 = S3(cfg)
@@ -1326,8 +1357,7 @@ def main():
 			debug(u"processing rule: %s" % ex)
 			exc = re.compile(glob.fnmatch.translate(ex))
 			cfg.exclude.append(exc)
-			if options.debug_syncmatch:
-				cfg.debug_exclude[exc] = ex
+			cfg.debug_exclude[exc] = ex
 
 	## Process REGEXP style excludes
 	if options.rexclude is None:
@@ -1343,8 +1373,7 @@ def main():
 			debug(u"processing rule: %s" % ex)
 			exc = re.compile(ex)
 			cfg.exclude.append(exc)
-			if options.debug_syncmatch:
-				cfg.debug_exclude[exc] = ex
+			cfg.debug_exclude[exc] = ex
 
 	if cfg.encrypt and cfg.gpg_passphrase == "":
 		error(u"Encryption requested but no passphrase set in config file.")
