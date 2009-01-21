@@ -207,7 +207,7 @@ class S3(object):
 		if uri.type != "s3":
 			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 		request = self.create_request("OBJECT_GET", uri = uri)
-		labels = { 'source' : uri, 'destination' : stream.name, 'extra' : extra_label }
+		labels = { 'source' : unicodise(uri.uri()), 'destination' : unicodise(stream.name), 'extra' : extra_label }
 		response = self.recv_file(request, stream, labels, start_position)
 		return response
 

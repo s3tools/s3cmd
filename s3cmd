@@ -118,8 +118,8 @@ def subcmd_bucket_list(s3, uri):
 			raise
 
 	for prefix in response['common_prefixes']:
-		output(u"%s %s" % (
-			"D".rjust(28),
+		output(u"%s   %s" % (
+			"DIR".rjust(26),
 			uri.compose_uri(bucket, prefix["Prefix"])))
 
 	for object in response["list"]:
@@ -308,7 +308,7 @@ def cmd_object_put(args):
 			continue
 		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
 		if not Config().progress_meter:
-			output(u"File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+			output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
 				(unicodise(full_name_orig), uri_final, response["size"], response["elapsed"], 
 				speed_fmt[0], speed_fmt[1], seq_label))
 		if Config().acl_public:
@@ -772,7 +772,7 @@ def cmd_sync_remote2local(args):
 				open_flags |= os.O_TRUNC
 				# open_flags |= os.O_EXCL
 
-				debug(u"dst_file=%s" % dst_file)
+				debug(u"dst_file=%s" % unicodise(dst_file))
 				# This will have failed should the file exist
 				os.close(os.open(dst_file, open_flags))
 				# Yeah I know there is a race condition here. Sadly I don't know how to open() in exclusive mode.
@@ -818,8 +818,8 @@ def cmd_sync_remote2local(args):
 			continue
 		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
 		if not Config().progress_meter:
-			output(u"File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
-				(uri, dst_file, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
+			output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+				(uri, unicodise(dst_file), response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
 				seq_label))
 		total_size += response["size"]
 
@@ -939,7 +939,7 @@ def cmd_sync_local2remote(args):
 			continue
 		speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
 		if not cfg.progress_meter:
-			output(u"File '%s' stored as %s (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+			output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
 				(item['full_name_unicode'], uri, response["size"], response["elapsed"], 
 				speed_fmt[0], speed_fmt[1], seq_label))
 		total_size += response["size"]
@@ -977,7 +977,7 @@ def cmd_setacl(args):
 	for key in remote_list:
 		seq += 1
 		seq_label = "[%d of %d]" % (seq, remote_count)
-		uri = key['remote_uri']
+		uri = S3Uri(remote_list[key]['object_uri_str'])
 		acl = s3.get_acl(uri)
 		debug(u"acl: %s - %r" % (uri, acl.grantees))
 		if cfg.acl_public:

@@ -153,6 +153,9 @@ def test_rmdir(label, dir_name):
 		cmd.append(dir_name)
 		return test(label, cmd)
 
+def test_flushdir(label, dir_name):
+	test_rmdir(label + "(rm)", dir_name)
+	return test_mkdir(label + "(mk)", dir_name)
 
 argv = sys.argv[1:]
 while argv:
@@ -208,19 +211,18 @@ test_s3cmd("Buckets list", ["ls"],
 
 
 ## ====== Sync to S3
-test_s3cmd("Sync to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings' ])
+test_s3cmd("Sync to S3", ['sync', 'testsuite/', 's3://s3cmd-autotest-1/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings' ],
+	must_not_find_re = [ "\.svn/", "\.png$" ])
 
 if have_encoding:
 	## ====== Sync UTF-8 / GBK / ... to S3
-	test_s3cmd("Sync %s to S3" % encoding, ['sync', 'testsuite/encodings/' + encoding, enc_base_remote, '--exclude', '.svn/*', '--no-encrypt' ])
+	test_s3cmd("Sync %s to S3" % encoding, ['sync', 'testsuite/encodings/' + encoding, 's3://s3cmd-autotest-1/xyz/encodings/', '--exclude', '.svn/*', '--no-encrypt' ],
+		must_find = [ u"File 'testsuite/encodings/%(encoding)s/%(pattern)s' stored as 's3://s3cmd-autotest-1/xyz/encodings/%(encoding)s/%(pattern)s'" % { 'encoding' : encoding, 'pattern' : enc_pattern } ])
 
 
 ## ====== List bucket content
-must_find_re = [ u"D s3://s3cmd-autotest-1/xyz/binary/$", u"D s3://s3cmd-autotest-1/xyz/etc/$" ]
+must_find_re = [ u"DIR   s3://s3cmd-autotest-1/xyz/binary/$", u"DIR   s3://s3cmd-autotest-1/xyz/etc/$" ]
 must_not_find = [ u"random-crap.md5", u".svn" ]
-if have_encoding:
-	must_find_re.append(u"D %s$" % enc_base_remote)
-	must_not_find.append(enc_pattern)
 test_s3cmd("List bucket content", ['ls', 's3://s3cmd-autotest-1/xyz/'],
 	must_find_re = must_find_re,
 	must_not_find = must_not_find)
@@ -229,7 +231,7 @@ test_s3cmd("List bucket content", ['ls', 's3://s3cmd-autotest-1/xyz/'],
 ## ====== List bucket recursive
 must_find = [ u"s3://s3cmd-autotest-1/xyz/binary/random-crap.md5" ]
 if have_encoding:
-	must_find.append(enc_base_remote + enc_pattern)
+	must_find.append(u"s3://s3cmd-autotest-1/xyz/encodings/%(encoding)s/%(pattern)s" % { 'encoding' : encoding, 'pattern' : enc_pattern })
 test_s3cmd("List bucket recursive", ['ls', '--recursive', 's3://s3cmd-autotest-1'],
 	must_find = must_find,
 	must_not_find = [ "logo.png" ])
@@ -238,21 +240,25 @@ test_s3cmd("List bucket recursive", ['ls', '--recursive', 's3://s3cmd-autotest-1
 # test_s3cmd("Recursive put", ['put', '--recursive', 'testsuite/etc', 's3://s3cmd-autotest-1/xyz/'])
 
 
-## ====== rmdir local
-test_rmdir("Removing local target", 'testsuite-out')
+## ====== Clean up local destination dir
+test_flushdir("Clean testsuite-out/", "testsuite-out")
 
 
 ## ====== Sync from S3
-must_find = [ "stored as testsuite-out/binary/random-crap.md5 " ]
+must_find = [ "File 's3://s3cmd-autotest-1/xyz/binary/random-crap.md5' stored as 'testsuite-out/xyz/binary/random-crap.md5'" ]
 if have_encoding:
-	must_find.append("stored as testsuite-out/" + encoding + "/" + enc_pattern)
+	must_find.append(u"File 's3://s3cmd-autotest-1/xyz/encodings/%(encoding)s/%(pattern)s' stored as 'testsuite-out/xyz/encodings/%(encoding)s/%(pattern)s' " % { 'encoding' : encoding, 'pattern' : enc_pattern })
 test_s3cmd("Sync from S3", ['sync', 's3://s3cmd-autotest-1/xyz', 'testsuite-out'],
 	must_find = must_find)
 
 
+## ====== Clean up local destination dir
+test_flushdir("Clean testsuite-out/", "testsuite-out")
+
+
 ## ====== Put public, guess MIME
 test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public', 'testsuite/etc/logo.png', 's3://s3cmd-autotest-1/xyz/etc/logo.png'],
-	must_find = [ "stored as s3://s3cmd-autotest-1/xyz/etc/logo.png" ])
+	must_find = [ "stored as 's3://s3cmd-autotest-1/xyz/etc/logo.png'" ])
 
 
 ## ====== Retrieve from URL
@@ -285,7 +291,8 @@ if have_wget:
 
 
 ## ====== Sync more to S3
-test_s3cmd("Sync more to S3", ['sync', 'testsuite', 's3://s3cmd-autotest-1/xyz/', '--no-encrypt' ])
+test_s3cmd("Sync more to S3", ['sync', 'testsuite/', 's3://s3cmd-autotest-1/xyz/', '--no-encrypt' ],
+	must_find = [ "File 'testsuite/.svn/format' stored as 's3://s3cmd-autotest-1/xyz/.svn/format' " ])
 
 
 ## ====== Rename within S3
@@ -302,8 +309,9 @@ test_s3cmd("Rename (NoSuchKey)", ['mv', 's3://s3cmd-autotest-1/xyz/etc/logo.png'
 
 ## ====== Sync more from S3
 test_s3cmd("Sync more from S3", ['sync', '--delete-removed', 's3://s3cmd-autotest-1/xyz', 'testsuite-out'],
-	must_find = [ "deleted 'testsuite-out/logo.png'", "stored as testsuite-out/etc2/Logo.PNG (22059 bytes", 
-	              "stored as testsuite-out/.svn/format " ],
+	must_find = [ "deleted: testsuite-out/logo.png",
+	              "File 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG' stored as 'testsuite-out/xyz/etc2/Logo.PNG' (22059 bytes", 
+	              "File 's3://s3cmd-autotest-1/xyz/.svn/format' stored as 'testsuite-out/xyz/.svn/format' " ],
 	must_not_find_re = [ "not-deleted.*etc/logo.png" ])
 
 
