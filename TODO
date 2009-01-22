@@ -2,15 +2,14 @@ TODO list for s3cmd project
 ===========================
 
 - For 0.9.9
-  - Recursive processing / multiple sources with most commands.
-    - Incl. recursive cp/mv on remote "folders".
-  - Sanitize put/get behaviour.
-    For instance 'get s3://../blah/x.jpg' should save it to
-	x.jpg and not attempt blah/x.jpg.
-    Similar thing, 'put /foo/bar/xyz.jpg s3://bucket/dome/path/'
-    should save it to s3://bucket/dome/path/xyz.jpg
+  - Enable --exclude for [put], [get] and [del]
+  - Enable --dry-run for [put], [get] and [del], reject
+    for all others.
   - Sync should work for one file, for example
     s3cmd sync /etc/passwd s3://bucket/passwd
+  - Add testsuite for new put, get and sync semantic.
+  - Recursive processing / multiple sources with most commands.
+    - Incl. recursive cp/mv on remote "folders".
   - Document --recursive and --force for buckets
   - Allow change /tmp to somewhere else
   - With --guess-mime use 'magic' module if available.

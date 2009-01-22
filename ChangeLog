@@ -1,5 +1,12 @@
 2009-01-22  Michal Ludvig  <michal@logix.cz>
 
+	* Released version 0.9.9-pre5
+	  ---------------------------
+
+	* S3/PkgInfo.py, NEWS, TODO: Updated for 0.9.9-pre5
+
+2009-01-22  Michal Ludvig  <michal@logix.cz>
+
 	* run-tests.py: Updated paths for the new sync
 	  semantics.
 	* s3cmd, S3/S3.py: Small fixes to make testsuite happy.

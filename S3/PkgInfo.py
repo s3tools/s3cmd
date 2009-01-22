@@ -1,5 +1,5 @@
 package = "s3cmd"
-version = "0.9.9-pre4"
+version = "0.9.9-pre5"
 url = "http://s3tools.logix.cz"
 license = "GPL version 2"
 short_description = "S3cmd is a tool for managing Amazon S3 storage space."
