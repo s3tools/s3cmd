@@ -25,6 +25,8 @@ TODO list for s3cmd project
     if only these change (i.e. same content, different metainfo).
   - Sync must backup non-files as well. At least directories, 
     symlinks and device nodes.
+  - If GPG fails error() and exit. If un-GPG fails save the 
+    file with .gpg extension.
   - Keep backup files remotely on put/sync-to if requested 
     (move the old 'object' to e.g. 'object~' and only then upload 
      the new one). Could be more advanced to keep, say, last 5 
