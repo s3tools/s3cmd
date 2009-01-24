@@ -261,16 +261,12 @@ def cmd_object_put(args):
 	cfg = Config()
 	s3 = S3(cfg)
 
-	## Each item will be a dict with the following attributes
-	# {'remote_uri', 'local_filename'}
-	upload_list = []
-
 	if len(args) == 0:
-		raise ParameterError("Nothing to upload. Expecting a local file or directory.")
+		raise ParameterError("Nothing to upload. Expecting a local file or directory and a S3 URI destination.")
 
-	dst_uri = S3Uri(args.pop())
-	if dst_uri.type != 's3':
-		raise ParameterError("Destination must be S3Uri. Got: %s" % args[-1])
+	destination_base = args.pop()
+	if S3Uri(destination_base).type != 's3':
+		raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base)
 
 	if len(args) == 0:
 		raise ParameterError("Nothing to upload. Expecting a local file or directory.")
@@ -278,19 +274,30 @@ def cmd_object_put(args):
 	local_list = fetch_local_list(args)
 	local_count = len(local_list)
 
-	if local_count > 1 and not dst_uri.object() == "" and not dst_uri.object().endswith("/"):
-		raise ParameterError(u"When uploading multiple files the last argument must be a S3 URI ending with '/' or a bucket name only!")
+	local_list, exclude_list = _filelist_filter_exclude_include(local_list)
 
-	sorted_local_keys = local_list.keys()
-	sorted_local_keys.sort()
+	if not destination_base.endswith("/"):
+		if local_count > 1:
+			raise ParameterError("Destination S3 URI must end with '/' (ie must refer to a directory on the remote side).")
+		local_list[local_list.keys()[0]]['remote_uri'] = unicodise(destination_base)
+	else:
+		for key in local_list:
+			local_list[key]['remote_uri'] = unicodise(destination_base + key)
+
+	if cfg.dry_run:
+		for key in exclude_list:
+			output(u"exclude: %s" % unicodise(key))
+		for key in local_list:
+			output(u"upload: %s -> %s" % (local_list[key]['full_name_unicode'], local_list[key]['remote_uri']))
+
+		warning(u"Exitting now because of --dry-run")
+		return
+
 	seq = 0
-	for key in sorted_local_keys:
+	for key in local_list:
 		seq += 1
 
-		if local_count > 1 or dst_uri.object() == "":
-			uri_final = S3Uri(u"%s%s" % (dst_uri, key))
-		else:
-			uri_final = dst_uri
+		uri_final = S3Uri(local_list[key]['remote_uri'])
 
 		extra_headers = {}
 		full_name_orig = local_list[key]['full_name']
@@ -367,6 +374,8 @@ def cmd_object_get(args):
 	remote_list = fetch_remote_list(args, require_attribs = False)
 	remote_count = len(remote_list)
 
+	remote_list, exclude_list = _filelist_filter_exclude_include(remote_list)
+
 	if not os.path.isdir(destination_base) or destination_base == '-':
 		## We were either given a file name (existing or not) or want STDOUT
 		if remote_count > 1:
@@ -379,6 +388,15 @@ def cmd_object_get(args):
 			remote_list[key]['local_filename'] = destination_base + key
 	else:
 		raise InternalError("WTF? Is it a dir or not? -- %s" % destination_base)
+
+	if cfg.dry_run:
+		for key in exclude_list:
+			output(u"exclude: %s" % unicodise(key))
+		for key in remote_list:
+			output(u"download: %s -> %s" % (remote_list[key]['object_uri_str'], remote_list[key]['local_filename']))
+
+		warning(u"Exitting now because of --dry-run")
+		return
 
 	seq = 0
 	for key in remote_list:
@@ -733,7 +751,7 @@ def cmd_sync_remote2local(args):
 
 	if cfg.dry_run:
 		for key in exclude_list:
-			output(u"excluded: %s" % unicodise(key))
+			output(u"exclude: %s" % unicodise(key))
 		for key in local_list:
 			output(u"delete: %s" % local_list[key]['full_name_unicode'])
 		for key in remote_list:
@@ -898,9 +916,9 @@ def cmd_sync_local2remote(args):
 
 	if cfg.dry_run:
 		for key in exclude_list:
-			output(u"excluded: %s" % unicodise(key))
+			output(u"exclude: %s" % unicodise(key))
 		for key in remote_list:
-			output(u"deleted: %s" % remote_list[key]['object_uri_str'])
+			output(u"delete: %s" % remote_list[key]['object_uri_str'])
 		for key in local_list:
 			output(u"upload: %s -> %s" % (local_list[key]['full_name_unicode'], local_list[key]['remote_uri']))
 
