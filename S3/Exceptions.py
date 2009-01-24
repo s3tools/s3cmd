@@ -21,6 +21,14 @@ class S3Exception(Exception):
 	def __unicode__(self):
 		return self.message
 
+	## (Base)Exception.message has been deprecated in Python 2.6
+	def _get_message(self):
+		return self._message
+	def _set_message(self, message):
+		self._message = message
+	message = property(_get_message, _set_message)
+
+
 class S3Error (S3Exception):
 	def __init__(self, response):
 		self.status = response["status"]

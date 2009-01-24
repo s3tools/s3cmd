@@ -1,6 +1,8 @@
 2009-01-25  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Enabled --dry-run and --exclude for 'put' and 'get'.
+	* S3/Exceptions.py: Remove DeprecationWarning about 
+	  BaseException.message in Python 2.6
 
 2009-01-22  Michal Ludvig  <michal@logix.cz>
 
