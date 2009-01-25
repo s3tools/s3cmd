@@ -1185,18 +1185,50 @@ def run_configure(config_file):
 		error(u"Writing config file failed: %s: %s" % (config_file, e.strerror))
 		sys.exit(1)
 
-def process_exclude_from_file(exf, exclude_array):
+def process_patterns_from_file(fname, patterns_list):
 	try:
-		exfi = open(exf, "rt")
+		fn = open(fname, "rt")
 	except IOError, e:
 		error(e)
 		sys.exit(1)
-	for ex in exfi:
-		ex = ex.strip()
-		if re.match("^#", ex) or re.match("^\s*$", ex):
+	for pattern in fn:
+		pattern = pattern.strip()
+		if re.match("^#", pattern) or re.match("^\s*$", pattern):
 			continue
-		debug(u"adding rule: %s" % ex)
-		exclude_array.append(ex)
+		debug(u"%s: adding rule: %s" % (fname, pattern))
+		patterns_list.append(pattern)
+
+	return patterns_list
+
+def process_patterns(patterns_list, patterns_from, is_glob, option_txt = ""):
+	"""
+	process_patterns(patterns, patterns_from, is_glob, option_txt = "")
+	Process --exclude / --include GLOB and REGEXP patterns.
+	'option_txt' is 'exclude' / 'include' / 'rexclude' / 'rinclude'
+	Returns: patterns_compiled, patterns_text
+	"""
+
+	patterns_compiled = []
+	patterns_textual = {}
+
+	if patterns_list is None:
+		patterns_list = []
+
+	if patterns_from:
+		## Append patterns from glob_from 
+		for fname in patterns_from:
+			debug(u"processing --%s-from %s" % (option_txt, fname))
+			patterns_list = process_patterns_from_file(fname, patterns_list)
+
+	for pattern in patterns_list:
+		debug(u"processing %s rule: %s" % (option_txt, patterns_list))
+		if is_glob:
+			pattern = glob.fnmatch.translate(pattern)
+		r = re.compile(pattern)
+		patterns_compiled.append(r)
+		patterns_textual[r] = pattern
+
+	return patterns_compiled, patterns_textual
 
 commands = {}
 commands_list = [
@@ -1288,6 +1320,10 @@ def main():
 	optparser.add_option(      "--exclude-from", dest="exclude_from", action="append", metavar="FILE", help="Read --exclude GLOBs from FILE")
 	optparser.add_option(      "--rexclude", dest="rexclude", action="append", metavar="REGEXP", help="Filenames and paths matching REGEXP (regular expression) will be excluded from sync")
 	optparser.add_option(      "--rexclude-from", dest="rexclude_from", action="append", metavar="FILE", help="Read --rexclude REGEXPs from FILE")
+	optparser.add_option(      "--include", dest="include", action="append", metavar="GLOB", help="Filenames and paths matching GLOB will be included even if previously excluded by one of --(r)exclude(-from) patterns")
+	optparser.add_option(      "--include-from", dest="include_from", action="append", metavar="FILE", help="Read --include GLOBs from FILE")
+	optparser.add_option(      "--rinclude", dest="rinclude", action="append", metavar="REGEXP", help="Same as --include but uses REGEXP (regular expression) instead of GLOB")
+	optparser.add_option(      "--rinclude-from", dest="rinclude_from", action="append", metavar="FILE", help="Read --rinclude REGEXPs from FILE")
 	optparser.add_option(      "--debug-syncmatch", "--debug-exclude", dest="debug_syncmatch", action="store_true", help="Output detailed information about remote vs. local filelist matching and --exclude processing and then exit")
 
 	optparser.add_option(      "--bucket-location", dest="bucket_location", help="Datacentre to create bucket in. Either EU or US (default)")
@@ -1374,37 +1410,25 @@ def main():
 	sys.stdout = codecs.getwriter(cfg.encoding)(sys.stdout, "replace")
 	sys.stderr = codecs.getwriter(cfg.encoding)(sys.stderr, "replace")
 
-	## Process GLOB (shell wildcard style) excludes
-	if options.exclude is None:
-		options.exclude = []
+	## Process --exclude and --exclude-from
+	patterns_list, patterns_textual = process_patterns(options.exclude, options.exclude_from, is_glob = True, option_txt = "exclude")
+	cfg.exclude.extend(patterns_list)
+	cfg.debug_exclude.update(patterns_textual)
 
-	if options.exclude_from:
-		for exf in options.exclude_from:
-			debug(u"processing --exclude-from %s" % exf)
-			process_exclude_from_file(exf, options.exclude)
+	## Process --rexclude and --rexclude-from
+	patterns_list, patterns_textual = process_patterns(options.rexclude, options.rexclude_from, is_glob = False, option_txt = "rexclude")
+	cfg.exclude.extend(patterns_list)
+	cfg.debug_exclude.update(patterns_textual)
 
-	if options.exclude:
-		for ex in options.exclude:
-			debug(u"processing rule: %s" % ex)
-			exc = re.compile(glob.fnmatch.translate(ex))
-			cfg.exclude.append(exc)
-			cfg.debug_exclude[exc] = ex
+	## Process --include and --include-from
+	patterns_list, patterns_textual = process_patterns(options.include, options.include_from, is_glob = True, option_txt = "include")
+	cfg.include.extend(patterns_list)
+	cfg.debug_include.update(patterns_textual)
 
-	## Process REGEXP style excludes
-	if options.rexclude is None:
-		options.rexclude = []
-
-	if options.rexclude_from:
-		for exf in options.rexclude_from:
-			debug(u"processing --rexclude-from %s" % exf)
-			process_exclude_from_file(exf, options.rexclude)
-
-	if options.rexclude:
-		for ex in options.rexclude:
-			debug(u"processing rule: %s" % ex)
-			exc = re.compile(ex)
-			cfg.exclude.append(exc)
-			cfg.debug_exclude[exc] = ex
+	## Process --rinclude and --rinclude-from
+	patterns_list, patterns_textual = process_patterns(options.rinclude, options.rinclude_from, is_glob = False, option_txt = "rinclude")
+	cfg.include.extend(patterns_list)
+	cfg.debug_include.update(patterns_textual)
 
 	if cfg.encrypt and cfg.gpg_passphrase == "":
 		error(u"Encryption requested but no passphrase set in config file.")

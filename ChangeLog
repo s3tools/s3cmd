@@ -1,3 +1,7 @@
+2009-01-25  W. Tell  <w_tell -at- sourceforge>
+
+	* s3cmd: Implemented --include and friends.
+
 2009-01-25  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Enabled --dry-run and --exclude for 'put' and 'get'.
