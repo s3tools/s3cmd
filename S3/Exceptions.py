@@ -3,7 +3,7 @@
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
 
-from Utils import getRootTagName, unicodise, deunicodise
+from Utils import getTreeFromXml, unicodise, deunicodise
 from logging import debug, info, warning, error
 
 try:
@@ -38,21 +38,26 @@ class S3Error (S3Exception):
 		if response.has_key("headers"):
 			for header in response["headers"]:
 				debug("HttpHeader: %s: %s" % (header, response["headers"][header]))
-		if response.has_key("data") and getRootTagName(response["data"]) == "Error":
-			tree = ET.fromstring(response["data"])
-			for child in tree.getchildren():
+		if response.has_key("data"):
+			tree = getTreeFromXml(response["data"])
+			error_node = tree
+			if not error_node.tag == "Error":
+				error_node = tree.find(".//Error")
+			for child in error_node.getchildren():
 				if child.text != "":
 					debug("ErrorXML: " + child.tag + ": " + repr(child.text))
 					self.info[child.tag] = child.text
 
 	def __unicode__(self):
-		retval = "%d (%s)" % (self.status, self.reason)
-		try:
-			retval += (": %s" % self.info["Code"])
-		except (AttributeError, KeyError):
-			pass
+		retval = u"%d " % (self.status)
+		retval += (u"(%s)" % (self.info.has_key("Code") and self.info["Code"] or self.reason))
+		if self.info.has_key("Message"):
+			retval += (u": %s" % self.info["Message"])
 		return retval
 
+class CloudFrontError(S3Error):
+	pass
+		
 class S3UploadError(S3Exception):
 	pass
 

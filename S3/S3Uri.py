@@ -72,15 +72,47 @@ class S3UriS3(S3Uri):
 	def uri(self):
 		return "/".join(["s3:/", self._bucket, self._object])
 	
+	def is_dns_compatible(self):
+		return S3.check_bucket_name_dns_conformity(self._bucket)
+
 	def public_url(self):
-		if S3.check_bucket_name_dns_conformity(self._bucket):
+		if self.is_dns_compatible():
 			return "http://%s.s3.amazonaws.com/%s" % (self._bucket, self._object)
 		else:
 			return "http://s3.amazonaws.com/%s/%s" % (self._bucket, self._object)
 
+	def host_name(self):
+		if self.is_dns_compatible():
+			return "%s.s3.amazonaws.com" % (self._bucket)
+		else:
+			return "s3.amazonaws.com"
+
 	@staticmethod
 	def compose_uri(bucket, object = ""):
 		return "s3://%s/%s" % (bucket, object)
+
+	@staticmethod
+	def httpurl_to_s3uri(http_url):
+		m=re.match("(https?://)?([^/]+)/?(.*)", http_url, re.IGNORECASE)
+		hostname, object = m.groups()[1:]
+		hostname = hostname.lower()
+		if hostname == "s3.amazonaws.com":
+			## old-style url: http://s3.amazonaws.com/bucket/object
+			if object.count("/") == 0:
+				## no object given
+				bucket = object
+				object = ""
+			else:
+				## bucket/object
+				bucket, object = object.split("/", 1)
+		elif hostname.endswith(".s3.amazonaws.com"):
+			## new-style url: http://bucket.s3.amazonaws.com/object
+			bucket = hostname[:-(len(".s3.amazonaws.com"))]
+		else:
+			raise ValueError("Unable to parse URL: %s" % http_url)
+		return S3Uri("s3://%(bucket)s/%(object)s" % { 
+			'bucket' : bucket,
+			'object' : object })
 
 class S3UriS3FS(S3Uri):
 	type = "s3fs"
@@ -124,6 +156,22 @@ class S3UriFile(S3Uri):
 	def dirname(self):
 		return os.path.dirname(self.path())
 
+class S3UriCloudFront(S3Uri):
+	type = "cf"
+	_re = re.compile("^cf://([^/]*)/?", re.IGNORECASE)
+	def __init__(self, string):
+		match = self._re.match(string)
+		if not match:
+			raise ValueError("%s: not a CloudFront URI" % string)
+		groups = match.groups()
+		self._dist_id = groups[0]
+
+	def dist_id(self):
+		return self._dist_id
+
+	def uri(self):
+		return "/".join(["cf:/", self.dist_id()])
+
 if __name__ == "__main__":
 	uri = S3Uri("s3://bucket/object")
 	print "type()  =", type(uri)
@@ -153,3 +201,11 @@ if __name__ == "__main__":
 	print "uri.type=", uri.type
 	print "path    =", uri.path()
 	print
+
+	uri = S3Uri("cf://1234567890ABCD/")
+	print "type()  =", type(uri)
+	print "uri     =", uri
+	print "uri.type=", uri.type
+	print "dist_id =", uri.dist_id()
+	print
+

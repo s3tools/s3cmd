@@ -63,7 +63,21 @@ def getListFromXml(xml, node):
 	tree = getTreeFromXml(xml)
 	nodes = tree.findall('.//%s' % (node))
 	return parseNodes(nodes)
-	
+
+def getDictFromTree(tree):
+	ret_dict = {}
+	for child in tree.getchildren():
+		if child.getchildren():
+			## Complex-type child. We're not interested
+			continue
+		if ret_dict.has_key(child.tag):
+			if not type(ret_dict[child.tag]) == list:
+				ret_dict[child.tag] = [ret_dict[child.tag]]
+			ret_dict[child.tag].append(child.text or "")
+		else:
+			ret_dict[child.tag] = child.text or ""
+	return ret_dict
+
 def getTextFromXml(xml, xpath):
 	tree = getTreeFromXml(xml)
 	if tree.tag.endswith(xpath):
@@ -74,6 +88,20 @@ def getTextFromXml(xml, xpath):
 def getRootTagName(xml):
 	tree = getTreeFromXml(xml)
 	return tree.tag
+
+def xmlTextNode(tag_name, text):
+	el = ET.Element(tag_name)
+	el.text = unicode(text)
+	return el
+
+def appendXmlTextNode(tag_name, text, parent):
+	"""
+	Creates a new <tag_name> Node and sets
+	its content to 'text'. Then appends the
+	created Node to 'parent' element if given.
+	Returns the newly created Node.
+	"""
+	parent.append(xmlTextNode(tag_name, text))
 
 def dateS3toPython(date):
 	date = re.compile("\.\d\d\dZ").sub(".000Z", date)

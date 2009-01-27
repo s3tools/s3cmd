@@ -1230,8 +1230,8 @@ def process_patterns(patterns_list, patterns_from, is_glob, option_txt = ""):
 
 	return patterns_compiled, patterns_textual
 
-commands = {}
-commands_list = [
+def get_commands_list():
+	return [
 	{"cmd":"mb", "label":"Make bucket", "param":"s3://BUCKET", "func":cmd_bucket_create, "argc":1},
 	{"cmd":"rb", "label":"Remove bucket", "param":"s3://BUCKET", "func":cmd_bucket_delete, "argc":1},
 	{"cmd":"ls", "label":"List objects or buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_ls, "argc":0},
@@ -1246,9 +1246,15 @@ commands_list = [
 	{"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
 	{"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
 	{"cmd":"setacl", "label":"Modify Access control list for Bucket or Object", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
+	## CloudFront commands
+	{"cmd":"cflist", "label":"List CloudFront distribution points", "param":"", "func":CfCmd.info, "argc":0},
+	{"cmd":"cfinfo", "label":"Display CloudFront distribution point parameters", "param":"[cf://DIST_ID]", "func":CfCmd.info, "argc":0},
+	{"cmd":"cfcreate", "label":"Create CloudFront distribution point", "param":"s3://BUCKET", "func":CfCmd.create, "argc":1},
+	{"cmd":"cfdelete", "label":"Delete CloudFront distribution point", "param":"cf://DIST_ID", "func":CfCmd.delete, "argc":1},
+	{"cmd":"cfmodify", "label":"Change CloudFront distribution point parameters", "param":"cf://DIST_ID", "func":CfCmd.modify, "argc":1},
 	]
 
-def format_commands(progname):
+def format_commands(progname, commands_list):
 	help = "Commands:\n"
 	for cmd in commands_list:
 		help += "  %s\n      %s %s %s\n" % (cmd["label"], progname, cmd["cmd"], cmd["param"])
@@ -1276,6 +1282,9 @@ def main():
 	if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
 		sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
 		sys.exit(1)
+
+	commands_list = get_commands_list()
+	commands = {}
 
 	## Populate "commands" from "commands_list"
 	for cmd in commands_list:
@@ -1337,6 +1346,11 @@ def main():
 
 	optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default on TTY).")
 	optparser.add_option(      "--no-progress", dest="progress_meter", action="store_false", help="Don't display progress meter (default on non-TTY).")
+	optparser.add_option(      "--enable", dest="cf_enable", action="store_true", help="Enable given CloudFront distribution (only for [cfmodify] command)")
+	optparser.add_option(      "--disable", dest="cf_enable", action="store_false", help="Enable given CloudFront distribution (only for [cfmodify] command)")
+	optparser.add_option(      "--cf-add-cname", dest="cf_cnames_add", action="append", metavar="CNAME", help="Add given CNAME to a CloudFront distribution (only for [cfcreate] and [cfmodify] commands)")
+	optparser.add_option(      "--cf-remove-cname", dest="cf_cnames_remove", action="append", metavar="CNAME", help="Remove given CNAME from a CloudFront distribution (only for [cfmodify] command)")
+	optparser.add_option(      "--cf-comment", dest="cf_comment", action="store", metavar="COMMENT", help="Set COMMENT for a given CloudFront distribution (only for [cfcreate] and [cfmodify] commands)")
 	optparser.add_option("-v", "--verbose", dest="verbosity", action="store_const", const=logging.INFO, help="Enable verbose output.")
 	optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output.")
 	optparser.add_option(      "--version", dest="show_version", action="store_true", help="Show s3cmd version (%s) and exit." % (PkgInfo.version))
@@ -1346,7 +1360,7 @@ def main():
 		'Amazon S3 storage. It allows for making and removing '+
 		'"buckets" and uploading, downloading and removing '+
 		'"objects" from these buckets.')
-	optparser.epilog = format_commands(optparser.get_prog_name())
+	optparser.epilog = format_commands(optparser.get_prog_name(), commands_list)
 	optparser.epilog += ("\nSee program homepage for more information at\n%s\n" % PkgInfo.url)
 
 	(options, args) = optparser.parse_args()
@@ -1400,10 +1414,20 @@ def main():
 	for option in cfg.option_list():
 		try:
 			if getattr(options, option) != None:
-				debug(u"Updating %s -> %s" % (option, getattr(options, option)))
+				debug(u"Updating Config.Config %s -> %s" % (option, getattr(options, option)))
 				cfg.update_option(option, getattr(options, option))
 		except AttributeError:
 			## Some Config() options are not settable from command line
+			pass
+	
+	## Update CloudFront options if some were set
+	for option in CfCmd.options.option_list():
+		try:
+			if getattr(options, option) != None:
+				debug(u"Updating CloudFront.Cmd %s -> %s" % (option, getattr(options, option)))
+				CfCmd.options.update_option(option, getattr(options, option))
+		except AttributeError:
+			## Some CloudFront.Cmd.Options() options are not settable from command line
 			pass
 
 	## Set output and filesystem encoding for printing out filenames.
@@ -1469,8 +1493,6 @@ def main():
 		cmd_func(args)
 	except S3Error, e:
 		error(u"S3 error: %s" % e)
-		if e.info.has_key("Message"):
-			error(e.info['Message'])
 		sys.exit(1)
 	except ParameterError, e:
 		error(u"Parameter problem: %s" % e)
@@ -1489,6 +1511,7 @@ if __name__ == '__main__':
 		from S3.Exceptions import *
 		from S3.Utils import unicodise
 		from S3.Progress import Progress
+		from S3.CloudFront import Cmd as CfCmd
 
 		main()
 		sys.exit(0)
