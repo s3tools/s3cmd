@@ -1,3 +1,10 @@
+2009-01-28  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Output 'delete:' in --dry-run only when
+	  used together with --delete-removed. Otherwise
+	  the user will think that without --dry-run it
+	  would really delete the files.
+
 2009-01-27  Michal Ludvig  <michal@logix.cz>
 
 	* Released version 0.9.9-rc1

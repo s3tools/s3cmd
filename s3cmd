@@ -753,8 +753,9 @@ def cmd_sync_remote2local(args):
 	if cfg.dry_run:
 		for key in exclude_list:
 			output(u"exclude: %s" % unicodise(key))
-		for key in local_list:
-			output(u"delete: %s" % local_list[key]['full_name_unicode'])
+		if cfg.delete_removed:
+			for key in local_list:
+				output(u"delete: %s" % local_list[key]['full_name_unicode'])
 		for key in remote_list:
 			output(u"download: %s -> %s" % (remote_list[key]['object_uri_str'], remote_list[key]['local_filename']))
 
@@ -918,8 +919,9 @@ def cmd_sync_local2remote(args):
 	if cfg.dry_run:
 		for key in exclude_list:
 			output(u"exclude: %s" % unicodise(key))
-		for key in remote_list:
-			output(u"delete: %s" % remote_list[key]['object_uri_str'])
+		if cfg.delete_removed:
+			for key in remote_list:
+				output(u"delete: %s" % remote_list[key]['object_uri_str'])
 		for key in local_list:
 			output(u"upload: %s -> %s" % (local_list[key]['full_name_unicode'], local_list[key]['remote_uri']))
 
