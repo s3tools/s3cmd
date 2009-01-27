@@ -2,21 +2,18 @@ TODO list for s3cmd project
 ===========================
 
 - For 0.9.9
-  - Enable --exclude for [put], [get] and [del]
-  - Enable --dry-run for [put], [get] and [del], reject
-    for all others.
+  - Enable --exclude for [del]
+  - Enable --dry-run for [del], reject for all others.
   - Sync should work for one file, for example
     s3cmd sync /etc/passwd s3://bucket/passwd
   - Add testsuite for new put, get and sync semantic.
-  - Recursive processing / multiple sources with most commands.
-    - Incl. recursive cp/mv on remote "folders".
-  - Document --recursive and --force for buckets
+  - Recursive cp/mv on remote "folders".
+  - Document --recursive and --force for buckets, CloudFront,
+    new options --dry-run, --include, etc.
   - Allow change /tmp to somewhere else
   - With --guess-mime use 'magic' module if available.
 
 - For 1.0.0
-  - Add --include/--include-from/--rinclude* for sync
-  - Add commands for CloudFront.
   - Add 'geturl' command, both Unicode and urlencoded output.
 
 - After 1.0.0

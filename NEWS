@@ -1,3 +1,12 @@
+s3cmd 0.9.9-rc1  - 2009-01-27
+===============
+* CloudFront support through cfcreate, cfdelete, 
+  cfmodify and cfinfo commands.
+* Added --include / --rinclude / --(r)include-from 
+  options to override --exclude exclusions.
+* Enabled --dry-run for [put] and [get].
+* Fixed GPG (--encrypt) compatibility with Python 2.6.
+
 s3cmd 0.9.9-pre5 - 2009-01-22
 ================
 * New command 'setacl' for setting ACL on existing objects.

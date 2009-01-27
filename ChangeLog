@@ -1,3 +1,10 @@
+2009-01-27  Michal Ludvig  <michal@logix.cz>
+
+	* Released version 0.9.9-rc1
+	  --------------------------
+
+	* S3/PkgInfo.py, NEWS, TODO: Updated for 0.9.9-rc1
+
 2009-01-26  Michal Ludvig  <michal@logix.cz>
 
 	* Merged CloudFront support from branches/s3cmd-airlock

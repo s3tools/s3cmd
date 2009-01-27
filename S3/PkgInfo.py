@@ -1,5 +1,5 @@
 package = "s3cmd"
-version = "0.9.9-pre5"
+version = "0.9.9-rc1"
 url = "http://s3tools.logix.cz"
 license = "GPL version 2"
 short_description = "S3cmd is a tool for managing Amazon S3 storage space."
@@ -7,6 +7,7 @@ long_description = """
 S3cmd lets you copy files from/to Amazon S3 
 (Simple Storage Service) using a simple to use
 command line client. Supports rsync-like backup,
-encryption, etc.
+GPG encryption, and more. Also supports management
+of Amazon's CloudFront content delivery network.
 """
 
