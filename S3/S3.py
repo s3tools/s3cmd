@@ -26,6 +26,7 @@ from BidirMap import BidirMap
 from Config import Config
 from Exceptions import *
 from ACL import ACL
+from ConnMan import ConnMan
 
 class S3(object):
 	http_methods = BidirMap(
@@ -357,16 +358,17 @@ class S3(object):
 		method_string, resource, headers = request
 		debug("Processing request, please wait...")
 		try:
-			conn = self.get_connection(resource['bucket'])
-			conn.request(method_string, self.format_uri(resource), body, headers)
+			#conn = self.get_connection(resource['bucket'])
+			conn = ConnMan.get(self.get_hostname(resource['bucket']))
+			conn.c.request(method_string, self.format_uri(resource), body, headers)
 			response = {}
-			http_response = conn.getresponse()
+			http_response = conn.c.getresponse()
 			response["status"] = http_response.status
 			response["reason"] = http_response.reason
 			response["headers"] = convertTupleListToDict(http_response.getheaders())
 			response["data"] =  http_response.read()
 			debug("Response: " + str(response))
-			conn.close()
+			ConnMan.put(conn)
 		except Exception, e:
 			if retries:
 				warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
@@ -409,12 +411,13 @@ class S3(object):
 			info("Sending file '%s', please wait..." % file.name)
 		timestamp_start = time.time()
 		try:
-			conn = self.get_connection(resource['bucket'])
-			conn.connect()
-			conn.putrequest(method_string, self.format_uri(resource))
+			#conn = self.get_connection(resource['bucket'])
+			#conn.connect()
+			conn = ConnMan.get(self.get_hostname(resource['bucket']))
+			conn.c.putrequest(method_string, self.format_uri(resource))
 			for header in headers.keys():
-				conn.putheader(header, str(headers[header]))
-			conn.endheaders()
+				conn.c.putheader(header, str(headers[header]))
+			conn.c.endheaders()
 		except Exception, e:
 			if self.config.progress_meter:
 				progress.done("failed")
@@ -433,7 +436,7 @@ class S3(object):
 				#debug("SendFile: Reading up to %d bytes from '%s'" % (self.config.send_chunk, file.name))
 				data = file.read(self.config.send_chunk)
 				md5_hash.update(data)
-				conn.send(data)
+				conn.c.send(data)
 				if self.config.progress_meter:
 					progress.update(delta_position = len(data))
 				size_left -= len(data)
@@ -441,13 +444,13 @@ class S3(object):
 					time.sleep(throttle)
 			md5_computed = md5_hash.hexdigest()
 			response = {}
-			http_response = conn.getresponse()
+			http_response = conn.c.getresponse()
 			response["status"] = http_response.status
 			response["reason"] = http_response.reason
 			response["headers"] = convertTupleListToDict(http_response.getheaders())
 			response["data"] = http_response.read()
 			response["size"] = size_total
-			conn.close()
+			ConnMan.put(conn)
 			debug(u"Response: %s" % response)
 		except Exception, e:
 			if self.config.progress_meter:
@@ -522,17 +525,18 @@ class S3(object):
 			info("Receiving file '%s', please wait..." % stream.name)
 		timestamp_start = time.time()
 		try:
-			conn = self.get_connection(resource['bucket'])
-			conn.connect()
-			conn.putrequest(method_string, self.format_uri(resource))
+			#conn = self.get_connection(resource['bucket'])
+			#conn.connect()
+			conn = ConnMan.get(self.get_hostname(resource['bucket']))
+			conn.c.putrequest(method_string, self.format_uri(resource))
 			for header in headers.keys():
-				conn.putheader(header, str(headers[header]))
+				conn.c.putheader(header, str(headers[header]))
 			if start_position > 0:
 				debug("Requesting Range: %d .. end" % start_position)
-				conn.putheader("Range", "bytes=%d-" % start_position)
-			conn.endheaders()
+				conn.c.putheader("Range", "bytes=%d-" % start_position)
+			conn.c.endheaders()
 			response = {}
-			http_response = conn.getresponse()
+			http_response = conn.c.getresponse()
 			response["status"] = http_response.status
 			response["reason"] = http_response.reason
 			response["headers"] = convertTupleListToDict(http_response.getheaders())
@@ -585,7 +589,8 @@ class S3(object):
 				## Call progress meter from here...
 				if self.config.progress_meter:
 					progress.update(delta_position = len(data))
-			conn.close()
+			#conn.close()
+			ConnMan.put(conn)
 		except Exception, e:
 			if self.config.progress_meter:
 				progress.done("failed")

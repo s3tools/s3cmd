@@ -1,3 +1,9 @@
+2009-01-30  Michal Ludvig  <michal@logix.cz>
+
+	* S3/ConnMan.py: New Connection Manager
+	* s3cmd: Use ConnMan instead of S3.get_connection()
+	  (doesn't yet support proxies!)
+
 2009-01-28  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Output 'delete:' in --dry-run only when
