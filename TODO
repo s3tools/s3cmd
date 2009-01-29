@@ -4,10 +4,8 @@ TODO list for s3cmd project
 - For 0.9.9.x
   - Make 'sync s3://bkt/some-filename local/other-filename' work
     (at the moment it'll always download).
-  - Enable --exclude for [del]
-  - Enable --dry-run for [del], reject for all others.
-  - Sync should work for one file, for example
-    s3cmd sync /etc/passwd s3://bucket/passwd
+  - Enable --exclude for [del], [setacl], [ls].
+  - Enable --dry-run for [del], [setacl], reject for all others.
   - Add testsuite for new put, get and sync semantic.
   - Recursive cp/mv on remote "folders".
   - Document --recursive and --force for buckets, CloudFront,

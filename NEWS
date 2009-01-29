@@ -1,3 +1,10 @@
+s3cmd 0.9.9-rc2  - 2009-01-30
+===============
+* Fixed s3cmd crash when put / get / sync found
+  zero files to transfer.
+* In --dry-run output files to be deleted only
+  with --delete-removed, otherwise users get scared.
+
 s3cmd 0.9.9-rc1  - 2009-01-27
 ===============
 * CloudFront support through cfcreate, cfdelete, 

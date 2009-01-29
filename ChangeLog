@@ -1,5 +1,12 @@
 2009-01-30  Michal Ludvig  <michal@logix.cz>
 
+	* Released version 0.9.9-rc2
+	  --------------------------
+
+	* S3/PkgInfo.py, NEWS, TODO: Updated for 0.9.9-rc2
+
+2009-01-30  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd: Under some circumstance s3cmd crashed
 	  when put/get/sync had 0 files to transmit. Fixed now.
 
