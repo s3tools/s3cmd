@@ -1,7 +1,9 @@
 TODO list for s3cmd project
 ===========================
 
-- For 0.9.9
+- For 0.9.9.x
+  - Make 'sync s3://bkt/some-filename local/other-filename' work
+    (at the moment it'll always download).
   - Enable --exclude for [del]
   - Enable --dry-run for [del], reject for all others.
   - Sync should work for one file, for example

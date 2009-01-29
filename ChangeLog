@@ -1,3 +1,8 @@
+2009-01-30  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Under some circumstance s3cmd crashed
+	  when put/get/sync had 0 files to transmit. Fixed now.
+
 2009-01-28  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Output 'delete:' in --dry-run only when

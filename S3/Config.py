@@ -132,7 +132,7 @@ class ConfigParser(object):
 		self.parse_file(file, sections)
 	
 	def parse_file(self, file, sections = []):
-		info("ConfigParser: Reading file '%s'" % file)
+		debug("ConfigParser: Reading file '%s'" % file)
 		if type(sections) != type([]):
 			sections = [sections]
 		in_our_section = True
