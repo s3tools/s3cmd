@@ -1,3 +1,9 @@
+2009-02-01  Michal Ludvig  <michal@logix.cz>
+
+	* S3/Exceptions.py: Correct S3Exception.__str__() to
+	  avoid crash in S3Error() subclass. Reported by '~t2~'.
+	* NEWS: Updated.
+
 2009-01-30  Michal Ludvig  <michal@logix.cz>
 
 	* Released version 0.9.9-rc2
