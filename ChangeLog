@@ -1,3 +1,10 @@
+2009-02-02  Michal Ludvig  <michal@logix.cz>
+
+	* Released version 0.9.9-rc3
+	  --------------------------
+
+	* S3/PkgInfo.py, NEWS: Updated for 0.9.9-rc3
+
 2009-02-01  Michal Ludvig  <michal@logix.cz>
 
 	* S3/Exceptions.py: Correct S3Exception.__str__() to

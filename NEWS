@@ -1,4 +1,4 @@
-s3cmd 0.9.9-rc2  - ?
+s3cmd 0.9.9-rc3  - 2009-02-02
 ===============
 * Fixed crash in S3Error().__str__() (typically Amazon's Internal
   errors, etc).
