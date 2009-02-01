@@ -1,5 +1,19 @@
+2009-02-02  Michal Ludvig  <michal@logix.cz>
+
+	Merged s3cmd 0.9.9-rc3 from trunk:
+
+	2009-02-01  Michal Ludvig  <michal@logix.cz>
+	* S3/Exceptions.py: Correct S3Exception.__str__() to
+	  avoid crash in S3Error() subclass. Reported by '~t2~'.
+	* NEWS: Updated.
+
+	2009-01-30  Michal Ludvig  <michal@logix.cz>
+	* s3cmd: Under some circumstance s3cmd crashed
+	  when put/get/sync had 0 files to transmit. Fixed now.
+
 2009-01-30  Michal Ludvig  <michal@logix.cz>
 
+	(branches/s3cmd-speedup branch)
 	* S3/ConnMan.py: New Connection Manager
 	* s3cmd: Use ConnMan instead of S3.get_connection()
 	  (doesn't yet support proxies!)

@@ -16,7 +16,9 @@ class S3Exception(Exception):
 		self.message = unicodise(message)
 
 	def __str__(self):
-		return deunicodise(self.message)
+		## Call unicode(self) instead of self.message because
+		## __unicode__() method could be overriden in subclasses!
+		return deunicodise(unicode(self))
 
 	def __unicode__(self):
 		return self.message

@@ -173,6 +173,7 @@ def cmd_bucket_delete(args):
 def fetch_local_list(args, recursive = None):
 	local_uris = []
 	local_list = SortedDict()
+	single_file = False
 
 	if type(args) not in (list, tuple):
 		args = [args]
@@ -189,9 +190,18 @@ def fetch_local_list(args, recursive = None):
 		local_uris.append(uri)
 
 	for uri in local_uris:
-		local_list.update(_get_filelist_local(uri))
+		list_for_uri, single_file = _get_filelist_local(uri)
+		local_list.update(list_for_uri)
 
-	return local_list
+	## Single file is True if and only if the user 
+	## specified one local URI and that URI represents
+	## a FILE. Ie it is False if the URI was of a DIR
+	## and that dir contained only one FILE. That's not
+	## a case of single_file==True.
+	if len(local_list) > 1:
+		single_file = False
+
+	return local_list, single_file
 
 def fetch_remote_list(args, require_attribs = False, recursive = None):
 	remote_uris = []
@@ -213,10 +223,6 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
 		for uri in remote_uris:
 			objectlist = _get_filelist_remote(uri)
 			for key in objectlist:
-				#object = S3Uri(objectlist[key]['object_uri_str'])
-				## Remove leading '/' from remote filenames
-				#if key.find("/") == 0:
-				#	key = key[1:]
 				remote_list[key] = objectlist[key]
 	else:
 		for uri in remote_uris:
@@ -272,18 +278,22 @@ def cmd_object_put(args):
 	if len(args) == 0:
 		raise ParameterError("Nothing to upload. Expecting a local file or directory.")
 
-	local_list = fetch_local_list(args)
-	local_count = len(local_list)
+	local_list, single_file_local = fetch_local_list(args)
 
 	local_list, exclude_list = _filelist_filter_exclude_include(local_list)
 
-	if not destination_base.endswith("/"):
-		if local_count > 1:
-			raise ParameterError("Destination S3 URI must end with '/' (ie must refer to a directory on the remote side).")
-		local_list[local_list.keys()[0]]['remote_uri'] = unicodise(destination_base)
-	else:
-		for key in local_list:
-			local_list[key]['remote_uri'] = unicodise(destination_base + key)
+	local_count = len(local_list)
+
+	info(u"Summary: %d local files to upload" % local_count)
+
+	if local_count > 0:
+		if not destination_base.endswith("/"):
+			if not single_file_local:
+				raise ParameterError("Destination S3 URI must end with '/' (ie must refer to a directory on the remote side).")
+			local_list[local_list.keys()[0]]['remote_uri'] = unicodise(destination_base)
+		else:
+			for key in local_list:
+				local_list[key]['remote_uri'] = unicodise(destination_base + key)
 
 	if cfg.dry_run:
 		for key in exclude_list:
@@ -373,22 +383,25 @@ def cmd_object_get(args):
 		raise ParameterError("Nothing to download. Expecting S3 URI.")
 
 	remote_list = fetch_remote_list(args, require_attribs = False)
-	remote_count = len(remote_list)
-
 	remote_list, exclude_list = _filelist_filter_exclude_include(remote_list)
 
-	if not os.path.isdir(destination_base) or destination_base == '-':
-		## We were either given a file name (existing or not) or want STDOUT
-		if remote_count > 1:
-			raise ParameterError("Destination must be a directory when downloading multiple sources.")
-		remote_list[remote_list.keys()[0]]['local_filename'] = deunicodise(destination_base)
-	elif os.path.isdir(destination_base):
-		if destination_base[-1] != os.path.sep:
-			destination_base += os.path.sep
-		for key in remote_list:
-			remote_list[key]['local_filename'] = destination_base + key
-	else:
-		raise InternalError("WTF? Is it a dir or not? -- %s" % destination_base)
+	remote_count = len(remote_list)
+
+	info(u"Summary: %d remote files to download" % remote_count)
+
+	if remote_count > 0:
+		if not os.path.isdir(destination_base) or destination_base == '-':
+			## We were either given a file name (existing or not) or want STDOUT
+			if remote_count > 1:
+				raise ParameterError("Destination must be a directory when downloading multiple sources.")
+			remote_list[remote_list.keys()[0]]['local_filename'] = deunicodise(destination_base)
+		elif os.path.isdir(destination_base):
+			if destination_base[-1] != os.path.sep:
+				destination_base += os.path.sep
+			for key in remote_list:
+				remote_list[key]['local_filename'] = destination_base + key
+		else:
+			raise InternalError("WTF? Is it a dir or not? -- %s" % destination_base)
 
 	if cfg.dry_run:
 		for key in exclude_list:
@@ -549,10 +562,12 @@ def _get_filelist_local(local_uri):
 		local_base = deunicodise(local_uri.basename())
 		local_path = deunicodise(local_uri.path())
 		filelist = os.walk(local_path)
+		single_file = False
 	else:
 		local_base = ""
 		local_path = deunicodise(local_uri.dirname())
 		filelist = [( local_path, [], [deunicodise(local_uri.basename())] )]
+		single_file = True
 	loc_list = SortedDict()
 	for root, dirs, files in filelist:
 		rel_root = root.replace(local_path, local_base, 1)
@@ -575,7 +590,7 @@ def _get_filelist_local(local_uri):
 				'mtime' : sr.st_mtime,
 				## TODO: Possibly more to save here...
 			}
-	return loc_list
+	return loc_list, single_file
 
 def _get_filelist_remote(remote_uri, recursive = True):
 	## If remote_uri ends with '/' then all remote files will have 
@@ -722,7 +737,7 @@ def cmd_sync_remote2local(args):
 	s3 = S3(Config())
 
 	destination_base = args[-1]
-	local_list = fetch_local_list(destination_base, recursive = True)
+	local_list, single_file_local = fetch_local_list(destination_base, recursive = True)
 	remote_list = fetch_remote_list(args[:-1], recursive = True, require_attribs = True)
 
 	local_count = len(local_list)
@@ -737,6 +752,8 @@ def cmd_sync_remote2local(args):
 	local_count = len(local_list)
 	remote_count = len(remote_list)
 
+	info(u"Summary: %d remote files to download, %d local files to delete" % (remote_count, local_count))
+
 	if not os.path.isdir(destination_base):
 		## We were either given a file name (existing or not) or want STDOUT
 		if remote_count > 1:
@@ -747,8 +764,6 @@ def cmd_sync_remote2local(args):
 			destination_base += os.path.sep
 		for key in remote_list:
 			remote_list[key]['local_filename'] = deunicodise(destination_base + key)
-
-	info(u"Summary: %d remote files to download, %d local files to delete" % (remote_count, local_count))
 
 	if cfg.dry_run:
 		for key in exclude_list:
@@ -891,7 +906,7 @@ def cmd_sync_local2remote(args):
 		sys.exit(1)
 
 	destination_base = args[-1]
-	local_list = fetch_local_list(args[:-1], recursive = True)
+	local_list, single_file_local = fetch_local_list(args[:-1], recursive = True)
 	remote_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
 
 	local_count = len(local_list)
@@ -901,20 +916,28 @@ def cmd_sync_local2remote(args):
 
 	local_list, exclude_list = _filelist_filter_exclude_include(local_list)
 
+	if single_file_local and len(local_list) == 1 and len(remote_list) == 1:
+		## Make remote_key same as local_key for comparison if we're dealing with only one file
+		remote_list_entry = remote_list[remote_list.keys()[0]]
+		# Flush remote_list, by the way
+		remote_list = { local_list.keys()[0] : remote_list_entry }
+
 	local_list, remote_list, existing_list = _compare_filelists(local_list, remote_list, True)
 
 	local_count = len(local_list)
 	remote_count = len(remote_list)
 
-	if not destination_base.endswith("/"):
-		if local_count > 1:
-			raise ParameterError("Destination S3 URI must end with '/' (ie must refer to a directory on the remote side).")
-		local_list[local_list.keys()[0]]['remote_uri'] = unicodise(destination_base)
-	else:
-		for key in local_list:
-			local_list[key]['remote_uri'] = unicodise(destination_base + key)
-
 	info(u"Summary: %d local files to upload, %d remote files to delete" % (local_count, remote_count))
+
+	if local_count > 0:
+		## Populate 'remote_uri' only if we've got something to upload
+		if not destination_base.endswith("/"):
+			if not single_file_local:
+				raise ParameterError("Destination S3 URI must end with '/' (ie must refer to a directory on the remote side).")
+			local_list[local_list.keys()[0]]['remote_uri'] = unicodise(destination_base)
+		else:
+			for key in local_list:
+				local_list[key]['remote_uri'] = unicodise(destination_base + key)
 
 	if cfg.dry_run:
 		for key in exclude_list:
