@@ -74,3 +74,11 @@ class InvalidFileError(S3Exception):
 
 class ParameterError(S3Exception):
 	pass
+
+## Threading-related exceptions
+class RequeueTaskException(Exception):
+	pass
+
+class PermanentError(Exception):
+	pass
+

@@ -22,6 +22,8 @@ from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatt
 from logging import debug, info, warning, error
 from distutils.spawn import find_executable
 
+import Queue
+
 def output(message):
 	sys.stdout.write(message + "\n")
 
@@ -1013,30 +1015,44 @@ def cmd_sync(args):
 def cmd_setacl(args):
 	s3 = S3(cfg)
 
-	set_to_acl = cfg.acl_public and "Public" or "Private"
-
 	remote_list = fetch_remote_list(args)
 	remote_count = len(remote_list)
-	seq = 0
+	w = Worker(cfg.threads_net_short)
+	tasks_in = []
 	for key in remote_list:
-		seq += 1
-		seq_label = "[%d of %d]" % (seq, remote_count)
-		uri = S3Uri(remote_list[key]['object_uri_str'])
-		acl = s3.get_acl(uri)
-		debug(u"acl: %s - %r" % (uri, acl.grantees))
-		if cfg.acl_public:
-			if acl.isAnonRead():
-				info(u"%s: already Public, skipping %s" % (uri, seq_label))
-				continue
-			acl.grantAnonRead()
+		task = TaskSetACL(s3, remote_list[key]['object_uri_str'], cfg.acl_public)
+		w.q_in.put(task)
+		tasks_in.append(task)
+
+	seq = 0
+	while len(tasks_in):
+		try:
+			response = w.q_out.get(timeout = 15)
+			task = response['task']
+		except (Queue.Empty, KeyboardInterrupt):
+			break
+		except Exception, e:
+			error(repr(e))
+			break
+		if response.has_key('response'):
+			seq += 1
+			seq_label = "[%d of %d]" % (seq, remote_count)
+			tasks_in.remove(task)
+			set_to_acl = task.acl_public and "Public" or "Private"
+			was_set = response['response']
+			if was_set:
+				output(u"%s: ACL set to %s  %s" % (task.uri_str, set_to_acl, seq_label))
+			else:
+				info(u"%s: ACL already set to %s, skipping  %s" % (task.uri_str, set_to_acl, seq_label))
 		else:
-			if not acl.isAnonRead():
-				info(u"%s: already Private, skipping %s" % (uri, seq_label))
-				continue
-			acl.revokeAnonRead()
-		retsponse = s3.set_acl(uri, acl)
-		if retsponse['status'] == 200:
-			output(u"%s: ACL set to %s  %s" % (uri, set_to_acl, seq_label))
+			e = response['exception']
+			print "Main: exception: %s: %r %s" % (task.uri_str, e, type(e))
+
+	w.ev_quit.set()
+	debug("Waiting for threads' deaths.")
+	for t in w.thread_pool:
+		t.join()
+	debug("All threads are dead. Cool.")
 
 def resolve_list(lst, args):
 	retval = []
@@ -1533,6 +1549,8 @@ if __name__ == '__main__':
 		from S3.Config import Config
 		from S3.S3Uri import *
 		from S3 import Utils
+		from S3.Worker import Worker
+		from S3.Tasks import TaskSetACL
 		from S3.Exceptions import *
 		from S3.Utils import unicodise
 		from S3.Progress import Progress

@@ -1,3 +1,10 @@
+2009-02-09  Michal Ludvig  <michal@logix.cz>
+
+	* S3/Worker.py, S3/Tasks.py: Added support for running
+	  requests in threads.
+	* s3cmd: 'setacl' converted to a threading model.
+	* S3/Config.py: Added threading-specific settings.
+
 2009-02-02  Michal Ludvig  <michal@logix.cz>
 
 	Merged s3cmd 0.9.9-rc3 from trunk:

@@ -66,6 +66,12 @@ class Config(object):
 	debug_exclude = {}
 	debug_include = {}
 	encoding = "utf-8"
+	# Nr of Threads for different operations
+	threads_net_short = 20		## For "short" requests, eg setacl, cp, mv, ...
+	threads_net_upload = 2
+	threads_net_download = 2
+	threads_local_md5 = 2
+	threads_default = 2
 
 	## Creating a singleton
 	def __new__(self, configfile = None):
