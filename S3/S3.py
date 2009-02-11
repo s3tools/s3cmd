@@ -355,8 +355,8 @@ class S3(object):
 	def send_request(self, request, body = None, retries = _max_retries):
 		method_string, resource, headers = request
 		debug("Processing request, please wait...")
-		if body and not headers.has_key('content-length'):
-			headers['content-length'] = len(body)
+		if not headers.has_key('content-length'):
+			headers['content-length'] = body and len(body) or 0
 		try:
 			conn = self.get_connection(resource['bucket'])
 			conn.request(method_string, self.format_uri(resource), body, headers)
