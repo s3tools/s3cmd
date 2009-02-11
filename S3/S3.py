@@ -154,7 +154,6 @@ class S3(object):
 			self.check_bucket_name(bucket, dns_strict = True)
 		else:
 			self.check_bucket_name(bucket, dns_strict = False)
-		headers["content-length"] = len(body)
 		if self.config.acl_public:
 			headers["x-amz-acl"] = "public-read"
 		request = self.create_request("BUCKET_CREATE", bucket = bucket, headers = headers)
@@ -356,6 +355,8 @@ class S3(object):
 	def send_request(self, request, body = None, retries = _max_retries):
 		method_string, resource, headers = request
 		debug("Processing request, please wait...")
+		if body and not headers.has_key('content-length'):
+			headers['content-length'] = len(body)
 		try:
 			conn = self.get_connection(resource['bucket'])
 			conn.request(method_string, self.format_uri(resource), body, headers)

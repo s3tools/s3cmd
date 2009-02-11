@@ -1,3 +1,7 @@
+2009-02-12  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Set Content-Length header for requests with 'body'.
+
 2009-02-02  Michal Ludvig  <michal@logix.cz>
 
 	* Released version 0.9.9-rc3
