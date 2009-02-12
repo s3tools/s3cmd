@@ -24,6 +24,7 @@ class Config(object):
 	progress_class = Progress.ProgressCR
 	send_chunk = 4096
 	recv_chunk = 4096
+	list_md5 = False
 	human_readable_sizes = False
 	force = False
 	get_continue = False

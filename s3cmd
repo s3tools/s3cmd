@@ -118,18 +118,28 @@ def subcmd_bucket_list(s3, uri):
 		else:
 			raise
 
+	if cfg.list_md5:
+		format_string = u"%(timestamp)16s %(size)9s%(coeff)1s  %(md5)32s  %(uri)s"
+	else:
+		format_string = u"%(timestamp)16s %(size)9s%(coeff)1s  %(uri)s"
+
 	for prefix in response['common_prefixes']:
-		output(u"%s   %s" % (
-			"DIR".rjust(26),
-			uri.compose_uri(bucket, prefix["Prefix"])))
+		output(format_string % {
+			"timestamp": "",
+			"size": "DIR",
+			"coeff": "",
+			"md5": "",
+			"uri": uri.compose_uri(bucket, prefix["Prefix"])})
 
 	for object in response["list"]:
 		size, size_coeff = formatSize(object["Size"], Config().human_readable_sizes)
-		output(u"%s  %s%s  %s" % (
-			formatDateTime(object["LastModified"]),
-			str(size).rjust(8), size_coeff.ljust(1),
-			uri.compose_uri(bucket, object["Key"]),
-			))
+		output(format_string % {
+			"timestamp": formatDateTime(object["LastModified"]),
+			"size" : str(size), 
+			"coeff": size_coeff,
+			"md5" : object['ETag'].strip('"'),
+			"uri": uri.compose_uri(bucket, object["Key"]),
+			})
 
 def cmd_bucket_create(args):
 	s3 = S3(Config())
@@ -1367,6 +1377,7 @@ def main():
 
 	optparser.add_option(      "--encoding", dest="encoding", metavar="ENCODING", help="Override autodetected terminal and filesystem encoding (character set). Autodetected: %s" % preferred_encoding)
 
+	optparser.add_option(      "--list-md5", dest="list_md5", action="store_true", help="Include MD5 sums in bucket listings (only for 'ls' command).")
 	optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form.")
 
 	optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default on TTY).")

@@ -1,5 +1,10 @@
 2009-02-12  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Added --list-md5 for 'ls' command.
+	* S3/Config.py: New setting list_md5
+
+2009-02-12  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd: Set Content-Length header for requests with 'body'.
 	* s3cmd: And send it for requests with no body as well...
 
