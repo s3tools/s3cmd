@@ -326,6 +326,8 @@ class S3(object):
 		if not headers:
 			headers = SortedDict()
 
+		debug("headers: %s" % headers)
+
 		if headers.has_key("date"):
 			if not headers.has_key("x-amz-date"):
 				headers["x-amz-date"] = headers["date"]

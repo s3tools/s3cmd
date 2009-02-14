@@ -1,5 +1,7 @@
 2009-02-14  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd, S3/Config.py, S3/S3.py: Added --add-header option.
+	* NEWS: Documented --add-header.
 	* run-tests.py: Fixed for new messages.
 
 2009-02-14  Michal Ludvig  <michal@logix.cz>

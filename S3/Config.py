@@ -7,6 +7,7 @@ import logging
 from logging import debug, info, warning, error
 import re
 import Progress
+from SortedDict import SortedDict
 
 class Config(object):
 	_instance = None
@@ -26,6 +27,7 @@ class Config(object):
 	recv_chunk = 4096
 	list_md5 = False
 	human_readable_sizes = False
+	extra_headers = SortedDict()
 	force = False
 	get_continue = False
 	skip_existing = False

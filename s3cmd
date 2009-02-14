@@ -320,7 +320,7 @@ def cmd_object_put(args):
 
 		uri_final = S3Uri(local_list[key]['remote_uri'])
 
-		extra_headers = {}
+		extra_headers = copy(cfg.extra_headers)
 		full_name_orig = local_list[key]['full_name']
 		full_name = full_name_orig
 		seq_label = "[%d of %d]" % (seq, local_count)
@@ -518,8 +518,9 @@ def subcmd_cp_mv(args, process_fce, message):
 
 	if dst_uri.object() == "":
 		dst_uri = S3Uri(dst_uri.uri() + src_uri.object())
- 
-	response = process_fce(src_uri, dst_uri) 
+
+	extra_headers = copy(cfg.extra_headers)
+	response = process_fce(src_uri, dst_uri, extra_headers) 
 	output(message % { "src" : src_uri, "dst" : dst_uri})
 	if Config().acl_public:
 		output(u"Public URL is: %s" % dst_uri.public_url())
@@ -979,12 +980,13 @@ def cmd_sync_local2remote(args):
 		src = item['full_name']
 		uri = S3Uri(item['remote_uri'])
 		seq_label = "[%d of %d]" % (seq, local_count)
-		attr_header = None
+		extra_headers = copy(cfg.extra_headers)
 		if cfg.preserve_attrs:
 			attr_header = _build_attr_header(src)
-			debug(attr_header)
+			debug(u"attr_header: %s" % attr_header)
+			extra_headers.update(attr_header)
 		try:
-			response = s3.object_put(src, uri, attr_header, extra_label = seq_label)
+			response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
 		except S3UploadError, e:
 			error(u"%s: upload failed too many times. Skipping that file." % item['full_name_unicode'])
 			continue
@@ -1375,6 +1377,8 @@ def main():
 	optparser.add_option("-m", "--mime-type", dest="default_mime_type", type="mimetype", metavar="MIME/TYPE", help="Default MIME-type to be set for objects stored.")
 	optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")
 
+	optparser.add_option(      "--add-header", dest="add_header", action="append", metavar="NAME:VALUE", help="Add a given HTTP header to the upload request. Can be used multiple times. (only for [put] and [sync] commands).")
+
 	optparser.add_option(      "--encoding", dest="encoding", metavar="ENCODING", help="Override autodetected terminal and filesystem encoding (character set). Autodetected: %s" % preferred_encoding)
 
 	optparser.add_option(      "--list-md5", dest="list_md5", action="store_true", help="Include MD5 sums in bucket listings (only for 'ls' command).")
@@ -1445,6 +1449,21 @@ def main():
 		if cfg.progress_meter:
 			error(u"Option --progress is not yet supported on MS Windows platform. Assuming --no-progress.")
 			cfg.progress_meter = False
+
+	## Pre-process --add-header's and put them to Config.extra_headers SortedDict()
+	if options.add_header:
+		for hdr in options.add_header:
+			try:
+				key, val = hdr.split(":", 1)
+			except ValueError:
+				raise ParameterError("Invalid header format: %s" % hdr)
+			key_inval = re.sub("[a-zA-Z0-9-.]", "", key)
+			if key_inval:
+				key_inval = key_inval.replace(" ", "<space>")
+				key_inval = key_inval.replace("\t", "<tab>")
+				raise ParameterError("Invalid character(s) in header name '%s': \"%s\"" % (key, key_inval))
+			debug(u"Updating Config.Config extra_headers[%s] -> %s" % (key.strip(), val.strip()))
+			cfg.extra_headers[key.strip()] = val.strip()
 
 	## Update Config with other parameters
 	for option in cfg.option_list():
@@ -1530,9 +1549,6 @@ def main():
 	except S3Error, e:
 		error(u"S3 error: %s" % e)
 		sys.exit(1)
-	except ParameterError, e:
-		error(u"Parameter problem: %s" % e)
-		sys.exit(1)
 
 if __name__ == '__main__':
 	try:
@@ -1551,6 +1567,10 @@ if __name__ == '__main__':
 
 		main()
 		sys.exit(0)
+
+	except ParameterError, e:
+		error(u"Parameter problem: %s" % e)
+		sys.exit(1)
 
 	except SystemExit, e:
 		sys.exit(e.code)
