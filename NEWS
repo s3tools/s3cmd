@@ -5,8 +5,8 @@ s3cmd 0.9.9
 
 s3cmd 0.9.9-rc3  - 2009-02-02
 ===============
-* Fixed crash in S3Error().__str__() (typically Amazon's Internal
-  errors, etc).
+* Fixed crash: AttributeError: 'S3Error' object has no attribute '_message'
+  (bug  #2547322)
 
 s3cmd 0.9.9-rc2  - 2009-01-30
 ===============

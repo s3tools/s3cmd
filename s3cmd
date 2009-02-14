@@ -485,7 +485,7 @@ def cmd_object_del(args):
 			if Config().recursive and not Config().force:
 				raise ParameterError("Please use --force to delete ALL contents of %s" % uri)
 			elif not Config().recursive:
-				raise ParameterError("Object name required, not only the bucket name")
+				raise ParameterError("File name required, not only the bucket name")
 		subcmd_object_del_uri(uri)
 
 def subcmd_object_del_uri(uri, recursive = None):
@@ -504,7 +504,7 @@ def subcmd_object_del_uri(uri, recursive = None):
 		uri_list.append(uri)
 	for _uri in uri_list:
 		response = s3.object_delete(_uri)
-		output(u"Object %s deleted" % _uri)
+		output(u"File %s deleted" % _uri)
 
 def subcmd_cp_mv(args, process_fce, message):
 	src_uri = S3Uri(args.pop(0))
@@ -526,11 +526,11 @@ def subcmd_cp_mv(args, process_fce, message):
 
 def cmd_cp(args):
 	s3 = S3(Config())
-	subcmd_cp_mv(args, s3.object_copy, "Object %(src)s copied to %(dst)s")
+	subcmd_cp_mv(args, s3.object_copy, "File %(src)s copied to %(dst)s")
 
 def cmd_mv(args):
 	s3 = S3(Config())
-	subcmd_cp_mv(args, s3.object_move, "Object %(src)s moved to %(dst)s")
+	subcmd_cp_mv(args, s3.object_move, "File %(src)s moved to %(dst)s")
 
 def cmd_info(args):
 	s3 = S3(Config())
@@ -1277,10 +1277,10 @@ def get_commands_list():
 	#{"cmd":"mkdir", "label":"Make a virtual S3 directory", "param":"s3://BUCKET/path/to/dir", "func":cmd_mkdir, "argc":1},
 	{"cmd":"sync", "label":"Synchronize a directory tree to S3", "param":"LOCAL_DIR s3://BUCKET[/PREFIX] or s3://BUCKET[/PREFIX] LOCAL_DIR", "func":cmd_sync, "argc":2},
 	{"cmd":"du", "label":"Disk usage by buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_du, "argc":0},
-	{"cmd":"info", "label":"Get various information about Buckets or Objects", "param":"s3://BUCKET[/OBJECT]", "func":cmd_info, "argc":1},
+	{"cmd":"info", "label":"Get various information about Buckets or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_info, "argc":1},
 	{"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
 	{"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
-	{"cmd":"setacl", "label":"Modify Access control list for Bucket or Object", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
+	{"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
 	## CloudFront commands
 	{"cmd":"cflist", "label":"List CloudFront distribution points", "param":"", "func":CfCmd.info, "argc":0},
 	{"cmd":"cfinfo", "label":"Display CloudFront distribution point parameters", "param":"[cf://DIST_ID]", "func":CfCmd.info, "argc":0},
