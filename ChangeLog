@@ -1,5 +1,9 @@
 2009-02-14  Michal Ludvig  <michal@logix.cz>
 
+	* run-tests.py: Fixed for new messages.
+
+2009-02-14  Michal Ludvig  <michal@logix.cz>
+
 	* README: Updated for 0.9.9
 	* s3cmd, S3/PkgInfo.py, s3cmd.1: Replaced project 
 	  URLs with http://s3tools.org

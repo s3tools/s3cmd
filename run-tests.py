@@ -297,14 +297,14 @@ test_s3cmd("Sync more to S3", ['sync', 'testsuite/', 's3://s3cmd-autotest-1/xyz/
 
 ## ====== Rename within S3
 test_s3cmd("Rename within S3", ['mv', 's3://s3cmd-autotest-1/xyz/etc/logo.png', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG'],
-	must_find = [ 'Object s3://s3cmd-autotest-1/xyz/etc/logo.png moved to s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG' ])
+	must_find = [ 'File s3://s3cmd-autotest-1/xyz/etc/logo.png moved to s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG' ])
 
 
 ## ====== Rename (NoSuchKey)
 test_s3cmd("Rename (NoSuchKey)", ['mv', 's3://s3cmd-autotest-1/xyz/etc/logo.png', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG'],
 	retcode = 1,
 	must_find_re = [ 'ERROR:.*NoSuchKey' ],
-	must_not_find = [ 'Object s3://s3cmd-autotest-1/xyz/etc/logo.png moved to s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG' ])
+	must_not_find = [ 'File s3://s3cmd-autotest-1/xyz/etc/logo.png moved to s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG' ])
 
 
 ## ====== Sync more from S3
@@ -336,22 +336,22 @@ test_s3cmd("Get multiple files", ['get', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PN
 
 ## ====== Copy between buckets
 test_s3cmd("Copy between buckets", ['cp', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG', 's3://s3cmd-Autotest-3'],
-	must_find = [ "Object s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG copied to s3://s3cmd-Autotest-3/xyz/etc2/Logo.PNG" ])
+	must_find = [ "File s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG copied to s3://s3cmd-Autotest-3/xyz/etc2/Logo.PNG" ])
 
 
 ## ====== Simple delete
 test_s3cmd("Simple delete", ['del', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG'],
-	must_find = [ "Object s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG deleted" ])
+	must_find = [ "File s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG deleted" ])
 
 
 ## ====== Recursive delete
 test_s3cmd("Recursive delete", ['del', '--recursive', 's3://s3cmd-autotest-1/xyz/etc'],
-	must_find_re = [ "Object.*\.svn/format deleted" ])
+	must_find_re = [ "File .*\.svn/format deleted" ])
 
 
 ## ====== Recursive delete all
 test_s3cmd("Recursive delete all", ['del', '--recursive', '--force', 's3://s3cmd-autotest-1'],
-	must_find_re = [ "Object.*binary/random-crap deleted" ])
+	must_find_re = [ "File .*binary/random-crap deleted" ])
 
 
 ## ====== Remove empty bucket
