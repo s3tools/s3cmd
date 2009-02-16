@@ -1,65 +1,37 @@
-s3cmd 0.9.9
+s3cmd 0.9.9   -   2009-02-17
 ===========
-* Added --add-header option for [put], [sync], [cp] and [mv].
-* Added --list-md5 option for [ls].
-* Always send Content-Length header to satisfy some http proxies.
+New commands:
+* Commands for copying and moving objects, within or 
+  between buckets: [cp] and [mv] (Andrew Ryan)
+* CloudFront support through [cfcreate], [cfdelete], 
+  [cfmodify] and [cfinfo] commands. (sponsored by Joseph Denne)
+* New command [setacl] for setting ACL on existing objects, 
+  use together with --acl-public/--acl-private (sponsored by
+  Joseph Denne)
 
-s3cmd 0.9.9-rc3  - 2009-02-02
-===============
-* Fixed crash: AttributeError: 'S3Error' object has no attribute '_message'
-  (bug  #2547322)
-
-s3cmd 0.9.9-rc2  - 2009-01-30
-===============
-* Fixed s3cmd crash when put / get / sync found
-  zero files to transfer.
-* In --dry-run output files to be deleted only
-  with --delete-removed, otherwise users get scared.
-
-s3cmd 0.9.9-rc1  - 2009-01-27
-===============
-* CloudFront support through cfcreate, cfdelete, 
-  cfmodify and cfinfo commands.
+Other major features:
+* Improved source dirname handling for [put], [get] and [sync].
+* Recursive and wildcard support for [put], [get] and [del].
+* Support for non-recursive [ls].
+* Enabled --dry-run for [put], [get] and [sync].
+* Allowed removal of non-empty buckets with [rb --force].
+* Implemented progress meter (--progress / --no-progress)
 * Added --include / --rinclude / --(r)include-from 
   options to override --exclude exclusions.
-* Enabled --dry-run for [put] and [get].
-* Fixed GPG (--encrypt) compatibility with Python 2.6.
-
-s3cmd 0.9.9-pre5 - 2009-01-22
-================
-* New command 'setacl' for setting ACL on existing objects.
-* Recursive [put] with a slightly different semantic.
-* Multiple sources for [sync] and slightly different semantics.
-* Support for --dry-run with [sync]
-
-s3cmd 0.9.9-pre4 - 2008-12-30
-================
-* Support for non-recursive [ls]
-* Support for multiple sources and recursive [get].
-* Improved wildcard [get].
+* Added --add-header option for [put], [sync], [cp] and [mv]. 
+  Good for setting e.g. Expires or Cache-control headers.
+* Added --list-md5 option for [ls].
+* Continue [get] partially downloaded files with --continue
 * New option --skip-existing for [get] and [sync].
-* Improved Progress class (fixes Mac OS X)
+
+Minor features and bugfixes:
+* Fixed GPG (--encrypt) compatibility with Python 2.6.
+* Always send Content-Length header to satisfy some http proxies.
 * Fixed installation on Windows and Mac OS X.
 * Don't print nasty backtrace on KeyboardInterrupt.
 * Should work fine on non-UTF8 systems, provided all
-  the files are in current system encoding. 
+  the files are in current system encoding.
 * System encoding can be overriden using --encoding.
-
-s3cmd 0.9.9-pre3 - 2008-12-01
-================
-* Bugfixes only
-  - Fixed sync from S3 to local
-  - Fixed progress meter with Unicode chars
-
-s3cmd 0.9.9-pre2 - 2008-11-24
-================
-* Implemented progress meter (--progress / --no-progress)
-* Removing of non-empty buckets with --force
-* Recursively remove objects from buckets with a given
-  prefix with --recursive (-r)
-* Copying and moving objects, within or between buckets.
-  (Andrew Ryan)
-* Continue getting partially downloaded files with --continue
 * Improved resistance to communication errors (Connection 
   reset by peer, etc.)
 

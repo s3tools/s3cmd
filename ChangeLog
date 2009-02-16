@@ -1,5 +1,13 @@
 2009-02-17  Michal Ludvig  <michal@logix.cz>
 
+	* Released version 0.9.9
+	  ----------------------
+
+	* S3/PkgInfo.py: Updated to 0.9.9
+	* NEWS: Compile a big news list for 0.9.9
+
+2009-02-17  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd.1: Document all the new options and commands.
 	* s3cmd, S3/Config.py: Updated some help texts. Removed
 	  option --debug-syncmatch along the way (because --dry-run
