@@ -6,12 +6,13 @@ TODO list for s3cmd project
     (at the moment it'll always download).
   - Enable --exclude for [del], [setacl], [ls].
   - Enable --dry-run for [del], [setacl], reject for all others.
-  - Add testsuite for new put, get and sync semantic.
   - Recursive cp/mv on remote "folders".
-  - Document --recursive and --force for buckets, CloudFront,
-    new options --dry-run, --include, etc.
   - Allow change /tmp to somewhere else
   - With --guess-mime use 'magic' module if available.
+  - Support --preserve for [put] and [get]. Update manpage.
+  - Don't let --continue fail if the file is already fully downloaded.
+  - Option --mime-type should set mime type with 'cp' and 'mv'. 
+    If possible --guess-mime-type should do as well.
 
 - For 1.0.0
   - Add 'geturl' command, both Unicode and urlencoded output.

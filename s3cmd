@@ -692,12 +692,9 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 	info(u"Verifying attributes...")
 	cfg = Config()
 	exists_list = SortedDict()
-	if cfg.debug_syncmatch:
-		logging.root.setLevel(logging.DEBUG)
 
 	for file in src_list.keys():
-		if not cfg.debug_syncmatch:
-			debug(u"CHECK: %s" % file)
+		debug(u"CHECK: %s" % file)
 		if dst_list.has_key(file):
 			## Was --skip-existing requested?
 			if cfg.skip_existing:
@@ -735,10 +732,6 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 
 			## Remove from destination-list, all that is left there will be deleted
 			del(dst_list[file])
-
-	if cfg.debug_syncmatch:
-		warning(u"Exiting because of --debug-syncmatch")
-		sys.exit(1)
 
 	return src_list, dst_list, exists_list
 
@@ -1350,7 +1343,7 @@ def main():
 	optparser.add_option("-c", "--config", dest="config", metavar="FILE", help="Config file name. Defaults to %default")
 	optparser.add_option(      "--dump-config", dest="dump_config", action="store_true", help="Dump current configuration after parsing config files and command line options and exit.")
 
-	optparser.add_option("-n", "--dry-run", dest="dry_run", action="store_true", help="Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though (only for [sync] command)")
+	optparser.add_option("-n", "--dry-run", dest="dry_run", action="store_true", help="Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though (only for file transfer commands)")
 
 	optparser.add_option("-e", "--encrypt", dest="encrypt", action="store_true", help="Encrypt files before uploading to S3.")
 	optparser.add_option(      "--no-encrypt", dest="encrypt", action="store_false", help="Don't encrypt files.")
@@ -1372,19 +1365,18 @@ def main():
 	optparser.add_option(      "--include-from", dest="include_from", action="append", metavar="FILE", help="Read --include GLOBs from FILE")
 	optparser.add_option(      "--rinclude", dest="rinclude", action="append", metavar="REGEXP", help="Same as --include but uses REGEXP (regular expression) instead of GLOB")
 	optparser.add_option(      "--rinclude-from", dest="rinclude_from", action="append", metavar="FILE", help="Read --rinclude REGEXPs from FILE")
-	optparser.add_option(      "--debug-syncmatch", "--debug-exclude", dest="debug_syncmatch", action="store_true", help="Output detailed information about remote vs. local filelist matching and --exclude processing and then exit")
 
 	optparser.add_option(      "--bucket-location", dest="bucket_location", help="Datacentre to create bucket in. Either EU or US (default)")
 
 	optparser.add_option("-m", "--mime-type", dest="default_mime_type", type="mimetype", metavar="MIME/TYPE", help="Default MIME-type to be set for objects stored.")
 	optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")
 
-	optparser.add_option(      "--add-header", dest="add_header", action="append", metavar="NAME:VALUE", help="Add a given HTTP header to the upload request. Can be used multiple times. (only for [put] and [sync] commands).")
+	optparser.add_option(      "--add-header", dest="add_header", action="append", metavar="NAME:VALUE", help="Add a given HTTP header to the upload request. Can be used multiple times. For instance set 'Expires' or 'Cache-Control' headers (or both) using this options if you like.")
 
 	optparser.add_option(      "--encoding", dest="encoding", metavar="ENCODING", help="Override autodetected terminal and filesystem encoding (character set). Autodetected: %s" % preferred_encoding)
 
 	optparser.add_option(      "--list-md5", dest="list_md5", action="store_true", help="Include MD5 sums in bucket listings (only for 'ls' command).")
-	optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form.")
+	optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form (eg 1kB instead of 1234).")
 
 	optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default on TTY).")
 	optparser.add_option(      "--no-progress", dest="progress_meter", action="store_false", help="Don't display progress meter (default on non-TTY).")

@@ -59,7 +59,6 @@ class Config(object):
 	bucket_location = "US"
 	default_mime_type = "binary/octet-stream"
 	guess_mime_type = True
-	debug_syncmatch = False
 	# List of checks to be performed for 'sync'
 	sync_checks = ['size', 'md5']	# 'weak-timestamp'
 	# List of compiled REGEXPs

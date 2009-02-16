@@ -1,6 +1,6 @@
 .TH s3cmd 1
 .SH NAME
-s3cmd \- tool for managing Amazon S3 storage space
+s3cmd \- tool for managing Amazon S3 storage space and Amazon CloudFront content delivery network
 .SH SYNOPSIS
 .B s3cmd
 [\fIOPTIONS\fR] \fICOMMAND\fR [\fIPARAMETERS\fR]
@@ -42,19 +42,40 @@ Backup a directory tree to S3
 \fBsync\fR \fIs3://BUCKET[/PREFIX] LOCAL_DIR\fR
 Restore a tree from S3 to local directory
 .TP
-\fBcp\fR \fIs3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]\fR 
-\fBmv\fR \fIs3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]\fR 
+\fBcp\fR \fIs3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]\fR, \fBmv\fR \fIs3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]\fR 
 Make a copy of a file (\fIcp\fR) or move a file (\fImv\fR). 
 Destination can be in the same bucket with a different name
 or in another bucket with the same or different name.
 Adding \fI\-\-acl\-public\fR will make the destination object 
 publicly accessible (see below).
+.TP
+\fBsetacl\fR \fIs3://BUCKET[/OBJECT]\fR
+Modify \fIAccess control list\fI for Bucket or Files. Use with 
+\fI\-\-acl\-public\fR or \fI\-\-acl\-private\fR
 .TP 
 \fBinfo\fR \fIs3://BUCKET[/OBJECT]\fR
 Get various information about a Bucket or Object
 .TP
 \fBdu\fR \fI[s3://BUCKET[/PREFIX]]\fR
 Disk usage \- amount of data stored in S3
+
+.PP
+Commands for CloudFront management
+.TP
+\fBcflist\fR
+List CloudFront distribution points
+.TP
+\fBcfinfo\fR [\fIcf://DIST_ID\fR]
+Display CloudFront distribution point parameters
+.TP
+\fBcfcreate\fR \fIs3://BUCKET\fR
+Create CloudFront distribution point
+.TP
+\fBcfdelete\fR \fIcf://DIST_ID\fR
+Delete CloudFront distribution point
+.TP
+\fBcfmodify\fR \fIcf://DIST_ID\fR
+Change CloudFront distribution point parameters
 
 .SH OPTIONS
 .PP
@@ -63,9 +84,9 @@ values set in
 .B s3cmd
 config file (by default $HOME/.s3cmd). As it's a simple text file 
 feel free to open it with your favorite text editor and do any
-changes you like.
+changes you like. 
 .PP
-Config file related options.
+\fIConfig file related options.\fR
 .TP
 \fB\-\-configure\fR
 Invoke interactive (re)configuration tool. Don't worry, you won't 
@@ -78,24 +99,26 @@ Config file name. Defaults to $HOME/.s3cfg
 Dump current configuration after parsing config files
 and command line options and exit.
 .PP
-Most options can have a default value set in the above specified config file.
-.PP
-Options specific to \fBsync\fR command:
+\fIOptions specific for \fIfile transfer commands\fR (\fBsync\fR, \fBput\fR and \fBget\fR):
+.TP
+\fB\-n\fR, \fB\-\-dry\-run\fR
+Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other in
+formation though.
 .TP
 \fB\-\-delete\-removed\fR
 Delete remote objects with no corresponding local file when \fIsync\fRing \fBto\fR S3 or delete local files with no corresponding object in S3 when \fIsync\fRing \fBfrom\fR S3.
 .TP
 \fB\-\-no\-delete\-removed\fR
-Don't delete remote objects. Default for 'sync' command.
+Don't delete remote objects. Default for \fIsync\fR command.
 .TP
 \fB\-p\fR, \fB\-\-preserve\fR
-Preserve filesystem attributes (mode, ownership, timestamps). Default for 'sync' command.
+Preserve filesystem attributes (mode, ownership, timestamps). Default for \fIsync\fR command.
 .TP
 \fB\-\-no\-preserve\fR
 Don't store filesystem attributes with uploaded files.
 .TP
 \fB\-\-exclude GLOB\fR
-Exclude files matching GLOB (a.k.a. shell-style wildcard) from \fIsync\fI. See SYNC COMMAND section for more information.
+Exclude files matching GLOB (a.k.a. shell-style wildcard) from \fIsync\fI. See FILE TRANSFERS section and \fIhttp://s3tools.org/s3cmd-sync\fR for more information.
 .TP
 \fB\-\-exclude\-from FILE\fR
 Same as \-\-exclude but reads GLOBs from the given FILE instead of expecting them on the command line.
@@ -106,31 +129,14 @@ Same as \-\-exclude but works with REGEXPs (Regular expressions).
 \fB\-\-rexclude\-from FILE\fR
 Same as \-\-exclude\-from but works with REGEXPs.
 .TP
-\fB\-\-debug\-syncmatch\fR or \fB\-\-debug\-exclude\fR (alias)
-Display detailed information about matching file names against exclude\-rules as well as information about remote vs local filelists matching. S3cmd exits after performing the match and no actual transfer takes place.
-.\".TP
-.\"\fB\-n\fR, \fB\-\-dry\-run\fR
-.\"Only show what would be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though.
-.PP
-Options common for all commands (where it makes sense indeed):
-.TP
-\fB\-f\fR, \fB\-\-force\fR
-Force overwrite and other dangerous operations.
+\fB\-\-include=GLOB\fR, \fB\-\-include\-from=FILE\fR, \fB\-\-rinclude=REGEXP\fR, \fB\-\-rinclude\-from=FILE\fR
+Filenames and paths matching GLOB or REGEXP will be included even if previously excluded by one of \-\-(r)exclude(\-from) patterns
 .TP
 \fB\-\-continue\fR
-Continue getting a partially downloaded file (only for \fIget\fR command). This comes handy once download of a large file, say an ISO image, from a S3 bucket fails and a partially downloaded file is left on the disk. Unfortunately \fIput\fR command doesn't support restarting of failed upload due to Amazon S3 limitation.
+Continue getting a partially downloaded file (only for \fIget\fR command). This comes handy once download of a large file, say an ISO image, from a S3 bucket fails and a partially downloaded file is left on the disk. Unfortunately \fIput\fR command doesn't support restarting of failed upload due to Amazon S3 limitations.
 .TP
-\fB\-P\fR, \fB\-\-acl\-public\fR
-Store objects with permissions allowing read for anyone.
-.TP
-\fB\-\-acl\-private\fR
-Store objects with default ACL allowing access for you only.
-.TP
-\fB\-\-bucket\-location\fR=BUCKET_LOCATION
-Specify datacentre where to create the bucket. Possible values are \fIUS\fR (default) or \fIEU\fR.
-.TP
-\fB\-e\fR, \fB\-\-encrypt\fR
-Use GPG encryption to protect stored objects from unauthorized access.
+\fB\-\-skip\-existing\fR
+Skip over files that exist at the destination (only for \fIget\fR and \fIsync\fR commands).
 .TP
 \fB\-m\fR MIME/TYPE, \fB\-\-mime\-type\fR=MIME/TYPE
 Default MIME\-type to be set for objects stored.
@@ -140,14 +146,64 @@ Guess MIME\(hytype of files by their extension. Falls
 back to default MIME\(hyType as specified by \fB\-\-mime\-type\fR
 option
 .TP
+\fB\-\-add\-header=NAME:VALUE\fR
+Add a given HTTP header to the upload request. Can be used multiple times with different header names. For instance set 'Expires' or 'Cache-Control' headers (or both) using this options if you like.
+.TP
+\fB\-P\fR, \fB\-\-acl\-public\fR
+Store objects with permissions allowing read for anyone. See \fIhttp://s3tools.org/s3cmd-public\fR for details and hints for storing publicly accessible files.
+.TP
+\fB\-\-acl\-private\fR
+Store objects with default ACL allowing access for you only.
+.TP
+\fB\-e\fR, \fB\-\-encrypt\fR
+Use GPG encryption to protect stored objects from unauthorized access. See \fIhttp://s3tools.org/s3cmd-public\fR for details about encryption.
+.TP
+\fB\-\-no\-encrypt\fR
+Don't encrypt files.
+.PP
+\fIOptions for CloudFront commands\fR:
+.PP
+See \fIhttp://s3tools.org/s3cmd-cloudfront\fR for more details.
+.TP
+\fB\-\-enable\fR
+Enable given CloudFront distribution (only for \fIcfmodify\fR command)
+.TP
+\fB\-\-disable\fR
+Enable given CloudFront distribution (only for \fIcfmodify\fR command)
+.TP
+\fB\-\-cf\-add\-cname=CNAME\fR
+Add given CNAME to a CloudFront distribution (only for \fIcfcreate\fR and \fIcfmodify\fR commands)
+.TP
+\fB\-\-cf\-remove\-cname=CNAME\fR
+Remove given CNAME from a CloudFront distribution (only for \fIcfmodify\fR command)
+.TP
+\fB\-\-cf\-comment=COMMENT\fR
+Set COMMENT for a given CloudFront distribution (only for \fIcfcreate\fR and \fIcfmodify\fR commands)
+.PP
+\fIOptions common for all commands\fR (where it makes sense indeed):
+.TP
+\fB\-r\fR, \fB\-\-recursive\fR
+Recursive upload, download or removal. When used with \fIdel\fR it can
+remove all the files in a bucket.
+.TP
+\fB\-f\fR, \fB\-\-force\fR
+Force overwrite and other dangerous operations. Can be used to remove 
+a non\-empty buckets with \fIs3cmd rb \-\-force s3://bkt\fR
+.TP
+\fB\-\-bucket\-location\fR=BUCKET_LOCATION
+Specify datacentre where to create the bucket. Possible values are \fIUS\fR (default) or \fIEU\fR.
+.TP
 \fB\-H\fR, \fB\-\-human\-readable\-sizes\fR
 Print sizes in human readable form.
-.\".TP
-.\"\fB\-u\fR, \fB\-\-show\-uri\fR
-.\"Show complete S3 URI in listings.
+.TP
+\fB\-\-list\-md5\fR
+Include MD5 sums in bucket listings (only for \fIls\fR command).
 .TP
 \fB\-\-progress\fR, \fB\-\-no\-progress\fR
 Display or don't display progress meter. When running on TTY (e.g. console or xterm) the default is to display progress meter. If not on TTY (e.g. output is redirected somewhere or running from cron) the default is to not display progress meter.
+.TP
+\fB\-\-encoding=ENCODING\fR
+Override autodetected terminal and filesystem encoding (character set).
 .TP
 \fB\-v\fR, \fB\-\-verbose\fR
 Enable verbose output.
@@ -163,72 +219,82 @@ Show
 .B s3cmd
 version and exit.
 
-.SH SYNC COMMAND
+.SH FILE TRANSFERS
 One of the most powerful commands of \fIs3cmd\fR is \fBs3cmd sync\fR used for 
-synchronising complete directory trees to or from remote S3 storage. 
+synchronising complete directory trees to or from remote S3 storage. To some extent 
+\fBs3cmd put\fR and \fBs3cmd get\fR share a similar behaviour with \fBsync\fR.
 .PP
 Basic usage common in backup scenarios is as simple as:
 .nf
-	s3cmd sync /local/path s3://test-bucket/backup
+	s3cmd sync /local/path/ s3://test-bucket/backup/
 .fi
 .PP
 This command will find all files under /local/path directory and copy them 
 to corresponding paths under s3://test-bucket/backup on the remote side.
 For example:
 .nf
-/local/path\fB/file1.ext\fR         \->  s3://test-bucket/backup\fB/file1.ext\fR
-/local/path\fB/dir123/file2.bin\fR  \->  s3://test-bucket/backup\fB/dir123/file2.bin\fR
+	/local/path/\fBfile1.ext\fR         \->  s3://bucket/backup/\fBfile1.ext\fR
+	/local/path/\fBdir123/file2.bin\fR  \->  s3://bucket/backup/\fBdir123/file2.bin\fR
 .fi
-
+.PP
+However if the local path doesn't end with a slash the last directory's name
+is used on the remote side as well. Compare these with the previous example:
+.nf
+	s3cmd sync /local/path s3://test-bucket/backup/
+.fi
+will sync:
+.nf
+	/local/\fBpath/file1.ext\fR         \->  s3://bucket/backup/\fBpath/file1.ext\fR
+	/local/\fBpath/dir123/file2.bin\fR  \->  s3://bucket/backup/\fBpath/dir123/file2.bin\fR
+.fi
+.PP
 To retrieve the files back from S3 use inverted syntax:
 .nf
-	s3cmd sync s3://test-bucket/backup/ /tmp/restore
+	s3cmd sync s3://test-bucket/backup/ /tmp/restore/
 .fi
 that will download files:
 .nf
-s3://test-bucket/backup\fB/file1.ext\fR         \->  /tmp/restore\fB/file1.ext\fR       
-s3://test-bucket/backup\fB/dir123/file2.bin\fR  \->  /tmp/restore\fB/dir123/file2.bin\fR
+	s3://bucket/backup/\fBfile1.ext\fR         \->  /tmp/restore/\fBfile1.ext\fR       
+	s3://bucket/backup/\fBdir123/file2.bin\fR  \->  /tmp/restore/\fBdir123/file2.bin\fR
 .fi
-
-For the purpose of \fB\-\-exclude\fR and \fB\-\-exclude\-from\fR matching the file name 
-\fIalways\fR begins with \fB/\fR (slash) and has the local or remote common part removed.
-For instance in the previous example the file names tested against \-\-exclude list
-will be \fB/\fRfile1.ext and \fB/\fRdir123/file2.bin, that is both with the leading 
-slash regardless whether you specified s3://test-bucket/backup or 
-s3://test-bucket/backup/ (note the trailing slash) on the command line.
-
-Both \fB\-\-exclude\fR and \fB\-\-exclude\-from\fR work with shell-style wildcards (a.k.a. GLOB).
+.PP
+Without the trailing slash on source the behaviour is similar to 
+what has been demonstrated with upload:
+.nf
+	s3cmd sync s3://test-bucket/backup /tmp/restore/
+.fi
+will download the files as:
+.nf
+	s3://bucket/\fBbackup/file1.ext\fR         \->  /tmp/restore/\fBbackup/file1.ext\fR       
+	s3://bucket/\fBbackup/dir123/file2.bin\fR  \->  /tmp/restore/\fBbackup/dir123/file2.bin\fR
+.fi
+.PP
+All source file names, the bold ones above, are matched against \fBexclude\fR 
+rules and those that match are then re\-checked against \fBinclude\fR rules to see
+whether they should be excluded or kept in the source list.
+.PP
+For the purpose of \fB\-\-exclude\fR and \fB\-\-include\fR matching only the 
+bold file names above are used. For instance only \fBpath/file1.ext\fR is tested
+against the patterns, not \fI/local/\fBpath/file1.ext\fR
+.PP
+Both \fB\-\-exclude\fR and \fB\-\-include\fR work with shell-style wildcards (a.k.a. GLOB).
 For a greater flexibility s3cmd provides Regular-expression versions of the two exclude options 
-named \fB\-\-rexclude\fR and \fB\-\-rexclude\-from\fR. 
+named \fB\-\-rexclude\fR and \fB\-\-rinclude\fR. 
+The options with ...\fB\-from\fR suffix (eg \-\-rinclude\-from) expect a filename as
+an argument. Each line of such a file is treated as one pattern.
+.PP
+There is only one set of patterns built from all \fB\-\-(r)exclude(\-from)\fR options
+and similarly for include variant. Any file excluded with eg \-\-exclude can 
+be put back with a pattern found in \-\-rinclude\-from list.
+.PP
+Run s3cmd with \fB\-\-dry\-run\fR to verify that your rules work as expected. 
+Use together with \fB\-\-debug\fR get detailed information
+about matching file names against exclude and include rules.
+.PP
+For example to exclude all files with ".jpg" extension except those beginning with a number use:
+.PP
+	\-\-exclude '*.jpg' \-\-rinclude '[0-9].*\.jpg'
 
-Run s3cmd with \fB\-\-debug\-syncmatch\fR to get detailed information
-about matching file names against exclude rules.
-
-For example to exclude all files with ".bin" extension with a REGEXP use:
-.PP
-	\-\-rexclude '\.bin$'
-.PP
-to exclude all hidden files and subdirectories (i.e. those whose name begins with dot ".") use GLOB:
-.PP
-	\-\-exclude '/.*'
-.PP
-on the other hand to exclude only hidden files but not hidden subdirectories use REGEXP:
-.PP
-	\-\-rexclude '/\.[^/]*$'
-.PP
-etc...
-
-.SH AUTHOR
-Written by Michal Ludvig <michal@logix.cz>
-.SH REPORTING BUGS
-Report bugs to 
-.I s3tools\-general@lists.sourceforge.net
-.SH COPYRIGHT
-Copyright \(co 2007,2008 Michal Ludvig <http://www.logix.cz/michal>
-.br
-This is free software.  You may redistribute copies of it under the terms of
-the GNU General Public License version 2 <http://www.gnu.org/licenses/gpl.html>.
-There is NO WARRANTY, to the extent permitted by law.
 .SH SEE ALSO
 For the most up to date list of options run 
 .B s3cmd \-\-help
@@ -237,3 +303,17 @@ For more info about usage, examples and other related info visit project homepag
 .br
 .B http://s3tools.org
 
+.SH AUTHOR
+Written by Michal Ludvig <michal@logix.cz>
+.SH CONTACT, SUPPORT
+Prefered way to get support is our mailing list:
+.I s3tools\-general@lists.sourceforge.net
+.SH REPORTING BUGS
+Report bugs to 
+.I s3tools\-bugs@lists.sourceforge.net
+.SH COPYRIGHT
+Copyright \(co 2007,2008,2009 Michal Ludvig <http://www.logix.cz/michal>
+.br
+This is free software.  You may redistribute copies of it under the terms of
+the GNU General Public License version 2 <http://www.gnu.org/licenses/gpl.html>.
+There is NO WARRANTY, to the extent permitted by law.

@@ -1,3 +1,11 @@
+2009-02-17  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd.1: Document all the new options and commands.
+	* s3cmd, S3/Config.py: Updated some help texts. Removed
+	  option --debug-syncmatch along the way (because --dry-run
+	  with --debug is good enough).
+	* TODO: Updated.
+
 2009-02-16  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Check Python version >= 2.4 as soon as possible.
