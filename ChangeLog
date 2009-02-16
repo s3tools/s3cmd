@@ -1,3 +1,7 @@
+2009-02-16  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: Check Python version >= 2.4 as soon as possible.
+
 2009-02-14  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd, S3/Config.py, S3/S3.py: Added --add-header option.

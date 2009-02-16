@@ -6,6 +6,11 @@
 ## License: GPL Version 2
 
 import sys
+
+if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
+	sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
+	sys.exit(1)
+
 import logging
 import time
 import os
@@ -1316,9 +1321,6 @@ class MyHelpFormatter(IndentedHelpFormatter):
 
 def main():
 	global cfg
-	if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
-		sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
-		sys.exit(1)
 
 	commands_list = get_commands_list()
 	commands = {}
