@@ -155,7 +155,6 @@ class S3(object):
 			self.check_bucket_name(bucket, dns_strict = True)
 		else:
 			self.check_bucket_name(bucket, dns_strict = False)
-		headers["content-length"] = len(body)
 		if self.config.acl_public:
 			headers["x-amz-acl"] = "public-read"
 		request = self.create_request("BUCKET_CREATE", bucket = bucket, headers = headers)
@@ -328,6 +327,8 @@ class S3(object):
 		if not headers:
 			headers = SortedDict()
 
+		debug("headers: %s" % headers)
+
 		if headers.has_key("date"):
 			if not headers.has_key("x-amz-date"):
 				headers["x-amz-date"] = headers["date"]
@@ -357,6 +358,8 @@ class S3(object):
 	def send_request(self, request, body = None, retries = _max_retries):
 		method_string, resource, headers = request
 		debug("Processing request, please wait...")
+		if not headers.has_key('content-length'):
+			headers['content-length'] = body and len(body) or 0
 		try:
 			#conn = self.get_connection(resource['bucket'])
 			conn = ConnMan.get(self.get_hostname(resource['bucket']))

@@ -6,6 +6,11 @@
 ## License: GPL Version 2
 
 import sys
+
+if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
+	sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
+	sys.exit(1)
+
 import logging
 import time
 import os
@@ -120,18 +125,28 @@ def subcmd_bucket_list(s3, uri):
 		else:
 			raise
 
+	if cfg.list_md5:
+		format_string = u"%(timestamp)16s %(size)9s%(coeff)1s  %(md5)32s  %(uri)s"
+	else:
+		format_string = u"%(timestamp)16s %(size)9s%(coeff)1s  %(uri)s"
+
 	for prefix in response['common_prefixes']:
-		output(u"%s   %s" % (
-			"DIR".rjust(26),
-			uri.compose_uri(bucket, prefix["Prefix"])))
+		output(format_string % {
+			"timestamp": "",
+			"size": "DIR",
+			"coeff": "",
+			"md5": "",
+			"uri": uri.compose_uri(bucket, prefix["Prefix"])})
 
 	for object in response["list"]:
 		size, size_coeff = formatSize(object["Size"], Config().human_readable_sizes)
-		output(u"%s  %s%s  %s" % (
-			formatDateTime(object["LastModified"]),
-			str(size).rjust(8), size_coeff.ljust(1),
-			uri.compose_uri(bucket, object["Key"]),
-			))
+		output(format_string % {
+			"timestamp": formatDateTime(object["LastModified"]),
+			"size" : str(size), 
+			"coeff": size_coeff,
+			"md5" : object['ETag'].strip('"'),
+			"uri": uri.compose_uri(bucket, object["Key"]),
+			})
 
 def cmd_bucket_create(args):
 	s3 = S3(Config())
@@ -312,7 +327,7 @@ def cmd_object_put(args):
 
 		uri_final = S3Uri(local_list[key]['remote_uri'])
 
-		extra_headers = {}
+		extra_headers = copy(cfg.extra_headers)
 		full_name_orig = local_list[key]['full_name']
 		full_name = full_name_orig
 		seq_label = "[%d of %d]" % (seq, local_count)
@@ -477,7 +492,7 @@ def cmd_object_del(args):
 			if Config().recursive and not Config().force:
 				raise ParameterError("Please use --force to delete ALL contents of %s" % uri)
 			elif not Config().recursive:
-				raise ParameterError("Object name required, not only the bucket name")
+				raise ParameterError("File name required, not only the bucket name")
 		subcmd_object_del_uri(uri)
 
 def subcmd_object_del_uri(uri, recursive = None):
@@ -496,7 +511,7 @@ def subcmd_object_del_uri(uri, recursive = None):
 		uri_list.append(uri)
 	for _uri in uri_list:
 		response = s3.object_delete(_uri)
-		output(u"Object %s deleted" % _uri)
+		output(u"File %s deleted" % _uri)
 
 def subcmd_cp_mv(args, process_fce, message):
 	src_uri = S3Uri(args.pop(0))
@@ -510,19 +525,20 @@ def subcmd_cp_mv(args, process_fce, message):
 
 	if dst_uri.object() == "":
 		dst_uri = S3Uri(dst_uri.uri() + src_uri.object())
- 
-	response = process_fce(src_uri, dst_uri) 
+
+	extra_headers = copy(cfg.extra_headers)
+	response = process_fce(src_uri, dst_uri, extra_headers) 
 	output(message % { "src" : src_uri, "dst" : dst_uri})
 	if Config().acl_public:
 		output(u"Public URL is: %s" % dst_uri.public_url())
 
 def cmd_cp(args):
 	s3 = S3(Config())
-	subcmd_cp_mv(args, s3.object_copy, "Object %(src)s copied to %(dst)s")
+	subcmd_cp_mv(args, s3.object_copy, "File %(src)s copied to %(dst)s")
 
 def cmd_mv(args):
 	s3 = S3(Config())
-	subcmd_cp_mv(args, s3.object_move, "Object %(src)s moved to %(dst)s")
+	subcmd_cp_mv(args, s3.object_move, "File %(src)s moved to %(dst)s")
 
 def cmd_info(args):
 	s3 = S3(Config())
@@ -678,12 +694,9 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 	info(u"Verifying attributes...")
 	cfg = Config()
 	exists_list = SortedDict()
-	if cfg.debug_syncmatch:
-		logging.root.setLevel(logging.DEBUG)
 
 	for file in src_list.keys():
-		if not cfg.debug_syncmatch:
-			debug(u"CHECK: %s" % file)
+		debug(u"CHECK: %s" % file)
 		if dst_list.has_key(file):
 			## Was --skip-existing requested?
 			if cfg.skip_existing:
@@ -721,10 +734,6 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 
 			## Remove from destination-list, all that is left there will be deleted
 			del(dst_list[file])
-
-	if cfg.debug_syncmatch:
-		warning(u"Exiting because of --debug-syncmatch")
-		sys.exit(1)
 
 	return src_list, dst_list, exists_list
 
@@ -971,12 +980,13 @@ def cmd_sync_local2remote(args):
 		src = item['full_name']
 		uri = S3Uri(item['remote_uri'])
 		seq_label = "[%d of %d]" % (seq, local_count)
-		attr_header = None
+		extra_headers = copy(cfg.extra_headers)
 		if cfg.preserve_attrs:
 			attr_header = _build_attr_header(src)
-			debug(attr_header)
+			debug(u"attr_header: %s" % attr_header)
+			extra_headers.update(attr_header)
 		try:
-			response = s3.object_put(src, uri, attr_header, extra_label = seq_label)
+			response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
 		except S3UploadError, e:
 			error(u"%s: upload failed too many times. Skipping that file." % item['full_name_unicode'])
 			continue
@@ -1283,10 +1293,10 @@ def get_commands_list():
 	#{"cmd":"mkdir", "label":"Make a virtual S3 directory", "param":"s3://BUCKET/path/to/dir", "func":cmd_mkdir, "argc":1},
 	{"cmd":"sync", "label":"Synchronize a directory tree to S3", "param":"LOCAL_DIR s3://BUCKET[/PREFIX] or s3://BUCKET[/PREFIX] LOCAL_DIR", "func":cmd_sync, "argc":2},
 	{"cmd":"du", "label":"Disk usage by buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_du, "argc":0},
-	{"cmd":"info", "label":"Get various information about Buckets or Objects", "param":"s3://BUCKET[/OBJECT]", "func":cmd_info, "argc":1},
+	{"cmd":"info", "label":"Get various information about Buckets or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_info, "argc":1},
 	{"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
 	{"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
-	{"cmd":"setacl", "label":"Modify Access control list for Bucket or Object", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
+	{"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
 	## CloudFront commands
 	{"cmd":"cflist", "label":"List CloudFront distribution points", "param":"", "func":CfCmd.info, "argc":0},
 	{"cmd":"cfinfo", "label":"Display CloudFront distribution point parameters", "param":"[cf://DIST_ID]", "func":CfCmd.info, "argc":0},
@@ -1320,9 +1330,6 @@ class MyHelpFormatter(IndentedHelpFormatter):
 
 def main():
 	global cfg
-	if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
-		sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
-		sys.exit(1)
 
 	commands_list = get_commands_list()
 	commands = {}
@@ -1352,7 +1359,7 @@ def main():
 	optparser.add_option("-c", "--config", dest="config", metavar="FILE", help="Config file name. Defaults to %default")
 	optparser.add_option(      "--dump-config", dest="dump_config", action="store_true", help="Dump current configuration after parsing config files and command line options and exit.")
 
-	optparser.add_option("-n", "--dry-run", dest="dry_run", action="store_true", help="Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though (only for [sync] command)")
+	optparser.add_option("-n", "--dry-run", dest="dry_run", action="store_true", help="Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though (only for file transfer commands)")
 
 	optparser.add_option("-e", "--encrypt", dest="encrypt", action="store_true", help="Encrypt files before uploading to S3.")
 	optparser.add_option(      "--no-encrypt", dest="encrypt", action="store_false", help="Don't encrypt files.")
@@ -1374,16 +1381,18 @@ def main():
 	optparser.add_option(      "--include-from", dest="include_from", action="append", metavar="FILE", help="Read --include GLOBs from FILE")
 	optparser.add_option(      "--rinclude", dest="rinclude", action="append", metavar="REGEXP", help="Same as --include but uses REGEXP (regular expression) instead of GLOB")
 	optparser.add_option(      "--rinclude-from", dest="rinclude_from", action="append", metavar="FILE", help="Read --rinclude REGEXPs from FILE")
-	optparser.add_option(      "--debug-syncmatch", "--debug-exclude", dest="debug_syncmatch", action="store_true", help="Output detailed information about remote vs. local filelist matching and --exclude processing and then exit")
 
 	optparser.add_option(      "--bucket-location", dest="bucket_location", help="Datacentre to create bucket in. Either EU or US (default)")
 
 	optparser.add_option("-m", "--mime-type", dest="default_mime_type", type="mimetype", metavar="MIME/TYPE", help="Default MIME-type to be set for objects stored.")
 	optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")
 
+	optparser.add_option(      "--add-header", dest="add_header", action="append", metavar="NAME:VALUE", help="Add a given HTTP header to the upload request. Can be used multiple times. For instance set 'Expires' or 'Cache-Control' headers (or both) using this options if you like.")
+
 	optparser.add_option(      "--encoding", dest="encoding", metavar="ENCODING", help="Override autodetected terminal and filesystem encoding (character set). Autodetected: %s" % preferred_encoding)
 
-	optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form.")
+	optparser.add_option(      "--list-md5", dest="list_md5", action="store_true", help="Include MD5 sums in bucket listings (only for 'ls' command).")
+	optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form (eg 1kB instead of 1234).")
 
 	optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default on TTY).")
 	optparser.add_option(      "--no-progress", dest="progress_meter", action="store_false", help="Don't display progress meter (default on non-TTY).")
@@ -1450,6 +1459,21 @@ def main():
 		if cfg.progress_meter:
 			error(u"Option --progress is not yet supported on MS Windows platform. Assuming --no-progress.")
 			cfg.progress_meter = False
+
+	## Pre-process --add-header's and put them to Config.extra_headers SortedDict()
+	if options.add_header:
+		for hdr in options.add_header:
+			try:
+				key, val = hdr.split(":", 1)
+			except ValueError:
+				raise ParameterError("Invalid header format: %s" % hdr)
+			key_inval = re.sub("[a-zA-Z0-9-.]", "", key)
+			if key_inval:
+				key_inval = key_inval.replace(" ", "<space>")
+				key_inval = key_inval.replace("\t", "<tab>")
+				raise ParameterError("Invalid character(s) in header name '%s': \"%s\"" % (key, key_inval))
+			debug(u"Updating Config.Config extra_headers[%s] -> %s" % (key.strip(), val.strip()))
+			cfg.extra_headers[key.strip()] = val.strip()
 
 	## Update Config with other parameters
 	for option in cfg.option_list():
@@ -1535,9 +1559,6 @@ def main():
 	except S3Error, e:
 		error(u"S3 error: %s" % e)
 		sys.exit(1)
-	except ParameterError, e:
-		error(u"Parameter problem: %s" % e)
-		sys.exit(1)
 
 if __name__ == '__main__':
 	try:
@@ -1558,6 +1579,10 @@ if __name__ == '__main__':
 
 		main()
 		sys.exit(0)
+
+	except ParameterError, e:
+		error(u"Parameter problem: %s" % e)
+		sys.exit(1)
 
 	except SystemExit, e:
 		sys.exit(e.code)

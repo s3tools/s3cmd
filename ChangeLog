@@ -1,3 +1,40 @@
+2009-02-24  Michal Ludvig  <michal@logix.cz>
+
+	Merged s3cmd 0.9.9 from trunk (r377):
+
+	2009-02-17  Michal Ludvig  <michal@logix.cz>
+	* S3/PkgInfo.py: Updated to 0.9.9
+	* NEWS: Compile a big news list for 0.9.9
+
+	2009-02-17  Michal Ludvig  <michal@logix.cz>
+	* s3cmd.1: Document all the new options and commands.
+	* s3cmd, S3/Config.py: Updated some help texts. Removed
+	  option --debug-syncmatch along the way (because --dry-run
+	  with --debug is good enough).
+	* TODO: Updated.
+
+	2009-02-16  Michal Ludvig  <michal@logix.cz>
+	* s3cmd: Check Python version >= 2.4 as soon as possible.
+
+	2009-02-14  Michal Ludvig  <michal@logix.cz>
+	* s3cmd, S3/Config.py, S3/S3.py: Added --add-header option.
+	* NEWS: Documented --add-header.
+	* run-tests.py: Fixed for new messages.
+
+	2009-02-14  Michal Ludvig  <michal@logix.cz>
+	* README: Updated for 0.9.9
+	* s3cmd, S3/PkgInfo.py, s3cmd.1: Replaced project 
+	  URLs with http://s3tools.org
+	* NEWS: Improved message.
+
+	2009-02-12  Michal Ludvig  <michal@logix.cz>
+	* s3cmd: Added --list-md5 for 'ls' command.
+	* S3/Config.py: New setting list_md5
+
+	2009-02-12  Michal Ludvig  <michal@logix.cz>
+	* s3cmd: Set Content-Length header for requests with 'body'.
+	* s3cmd: And send it for requests with no body as well...
+
 2009-02-09  Michal Ludvig  <michal@logix.cz>
 
 	* S3/Worker.py, S3/Tasks.py: Added support for running

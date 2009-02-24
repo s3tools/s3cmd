@@ -7,6 +7,7 @@ import logging
 from logging import debug, info, warning, error
 import re
 import Progress
+from SortedDict import SortedDict
 
 class Config(object):
 	_instance = None
@@ -24,7 +25,9 @@ class Config(object):
 	progress_class = Progress.ProgressCR
 	send_chunk = 4096
 	recv_chunk = 4096
+	list_md5 = False
 	human_readable_sizes = False
+	extra_headers = SortedDict()
 	force = False
 	get_continue = False
 	skip_existing = False
@@ -56,7 +59,6 @@ class Config(object):
 	bucket_location = "US"
 	default_mime_type = "binary/octet-stream"
 	guess_mime_type = True
-	debug_syncmatch = False
 	# List of checks to be performed for 'sync'
 	sync_checks = ['size', 'md5']	# 'weak-timestamp'
 	# List of compiled REGEXPs

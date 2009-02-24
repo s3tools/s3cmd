@@ -1,6 +1,6 @@
 package = "s3cmd"
-version = "0.9.9-rc3-speedup"
-url = "http://s3tools.logix.cz"
+version = "0.9.9-speedup"
+url = "http://s3tools.org"
 license = "GPL version 2"
 short_description = "Command line tool for managing Amazon S3 and CloudFront services"
 long_description = """
