@@ -1048,6 +1048,12 @@ def cmd_setacl(args):
 		if retsponse['status'] == 200:
 			output(u"%s: ACL set to %s  %s" % (uri, set_to_acl, seq_label))
 
+def cmd_sign(args):
+	string_to_sign = args.pop()
+	debug("string-to-sign: %r" % string_to_sign)
+	signature = Utils.sign_string(string_to_sign)
+	output("Signature: %s" % signature)
+
 def resolve_list(lst, args):
 	retval = []
 	for item in lst:
@@ -1281,6 +1287,8 @@ def get_commands_list():
 	{"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
 	{"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
 	{"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
+	{"cmd":"sign", "label":"Sign arbitrary string using the secret key", "param":"STRING-TO-SIGN", "func":cmd_sign, "argc":1},
+
 	## CloudFront commands
 	{"cmd":"cflist", "label":"List CloudFront distribution points", "param":"", "func":CfCmd.info, "argc":0},
 	{"cmd":"cfinfo", "label":"Display CloudFront distribution point parameters", "param":"[cf://DIST_ID]", "func":CfCmd.info, "argc":0},

@@ -5,7 +5,6 @@
 
 import sys
 import os, os.path
-import base64
 import time
 import httplib
 import logging
@@ -14,11 +13,9 @@ from logging import debug, info, warning, error
 from stat import ST_SIZE
 
 try:
-	from hashlib import md5, sha1
+	from hashlib import md5
 except ImportError:
 	from md5 import md5
-	import sha as sha1
-import hmac
 
 from Utils import *
 from SortedDict import SortedDict
@@ -649,7 +646,7 @@ class S3(object):
 			h += "/" + resource['bucket']
 		h += resource['uri']
 		debug("SignHeaders: " + repr(h))
-		return base64.encodestring(hmac.new(self.config.secret_key, h, sha1).digest()).strip()
+		return sign_string(h)
 
 	@staticmethod
 	def check_bucket_name(bucket, dns_strict = True):

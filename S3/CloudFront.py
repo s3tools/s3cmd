@@ -4,17 +4,9 @@
 ## License: GPL Version 2
 
 import sys
-import base64
 import time
 import httplib
 from logging import debug, info, warning, error
-
-try:
-	from hashlib import md5, sha1
-except ImportError:
-	from md5 import md5
-	import sha as sha1
-import hmac
 
 try:
 	import xml.etree.ElementTree as ET
@@ -23,7 +15,7 @@ except ImportError:
 
 from Config import Config
 from Exceptions import *
-from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython
+from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, sign_string
 from S3Uri import S3Uri, S3UriS3
 
 def output(message):
@@ -349,7 +341,7 @@ class CloudFront(object):
 
 	def sign_request(self, headers):
 		string_to_sign = headers['x-amz-date']
-		signature = base64.encodestring(hmac.new(self.config.secret_key, string_to_sign, sha1).digest()).strip()
+		signature = sign_string(string_to_sign)
 		debug(u"CloudFront.sign_request('%s') = %s" % (string_to_sign, signature))
 		return signature
 

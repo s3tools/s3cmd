@@ -10,9 +10,12 @@ import string
 import random
 import rfc822
 try:
-	from hashlib import md5
+	from hashlib import md5, sha1
 except ImportError:
 	from md5 import md5
+	import sha as sha1
+import hmac
+import base64
 import errno
 
 from logging import debug, info, warning, error
@@ -253,3 +256,8 @@ def unicodise_safe(string, encoding = None):
 
 	return unicodise(deunicodise(string, encoding), encoding).replace(u'\ufffd', '?')
 
+def sign_string(string_to_sign):
+	#debug("string_to_sign: %s" % string_to_sign)
+	signature = base64.encodestring(hmac.new(Config.Config().secret_key, string_to_sign, sha1).digest()).strip()
+	#debug("signature: %s" % signature)
+	return signature

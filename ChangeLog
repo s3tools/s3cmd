@@ -1,3 +1,10 @@
+2009-02-24  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: New command [sign]
+	* S3/Utils.py: New function sign_string()
+	* S3/S3.py, S3/CloudFront.py: Use sign_string().
+	* NEWS: Updated.
+
 2009-02-17  Michal Ludvig  <michal@logix.cz>
 
 	* Released version 0.9.9
