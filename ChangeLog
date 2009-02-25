@@ -1,5 +1,6 @@
 2009-02-25  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Fixed reporting of ImportError of S3 modules.
 	* s3cmd: Fixed Error: global name 'real_filename' is not defined
 
 2009-02-24  Michal Ludvig  <michal@logix.cz>

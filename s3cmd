@@ -1552,6 +1552,41 @@ def main():
 		error(u"S3 error: %s" % e)
 		sys.exit(1)
 
+def report_exception(e):
+		sys.stderr.write("""
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    An unexpected error has occurred.
+  Please report the following lines to:
+   s3tools-bugs@lists.sourceforge.net
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+""")
+		tb = traceback.format_exc(sys.exc_info())
+		e_class = str(e.__class__)
+		e_class = e_class[e_class.rfind(".")+1 : -2]
+		sys.stderr.write(u"Problem: %s: %s\n" % (e_class, e))
+		try:
+			sys.stderr.write("S3cmd:   %s\n" % PkgInfo.version)
+		except NameError:
+			sys.stderr.write("S3cmd:   unknown version. Module import problem?\n")
+		sys.stderr.write("\n")
+		sys.stderr.write(unicode(tb, errors="replace"))
+
+		if type(e) == ImportError:
+			sys.stderr.write("\n")
+			sys.stderr.write("Your sys.path contains these entries:\n")
+			for path in sys.path:
+				sys.stderr.write(u"\t%s\n" % path)
+			sys.stderr.write("Now the question is where have the s3cmd modules been installed?\n")
+
+		sys.stderr.write("""
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    An unexpected error has occurred.
+    Please report the above lines to:
+   s3tools-bugs@lists.sourceforge.net
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+""")
+
 if __name__ == '__main__':
 	try:
 		## Our modules
@@ -1570,6 +1605,10 @@ if __name__ == '__main__':
 		main()
 		sys.exit(0)
 
+	except ImportError, e:
+		report_exception(e)
+		sys.exit(1)
+		
 	except ParameterError, e:
 		error(u"Parameter problem: %s" % e)
 		sys.exit(1)
@@ -1582,36 +1621,5 @@ if __name__ == '__main__':
 		sys.exit(1)
 
 	except Exception, e:
-		sys.stderr.write("""
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    An unexpected error has occurred.
-  Please report the following lines to:
-   s3tools-bugs@lists.sourceforge.net
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-""")
-		tb = traceback.format_exc(sys.exc_info())
-		e_class = str(e.__class__)
-		e_class = e_class[e_class.rfind(".")+1 : -2]
-		sys.stderr.write(u"Problem: %s: %s\n" % (e_class, e))
-		try:
-			sys.stderr.write("S3cmd:   %s\n" % PkgInfo.version)
-		except NameError:
-			sys.stderr.write("S3cmd:   unknown version. Module import problem?\n")
-		sys.stderr.write("Python:  %s\n" % sys.version.replace('\n', ' '))
-		sys.stderr.write("\n")
-		sys.stderr.write(unicode(tb, errors="replace"))
-		if type(e) == ImportError:
-			sys.stderr.write("\n")
-			sys.stderr.write("Your sys.path contains these entries:\n")
-			for path in sys.path:
-				sys.stderr.write(u"\t%s\n" % path)
-			sys.stderr.write("Now the question is where has S3/S3.py been installed?\n")
-		sys.stderr.write("""
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    An unexpected error has occurred.
-    Please report the above lines to:
-   s3tools-bugs@lists.sourceforge.net
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-""")
+		report_exception(e)
 		sys.exit(1)
