@@ -286,9 +286,11 @@ def cmd_object_put(args):
 	if len(args) == 0:
 		raise ParameterError("Nothing to upload. Expecting a local file or directory and a S3 URI destination.")
 
-	destination_base = args.pop()
-	if S3Uri(destination_base).type != 's3':
-		raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base)
+	## Normalize URI to convert s3://bkt to s3://bkt/ (trailing slash)
+	destination_base_uri = S3Uri(args.pop())
+	if destination_base_uri.type != 's3':
+		raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
+	destination_base = str(destination_base_uri)
 
 	if len(args) == 0:
 		raise ParameterError("Nothing to upload. Expecting a local file or directory.")
@@ -914,7 +916,12 @@ def cmd_sync_local2remote(args):
 		error(u"or disable encryption with --no-encrypt parameter.")
 		sys.exit(1)
 
-	destination_base = args[-1]
+	## Normalize URI to convert s3://bkt to s3://bkt/ (trailing slash)
+	destination_base_uri = S3Uri(args[-1])
+	if destination_base_uri.type != 's3':
+		raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
+	destination_base = str(destination_base_uri)
+
 	local_list, single_file_local = fetch_local_list(args[:-1], recursive = True)
 	remote_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
 
