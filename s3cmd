@@ -334,7 +334,7 @@ def cmd_object_put(args):
 		try:
 			response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label)
 		except S3UploadError, e:
-			error(u"Upload of '%s' failed too many times. Skipping that file." % real_filename)
+			error(u"Upload of '%s' failed too many times. Skipping that file." % full_name_orig)
 			continue
 		except InvalidFileError, e:
 			warning(u"File can not be uploaded: %s" % e)
