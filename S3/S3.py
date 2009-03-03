@@ -267,6 +267,11 @@ class S3(object):
 	def urlencode_string(self, string):
 		if type(string) == unicode:
 			string = string.encode("utf-8")
+
+		if self.config.verbatim:
+			## Don't do any pre-processing
+			return string
+
 		encoded = ""
 		## List of characters that must be escaped for S3
 		## Haven't found this in any official docs
@@ -287,6 +292,7 @@ class S3(object):
 			    o == 0x22 or	# "
 			    o == 0x23 or	# #
 			    o == 0x25 or	# %
+			    o == 0x26 or	# &
 			    o == 0x2B or	# + (or it would become <space>)
 			    o == 0x3C or	# <
 			    o == 0x3E or	# >

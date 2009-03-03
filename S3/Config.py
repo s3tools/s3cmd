@@ -68,6 +68,7 @@ class Config(object):
 	debug_exclude = {}
 	debug_include = {}
 	encoding = "utf-8"
+	verbatim = False
 
 	## Creating a singleton
 	def __new__(self, configfile = None):

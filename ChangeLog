@@ -1,3 +1,7 @@
+2009-03-04  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd, S3/Config.py, S3/S3.py: Support for --verbatim.
+
 2009-02-25  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: Fixed "put file.ext s3://bkt" (ie just the bucket name).
