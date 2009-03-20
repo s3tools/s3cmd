@@ -24,6 +24,60 @@ from Config import Config
 from Exceptions import *
 from ACL import ACL
 
+class S3Request(object):
+	def __init__(self, s3, method_string, resource, headers, params = {}):
+		self.s3 = s3
+		self.headers = SortedDict(headers or {})
+		self.resource = resource
+		self.method_string = method_string
+		self.params = params
+
+		self.update_timestamp()
+		self.sign()
+
+	def update_timestamp(self):
+		if self.headers.has_key("date"):
+			del(self.headers["date"])
+		self.headers["x-amz-date"] = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
+
+	def format_param_str(self):
+		"""
+		Format URL parameters from self.params and returns
+		?parm1=val1&parm2=val2 or an empty string if there 
+		are no parameters.  Output of this function should 
+		be appended directly to self.resource['uri']
+		"""
+		param_str = ""
+		for param in self.params:
+			if self.params[param] not in (None, ""):
+				param_str += "&%s=%s" % (param, self.params[param])
+			else:
+				param_str += "&%s" % param
+		return param_str and "?" + param_str[1:]
+
+	def sign(self):
+		h  = self.method_string + "\n"
+		h += self.headers.get("content-md5", "")+"\n"
+		h += self.headers.get("content-type", "")+"\n"
+		h += self.headers.get("date", "")+"\n"
+		for header in self.headers.keys():
+			if header.startswith("x-amz-"):
+				h += header+":"+str(self.headers[header])+"\n"
+		if self.resource['bucket']:
+			h += "/" + self.resource['bucket']
+		h += self.resource['uri']
+		debug("SignHeaders: " + repr(h))
+		signature = sign_string(h)
+
+		self.headers["Authorization"] = "AWS "+self.s3.config.access_key+":"+signature
+
+	def get_triplet(self):
+		self.update_timestamp()
+		self.sign()
+		resource = dict(self.resource)	## take a copy
+		resource['uri'] += self.format_param_str()
+		return (self.method_string, resource, self.headers)
+
 class S3(object):
 	http_methods = BidirMap(
 		GET = 0x01,
@@ -326,39 +380,19 @@ class S3(object):
 		if extra:
 			resource['uri'] += extra
 
-		if not headers:
-			headers = SortedDict()
-
-		debug("headers: %s" % headers)
-
-		if headers.has_key("date"):
-			if not headers.has_key("x-amz-date"):
-				headers["x-amz-date"] = headers["date"]
-			del(headers["date"])
-		
-		if not headers.has_key("x-amz-date"):
-			headers["x-amz-date"] = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
-
 		method_string = S3.http_methods.getkey(S3.operations[operation] & S3.http_methods["MASK"])
-		signature = self.sign_headers(method_string, resource, headers)
-		headers["Authorization"] = "AWS "+self.config.access_key+":"+signature
-		param_str = ""
-		for param in params:
-			if params[param] not in (None, ""):
-				param_str += "&%s=%s" % (param, params[param])
-			else:
-				param_str += "&%s" % param
-		if param_str != "":
-			resource['uri'] += "?" + param_str[1:]
+
+		request = S3Request(self, method_string, resource, headers, params)
+
 		debug("CreateRequest: resource[uri]=" + resource['uri'])
-		return (method_string, resource, headers)
+		return request
 	
 	def _fail_wait(self, retries):
 		# Wait a few seconds. The more it fails the more we wait.
 		return (self._max_retries - retries + 1) * 3
 		
 	def send_request(self, request, body = None, retries = _max_retries):
-		method_string, resource, headers = request
+		method_string, resource, headers = request.get_triplet()
 		debug("Processing request, please wait...")
 		if not headers.has_key('content-length'):
 			headers['content-length'] = body and len(body) or 0
@@ -407,7 +441,7 @@ class S3(object):
 		return response
 
 	def send_file(self, request, file, labels, throttle = 0, retries = _max_retries):
-		method_string, resource, headers = request
+		method_string, resource, headers = request.get_triplet()
 		size_left = size_total = headers.get("content-length")
 		if self.config.progress_meter:
 			progress = self.config.progress_class(labels, size_total)
@@ -521,7 +555,7 @@ class S3(object):
 		return response
 
 	def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
-		method_string, resource, headers = request
+		method_string, resource, headers = request.get_triplet()
 		if self.config.progress_meter:
 			progress = self.config.progress_class(labels, 0)
 		else:
@@ -639,20 +673,6 @@ class S3(object):
 			warning("MD5 signatures do not match: computed=%s, received=%s" % (
 				response["md5"], response["headers"]["etag"]))
 		return response
-
-	def sign_headers(self, method, resource, headers):
-		h  = method+"\n"
-		h += headers.get("content-md5", "")+"\n"
-		h += headers.get("content-type", "")+"\n"
-		h += headers.get("date", "")+"\n"
-		for header in headers.keys():
-			if header.startswith("x-amz-"):
-				h += header+":"+str(headers[header])+"\n"
-		if resource['bucket']:
-			h += "/" + resource['bucket']
-		h += resource['uri']
-		debug("SignHeaders: " + repr(h))
-		return sign_string(h)
 
 	@staticmethod
 	def check_bucket_name(bucket, dns_strict = True):

@@ -1600,12 +1600,12 @@ if __name__ == '__main__':
 		## Our modules
 		## Keep them in try/except block to 
 		## detect any syntax errors in there
+		from S3.Exceptions import *
 		from S3 import PkgInfo
 		from S3.S3 import *
 		from S3.Config import Config
 		from S3.S3Uri import *
 		from S3 import Utils
-		from S3.Exceptions import *
 		from S3.Utils import unicodise
 		from S3.Progress import Progress
 		from S3.CloudFront import Cmd as CfCmd
