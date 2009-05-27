@@ -13,6 +13,9 @@ TODO list for s3cmd project
   - Don't let --continue fail if the file is already fully downloaded.
   - Option --mime-type should set mime type with 'cp' and 'mv'. 
     If possible --guess-mime-type should do as well.
+  - Skip files that disapper during upload. Now it fails.
+  - Neutralise characters that are invalid in XML to avoid ExpatErrors.
+    http://boodebr.org/main/python/all-about-python-and-unicode
 
 - For 1.0.0
   - Add 'geturl' command, both Unicode and urlencoded output.
@@ -29,6 +32,7 @@ TODO list for s3cmd project
     (move the old 'object' to e.g. 'object~' and only then upload 
      the new one). Could be more advanced to keep, say, last 5 
      copies, etc.
+  - Memory consumption on very large upload sets is terribly high.
 
 - Implement GPG for sync
   (it's not that easy since it won't be easy to compare

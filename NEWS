@@ -4,6 +4,8 @@ s3cmd 1.0.0
   the POST upload policies.
 * Fixed handling of filenames that differ only in 
   capitalisation (eg blah.txt vs Blah.TXT).
+* Added --verbatim mode, preventing most filenames 
+  pre-processing. Good for fixing unreadable buckets.
 
 s3cmd 0.9.9   -   2009-02-17
 ===========
