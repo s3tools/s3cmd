@@ -388,9 +388,10 @@ test_s3cmd("Simple delete", ['del', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG'],
 
 
 ## ====== Recursive delete
-test_s3cmd("Recursive delete", ['del', '--recursive', 's3://s3cmd-autotest-1/xyz/etc'],
-	must_find_re = [ "File .*\.svn/format deleted" ])
-
+test_s3cmd("Recursive delete", ['del', '--recursive', '--exclude', 'Atomic*', 's3://s3cmd-autotest-1/xyz/etc'],
+	must_find = [ "File s3://s3cmd-autotest-1/xyz/etc/TypeRa.ttf deleted" ],
+	must_find_re = [ "File .*\.svn/format deleted" ],
+	must_not_find = [ "AtomicClockRadio.ttf" ])
 
 ## ====== Recursive delete all
 test_s3cmd("Recursive delete all", ['del', '--recursive', '--force', 's3://s3cmd-autotest-1'],

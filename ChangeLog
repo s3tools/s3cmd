@@ -1,5 +1,10 @@
 2009-05-28  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd, run-test.py, TODO, NEWS: Added --dry-run
+	  and --exclude/--include for [del].
+
+2009-05-28  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd: Support for recursive [cp] and [mv], including
 	  multiple-source arguments, --include/--exclude,
 	  --dry-run, etc.

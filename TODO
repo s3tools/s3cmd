@@ -4,8 +4,8 @@ TODO list for s3cmd project
 - For 0.9.9.x
   - Make 'sync s3://bkt/some-filename local/other-filename' work
     (at the moment it'll always download).
-  - Enable --exclude for [del], [setacl], [ls].
-  - Enable --dry-run for [del], [setacl], reject for all others.
+  - Enable --exclude for [setacl], [ls].
+  - Enable --dry-run for [setacl], reject for all others.
   - Allow change /tmp to somewhere else
   - With --guess-mime use 'magic' module if available.
   - Support --preserve for [put] and [get]. Update manpage.

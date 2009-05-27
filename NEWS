@@ -7,7 +7,7 @@ s3cmd 1.0.0
   pre-processing. Good for fixing unreadable buckets.
 * Added --recursive support for [cp] and [mv], including
   multiple-source arguments, --include/--exclude, --dry-run, etc.
-
+* Added --exclude/--include and --dry-run for [del].
 
 s3cmd 0.9.9   -   2009-02-17
 ===========

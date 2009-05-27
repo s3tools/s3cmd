@@ -169,7 +169,7 @@ def cmd_bucket_delete(args):
 		except S3Error, e:
 			if e.info['Code'] == 'BucketNotEmpty' and (cfg.force or cfg.recursive):
 				warning(u"Bucket is not empty. Removing all the objects from it first. This may take some time...")
-				subcmd_object_del_uri(uri, recursive = True)
+				subcmd_object_del_uri(uri.uri(), recursive = True)
 				return _bucket_delete_one(uri)
 			elif S3.codes.has_key(e.info["Code"]):
 				error(S3.codes[e.info["Code"]] % uri.bucket())
@@ -483,35 +483,43 @@ def cmd_object_get(args):
 				(uri, destination, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1]))
 
 def cmd_object_del(args):
-	while (len(args)):
-		uri_arg = args.pop(0)
-		uri = S3Uri(uri_arg)
+	for uri_str in args:
+		uri = S3Uri(uri_str)
 		if uri.type != "s3":
-			raise ParameterError("Expecting S3 URI instead of '%s'" % uri_arg)
+			raise ParameterError("Expecting S3 URI instead of '%s'" % uri_str)
 		if not uri.has_object():
 			if Config().recursive and not Config().force:
-				raise ParameterError("Please use --force to delete ALL contents of %s" % uri)
+				raise ParameterError("Please use --force to delete ALL contents of %s" % uri_str)
 			elif not Config().recursive:
-				raise ParameterError("File name required, not only the bucket name")
-		subcmd_object_del_uri(uri)
+				raise ParameterError("File name required, not only the bucket name. Alternatively use --recursive")
+		subcmd_object_del_uri(uri_str)
 
-def subcmd_object_del_uri(uri, recursive = None):
-	s3 = S3(Config())
+def subcmd_object_del_uri(uri_str, recursive = None):
+	s3 = S3(cfg)
+
 	if recursive is None:
 		recursive = cfg.recursive
-	uri_list = []
-	if recursive:
-		filelist = _get_filelist_remote(uri)
-		uri_base = 's3://' + uri.bucket() + "/"
-		for idx in filelist:
-			object = filelist[idx]
-			debug(u"Adding URI " + uri_base + object['object_key'])
-			uri_list.append(S3Uri(uri_base + object['object_key']))
-	else:
-		uri_list.append(uri)
-	for _uri in uri_list:
-		response = s3.object_delete(_uri)
-		output(u"File %s deleted" % _uri)
+
+	remote_list = fetch_remote_list(uri_str, require_attribs = False, recursive = recursive)
+	remote_list, exclude_list = _filelist_filter_exclude_include(remote_list)
+
+	remote_count = len(remote_list)
+
+	info(u"Summary: %d remote files to delete" % remote_count)
+
+	if cfg.dry_run:
+		for key in exclude_list:
+			output(u"exclude: %s" % unicodise(key))
+		for key in remote_list:
+			output(u"delete: %s" % remote_list[key]['object_uri_str'])
+
+		warning(u"Exitting now because of --dry-run")
+		return
+
+	for key in remote_list:
+		item = remote_list[key]
+		response = s3.object_delete(S3Uri(item['object_uri_str']))
+		output(u"File %s deleted" % item['object_uri_str'])
 
 def subcmd_cp_mv(args, process_fce, action_str, message):
 	if len(args) < 2:
