@@ -338,6 +338,9 @@ test_s3cmd("Get multiple files", ['get', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PN
 test_s3cmd("Copy between buckets", ['cp', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG', 's3://s3cmd-Autotest-3'],
 	must_find = [ "File s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG copied to s3://s3cmd-Autotest-3/xyz/etc2/Logo.PNG" ])
 
+## ====== Upload files differing in capitalisation
+test_s3cmd("blah.txt / Blah.txt", ['put', '-r', 'testsuite/blahBlah', 's3://s3cmd-autotest-1/'],
+	must_find = [ 's3://s3cmd-autotest-1/blahBlah/Blah.txt', 's3://s3cmd-autotest-1/blahBlah/blah.txt' ])
 
 ## ====== Simple delete
 test_s3cmd("Simple delete", ['del', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG'],

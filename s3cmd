@@ -187,7 +187,7 @@ def cmd_bucket_delete(args):
 
 def fetch_local_list(args, recursive = None):
 	local_uris = []
-	local_list = SortedDict()
+	local_list = SortedDict(ignore_case = False)
 	single_file = False
 
 	if type(args) not in (list, tuple):
@@ -220,7 +220,7 @@ def fetch_local_list(args, recursive = None):
 
 def fetch_remote_list(args, require_attribs = False, recursive = None):
 	remote_uris = []
-	remote_list = SortedDict()
+	remote_list = SortedDict(ignore_case = False)
 
 	if type(args) not in (list, tuple):
 		args = [args]
@@ -586,7 +586,7 @@ def _get_filelist_local(local_uri):
 		local_path = deunicodise(local_uri.dirname())
 		filelist = [( local_path, [], [deunicodise(local_uri.basename())] )]
 		single_file = True
-	loc_list = SortedDict()
+	loc_list = SortedDict(ignore_case = False)
 	for root, dirs, files in filelist:
 		rel_root = root.replace(local_path, local_base, 1)
 		for f in files:
@@ -637,7 +637,7 @@ def _get_filelist_remote(remote_uri, recursive = True):
 		rem_base = rem_base[:rem_base.rfind('/')+1]
 		remote_uri = S3Uri("s3://%s/%s" % (remote_uri.bucket(), rem_base))
 	rem_base_len = len(rem_base)
-	rem_list = SortedDict()
+	rem_list = SortedDict(ignore_case = False)
 	break_now = False
 	for object in response['list']:
 		if object['Key'] == rem_base_original and object['Key'][-1] != os.path.sep:
@@ -664,7 +664,7 @@ def _get_filelist_remote(remote_uri, recursive = True):
 def _filelist_filter_exclude_include(src_list):
 	info(u"Applying --exclude/--include")
 	cfg = Config()
-	exclude_list = SortedDict()
+	exclude_list = SortedDict(ignore_case = False)
 	for file in src_list.keys():
 		debug(u"CHECK: %s" % file)
 		excluded = False
@@ -693,7 +693,7 @@ def _filelist_filter_exclude_include(src_list):
 def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 	info(u"Verifying attributes...")
 	cfg = Config()
-	exists_list = SortedDict()
+	exists_list = SortedDict(ignore_case = False)
 
 	for file in src_list.keys():
 		debug(u"CHECK: %s" % file)

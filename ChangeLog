@@ -1,3 +1,12 @@
+2009-05-27  Michal Ludvig  <michal@logix.cz>
+
+	* S3/SortedDict.py: Add case-sensitive mode.
+	* s3cmd, S3/S3.py, S3/Config.py: Use SortedDict() in 
+	  case-sensitive mode to avoid dropping filenames
+	  differing only in capitalisation
+	* run-tests.py: Testsuite for the above.
+	* NEWS: Updated.
+
 2009-03-20  Michal Ludvig  <michal@logix.cz>
 
 	* S3/S3.py: Re-sign requests before retrial to avoid 

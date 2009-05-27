@@ -2,6 +2,8 @@ s3cmd 1.0.0
 ===========
 * New command 'sign' for signing for instance
   the POST upload policies.
+* Fixed handling of filenames that differ only in 
+  capitalisation (eg blah.txt vs Blah.TXT).
 
 s3cmd 0.9.9   -   2009-02-17
 ===========

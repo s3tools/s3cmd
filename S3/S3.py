@@ -27,7 +27,7 @@ from ACL import ACL
 class S3Request(object):
 	def __init__(self, s3, method_string, resource, headers, params = {}):
 		self.s3 = s3
-		self.headers = SortedDict(headers or {})
+		self.headers = SortedDict(headers or {}, ignore_case = True)
 		self.resource = resource
 		self.method_string = method_string
 		self.params = params
@@ -195,7 +195,7 @@ class S3(object):
 		return response
 
 	def bucket_create(self, bucket, bucket_location = None):
-		headers = SortedDict()
+		headers = SortedDict(ignore_case = True)
 		body = ""
 		if bucket_location and bucket_location.strip().upper() != "US":
 			body  = "<CreateBucketConfiguration><LocationConstraint>"
@@ -235,7 +235,7 @@ class S3(object):
 			size = os.stat(filename)[ST_SIZE]
 		except IOError, e:
 			raise InvalidFileError(u"%s: %s" % (unicodise(filename), e.strerror))
-		headers = SortedDict()
+		headers = SortedDict(ignore_case = True)
 		if extra_headers:
 			headers.update(extra_headers)
 		headers["content-length"] = size
@@ -273,7 +273,7 @@ class S3(object):
 			raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
 		if dst_uri.type != "s3":
 			raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
-		headers = SortedDict()
+		headers = SortedDict(ignore_case = True)
 		headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object()))
 		if self.config.acl_public:
 			headers["x-amz-acl"] = "public-read"

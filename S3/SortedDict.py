@@ -17,11 +17,19 @@ class SortedDictIterator(object):
 			raise StopIteration
 
 class SortedDict(dict):
-	keys_sort_lowercase = True
+	def __init__(self, mapping = {}, ignore_case = True, **kwargs):
+		"""
+		WARNING: SortedDict() with ignore_case==True will
+		         drop entries differing only in capitalisation!
+				 Eg: SortedDict({'auckland':1, 'Auckland':2}).keys() => ['Auckland']
+				 With ignore_case==False it's all right
+		"""
+		dict.__init__(self, mapping, **kwargs)
+		self.ignore_case = ignore_case
 
 	def keys(self):
 		keys = dict.keys(self)
-		if self.keys_sort_lowercase:
+		if self.ignore_case:
 			# Translation map
 			xlat_map = BidirMap()
 			for key in keys:
@@ -38,18 +46,16 @@ class SortedDict(dict):
 		return SortedDictIterator(self, self.keys())
 
 if __name__ == "__main__":
-	d = SortedDict()
-	d['AWS'] = 1
-	d['Action'] = 2
-	d['america'] = 3
-	d.keys_sort_lowercase = True
-	print "Wanted: Action, america, AWS,"
+	d = { 'AWS' : 1, 'Action' : 2, 'america' : 3, 'Auckland' : 4, 'America' : 5 }
+	sd = SortedDict(d)
+	print "Wanted: Action, america, Auckland, AWS,    [ignore case]"
 	print "Got:   ",
-	for key in d:
+	for key in sd:
 		print "%s," % key,
-	print "   __iter__()"
-	d.keys_return_lowercase = True
+	print "   [used: __iter__()]"
+	d = SortedDict(d, ignore_case = False)
+	print "Wanted: AWS, Action, Auckland, america,    [case sensitive]"
 	print "Got:   ",
 	for key in d.keys():
 		print "%s," % key,
-	print "   keys()"
+	print "   [used: keys()]"
