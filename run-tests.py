@@ -20,6 +20,8 @@ test_counter = 0
 run_tests = []
 exclude_tests = []
 
+verbose = False
+
 if os.name == "posix":
 	have_wget = True
 elif os.name == "nt":
@@ -52,17 +54,20 @@ else:
 	print encoding + " specific files not found."
 
 def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = []):
+	def command_output():
+		print "----"
+		print " ".join([arg.find(" ")>=0 and "'%s'" % arg or arg for arg in cmd_args])
+		print "----"
+		print stdout
+		print "----"
+
 	def failure(message = ""):
 		global count_fail
 		if message:
 			message = "  (%r)" % message
 		print "\x1b[31;1mFAIL%s\x1b[0m" % (message)
 		count_fail += 1
-		print "----"
-		print " ".join([arg.find(" ")>=0 and "'%s'" % arg or arg for arg in cmd_args])
-		print "----"
-		print stdout
-		print "----"
+		command_output()
 		#return 1
 		sys.exit(1)
 	def success(message = ""):
@@ -71,6 +76,8 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 			message = "  (%r)" % message
 		print "\x1b[32;1mOK\x1b[0m%s" % (message)
 		count_pass += 1
+		if verbose:
+			command_output()
 		return 0
 	def skip(message = ""):
 		global count_skip
@@ -123,6 +130,7 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 		match = not_find_list[index].search(stdout)
 		if match:
 			return failure("pattern found: %s (match: %s)" % (not_find_list_patterns[index], match.group(0)))
+
 	return success()
 
 def test_s3cmd(label, cmd_args = [], **kwargs):
@@ -167,6 +175,9 @@ while argv:
 	if arg in ("-l", "--list"):
 		exclude_tests = range(0, 999)
 		break
+	if arg in ("-v", "--verbose"):
+		verbose = True
+		continue
 	if arg.find("..") >= 0:
 		range_idx = arg.find("..")
 		range_start = arg[:range_idx] or 0
