@@ -1073,7 +1073,21 @@ def cmd_setacl(args):
 	set_to_acl = cfg.acl_public and "Public" or "Private"
 
 	remote_list = fetch_remote_list(args)
+	remote_list, exclude_list = _filelist_filter_exclude_include(remote_list)
+
 	remote_count = len(remote_list)
+
+	info(u"Summary: %d remote files to update" % remote_count)
+
+	if cfg.dry_run:
+		for key in exclude_list:
+			output(u"exclude: %s" % unicodise(key))
+		for key in remote_list:
+			output(u"setacl: %s" % remote_list[key]['object_uri_str'])
+
+		warning(u"Exitting now because of --dry-run")
+		return
+
 	seq = 0
 	for key in remote_list:
 		seq += 1
