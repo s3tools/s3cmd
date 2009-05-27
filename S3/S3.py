@@ -275,10 +275,12 @@ class S3(object):
 			raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
 		headers = SortedDict(ignore_case = True)
 		headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object()))
+		## TODO: For now COPY, later maybe add a switch?
+		headers['x-amz-metadata-directive'] = "COPY"
 		if self.config.acl_public:
 			headers["x-amz-acl"] = "public-read"
-		if extra_headers:
-			headers.update(extra_headers)
+		# if extra_headers:
+		# 	headers.update(extra_headers)
 		request = self.create_request("OBJECT_PUT", uri = dst_uri, headers = headers)
 		response = self.send_request(request)
 		return response

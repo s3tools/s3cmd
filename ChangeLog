@@ -1,5 +1,15 @@
 2009-05-28  Michal Ludvig  <michal@logix.cz>
 
+	* s3cmd: Support for recursive [cp] and [mv], including
+	  multiple-source arguments, --include/--exclude,
+	  --dry-run, etc.
+	* run-tests.py: Tests for the above.
+	* S3/S3.py: Preserve metadata (eg ACL or MIME type) 
+	  during [cp] and [mv].
+	* NEWS, TODO: Updated.
+
+2009-05-28  Michal Ludvig  <michal@logix.cz>
+
 	* run-tests.py: Added --verbose mode.
 
 2009-05-27  Michal Ludvig  <michal@logix.cz>

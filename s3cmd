@@ -513,32 +513,64 @@ def subcmd_object_del_uri(uri, recursive = None):
 		response = s3.object_delete(_uri)
 		output(u"File %s deleted" % _uri)
 
-def subcmd_cp_mv(args, process_fce, message):
-	src_uri = S3Uri(args.pop(0))
-	dst_uri = S3Uri(args.pop(0))
+def subcmd_cp_mv(args, process_fce, action_str, message):
+	if len(args) < 2:
+		raise ParameterError("Expecting two or more S3 URIs for " + action_str)
+	dst_base_uri = S3Uri(args.pop())
+	if dst_base_uri.type != "s3":
+		raise ParameterError("Destination must be S3 URI. To download a file use 'get' or 'sync'.")
+	destination_base = dst_base_uri.uri()
 
-	if len(args): 
-		raise ParameterError("Too many parameters! Expected: %s" % commands['cp']['param']) 
+	remote_list = fetch_remote_list(args, require_attribs = False)
+	remote_list, exclude_list = _filelist_filter_exclude_include(remote_list)
 
-	if src_uri.type != "s3" or dst_uri.type != "s3": 
-		raise ParameterError("Parameters are not URIs! Expected: %s" % commands['cp']['param']) 
+	remote_count = len(remote_list)
 
-	if dst_uri.object() == "":
-		dst_uri = S3Uri(dst_uri.uri() + src_uri.object())
+	info(u"Summary: %d remote files to %s" % (remote_count, action_str))
 
-	extra_headers = copy(cfg.extra_headers)
-	response = process_fce(src_uri, dst_uri, extra_headers) 
-	output(message % { "src" : src_uri, "dst" : dst_uri})
-	if Config().acl_public:
-		output(u"Public URL is: %s" % dst_uri.public_url())
+	if cfg.recursive:
+		if not destination_base.endswith("/"):
+			destination_base += "/"
+		for key in remote_list:
+			remote_list[key]['dest_name'] = destination_base + key
+	else:
+		key = remote_list.keys()[0]
+		if destination_base.endswith("/"):
+			remote_list[key]['dest_name'] = destination_base + key
+		else:
+			remote_list[key]['dest_name'] = destination_base
+
+	if cfg.dry_run:
+		for key in exclude_list:
+			output(u"exclude: %s" % unicodise(key))
+		for key in remote_list:
+			output(u"%s: %s -> %s" % (action_str, remote_list[key]['object_uri_str'], remote_list[key]['dest_name']))
+
+		warning(u"Exitting now because of --dry-run")
+		return
+
+	seq = 0
+	for key in remote_list:
+		seq += 1
+		seq_label = "[%d of %d]" % (seq, remote_count)
+
+		item = remote_list[key]
+		src_uri = S3Uri(item['object_uri_str'])
+		dst_uri = S3Uri(item['dest_name'])
+
+		extra_headers = copy(cfg.extra_headers)
+		response = process_fce(src_uri, dst_uri, extra_headers) 
+		output(message % { "src" : src_uri, "dst" : dst_uri })
+		if Config().acl_public:
+			info(u"Public URL is: %s" % dst_uri.public_url())
 
 def cmd_cp(args):
 	s3 = S3(Config())
-	subcmd_cp_mv(args, s3.object_copy, "File %(src)s copied to %(dst)s")
+	subcmd_cp_mv(args, s3.object_copy, "copy", "File %(src)s copied to %(dst)s")
 
 def cmd_mv(args):
 	s3 = S3(Config())
-	subcmd_cp_mv(args, s3.object_move, "File %(src)s moved to %(dst)s")
+	subcmd_cp_mv(args, s3.object_move, "move", "File %(src)s moved to %(dst)s")
 
 def cmd_info(args):
 	s3 = S3(Config())

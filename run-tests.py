@@ -344,14 +344,43 @@ test_mkdir("Make dst dir for get", "testsuite-out")
 test_s3cmd("Get multiple files", ['get', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG', 's3://s3cmd-autotest-1/xyz/etc/AtomicClockRadio.ttf', 'testsuite-out'],
 	must_find = [ u"saved as 'testsuite-out/Logo.PNG'", u"saved as 'testsuite-out/AtomicClockRadio.ttf'" ])
 
-
-## ====== Copy between buckets
-test_s3cmd("Copy between buckets", ['cp', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG', 's3://s3cmd-Autotest-3'],
-	must_find = [ "File s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG copied to s3://s3cmd-Autotest-3/xyz/etc2/Logo.PNG" ])
-
 ## ====== Upload files differing in capitalisation
 test_s3cmd("blah.txt / Blah.txt", ['put', '-r', 'testsuite/blahBlah', 's3://s3cmd-autotest-1/'],
 	must_find = [ 's3://s3cmd-autotest-1/blahBlah/Blah.txt', 's3://s3cmd-autotest-1/blahBlah/blah.txt' ])
+
+## ====== Copy between buckets
+test_s3cmd("Copy between buckets", ['cp', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG', 's3://s3cmd-Autotest-3/xyz/etc2/logo.png'],
+	must_find = [ "File s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG copied to s3://s3cmd-Autotest-3/xyz/etc2/logo.png" ])
+
+## ====== Recursive copy
+test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', 's3://s3cmd-autotest-1/xyz/', 's3://s3cmd-autotest-2/copy', '--exclude', '.svn/*'],
+	must_find = [ "File s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG copied to s3://s3cmd-autotest-2/copy/etc2/Logo.PNG",
+	              "File s3://s3cmd-autotest-1/xyz/blahBlah/Blah.txt copied to s3://s3cmd-autotest-2/copy/blahBlah/Blah.txt",
+	              "File s3://s3cmd-autotest-1/xyz/blahBlah/blah.txt copied to s3://s3cmd-autotest-2/copy/blahBlah/blah.txt" ],
+	must_not_find = [ ".svn" ])
+
+## ====== Verify ACL and MIME type
+test_s3cmd("Verify ACL and MIME type", ['info', 's3://s3cmd-autotest-2/copy/etc2/Logo.PNG' ],
+	must_find_re = [ "MIME type:.*image/png", 
+	                 "ACL:.*\*anon\*: READ",
+					 "URL:.*http://s3cmd-autotest-2.s3.amazonaws.com/copy/etc2/Logo.PNG" ])
+
+## ====== Multi source move
+test_s3cmd("Multi-source move", ['mv', '-r', 's3://s3cmd-autotest-2/copy/blahBlah/Blah.txt', 's3://s3cmd-autotest-2/copy/etc/', 's3://s3cmd-autotest-2/moved/'],
+	must_find = [ "File s3://s3cmd-autotest-2/copy/blahBlah/Blah.txt moved to s3://s3cmd-autotest-2/moved/Blah.txt",
+	              "File s3://s3cmd-autotest-2/copy/etc/AtomicClockRadio.ttf moved to s3://s3cmd-autotest-2/moved/AtomicClockRadio.ttf",
+				  "File s3://s3cmd-autotest-2/copy/etc/TypeRa.ttf moved to s3://s3cmd-autotest-2/moved/TypeRa.ttf" ],
+	must_not_find = [ "blah.txt" ])
+
+## ====== Verify move
+test_s3cmd("Verify move", ['ls', '-r', 's3://s3cmd-autotest-2'],
+	must_find = [ "s3://s3cmd-autotest-2/moved/Blah.txt",
+	              "s3://s3cmd-autotest-2/moved/AtomicClockRadio.ttf",
+				  "s3://s3cmd-autotest-2/moved/TypeRa.ttf",
+				  "s3://s3cmd-autotest-2/copy/blahBlah/blah.txt" ],
+	must_not_find = [ "s3://s3cmd-autotest-2/copy/blahBlah/Blah.txt",
+					  "s3://s3cmd-autotest-2/copy/etc/AtomicClockRadio.ttf",
+					  "s3://s3cmd-autotest-2/copy/etc/TypeRa.ttf" ])
 
 ## ====== Simple delete
 test_s3cmd("Simple delete", ['del', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG'],
