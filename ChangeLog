@@ -1,5 +1,18 @@
 2009-05-29  Michal Ludvig  <michal@logix.cz>
 
+	* S3/Utils.py: New function replace_nonprintables()
+	* s3cmd: Filter local filenames through the above function
+	  to avoid problems with uploaded filenames containing invalid 
+	  XML entities, eg &#08; 
+	* S3/S3.py: Warn if a non-printables char is passed to
+	  urlencode_string() - they should have been replaced earlier 
+	  in the processing.
+	* run-tests.py, TODO, NEWS: Updated.
+	* testsuite/crappy-file-name.tar.gz: Tarball with a crappy-named
+	  file. Untar for the testsuite.
+
+2009-05-29  Michal Ludvig  <michal@logix.cz>
+
 	* testsuite/blahBlah/*: Added files needed for run-tests.py
 
 2009-05-28  Michal Ludvig  <michal@logix.cz>

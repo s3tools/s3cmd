@@ -8,6 +8,8 @@ s3cmd 1.0.0
 * Added --recursive support for [cp] and [mv], including
   multiple-source arguments, --include/--exclude, --dry-run, etc.
 * Added --exclude/--include and --dry-run for [del], [setacl].
+* Neutralise characters that are invalid in XML to avoid ExpatErrors.
+  http://boodebr.org/main/python/all-about-python-and-unicode
 
 s3cmd 0.9.9   -   2009-02-17
 ===========

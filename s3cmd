@@ -638,6 +638,8 @@ def _get_filelist_local(local_uri):
 				## for now skip over
 				continue
 			relative_file = unicodise(os.path.join(rel_root, f))
+			if not cfg.verbatim:
+				relative_file = replace_nonprintables(relative_file)
 			if relative_file.startswith('./'):
 				relative_file = relative_file[2:]
 			sr = os.stat_result(os.lstat(full_name))

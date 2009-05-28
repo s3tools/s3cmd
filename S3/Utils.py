@@ -256,6 +256,29 @@ def unicodise_safe(string, encoding = None):
 
 	return unicodise(deunicodise(string, encoding), encoding).replace(u'\ufffd', '?')
 
+def replace_nonprintables(string):
+	"""
+	replace_nonprintables(string)
+
+	Replaces all non-printable characters 'ch' in 'string'
+	where ord(ch) <= 26 with ^@, ^A, ... ^Z
+	"""
+	new_string = ""
+	modified = 0
+	for c in string:
+		o = ord(c)
+		if (o <= 31):
+			new_string += "^" + chr(ord('@') + o)
+			modified += 1
+		elif (o == 127):
+			new_string += "^?"
+			modified += 1
+		else:
+			new_string += c
+	if modified:
+		warning("%d non-printable characters replaced in: %s" % (modified, new_string))
+	return new_string
+
 def sign_string(string_to_sign):
 	#debug("string_to_sign: %s" % string_to_sign)
 	signature = base64.encodestring(hmac.new(Config.Config().secret_key, string_to_sign, sha1).digest()).strip()
