@@ -1,5 +1,10 @@
 2009-05-28  Michal Ludvig  <michal@logix.cz>
 
+	* S3/Utils.py (dateS3toPython): Be more relaxed about
+	  timestamps format.
+
+2009-05-28  Michal Ludvig  <michal@logix.cz>
+
 	* s3cmd, run-test.py, TODO, NEWS: Added --dry-run
 	  and --exclude/--include for [setacl].
 	* s3cmd, run-test.py, TODO, NEWS: Added --dry-run

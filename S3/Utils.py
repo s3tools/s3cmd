@@ -107,7 +107,7 @@ def appendXmlTextNode(tag_name, text, parent):
 	parent.append(xmlTextNode(tag_name, text))
 
 def dateS3toPython(date):
-	date = re.compile("\.\d\d\dZ").sub(".000Z", date)
+	date = re.compile("(\.\d*)?Z").sub(".000Z", date)
 	return time.strptime(date, "%Y-%m-%dT%H:%M:%S.000Z")
 
 def dateS3toUnix(date):
