@@ -21,11 +21,13 @@ import errno
 from logging import debug, info, warning, error
 
 import Config
+import Exceptions
 
 try:
 	import xml.etree.ElementTree as ET
 except ImportError:
 	import elementtree.ElementTree as ET
+from xml.parsers.expat import ExpatError
 
 def parseNodes(nodes):
 	## WARNING: Ignores text nodes from mixed xml/text.
@@ -57,10 +59,14 @@ def stripNameSpace(xml):
 
 def getTreeFromXml(xml):
 	xml, xmlns = stripNameSpace(xml)
-	tree = ET.fromstring(xml)
-	if xmlns:
-		tree.attrib['xmlns'] = xmlns
-	return tree
+	try:
+		tree = ET.fromstring(xml)
+		if xmlns:
+			tree.attrib['xmlns'] = xmlns
+		return tree
+	except ExpatError, e:
+		error(e)
+		raise Exceptions.ParameterError("Bucket contains invalid filenames. Please run: s3cmd fixbucket s3://your-bucket/")
 	
 def getListFromXml(xml, node):
 	tree = getTreeFromXml(xml)
@@ -275,7 +281,7 @@ def replace_nonprintables(string):
 			modified += 1
 		else:
 			new_string += c
-	if modified:
+	if modified and Config.Config().urlencoding_mode != "fixbucket":
 		warning("%d non-printable characters replaced in: %s" % (modified, new_string))
 	return new_string
 

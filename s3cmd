@@ -21,6 +21,7 @@ import traceback
 import codecs
 import locale
 import subprocess
+import htmlentitydefs
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -638,7 +639,7 @@ def _get_filelist_local(local_uri):
 				## for now skip over
 				continue
 			relative_file = unicodise(os.path.join(rel_root, f))
-			if not cfg.verbatim:
+			if cfg.urlencoding_mode == "normal":
 				relative_file = replace_nonprintables(relative_file)
 			if relative_file.startswith('./'):
 				relative_file = relative_file[2:]
@@ -1117,6 +1118,71 @@ def cmd_sign(args):
 	signature = Utils.sign_string(string_to_sign)
 	output("Signature: %s" % signature)
 
+def cmd_fixbucket(args):
+	def _unescape(text):
+		##
+		# Removes HTML or XML character references and entities from a text string.
+		#
+		# @param text The HTML (or XML) source text.
+		# @return The plain text, as a Unicode string, if necessary.
+		# 
+		# From: http://effbot.org/zone/re-sub.htm#unescape-html
+		def _unescape_fixup(m):
+			text = m.group(0)
+			if not htmlentitydefs.name2codepoint.has_key('apos'):
+				htmlentitydefs.name2codepoint['apos'] = ord("'")
+			if text[:2] == "&#":
+				# character reference
+				try:
+					if text[:3] == "&#x":
+						return unichr(int(text[3:-1], 16))
+					else:
+						return unichr(int(text[2:-1]))
+				except ValueError:
+					pass
+			else:
+				# named entity
+				try:
+					text = unichr(htmlentitydefs.name2codepoint[text[1:-1]])
+				except KeyError:
+					pass
+			return text # leave as is
+		return re.sub("&#?\w+;", _unescape_fixup, text)
+
+	cfg.urlencoding_mode = "fixbucket"
+	s3 = S3(cfg)
+
+	count = 0
+	for arg in args:
+		culprit = S3Uri(arg)
+		if culprit.type != "s3":
+			raise ParameterError("Expecting S3Uri instead of: %s" % arg)
+		response = s3.bucket_list_noparse(culprit.bucket(), culprit.object(), recursive = True)
+		r_xent = re.compile("&#x[\da-fA-F]+;")
+		keys = re.findall("<Key>(.*?)</Key>", response['data'], re.MULTILINE)
+		debug("Keys: %r" % keys)
+		for key in keys:
+			if r_xent.search(key):
+				info("Fixing: %s" % key)
+				debug("Step 1: Transforming %s" % key)
+				key_bin = _unescape(key)
+				debug("Step 2:       ... to %s" % key_bin)
+				key_new = replace_nonprintables(key_bin)
+				debug("Step 3:  ... then to %s" % key_new)
+				src = S3Uri("s3://%s/%s" % (culprit.bucket(), key_bin))
+				dst = S3Uri("s3://%s/%s" % (culprit.bucket(), key_new))
+				resp_move = s3.object_move(src, dst)
+				if resp_move['status'] == 200:
+					output("File %r renamed to %s" % (key_bin, key_new))
+					count += 1
+				else:
+					error("Something went wrong for: %r" % key)
+					error("Please report the problem to s3tools-bugs@lists.sourceforge.net")
+	if count > 0:
+		warning("Fixed %d files' names. Their ACL were reset to Private." % count)
+		warning("Use 's3cmd setacl --acl-public s3://...' to make")
+		warning("them publicly readable if required.")
+
 def resolve_list(lst, args):
 	retval = []
 	for item in lst:
@@ -1351,6 +1417,7 @@ def get_commands_list():
 	{"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
 	{"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
 	{"cmd":"sign", "label":"Sign arbitrary string using the secret key", "param":"STRING-TO-SIGN", "func":cmd_sign, "argc":1},
+	{"cmd":"fixbucket", "label":"Fix invalid file names in a bucket", "param":"s3://BUCKET[/PREFIX]", "func":cmd_fixbucket, "argc":1},
 
 	## CloudFront commands
 	{"cmd":"cflist", "label":"List CloudFront distribution points", "param":"", "func":CfCmd.info, "argc":0},
@@ -1445,7 +1512,7 @@ def main():
 	optparser.add_option(      "--add-header", dest="add_header", action="append", metavar="NAME:VALUE", help="Add a given HTTP header to the upload request. Can be used multiple times. For instance set 'Expires' or 'Cache-Control' headers (or both) using this options if you like.")
 
 	optparser.add_option(      "--encoding", dest="encoding", metavar="ENCODING", help="Override autodetected terminal and filesystem encoding (character set). Autodetected: %s" % preferred_encoding)
-	optparser.add_option(      "--verbatim", dest="verbatim", action="store_true", help="Use the S3 name as given on the command line. No pre-processing, encoding, etc. Use with caution!")
+	optparser.add_option(      "--verbatim", dest="urlencoding_mode", action="store_const", const="verbatim", help="Use the S3 name as given on the command line. No pre-processing, encoding, etc. Use with caution!")
 
 	optparser.add_option(      "--list-md5", dest="list_md5", action="store_true", help="Include MD5 sums in bucket listings (only for 'ls' command).")
 	optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form (eg 1kB instead of 1234).")

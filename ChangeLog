@@ -1,3 +1,13 @@
+2009-06-02  Michal Ludvig  <michal@logix.cz>
+
+	* s3cmd: New [fixbucket] command for fixing invalid object
+	  names in a given Bucket. For instance names with &#x08; in
+	  them (not sure how people manage to upload them but they do).
+	* S3/S3.py, S3/Utils.py, S3/Config.py: Support methods for 
+	  the above, plus advise user to run 'fixbucket' when XML parsing 
+	  fails.
+	* NEWS: Updated.
+	
 2009-05-29  Michal Ludvig  <michal@logix.cz>
 
 	* S3/Utils.py: New function replace_nonprintables()

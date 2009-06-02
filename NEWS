@@ -10,6 +10,9 @@ s3cmd 1.0.0
 * Added --exclude/--include and --dry-run for [del], [setacl].
 * Neutralise characters that are invalid in XML to avoid ExpatErrors.
   http://boodebr.org/main/python/all-about-python-and-unicode
+* New command [fixbucket] for for fixing invalid object names
+  in a given Bucket. For instance names with &#x08; in them
+  (not sure how people manage to upload them but they do).
 
 s3cmd 0.9.9   -   2009-02-17
 ===========

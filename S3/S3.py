@@ -174,6 +174,20 @@ class S3(object):
 			return getListFromXml(data, "CommonPrefixes")
 
 		uri_params = {}
+		response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params)
+		list = _get_contents(response["data"])
+		prefixes = _get_common_prefixes(response["data"])
+		while _list_truncated(response["data"]):
+			uri_params['marker'] = self.urlencode_string(list[-1]["Key"])
+			debug("Listing continues after '%s'" % uri_params['marker'])
+			response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params)
+			list += _get_contents(response["data"])
+			prefixes += _get_common_prefixes(response["data"])
+		response['list'] = list
+		response['common_prefixes'] = prefixes
+		return response
+
+	def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = {}):
 		if prefix:
 			uri_params['prefix'] = self.urlencode_string(prefix)
 		if not self.config.recursive and not recursive:
@@ -181,17 +195,6 @@ class S3(object):
 		request = self.create_request("BUCKET_LIST", bucket = bucket, **uri_params)
 		response = self.send_request(request)
 		#debug(response)
-		list = _get_contents(response["data"])
-		prefixes = _get_common_prefixes(response["data"])
-		while _list_truncated(response["data"]):
-			uri_params['marker'] = self.urlencode_string(list[-1]["Key"])
-			debug("Listing continues after '%s'" % uri_params['marker'])
-			request = self.create_request("BUCKET_LIST", bucket = bucket, **uri_params)
-			response = self.send_request(request)
-			list += _get_contents(response["data"])
-			prefixes += _get_common_prefixes(response["data"])
-		response['list'] = list
-		response['common_prefixes'] = prefixes
 		return response
 
 	def bucket_create(self, bucket, bucket_location = None):
@@ -320,11 +323,14 @@ class S3(object):
 		return response
 
 	## Low level methods
-	def urlencode_string(self, string):
+	def urlencode_string(self, string, urlencoding_mode = None):
 		if type(string) == unicode:
 			string = string.encode("utf-8")
 
-		if self.config.verbatim:
+		if urlencoding_mode is None:
+			urlencoding_mode = self.config.urlencoding_mode
+
+		if urlencoding_mode == "verbatim":
 			## Don't do any pre-processing
 			return string
 
@@ -345,9 +351,12 @@ class S3(object):
 					#           [hope that sounds reassuring ;-)]
 			o = ord(c)
 			if (o < 0x20 or o == 0x7f):
-				error(u"Non-printable character 0x%02x in: %s" % (o, string))
-				error(u"Please report it to s3tools-bugs@lists.sourceforge.net")
-				encoded += replace_nonprintables(c)
+				if urlencoding_mode == "fixbucket":
+					encoded += "%%%02X" % o
+				else:
+					error(u"Non-printable character 0x%02x in: %s" % (o, string))
+					error(u"Please report it to s3tools-bugs@lists.sourceforge.net")
+					encoded += replace_nonprintables(c)
 			elif (o == 0x20 or	# Space and below
 			    o == 0x22 or	# "
 			    o == 0x23 or	# #
