@@ -1,5 +1,13 @@
 2009-10-06  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* Released version 0.9.9.90
+	  -------------------------
+
+	* S3/PkgInfo.py: Updated to 0.9.9.90
+	* NEWS: News for 0.9.9.90
+
+2009-10-06  Michal Ludvig  <mludvig@logix.net.nz>
+
 	* S3/S3.py: Introduce throttling on upload only after
 	  second failure. I.e. first retry at full speed.
 	* TODO: Updated with new ideas.
