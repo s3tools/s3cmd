@@ -1,3 +1,7 @@
+2009-10-06  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* TODO: Updated with new ideas.
+
 2009-06-02  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd: New [fixbucket] command for fixing invalid object

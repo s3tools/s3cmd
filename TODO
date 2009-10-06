@@ -12,9 +12,12 @@ TODO list for s3cmd project
   - Option --mime-type should set mime type with 'cp' and 'mv'. 
     If possible --guess-mime-type should do as well.
   - Skip files that disapper during upload. Now it fails.
+  - Make upload throttling configurable.
 
 - For 1.0.0
   - Add 'geturl' command, both Unicode and urlencoded output.
+  - Add a command for generating "Query String Authentication" URLs.
+  - Add a command for setting up access logging.
 
 - After 1.0.0
   - Speed up upload / download with multiple threads.
@@ -29,6 +32,8 @@ TODO list for s3cmd project
      the new one). Could be more advanced to keep, say, last 5 
      copies, etc.
   - Memory consumption on very large upload sets is terribly high.
+  - Implement per-bucket (or per-regexp?) default settings. For
+    example regarding ACLs, encryption, etc.
 
 - Implement GPG for sync
   (it's not that easy since it won't be easy to compare
