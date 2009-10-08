@@ -1,5 +1,13 @@
 2009-10-08  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* Released version 0.9.9.91
+	  -------------------------
+
+	* S3/PkgInfo.py: Updated to 0.9.9.91
+	* NEWS: News for 0.9.9.91
+
+2009-10-08  Michal Ludvig  <mludvig@logix.net.nz>
+
 	* S3/S3.py: fixed reference to _max_retries.
 
 2009-10-06  Michal Ludvig  <mludvig@logix.net.nz>
