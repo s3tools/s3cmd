@@ -639,6 +639,9 @@ def _get_filelist_local(local_uri):
 				## for now skip over
 				continue
 			relative_file = unicodise(os.path.join(rel_root, f))
+			if os.path.sep != "/":
+				# Convert non-unix dir separators to '/'
+				relative_file = "/".join(relative_file.split(os.path.sep))
 			if cfg.urlencoding_mode == "normal":
 				relative_file = replace_nonprintables(relative_file)
 			if relative_file.startswith('./'):
@@ -738,6 +741,10 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 	cfg = Config()
 	exists_list = SortedDict(ignore_case = False)
 
+	debug("Comparing filelists (src_is_local_and_dst_is_remote=%s)" % src_is_local_and_dst_is_remote)
+	debug("src_list.keys: %s" % src_list.keys())
+	debug("dst_list.keys: %s" % dst_list.keys())
+
 	for file in src_list.keys():
 		debug(u"CHECK: %s" % file)
 		if dst_list.has_key(file):
@@ -817,7 +824,10 @@ def cmd_sync_remote2local(args):
 		if destination_base[-1] != os.path.sep:
 			destination_base += os.path.sep
 		for key in remote_list:
-			remote_list[key]['local_filename'] = deunicodise(destination_base + key)
+			local_filename = destination_base + key
+			if os.path.sep != "/":
+				local_filename = os.path.sep.join(local_filename.split("/"))
+			remote_list[key]['local_filename'] = deunicodise(local_filename)
 
 	if cfg.dry_run:
 		for key in exclude_list:

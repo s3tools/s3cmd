@@ -1,3 +1,7 @@
+2009-12-10  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* s3cmd: Path separator conversion on Windows hosts.
+
 2009-10-08  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* Released version 0.9.9.91
