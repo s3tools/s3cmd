@@ -99,7 +99,7 @@ class ACL(object):
 			self.grantees.append(grantee)
 
 	def getGrantList(self):
-		acl = {}
+		acl = []
 		for grantee in self.grantees:
 			if grantee.display_name:
 				user = grantee.display_name
@@ -107,7 +107,7 @@ class ACL(object):
 				user = "*anon*"
 			else:
 				user = grantee.name
-			acl[user] = grantee.permission
+			acl.append({'grantee': user, 'permission': grantee.permission})
 		return acl
 
 	def getOwner(self):

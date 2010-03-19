@@ -603,9 +603,9 @@ def cmd_info(args):
 				output(u"%s (bucket):" % uri.uri())
 				output(u"   Location:  %s" % info['bucket-location'])
 			acl = s3.get_acl(uri)
-			acl_list = acl.getGrantList()
-			for user in acl_list:
-				output(u"   ACL:       %s: %s" % (user, acl_list[user]))
+			acl_grant_list = acl.getGrantList()
+			for grant in acl_grant_list:
+				output(u"   ACL:       %s: %s" % (grant['grantee'], grant['permission']))
 			if acl.isAnonRead():
 				output(u"   URL:       %s" % uri.public_url())
 		except S3Error, e:

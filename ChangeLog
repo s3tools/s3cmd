@@ -1,5 +1,10 @@
 2010-03-19  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* s3cmd, S3/ACL.py: Print all ACLs for a Grantee
+	(one Grantee can have multiple different Grant entries)
+
+2010-03-19  Michal Ludvig  <mludvig@logix.net.nz>
+
 	* s3cmd: Enable bucket-level ACL setting
 	* s3cmd, S3/AccessLog.py, ...: Added [accesslog] command.
 	* s3cmd: Fix imports from S3.Utils
