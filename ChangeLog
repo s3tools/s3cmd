@@ -1,6 +1,7 @@
 2010-03-19  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* s3cmd, S3/AccessLog.py, ...: Added [accesslog] command.
+	* s3cmd: Fix imports from S3.Utils
 
 2009-12-10  Michal Ludvig  <mludvig@logix.net.nz>
 
