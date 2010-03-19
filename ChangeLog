@@ -1,5 +1,6 @@
 2010-03-19  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* s3cmd: Enable bucket-level ACL setting
 	* s3cmd, S3/AccessLog.py, ...: Added [accesslog] command.
 	* s3cmd: Fix imports from S3.Utils
 

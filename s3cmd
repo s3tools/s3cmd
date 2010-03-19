@@ -1081,9 +1081,38 @@ def cmd_sync(args):
 	raise ParameterError("Invalid source/destination: '%s'" % "' '".join(args))
 
 def cmd_setacl(args):
+	def _update_acl(uri, seq_label = ""):
+		acl = s3.get_acl(uri)
+		debug(u"acl: %s - %r" % (uri, acl.grantees))
+		if cfg.acl_public:
+			if acl.isAnonRead():
+				info(u"%s: already Public, skipping %s" % (uri, seq_label))
+				return
+			acl.grantAnonRead()
+		else:
+			if not acl.isAnonRead():
+				info(u"%s: already Private, skipping %s" % (uri, seq_label))
+				return
+			acl.revokeAnonRead()
+		retsponse = s3.set_acl(uri, acl)
+		if retsponse['status'] == 200:
+			output(u"%s: ACL set to %s  %s" % (uri, set_to_acl, seq_label))
+
 	s3 = S3(cfg)
 
 	set_to_acl = cfg.acl_public and "Public" or "Private"
+
+	if not cfg.recursive:
+		old_args = args
+		args = []
+		for arg in old_args:
+			uri = S3Uri(arg)
+			if not uri.has_object():
+				info("Setting bucket-level ACL for %s to %s" % (uri.uri(), set_to_acl))
+				if not cfg.dry_run:
+					_update_acl(uri)
+			else:
+				args.append(arg)
 
 	remote_list = fetch_remote_list(args)
 	remote_list, exclude_list = _filelist_filter_exclude_include(remote_list)
@@ -1106,21 +1135,7 @@ def cmd_setacl(args):
 		seq += 1
 		seq_label = "[%d of %d]" % (seq, remote_count)
 		uri = S3Uri(remote_list[key]['object_uri_str'])
-		acl = s3.get_acl(uri)
-		debug(u"acl: %s - %r" % (uri, acl.grantees))
-		if cfg.acl_public:
-			if acl.isAnonRead():
-				info(u"%s: already Public, skipping %s" % (uri, seq_label))
-				continue
-			acl.grantAnonRead()
-		else:
-			if not acl.isAnonRead():
-				info(u"%s: already Private, skipping %s" % (uri, seq_label))
-				continue
-			acl.revokeAnonRead()
-		retsponse = s3.set_acl(uri, acl)
-		if retsponse['status'] == 200:
-			output(u"%s: ACL set to %s  %s" % (uri, set_to_acl, seq_label))
+		_update_acl(uri, seq_label)
 
 def cmd_accesslog(args):
 	s3 = S3(cfg)
