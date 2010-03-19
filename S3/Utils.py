@@ -29,6 +29,7 @@ except ImportError:
 	import elementtree.ElementTree as ET
 from xml.parsers.expat import ExpatError
 
+__all__ = []
 def parseNodes(nodes):
 	## WARNING: Ignores text nodes from mixed xml/text.
 	## For instance <tag1>some text<tag2>other text</tag2></tag1>
@@ -44,6 +45,7 @@ def parseNodes(nodes):
 				retval_item[name] = node.findtext(".//%s" % child.tag)
 		retval.append(retval_item)
 	return retval
+__all__.append("parseNodes")
 
 def stripNameSpace(xml):
 	"""
@@ -56,6 +58,7 @@ def stripNameSpace(xml):
 	else:
 		xmlns = None
 	return xml, xmlns
+__all__.append("stripNameSpace")
 
 def getTreeFromXml(xml):
 	xml, xmlns = stripNameSpace(xml)
@@ -67,11 +70,13 @@ def getTreeFromXml(xml):
 	except ExpatError, e:
 		error(e)
 		raise Exceptions.ParameterError("Bucket contains invalid filenames. Please run: s3cmd fixbucket s3://your-bucket/")
+__all__.append("getTreeFromXml")
 	
 def getListFromXml(xml, node):
 	tree = getTreeFromXml(xml)
 	nodes = tree.findall('.//%s' % (node))
 	return parseNodes(nodes)
+__all__.append("getListFromXml")
 
 def getDictFromTree(tree):
 	ret_dict = {}
@@ -86,6 +91,7 @@ def getDictFromTree(tree):
 		else:
 			ret_dict[child.tag] = child.text or ""
 	return ret_dict
+__all__.append("getDictFromTree")
 
 def getTextFromXml(xml, xpath):
 	tree = getTreeFromXml(xml)
@@ -93,15 +99,18 @@ def getTextFromXml(xml, xpath):
 		return tree.text
 	else:
 		return tree.findtext(xpath)
+__all__.append("getTextFromXml")
 
 def getRootTagName(xml):
 	tree = getTreeFromXml(xml)
 	return tree.tag
+__all__.append("getRootTagName")
 
 def xmlTextNode(tag_name, text):
 	el = ET.Element(tag_name)
 	el.text = unicode(text)
 	return el
+__all__.append("xmlTextNode")
 
 def appendXmlTextNode(tag_name, text, parent):
 	"""
@@ -111,22 +120,27 @@ def appendXmlTextNode(tag_name, text, parent):
 	Returns the newly created Node.
 	"""
 	parent.append(xmlTextNode(tag_name, text))
+__all__.append("appendXmlTextNode")
 
 def dateS3toPython(date):
 	date = re.compile("(\.\d*)?Z").sub(".000Z", date)
 	return time.strptime(date, "%Y-%m-%dT%H:%M:%S.000Z")
+__all__.append("dateS3toPython")
 
 def dateS3toUnix(date):
 	## FIXME: This should be timezone-aware.
 	## Currently the argument to strptime() is GMT but mktime() 
 	## treats it as "localtime". Anyway...
 	return time.mktime(dateS3toPython(date))
+__all__.append("dateS3toUnix")
 
 def dateRFC822toPython(date):
 	return rfc822.parsedate(date)
+__all__.append("dateRFC822toPython")
 
 def dateRFC822toUnix(date):
 	return time.mktime(dateRFC822toPython(date))
+__all__.append("dateRFC822toUnix")
 
 def formatSize(size, human_readable = False, floating_point = False):
 	size = floating_point and float(size) or int(size)
@@ -139,16 +153,18 @@ def formatSize(size, human_readable = False, floating_point = False):
 		return (size, coeff)
 	else:
 		return (size, "")
+__all__.append("formatSize")
 
 def formatDateTime(s3timestamp):
 	return time.strftime("%Y-%m-%d %H:%M", dateS3toPython(s3timestamp))
+__all__.append("formatDateTime")
 
 def convertTupleListToDict(list):
 	retval = {}
 	for tuple in list:
 		retval[tuple[0]] = tuple[1]
 	return retval
-
+__all__.append("convertTupleListToDict")
 
 _rnd_chars = string.ascii_letters+string.digits
 _rnd_chars_len = len(_rnd_chars)
@@ -158,6 +174,7 @@ def rndstr(len):
 		retval += _rnd_chars[random.randint(0, _rnd_chars_len-1)]
 		len -= 1
 	return retval
+__all__.append("rndstr")
 
 def mktmpsomething(prefix, randchars, createfunc):
 	old_umask = os.umask(0077)
@@ -175,13 +192,16 @@ def mktmpsomething(prefix, randchars, createfunc):
 
 	os.umask(old_umask)
 	return dirname
+__all__.append("mktmpsomething")
 
 def mktmpdir(prefix = "/tmp/tmpdir-", randchars = 10):
 	return mktmpsomething(prefix, randchars, os.mkdir)
+__all__.append("mktmpdir")
 
 def mktmpfile(prefix = "/tmp/tmpfile-", randchars = 20):
 	createfunc = lambda filename : os.close(os.open(filename, os.O_CREAT | os.O_EXCL))
 	return mktmpsomething(prefix, randchars, createfunc)
+__all__.append("mktmpfile")
 
 def hash_file_md5(filename):
 	h = md5()
@@ -194,6 +214,7 @@ def hash_file_md5(filename):
 		h.update(data)
 	f.close()
 	return h.hexdigest()
+__all__.append("hash_file_md5")
 
 def mkdir_with_parents(dir_name):
 	"""
@@ -220,6 +241,7 @@ def mkdir_with_parents(dir_name):
 			warning("%s: %s" % (cur_dir, e))
 			return False
 	return True
+__all__.append("mkdir_with_parents")
 
 def unicodise(string, encoding = None, errors = "replace"):
 	"""
@@ -236,6 +258,7 @@ def unicodise(string, encoding = None, errors = "replace"):
 		return string.decode(encoding, errors)
 	except UnicodeDecodeError:
 		raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
+__all__.append("unicodise")
 
 def deunicodise(string, encoding = None, errors = "replace"):
 	"""
@@ -253,6 +276,7 @@ def deunicodise(string, encoding = None, errors = "replace"):
 		return string.encode(encoding, errors)
 	except UnicodeEncodeError:
 		raise UnicodeEncodeError("Conversion from unicode failed: %r" % string)
+__all__.append("deunicodise")
 
 def unicodise_safe(string, encoding = None):
 	"""
@@ -261,6 +285,7 @@ def unicodise_safe(string, encoding = None):
 	"""
 
 	return unicodise(deunicodise(string, encoding), encoding).replace(u'\ufffd', '?')
+__all__.append("unicodise_safe")
 
 def replace_nonprintables(string):
 	"""
@@ -284,9 +309,11 @@ def replace_nonprintables(string):
 	if modified and Config.Config().urlencoding_mode != "fixbucket":
 		warning("%d non-printable characters replaced in: %s" % (modified, new_string))
 	return new_string
+__all__.append("replace_nonprintables")
 
 def sign_string(string_to_sign):
 	#debug("string_to_sign: %s" % string_to_sign)
 	signature = base64.encodestring(hmac.new(Config.Config().secret_key, string_to_sign, sha1).digest()).strip()
 	#debug("signature: %s" % signature)
 	return signature
+__all__.append("sign_string")

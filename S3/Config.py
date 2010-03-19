@@ -29,6 +29,7 @@ class Config(object):
 	human_readable_sizes = False
 	extra_headers = SortedDict(ignore_case = True)
 	force = False
+	enable = None
 	get_continue = False
 	skip_existing = False
 	recursive = False
@@ -69,6 +70,7 @@ class Config(object):
 	debug_include = {}
 	encoding = "utf-8"
 	urlencoding_mode = "normal"
+	log_target_prefix = ""
 
 	## Creating a singleton
 	def __new__(self, configfile = None):

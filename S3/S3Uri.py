@@ -8,7 +8,7 @@ import re
 import sys
 from BidirMap import BidirMap
 from logging import debug
-from S3 import S3
+import S3
 from Utils import unicodise
 
 class S3Uri(object):
@@ -73,7 +73,7 @@ class S3UriS3(S3Uri):
 		return "/".join(["s3:/", self._bucket, self._object])
 	
 	def is_dns_compatible(self):
-		return S3.check_bucket_name_dns_conformity(self._bucket)
+		return S3.S3.check_bucket_name_dns_conformity(self._bucket)
 
 	def public_url(self):
 		if self.is_dns_compatible():

@@ -1,3 +1,7 @@
+2010-03-19  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* s3cmd, S3/AccessLog.py, ...: Added [accesslog] command.
+
 2009-12-10  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* s3cmd: Path separator conversion on Windows hosts.

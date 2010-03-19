@@ -9,6 +9,7 @@ import time
 import httplib
 import logging
 import mimetypes
+import re
 from logging import debug, info, warning, error
 from stat import ST_SIZE
 
@@ -22,8 +23,11 @@ from SortedDict import SortedDict
 from BidirMap import BidirMap
 from Config import Config
 from Exceptions import *
-from ACL import ACL
+from ACL import ACL, GranteeLogDelivery
+from AccessLog import AccessLog
+from S3Uri import S3Uri
 
+__all__ = []
 class S3Request(object):
 	def __init__(self, s3, method_string, resource, headers, params = {}):
 		self.s3 = s3
@@ -321,6 +325,41 @@ class S3(object):
 		debug(u"set_acl(%s): acl-xml: %s" % (uri, body))
 		response = self.send_request(request, body)
 		return response
+
+	def get_accesslog(self, uri):
+		request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?logging")
+		response = self.send_request(request)
+		accesslog = AccessLog(response['data'])
+		return accesslog
+
+	def set_accesslog_acl(self, uri):
+		acl = self.get_acl(uri)
+		debug("Current ACL(%s): %s" % (uri.uri(), str(acl)))
+		acl.appendGrantee(GranteeLogDelivery("READ_ACP"))
+		acl.appendGrantee(GranteeLogDelivery("WRITE"))
+		debug("Updated ACL(%s): %s" % (uri.uri(), str(acl)))
+		self.set_acl(uri, acl)
+
+	def set_accesslog(self, uri, enable, log_target_prefix_uri = None, acl_public = False):
+		request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(), extra = "?logging")
+		accesslog = AccessLog()
+		if enable:
+			accesslog.enableLogging(log_target_prefix_uri)
+			accesslog.setAclPublic(acl_public)
+		else:
+			accesslog.disableLogging()
+		body = str(accesslog)
+		debug(u"set_accesslog(%s): accesslog-xml: %s" % (uri, body))
+		try:
+			response = self.send_request(request, body)
+		except S3Error, e:
+			if e.info['Code'] == "InvalidTargetBucketForLogging":
+				info("Setting up log-delivery ACL for target bucket.")
+				self.set_accesslog_acl(S3Uri("s3://%s" % log_target_prefix_uri.bucket()))
+				response = self.send_request(request, body)
+			else:
+				raise
+		return accesslog, response
 
 	## Low level methods
 	def urlencode_string(self, string, urlencoding_mode = None):
@@ -720,3 +759,4 @@ class S3(object):
 			return S3.check_bucket_name(bucket, dns_strict = True)
 		except ParameterError:
 			return False
+__all__.append("S3")

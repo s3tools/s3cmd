@@ -3,7 +3,7 @@
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
 
-from Utils import *
+from Utils import getTreeFromXml
 
 try:
 	import xml.etree.ElementTree as ET
@@ -12,6 +12,7 @@ except ImportError:
 
 class Grantee(object):
 	ALL_USERS_URI = "http://acs.amazonaws.com/groups/global/AllUsers"
+	LOG_DELIVERY_URI = "http://acs.amazonaws.com/groups/s3/LogDelivery"
 
 	def __init__(self):
 		self.xsi_type = None
@@ -52,6 +53,17 @@ class GranteeAnonRead(Grantee):
 		self.tag = "URI"
 		self.name = Grantee.ALL_USERS_URI
 		self.permission = "READ"
+
+class GranteeLogDelivery(Grantee):
+	def __init__(self, permission):
+		"""
+		permission must be either READ_ACP or WRITE
+		"""
+		Grantee.__init__(self)
+		self.xsi_type = "Group"
+		self.tag = "URI"
+		self.name = Grantee.LOG_DELIVERY_URI
+		self.permission = permission
 
 class ACL(object):
 	EMPTY_ACL = "<AccessControlPolicy><Owner><ID></ID></Owner><AccessControlList></AccessControlList></AccessControlPolicy>"
@@ -109,10 +121,13 @@ class ACL(object):
 	
 	def grantAnonRead(self):
 		if not self.isAnonRead():
-			self.grantees.append(GranteeAnonRead())
+			self.appendGrantee(GranteeAnonRead())
 	
 	def revokeAnonRead(self):
 		self.grantees = [g for g in self.grantees if not g.isAnonRead()]
+
+	def appendGrantee(self, grantee):
+		self.grantees.append(grantee)
 
 	def __str__(self):
 		tree = getTreeFromXml(ACL.EMPTY_ACL)

@@ -1122,6 +1122,27 @@ def cmd_setacl(args):
 		if retsponse['status'] == 200:
 			output(u"%s: ACL set to %s  %s" % (uri, set_to_acl, seq_label))
 
+def cmd_accesslog(args):
+	s3 = S3(cfg)
+	bucket_uri = S3Uri(args.pop())
+	if bucket_uri.object():
+		raise ParameterError("Only bucket name is required for [accesslog] command")
+	if cfg.enable == True:
+		log_target_prefix_uri = S3Uri(cfg.log_target_prefix)
+		if log_target_prefix_uri.type != "s3":
+			raise ParameterError("--log-target-prefix must be a S3 URI")
+		accesslog, response = s3.set_accesslog(bucket_uri, enable = True, log_target_prefix_uri = log_target_prefix_uri, acl_public = cfg.acl_public)
+	elif cfg.enable == False:
+		accesslog, response = s3.set_accesslog(bucket_uri, enable = False)
+	else:	# cfg.enable == None
+		accesslog = s3.get_accesslog(bucket_uri)
+
+	output(u"Access logging for: %s" % bucket_uri.uri())
+	output(u"   Logging Enabled: %s" % accesslog.isLoggingEnabled())
+	if accesslog.isLoggingEnabled():
+		output(u"     Target prefix: %s" % accesslog.targetPrefix().uri())
+		#output(u"   Public Access:   %s" % accesslog.isAclPublic())
+		
 def cmd_sign(args):
 	string_to_sign = args.pop()
 	debug("string-to-sign: %r" % string_to_sign)
@@ -1426,6 +1447,7 @@ def get_commands_list():
 	{"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
 	{"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
 	{"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
+	{"cmd":"accesslog", "label":"Enable/disable bucket access logging", "param":"s3://BUCKET", "func":cmd_accesslog, "argc":1},
 	{"cmd":"sign", "label":"Sign arbitrary string using the secret key", "param":"STRING-TO-SIGN", "func":cmd_sign, "argc":1},
 	{"cmd":"fixbucket", "label":"Fix invalid file names in a bucket", "param":"s3://BUCKET[/PREFIX]", "func":cmd_fixbucket, "argc":1},
 
@@ -1516,6 +1538,8 @@ def main():
 
 	optparser.add_option(      "--bucket-location", dest="bucket_location", help="Datacentre to create bucket in. Either EU or US (default)")
 
+	optparser.add_option(      "--log-target-prefix", dest="log_target_prefix", help="Target prefix for access logs (S3 URI)")
+
 	optparser.add_option("-m", "--mime-type", dest="default_mime_type", type="mimetype", metavar="MIME/TYPE", help="Default MIME-type to be set for objects stored.")
 	optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")
 
@@ -1529,8 +1553,8 @@ def main():
 
 	optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default on TTY).")
 	optparser.add_option(      "--no-progress", dest="progress_meter", action="store_false", help="Don't display progress meter (default on non-TTY).")
-	optparser.add_option(      "--enable", dest="cf_enable", action="store_true", help="Enable given CloudFront distribution (only for [cfmodify] command)")
-	optparser.add_option(      "--disable", dest="cf_enable", action="store_false", help="Enable given CloudFront distribution (only for [cfmodify] command)")
+	optparser.add_option(      "--enable", dest="enable", action="store_true", help="Enable given CloudFront distribution (for [cfmodify] command) or access logging (for [accesslog] command)")
+	optparser.add_option(      "--disable", dest="enable", action="store_false", help="Enable given CloudFront distribution (only for [cfmodify] command) or access logging (for [accesslog] command)")
 	optparser.add_option(      "--cf-add-cname", dest="cf_cnames_add", action="append", metavar="CNAME", help="Add given CNAME to a CloudFront distribution (only for [cfcreate] and [cfmodify] commands)")
 	optparser.add_option(      "--cf-remove-cname", dest="cf_cnames_remove", action="append", metavar="CNAME", help="Remove given CNAME from a CloudFront distribution (only for [cfmodify] command)")
 	optparser.add_option(      "--cf-comment", dest="cf_comment", action="store", metavar="COMMENT", help="Set COMMENT for a given CloudFront distribution (only for [cfcreate] and [cfmodify] commands)")
@@ -1617,7 +1641,13 @@ def main():
 		except AttributeError:
 			## Some Config() options are not settable from command line
 			pass
-	
+
+	## Special handling for tri-state options (True, False, None)
+	cfg.update_option("enable", options.enable)
+
+	## CloudFront's cf_enable and Config's enable share the same --enable switch
+	options.cf_enable = options.enable
+
 	## Update CloudFront options if some were set
 	for option in CfCmd.options.option_list():
 		try:
@@ -1735,9 +1765,9 @@ if __name__ == '__main__':
 		## detect any syntax errors in there
 		from S3.Exceptions import *
 		from S3 import PkgInfo
-		from S3.S3 import *
+		from S3.S3 import S3
 		from S3.Config import Config
-		from S3.S3Uri import *
+		from S3.S3Uri import S3Uri
 		from S3 import Utils
 		from S3.Utils import unicodise
 		from S3.Progress import Progress
