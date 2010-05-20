@@ -2,6 +2,7 @@
 
 	* s3cmd, S3/ACL.py, S3/Config.py: Support for --acl-grant
 	  and --acl-revoke (contributed by Timothee Linden)
+	* s3cmd: Couple of fixes on top of the above commit.
 
 2010-05-20  Michal Ludvig  <mludvig@logix.net.nz>
 

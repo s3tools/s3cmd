@@ -1088,14 +1088,14 @@ def cmd_setacl(args):
 			if acl.isAnonRead():
 				info(u"%s: already Public, skipping %s" % (uri, seq_label))
 				if not cfg.acl_grants and not cfg.acl_revokes:
-					return;
+					return
 			else:
 				acl.grantAnonRead()
 		elif cfg.acl_public == False: # we explicitely check for False, because it could be None
 			if not acl.isAnonRead():
 				info(u"%s: already Private, skipping %s" % (uri, seq_label))
 				if not cfg.acl_grants and not cfg.acl_revokes:
-					return;
+					return
 			else:
 				acl.revokeAnonRead()
 
@@ -1103,11 +1103,11 @@ def cmd_setacl(args):
 		# grant first and revoke later, because revoke has priority
 		if cfg.acl_grants:
 			for grant in cfg.acl_grants:
-				acl.grant( **grant );
+				acl.grant(**grant);
 
 		if cfg.acl_revokes:
 			for revoke in cfg.acl_revokes:
-				acl.revoke( **revoke );
+				acl.revoke(**revoke);
 
 		retsponse = s3.set_acl(uri, acl)
 		if retsponse['status'] == 200:
@@ -1559,8 +1559,7 @@ def main():
 	optparser.add_option("-r", "--recursive", dest="recursive", action="store_true", help="Recursive upload, download or removal.")
 	optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read for anyone.")
 	optparser.add_option(      "--acl-private", dest="acl_public", action="store_false", help="Store objects with default ACL allowing access for you only.")
-
-	optparser.add_option(      "--acl-grant", dest="acl_grants", action="append", metavar="PERMISSION:EMAIL OR USER_CANONICAL_ID", help="Grant stated permission to a given amazon user. Permission is one of: read, write, read_acp, write_acp, full_control, all")
+	optparser.add_option(      "--acl-grant", dest="acl_grants", action="append", metavar="PERMISSION:EMAIL or USER_CANONICAL_ID", help="Grant stated permission to a given amazon user. Permission is one of: read, write, read_acp, write_acp, full_control, all")
 	optparser.add_option(      "--acl-revoke", dest="acl_revokes", action="append", metavar="PERMISSION:USER_CANONICAL_ID", help="Revoke stated permission for a given amazon user. Permission is one of: read, write, read_acp, wr     ite_acp, full_control, all")
 
 	optparser.add_option(      "--delete-removed", dest="delete_removed", action="store_true", help="Delete remote objects with no corresponding local file [sync]")
@@ -1676,25 +1675,24 @@ def main():
 	permission_re = "(?P<PERMISSION>read(_acp)?|write(_acp)?|full_control|all)"
 
 	if options.acl_grants:
-		r_acl_grant = re.compile( "^%s:(?P<NAME>.+)$" % permission_re, re.IGNORECASE)
+		r_acl_grant = re.compile("^%s:(?P<NAME>.+)$" % permission_re, re.IGNORECASE)
 		for grant in options.acl_grants:
-			is_data = r_acl_grant.match( grant )
+			is_data = r_acl_grant.match(grant)
 			if is_data:
 				data = is_data.groupdict()
-				cfg.acl_grants.append( {'name': data['NAME'].lower(), 'permission': data["PERMISSION"].upper()} )
+				cfg.acl_grants.append({'name': data['NAME'].lower(), 'permission': data["PERMISSION"].upper()})
 			else:
-				warning( u"skipped invalid --acl-grant option: [%s]" % grant)
+				warning(u"skipped invalid --acl-grant option: [%s]" % grant)
 
 	if options.acl_revokes:
-		r_acl_revoke = re.compile( "^%s:(?P<NAME>[a-f0-9]+)$" % permission_re, re.IGNORECASE)
+		r_acl_revoke = re.compile("^%s:(?P<NAME>.+)$" % permission_re, re.IGNORECASE)
 		for revoke in options.acl_revokes:
-			is_data = r_acl_revoke.match( revoke )
+			is_data = r_acl_revoke.match(revoke)
 			if is_data:
 				data = is_data.groupdict()
-				cfg.acl_revokes.append( {'name': data['NAME'].lower(), 'permission': data["PERMISSION"].upper()} )
+				cfg.acl_revokes.append({'name': data['NAME'].lower(), 'permission': data["PERMISSION"].upper()})
 			else:
-				warning( u"skipped invalid --acl-revoke option: [%s]" % revoke)
-
+				warning(u"skipped invalid --acl-revoke option: [%s]" % revoke)
 
 	## Update Config with other parameters
 	for option in cfg.option_list():
