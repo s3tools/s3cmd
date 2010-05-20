@@ -580,8 +580,17 @@ class S3(object):
 			response['headers']['etag'] = '' 
 
 		if response["status"] < 200 or response["status"] > 299:
+			try_retry = False
 			if response["status"] >= 500:
 				## AWS internal error - retry
+				try_retry = True
+			elif response["status"] >= 400:
+				err = S3Error(response)
+				## Retriable client error?
+				if err.code in [ 'BadDigest', 'OperationAborted', 'TokenRefreshRequired', 'RequestTimeout' ]:
+					try_retry = True
+
+			if try_retry:
 				if retries:
 					warning("Upload failed: %s (%s)" % (resource['uri'], S3Error(response)))
 					warning("Waiting %d sec..." % self._fail_wait(retries))
@@ -590,6 +599,7 @@ class S3(object):
 				else:
 					warning("Too many failures. Giving up on '%s'" % (file.name))
 					raise S3UploadError
+
 			## Non-recoverable error
 			raise S3Error(response)
 

@@ -35,7 +35,11 @@ class S3Error (S3Exception):
 	def __init__(self, response):
 		self.status = response["status"]
 		self.reason = response["reason"]
-		self.info = {}
+		self.info = {
+			"Code" : "",
+			"Message" : "",
+			"Resource" : ""
+		}
 		debug("S3Error: %s (%s)" % (self.status, self.reason))
 		if response.has_key("headers"):
 			for header in response["headers"]:
@@ -49,6 +53,9 @@ class S3Error (S3Exception):
 				if child.text != "":
 					debug("ErrorXML: " + child.tag + ": " + repr(child.text))
 					self.info[child.tag] = child.text
+		self.code = self.info["Code"]
+		self.message = self.info["Message"]
+		self.resource = self.info["Resource"]
 
 	def __unicode__(self):
 		retval = u"%d " % (self.status)
