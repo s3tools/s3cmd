@@ -73,6 +73,7 @@ class Config(object):
 	encoding = "utf-8"
 	urlencoding_mode = "normal"
 	log_target_prefix = ""
+	reduced_redundancy = False
 
 	## Creating a singleton
 	def __new__(self, configfile = None):

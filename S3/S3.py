@@ -255,6 +255,8 @@ class S3(object):
 		headers["content-type"] = content_type
 		if self.config.acl_public:
 			headers["x-amz-acl"] = "public-read"
+		if self.config.reduced_redundancy:
+			headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
 		request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
 		labels = { 'source' : unicodise(filename), 'destination' : unicodise(uri.uri()), 'extra' : extra_label }
 		response = self.send_file(request, file, labels)
@@ -286,6 +288,8 @@ class S3(object):
 		headers['x-amz-metadata-directive'] = "COPY"
 		if self.config.acl_public:
 			headers["x-amz-acl"] = "public-read"
+		if self.config.reduced_redundancy:
+			headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
 		# if extra_headers:
 		# 	headers.update(extra_headers)
 		request = self.create_request("OBJECT_PUT", uri = dst_uri, headers = headers)
