@@ -1082,39 +1082,43 @@ def cmd_sync(args):
 
 def cmd_setacl(args):
 	def _update_acl(uri, seq_label = ""):
+		something_changed = False
 		acl = s3.get_acl(uri)
 		debug(u"acl: %s - %r" % (uri, acl.grantees))
 		if cfg.acl_public == True:
 			if acl.isAnonRead():
 				info(u"%s: already Public, skipping %s" % (uri, seq_label))
-				if not cfg.acl_grants and not cfg.acl_revokes:
-					return
 			else:
 				acl.grantAnonRead()
+				something_changed = True
 		elif cfg.acl_public == False: # we explicitely check for False, because it could be None
 			if not acl.isAnonRead():
 				info(u"%s: already Private, skipping %s" % (uri, seq_label))
-				if not cfg.acl_grants and not cfg.acl_revokes:
-					return
 			else:
 				acl.revokeAnonRead()
+				something_changed = True
 
 		# update acl with arguments
 		# grant first and revoke later, because revoke has priority
 		if cfg.acl_grants:
+			something_changed = True
 			for grant in cfg.acl_grants:
 				acl.grant(**grant);
 
 		if cfg.acl_revokes:
+			something_changed = True
 			for revoke in cfg.acl_revokes:
 				acl.revoke(**revoke);
 
+		if not something_changed:
+			return
+
 		retsponse = s3.set_acl(uri, acl)
 		if retsponse['status'] == 200:
-			if cfg.acl_public == True or cfg.acl_public == False:
+			if cfg.acl_public in (True, False):
 				output(u"%s: ACL set to %s  %s" % (uri, set_to_acl, seq_label))
 			else:
-				output(u"ACL updated")
+				output(u"%s: ACL updated" % uri)
 
 	s3 = S3(cfg)
 
@@ -1507,9 +1511,26 @@ class OptionMimeType(Option):
 			return value
 		raise OptionValueError("option %s: invalid MIME-Type format: %r" % (opt, value))
 
-	TYPES = Option.TYPES + ("mimetype",)
+class OptionS3ACL(Option):
+	def check_s3acl(option, opt, value):
+		permissions = ('read', 'write', 'read_acp', 'write_acp', 'full_control', 'all')
+		try:
+			permission, grantee = re.compile("^(\w+):(.+)$", re.IGNORECASE).match(value).groups()
+			if not permission or not grantee:
+				raise
+			if permission in permissions:
+				return { 'name' : grantee, 'permission' : permission.upper() }
+			else:
+				raise OptionValueError("option %s: invalid S3 ACL permission: %s (valid values: %s)" % 
+					(opt, permission, ", ".join(permissions)))
+		except:
+			raise OptionValueError("option %s: invalid S3 ACL format: %r" % (opt, value))
+
+class OptionAll(OptionMimeType, OptionS3ACL):
 	TYPE_CHECKER = copy(Option.TYPE_CHECKER)
-	TYPE_CHECKER["mimetype"] = check_mimetype
+	TYPE_CHECKER["mimetype"] = OptionMimeType.check_mimetype
+	TYPE_CHECKER["s3acl"] = OptionS3ACL.check_s3acl
+	TYPES = Option.TYPES + ("mimetype", "s3acl")
 
 class MyHelpFormatter(IndentedHelpFormatter):
 	def format_epilog(self, epilog):
@@ -1530,7 +1551,7 @@ def main():
 			commands[cmd["cmd"]] = cmd
 
 	default_verbosity = Config().verbosity
-	optparser = OptionParser(option_class=OptionMimeType, formatter=MyHelpFormatter())
+	optparser = OptionParser(option_class=OptionAll, formatter=MyHelpFormatter())
 	#optparser.disable_interspersed_args()
 
 	config_file = None
@@ -1559,8 +1580,8 @@ def main():
 	optparser.add_option("-r", "--recursive", dest="recursive", action="store_true", help="Recursive upload, download or removal.")
 	optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read for anyone.")
 	optparser.add_option(      "--acl-private", dest="acl_public", action="store_false", help="Store objects with default ACL allowing access for you only.")
-	optparser.add_option(      "--acl-grant", dest="acl_grants", action="append", metavar="PERMISSION:EMAIL or USER_CANONICAL_ID", help="Grant stated permission to a given amazon user. Permission is one of: read, write, read_acp, write_acp, full_control, all")
-	optparser.add_option(      "--acl-revoke", dest="acl_revokes", action="append", metavar="PERMISSION:USER_CANONICAL_ID", help="Revoke stated permission for a given amazon user. Permission is one of: read, write, read_acp, wr     ite_acp, full_control, all")
+	optparser.add_option(      "--acl-grant", dest="acl_grants", type="s3acl", action="append", metavar="PERMISSION:EMAIL or USER_CANONICAL_ID", help="Grant stated permission to a given amazon user. Permission is one of: read, write, read_acp, write_acp, full_control, all")
+	optparser.add_option(      "--acl-revoke", dest="acl_revokes", type="s3acl", action="append", metavar="PERMISSION:USER_CANONICAL_ID", help="Revoke stated permission for a given amazon user. Permission is one of: read, write, read_acp, wr     ite_acp, full_control, all")
 
 	optparser.add_option(      "--delete-removed", dest="delete_removed", action="store_true", help="Delete remote objects with no corresponding local file [sync]")
 	optparser.add_option(      "--no-delete-removed", dest="delete_removed", action="store_false", help="Don't delete remote objects.")
@@ -1671,28 +1692,14 @@ def main():
 			debug(u"Updating Config.Config extra_headers[%s] -> %s" % (key.strip(), val.strip()))
 			cfg.extra_headers[key.strip()] = val.strip()
 
-
-	permission_re = "(?P<PERMISSION>read(_acp)?|write(_acp)?|full_control|all)"
-
+	## --acl-grant/--acl-revoke arguments are pre-parsed by OptionS3ACL()
 	if options.acl_grants:
-		r_acl_grant = re.compile("^%s:(?P<NAME>.+)$" % permission_re, re.IGNORECASE)
 		for grant in options.acl_grants:
-			is_data = r_acl_grant.match(grant)
-			if is_data:
-				data = is_data.groupdict()
-				cfg.acl_grants.append({'name': data['NAME'].lower(), 'permission': data["PERMISSION"].upper()})
-			else:
-				warning(u"skipped invalid --acl-grant option: [%s]" % grant)
+			cfg.acl_grants.append(grant)
 
 	if options.acl_revokes:
-		r_acl_revoke = re.compile("^%s:(?P<NAME>.+)$" % permission_re, re.IGNORECASE)
-		for revoke in options.acl_revokes:
-			is_data = r_acl_revoke.match(revoke)
-			if is_data:
-				data = is_data.groupdict()
-				cfg.acl_revokes.append({'name': data['NAME'].lower(), 'permission': data["PERMISSION"].upper()})
-			else:
-				warning(u"skipped invalid --acl-revoke option: [%s]" % revoke)
+		for grant in options.acl_revokes:
+			cfg.acl_revokes.append(grant)
 
 	## Update Config with other parameters
 	for option in cfg.option_list():
