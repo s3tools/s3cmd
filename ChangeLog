@@ -1,5 +1,10 @@
 2010-05-21  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* s3cmd, S3/S3.py: Added support for bucket locations
+	  outside US/EU (i.e. us-west-1 and ap-southeast-1 as of now).
+
+2010-05-21  Michal Ludvig  <mludvig@logix.net.nz>
+
 	* s3cmd, S3/S3.py, S3/Config.py: Added --reduced-redundancy
 	  switch for Reduced Redundancy Storage.
 

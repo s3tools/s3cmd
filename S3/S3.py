@@ -205,8 +205,13 @@ class S3(object):
 		headers = SortedDict(ignore_case = True)
 		body = ""
 		if bucket_location and bucket_location.strip().upper() != "US":
+			bucket_location = bucket_location.strip()
+			if bucket_location.upper() == "EU":
+				bucket_location = bucket_location.upper()
+			else:
+				bucket_location = bucket_location.lower()
 			body  = "<CreateBucketConfiguration><LocationConstraint>"
-			body += bucket_location.strip().upper()
+			body += bucket_location
 			body += "</LocationConstraint></CreateBucketConfiguration>"
 			debug("bucket_location: " + body)
 			self.check_bucket_name(bucket, dns_strict = True)
