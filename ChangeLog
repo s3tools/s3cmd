@@ -1,5 +1,10 @@
 2010-05-20  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* s3cmd, S3/ACL.py, S3/Config.py: Support for --acl-grant
+	  and --acl-revoke (contributed by Timothee Linden)
+
+2010-05-20  Michal Ludvig  <mludvig@logix.net.nz>
+
 	* S3/Exceptions.py, S3/S3.py: Some HTTP_400 exceptions 
 	  are retriable.
 

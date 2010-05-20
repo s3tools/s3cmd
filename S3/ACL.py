@@ -129,6 +129,56 @@ class ACL(object):
 	def appendGrantee(self, grantee):
 		self.grantees.append(grantee)
 
+	def hasGrant(self, name, permission):
+		name = name.lower()
+		permission = permission.upper()
+
+		for grantee in self.grantees:
+			if grantee.name.lower() == name:
+				if grantee.permission == "FULL_CONTROL":
+					return True
+				elif grantee.permission.upper() == permission:
+					return True
+
+		return False;
+
+	def grant(self, name, permission):
+		if self.hasGrant(name, permission):
+			return
+
+		name = name.lower()
+		permission = permission.upper()
+
+		if "ALL" == permission:
+			permission = "FULL_CONTROL"
+
+		if "FULL_CONTROL" == permission:
+			self.revoke(name, "ALL")
+
+		grantee = Grantee()
+		grantee.name = name
+		grantee.permission = permission
+
+		if  name.find('@') <= -1: # ultra lame attempt to differenciate emails id from canonical ids
+			grantee.xsi_type = "CanonicalUser"
+			grantee.tag = "ID"
+		else:
+			grantee.xsi_type = "AmazonCustomerByEmail"
+			grantee.tag = "EmailAddress"
+				
+		self.appendGrantee(grantee)
+
+
+	def revoke(self, name, permission):
+		name = name.lower()
+		permission = permission.upper()
+
+		if "ALL" == permission:
+			self.grantees = [g for g in self.grantees if not g.name.lower() == name]
+		else:
+			self.grantees = [g for g in self.grantees if not (g.name.lower() == name and g.permission.upper() ==  permission)]
+
+
 	def __str__(self):
 		tree = getTreeFromXml(ACL.EMPTY_ACL)
 		tree.attrib['xmlns'] = "http://s3.amazonaws.com/doc/2006-03-01/"
