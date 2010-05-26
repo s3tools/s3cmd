@@ -184,18 +184,18 @@ class S3(object):
 
 		while truncated:
 			response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params)
-			curList = _get_contents(response["data"])
-			curPrefixes = _get_common_prefixes(response["data"])
+			current_list = _get_contents(response["data"])
+			current_prefixes = _get_common_prefixes(response["data"])
 			truncated = _list_truncated(response["data"])
 			if truncated:
-				if curList:
-					uri_params['marker'] = self.urlencode_string( curList[-1]["Key"] )
+				if current_list:
+					uri_params['marker'] = self.urlencode_string(current_list[-1]["Key"])
 				else:
-					uri_params['marker'] = self.urlencode_string( curPrefixes[-1]["Prefix"] )
+					uri_params['marker'] = self.urlencode_string(current_prefixes[-1]["Prefix"])
 				debug("Listing continues after '%s'" % uri_params['marker'])
 
-			list += curList
-			prefixes += curPrefixes
+			list += current_list
+			prefixes += current_prefixes
 
 		response['list'] = list
 		response['common_prefixes'] = prefixes

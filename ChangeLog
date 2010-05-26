@@ -2,6 +2,7 @@
 
 	* S3/S3.py: Fix bucket listing for buckets with
 	  over 1000 prefixes. (contributed by Timothee Linden)
+	* S3/S3.py: Fixed code formating.
 
 2010-05-21  Michal Ludvig  <mludvig@logix.net.nz>
 
