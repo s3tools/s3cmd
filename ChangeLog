@@ -1,3 +1,8 @@
+2010-05-27  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* S3/S3.py: Fix bucket listing for buckets with
+	  over 1000 prefixes. (contributed by Timothee Linden)
+
 2010-05-21  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* s3cmd, S3/S3.py: Added support for bucket locations

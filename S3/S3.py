@@ -178,15 +178,25 @@ class S3(object):
 			return getListFromXml(data, "CommonPrefixes")
 
 		uri_params = {}
-		response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params)
-		list = _get_contents(response["data"])
-		prefixes = _get_common_prefixes(response["data"])
-		while _list_truncated(response["data"]):
-			uri_params['marker'] = self.urlencode_string(list[-1]["Key"])
-			debug("Listing continues after '%s'" % uri_params['marker'])
+		truncated = True
+		list = []
+		prefixes = []
+
+		while truncated:
 			response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params)
-			list += _get_contents(response["data"])
-			prefixes += _get_common_prefixes(response["data"])
+			curList = _get_contents(response["data"])
+			curPrefixes = _get_common_prefixes(response["data"])
+			truncated = _list_truncated(response["data"])
+			if truncated:
+				if curList:
+					uri_params['marker'] = self.urlencode_string( curList[-1]["Key"] )
+				else:
+					uri_params['marker'] = self.urlencode_string( curPrefixes[-1]["Prefix"] )
+				debug("Listing continues after '%s'" % uri_params['marker'])
+
+			list += curList
+			prefixes += curPrefixes
+
 		response['list'] = list
 		response['common_prefixes'] = prefixes
 		return response
