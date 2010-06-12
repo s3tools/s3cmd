@@ -1,5 +1,10 @@
 2010-06-13  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* s3cmd, S3/CloudFront.py: Both [accesslog] and [cfmodify] 
+	  access logging can now be disabled with --no-access-logging
+
+2010-06-13  Michal Ludvig  <mludvig@logix.net.nz>
+
 	* S3/CloudFront.py: Allow s3:// URI as well as cf:// URI 
 	  for most CloudFront-related commands.
 

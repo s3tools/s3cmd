@@ -1167,14 +1167,14 @@ def cmd_accesslog(args):
 	bucket_uri = S3Uri(args.pop())
 	if bucket_uri.object():
 		raise ParameterError("Only bucket name is required for [accesslog] command")
-	if cfg.enable == True:
+	if cfg.log_target_prefix == False:
+		accesslog, response = s3.set_accesslog(bucket_uri, enable = False)
+	elif cfg.log_target_prefix:
 		log_target_prefix_uri = S3Uri(cfg.log_target_prefix)
 		if log_target_prefix_uri.type != "s3":
 			raise ParameterError("--log-target-prefix must be a S3 URI")
 		accesslog, response = s3.set_accesslog(bucket_uri, enable = True, log_target_prefix_uri = log_target_prefix_uri, acl_public = cfg.acl_public)
-	elif cfg.enable == False:
-		accesslog, response = s3.set_accesslog(bucket_uri, enable = False)
-	else:	# cfg.enable == None
+	else:	# cfg.log_target_prefix == None
 		accesslog = s3.get_accesslog(bucket_uri)
 
 	output(u"Access logging for: %s" % bucket_uri.uri())
@@ -1599,7 +1599,8 @@ def main():
 	optparser.add_option(      "--bucket-location", dest="bucket_location", help="Datacentre to create bucket in. As of now the datacenters are: US (default), EU, us-west-1, and ap-southeast-1")
 	optparser.add_option(      "--reduced-redundancy", "--rr", dest="reduced_redundancy", action="store_true", help="Store object with 'Reduced redundancy'. Lower per-GB price. [put, cp, mv]")
 
-	optparser.add_option(      "--log-target-prefix", dest="log_target_prefix", help="Target prefix for access logs (S3 URI) (for [cfmodify] and [accesslog] commands)")
+	optparser.add_option(      "--access-logging-target-prefix", dest="log_target_prefix", help="Target prefix for access logs (S3 URI) (for [cfmodify] and [accesslog] commands)")
+	optparser.add_option(      "--no-access-logging", dest="log_target_prefix", action="store_false", help="Disable access logging (for [cfmodify] and [accesslog] commands)")
 
 	optparser.add_option("-m", "--mime-type", dest="default_mime_type", type="mimetype", metavar="MIME/TYPE", help="Default MIME-type to be set for objects stored.")
 	optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")
@@ -1614,8 +1615,8 @@ def main():
 
 	optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default on TTY).")
 	optparser.add_option(      "--no-progress", dest="progress_meter", action="store_false", help="Don't display progress meter (default on non-TTY).")
-	optparser.add_option(      "--enable", dest="enable", action="store_true", help="Enable given CloudFront distribution (for [cfmodify] command) or access logging (for [accesslog] command)")
-	optparser.add_option(      "--disable", dest="enable", action="store_false", help="Enable given CloudFront distribution (only for [cfmodify] command) or access logging (for [accesslog] command)")
+	optparser.add_option(      "--enable", dest="enable", action="store_true", help="Enable given CloudFront distribution (only for [cfmodify] command)")
+	optparser.add_option(      "--disable", dest="enable", action="store_false", help="Enable given CloudFront distribution (only for [cfmodify] command)")
 	optparser.add_option(      "--cf-add-cname", dest="cf_cnames_add", action="append", metavar="CNAME", help="Add given CNAME to a CloudFront distribution (only for [cfcreate] and [cfmodify] commands)")
 	optparser.add_option(      "--cf-remove-cname", dest="cf_cnames_remove", action="append", metavar="CNAME", help="Remove given CNAME from a CloudFront distribution (only for [cfmodify] command)")
 	optparser.add_option(      "--cf-comment", dest="cf_comment", action="store", metavar="COMMENT", help="Set COMMENT for a given CloudFront distribution (only for [cfcreate] and [cfmodify] commands)")

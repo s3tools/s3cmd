@@ -213,7 +213,7 @@ class CloudFront(object):
 		for cname in cnames_add:
 			if dist_config.info['CNAME'].count(cname) == 0:
 				dist_config.info['CNAME'].append(cname)
-		if logging != None:
+		if logging:
 			dist_config.info['Logging'] = S3UriS3(logging)
 		request_body = str(dist_config)
 		debug("CreateDistribution(): request_body: %s" % request_body)
@@ -240,7 +240,10 @@ class CloudFront(object):
 			while dc.info['CNAME'].count(cname) > 0:
 				dc.info['CNAME'].remove(cname)
 		if logging != None:
-			dc.info['Logging'] = S3UriS3(logging)
+			if logging == False:
+				dc.info['Logging'] = False
+			else:
+				dc.info['Logging'] = S3UriS3(logging)
 		response = self.SetDistConfig(cfuri, dc, response['headers']['etag'])
 		return response
 		
