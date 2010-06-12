@@ -4,6 +4,8 @@ s3cmd 0.9.9.92 -  ???
 * Added access logging for CloudFront distributions 
   using [cfmodify --log]
 * Added --acl-grant and --acl-revoke (by Timothee Linden).
+* Allow s3:// URI as well as cf:// URI as a distribution
+  name for most CloudFront related commands.
 
 s3cmd 0.9.9.91 -  2009-10-08
 ==============

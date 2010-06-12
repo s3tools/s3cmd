@@ -1,3 +1,8 @@
+2010-06-13  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* S3/CloudFront.py: Allow s3:// URI as well as cf:// URI 
+	  for most CloudFront-related commands.
+
 2010-06-12  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* s3cmd, S3/CloudFront.py, S3/Config.py: Support access 

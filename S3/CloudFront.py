@@ -395,6 +395,36 @@ class Cmd(object):
 			setattr(Cmd.options, option, value)
 
 	options = Options()
+	dist_list = None
+
+	@staticmethod
+	def _get_dist_name_for_bucket(uri):
+		cf = CloudFront(Config())
+		debug("_get_dist_name_for_bucket(%r)" % uri)
+		assert(uri.type == "s3")
+		if Cmd.dist_list is None:
+			response = cf.GetList()
+			Cmd.dist_list = {}
+			for d in response['dist_list'].dist_summs:
+				Cmd.dist_list[getBucketFromHostname(d.info['Origin'])[0]] = d.uri()
+			debug("dist_list: %s" % Cmd.dist_list)
+		return Cmd.dist_list[uri.bucket()]
+
+	@staticmethod
+	def _parse_args(args):
+		cfuris = []
+		for arg in args:
+			uri = S3Uri(arg)
+			if uri.type == 's3':
+				try:
+					uri = Cmd._get_dist_name_for_bucket(uri)
+				except Exception, e:
+					debug(e)
+					raise ParameterError("Unable to translate S3 URI to CloudFront distribution name: %s" % uri)
+			if uri.type != 'cf':
+				raise ParameterError("CloudFront URI required instead of: %s" % arg)
+			cfuris.append(uri)
+		return cfuris
 
 	@staticmethod
 	def info(args):
@@ -409,11 +439,7 @@ class Cmd(object):
 				pretty_output("Enabled", d.info['Enabled'])
 				output("")
 		else:
-			cfuris = []
-			for arg in args:
-				cfuris.append(S3Uri(arg))
-				if cfuris[-1].type != 'cf':
-					raise ParameterError("CloudFront URI required instead of: %s" % arg)
+			cfuris = Cmd._parse_args(args)
 			for cfuri in cfuris:
 				response = cf.GetDistInfo(cfuri)
 				d = response['distribution']
@@ -463,11 +489,7 @@ class Cmd(object):
 	@staticmethod
 	def delete(args):
 		cf = CloudFront(Config())
-		cfuris = []
-		for arg in args:
-			cfuris.append(S3Uri(arg))
-			if cfuris[-1].type != 'cf':
-				raise ParameterError("CloudFront URI required instead of: %s" % arg)
+		cfuris = Cmd._parse_args(args)
 		for cfuri in cfuris:
 			response = cf.DeleteDistribution(cfuri)
 			if response['status'] >= 400:
@@ -477,12 +499,12 @@ class Cmd(object):
 	@staticmethod
 	def modify(args):
 		cf = CloudFront(Config())
-		cfuri = S3Uri(args.pop(0))
-		if cfuri.type != 'cf':
-			raise ParameterError("CloudFront URI required instead of: %s" % arg)
-		if len(args):
+		if len(args) > 1:
 			raise ParameterError("Too many parameters. Modify one Distribution at a time.")
-
+		try:
+			cfuri = Cmd._parse_args(args)[0]
+		except IndexError, e:
+			raise ParameterError("No valid Distribution URI found.")
 		response = cf.ModifyDistribution(cfuri,
 		                                 cnames_add = Cmd.options.cf_cnames_add,
 		                                 cnames_remove = Cmd.options.cf_cnames_remove,
