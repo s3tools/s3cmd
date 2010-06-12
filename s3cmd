@@ -1599,7 +1599,7 @@ def main():
 	optparser.add_option(      "--bucket-location", dest="bucket_location", help="Datacentre to create bucket in. As of now the datacenters are: US (default), EU, us-west-1, and ap-southeast-1")
 	optparser.add_option(      "--reduced-redundancy", "--rr", dest="reduced_redundancy", action="store_true", help="Store object with 'Reduced redundancy'. Lower per-GB price. [put, cp, mv]")
 
-	optparser.add_option(      "--log-target-prefix", dest="log_target_prefix", help="Target prefix for access logs (S3 URI)")
+	optparser.add_option(      "--log-target-prefix", dest="log_target_prefix", help="Target prefix for access logs (S3 URI) (for [cfmodify] and [accesslog] commands)")
 
 	optparser.add_option("-m", "--mime-type", dest="default_mime_type", type="mimetype", metavar="MIME/TYPE", help="Default MIME-type to be set for objects stored.")
 	optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")
@@ -1718,6 +1718,9 @@ def main():
 
 	## CloudFront's cf_enable and Config's enable share the same --enable switch
 	options.cf_enable = options.enable
+
+	## CloudFront's cf_logging and Config's log_target_prefix share the same --log-target-prefix switch
+	options.cf_logging = options.log_target_prefix
 
 	## Update CloudFront options if some were set
 	for option in CfCmd.options.option_list():

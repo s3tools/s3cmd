@@ -1,3 +1,11 @@
+2010-06-12  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* s3cmd, S3/CloudFront.py, S3/Config.py: Support access 
+	  logging for CloudFront distributions.
+	* S3/S3.py, S3/Utils.py: Moved some functions to Utils.py
+	  to make them available to CloudFront.py
+	* NEWS: Document the above.
+
 2010-05-27  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* S3/S3.py: Fix bucket listing for buckets with
