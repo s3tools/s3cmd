@@ -32,7 +32,7 @@ class Grantee(object):
 		return self.tag == "URI" and self.name == Grantee.ALL_USERS_URI
 	
 	def isAnonRead(self):
-		return self.isAllUsers and self.permission == "READ"
+		return self.isAllUsers() and (self.permission == "READ" or self.permission == "FULL_CONTROL")
 	
 	def getElement(self):
 		el = ET.Element("Grant")

@@ -1,3 +1,8 @@
+2010-06-29  Timothee Groleau <kde@timotheegroleau.com>
+
+	* S3/ACL.py: Fix isAnonRead method on Grantees
+	* ChangeLog: Update name of contributor for Timothee Groleau
+
 2010-06-13  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* s3cmd, S3/CloudFront.py: Both [accesslog] and [cfmodify] 
@@ -19,7 +24,7 @@
 2010-05-27  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* S3/S3.py: Fix bucket listing for buckets with
-	  over 1000 prefixes. (contributed by Timothee Linden)
+	  over 1000 prefixes. (contributed by Timothee Groleau)
 	* S3/S3.py: Fixed code formating.
 
 2010-05-21  Michal Ludvig  <mludvig@logix.net.nz>
@@ -35,7 +40,7 @@
 2010-05-20  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* s3cmd, S3/ACL.py, S3/Config.py: Support for --acl-grant
-	  and --acl-revoke (contributed by Timothee Linden)
+	  and --acl-revoke (contributed by Timothee Groleau)
 	* s3cmd: Couple of fixes on top of the above commit.
 	* s3cmd: Pre-parse ACL parameters in OptionS3ACL()
 
