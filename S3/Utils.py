@@ -324,34 +324,34 @@ def check_bucket_name(bucket, dns_strict = True):
 	if dns_strict:
 		invalid = re.search("([^a-z0-9\.-])", bucket)
 		if invalid:
-			raise ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: lowercase us-ascii letters (a-z), digits (0-9), dot (.) and hyphen (-)." % (bucket, invalid.groups()[0]))
+			raise Exceptions.ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: lowercase us-ascii letters (a-z), digits (0-9), dot (.) and hyphen (-)." % (bucket, invalid.groups()[0]))
 	else:
 		invalid = re.search("([^A-Za-z0-9\._-])", bucket)
 		if invalid:
-			raise ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: us-ascii letters (a-z, A-Z), digits (0-9), dot (.), hyphen (-) and underscore (_)." % (bucket, invalid.groups()[0]))
+			raise Exceptions.ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: us-ascii letters (a-z, A-Z), digits (0-9), dot (.), hyphen (-) and underscore (_)." % (bucket, invalid.groups()[0]))
 
 	if len(bucket) < 3:
-		raise ParameterError("Bucket name '%s' is too short (min 3 characters)" % bucket)
+		raise Exceptions.ParameterError("Bucket name '%s' is too short (min 3 characters)" % bucket)
 	if len(bucket) > 255:
-		raise ParameterError("Bucket name '%s' is too long (max 255 characters)" % bucket)
+		raise Exceptions.ParameterError("Bucket name '%s' is too long (max 255 characters)" % bucket)
 	if dns_strict:
 		if len(bucket) > 63:
-			raise ParameterError("Bucket name '%s' is too long (max 63 characters)" % bucket)
+			raise Exceptions.ParameterError("Bucket name '%s' is too long (max 63 characters)" % bucket)
 		if re.search("-\.", bucket):
-			raise ParameterError("Bucket name '%s' must not contain sequence '-.' for DNS compatibility" % bucket)
+			raise Exceptions.ParameterError("Bucket name '%s' must not contain sequence '-.' for DNS compatibility" % bucket)
 		if re.search("\.\.", bucket):
-			raise ParameterError("Bucket name '%s' must not contain sequence '..' for DNS compatibility" % bucket)
+			raise Exceptions.ParameterError("Bucket name '%s' must not contain sequence '..' for DNS compatibility" % bucket)
 		if not re.search("^[0-9a-z]", bucket):
-			raise ParameterError("Bucket name '%s' must start with a letter or a digit" % bucket)
+			raise Exceptions.ParameterError("Bucket name '%s' must start with a letter or a digit" % bucket)
 		if not re.search("[0-9a-z]$", bucket):
-			raise ParameterError("Bucket name '%s' must end with a letter or a digit" % bucket)
+			raise Exceptions.ParameterError("Bucket name '%s' must end with a letter or a digit" % bucket)
 	return True
 __all__.append("check_bucket_name")
 
 def check_bucket_name_dns_conformity(bucket):
 	try:
 		return check_bucket_name(bucket, dns_strict = True)
-	except ParameterError:
+	except Exceptions.ParameterError:
 		return False
 __all__.append("check_bucket_name_dns_conformity")
 

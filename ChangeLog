@@ -1,3 +1,8 @@
+2010-07-08  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* S3/Utils.py, S3/S3Uri.py: Fixed names after moving 
+	  functions between modules.
+
 2010-06-29  Timothee Groleau <kde@timotheegroleau.com>
 
 	* S3/ACL.py: Fix isAnonRead method on Grantees
