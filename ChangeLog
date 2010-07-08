@@ -1,5 +1,12 @@
 2010-07-08  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* run-tests.py, testsuite/crappy-file-name.tar.gz:
+	  Updated testsuite, work around a problem with [s3cmd cp]
+	  when the source file contains '?' or '\x7f' 
+	  (where the inability to copy '?' is especially annoying).
+
+2010-07-08  Michal Ludvig  <mludvig@logix.net.nz>
+
 	* S3/Utils.py, S3/S3Uri.py: Fixed names after moving 
 	  functions between modules.
 

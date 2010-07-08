@@ -53,6 +53,11 @@ if have_encoding:
 else:
 	print encoding + " specific files not found."
 
+if not os.path.isdir('testsuite/crappy-file-name'):
+	os.system("tar xvz -C testsuite -f testsuite/crappy-file-name.tar.gz")
+	# TODO: also unpack if the tarball is newer than the directory timestamp
+	#       for instance when a new version was pulled from SVN.
+
 def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = []):
 	def command_output():
 		print "----"
@@ -223,8 +228,8 @@ test_s3cmd("Buckets list", ["ls"],
 
 ## ====== Sync to S3
 test_s3cmd("Sync to S3", ['sync', 'testsuite/', 's3://s3cmd-autotest-1/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings' ],
-	must_find = [ "WARNING: 32 non-printable characters replaced in: crappy-file-name/non-printables ^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_^? +-[\]^<>%%\"'#{}`&?.end",
-	              "stored as 's3://s3cmd-autotest-1/xyz/crappy-file-name/non-printables ^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_^? +-[\\]^<>%%\"'#{}`&?.end'" ],
+	must_find = [ "WARNING: 32 non-printable characters replaced in: crappy-file-name/too-crappy ^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_^? +-[\]^<>%%\"'#{}`&?.end",
+	              "stored as 's3://s3cmd-autotest-1/xyz/crappy-file-name/too-crappy ^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_^? +-[\\]^<>%%\"'#{}`&?.end'" ],
 	must_not_find_re = [ "\.svn/", "\.png$" ])
 
 if have_encoding:
@@ -305,7 +310,7 @@ if have_wget:
 
 ## ====== Sync more to S3
 test_s3cmd("Sync more to S3", ['sync', 'testsuite/', 's3://s3cmd-autotest-1/xyz/', '--no-encrypt' ],
-	must_find = [ "File 'testsuite/.svn/format' stored as 's3://s3cmd-autotest-1/xyz/.svn/format' " ])
+	must_find = [ "File 'testsuite/.svn/entries' stored as 's3://s3cmd-autotest-1/xyz/.svn/entries' " ])
 
 
 ## ====== Rename within S3
@@ -324,7 +329,7 @@ test_s3cmd("Rename (NoSuchKey)", ['mv', 's3://s3cmd-autotest-1/xyz/etc/logo.png'
 test_s3cmd("Sync more from S3", ['sync', '--delete-removed', 's3://s3cmd-autotest-1/xyz', 'testsuite-out'],
 	must_find = [ "deleted: testsuite-out/logo.png",
 	              "File 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG' stored as 'testsuite-out/xyz/etc2/Logo.PNG' (22059 bytes", 
-	              "File 's3://s3cmd-autotest-1/xyz/.svn/format' stored as 'testsuite-out/xyz/.svn/format' " ],
+	              "File 's3://s3cmd-autotest-1/xyz/.svn/entries' stored as 'testsuite-out/xyz/.svn/entries' " ],
 	must_not_find_re = [ "not-deleted.*etc/logo.png" ])
 
 
@@ -355,7 +360,7 @@ test_s3cmd("Copy between buckets", ['cp', 's3://s3cmd-autotest-1/xyz/etc2/Logo.P
 	must_find = [ "File s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG copied to s3://s3cmd-Autotest-3/xyz/etc2/logo.png" ])
 
 ## ====== Recursive copy
-test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', 's3://s3cmd-autotest-1/xyz/', 's3://s3cmd-autotest-2/copy', '--exclude', '.svn/*'],
+test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', 's3://s3cmd-autotest-1/xyz/', 's3://s3cmd-autotest-2/copy', '--exclude', '.svn/*', '--exclude', 'too-crappy*'],
 	must_find = [ "File s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG copied to s3://s3cmd-autotest-2/copy/etc2/Logo.PNG",
 	              "File s3://s3cmd-autotest-1/xyz/blahBlah/Blah.txt copied to s3://s3cmd-autotest-2/copy/blahBlah/Blah.txt",
 	              "File s3://s3cmd-autotest-1/xyz/blahBlah/blah.txt copied to s3://s3cmd-autotest-2/copy/blahBlah/blah.txt" ],
@@ -392,7 +397,7 @@ test_s3cmd("Simple delete", ['del', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG'],
 ## ====== Recursive delete
 test_s3cmd("Recursive delete", ['del', '--recursive', '--exclude', 'Atomic*', 's3://s3cmd-autotest-1/xyz/etc'],
 	must_find = [ "File s3://s3cmd-autotest-1/xyz/etc/TypeRa.ttf deleted" ],
-	must_find_re = [ "File .*\.svn/format deleted" ],
+	must_find_re = [ "File .*\.svn/entries deleted" ],
 	must_not_find = [ "AtomicClockRadio.ttf" ])
 
 ## ====== Recursive delete all
