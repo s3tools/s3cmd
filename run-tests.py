@@ -334,7 +334,9 @@ if have_wget:
 
 ## ====== Sync more to S3
 test_s3cmd("Sync more to S3", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt' ],
-	must_find = [ "File 'testsuite/.svn/entries' stored as '%s/xyz/.svn/entries' " % pbucket(1) ])
+	must_find = [ "File 'testsuite/.svn/entries' stored as '%s/xyz/.svn/entries' " % pbucket(1) ],
+	must_not_find_re = [ "linked.png"])
+           
 
 
 ## ====== Rename within S3
@@ -438,3 +440,7 @@ test_s3cmd("Remove empty bucket", ['rb', pbucket(1)],
 test_s3cmd("Remove remaining buckets", ['rb', '--recursive', pbucket(2), pbucket(3)],
 	must_find = [ "Bucket '%s/' removed" % pbucket(2),
 		      "Bucket '%s/' removed" % pbucket(3) ])
+
+## ====== Sync symbolic links
+test_s3cmd("Sync symbolic links", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt' ],
+	must_find_re = [ "linked.png"])
