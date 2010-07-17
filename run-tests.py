@@ -335,7 +335,7 @@ if have_wget:
 ## ====== Sync more to S3
 test_s3cmd("Sync more to S3", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt' ],
 	must_find = [ "File 'testsuite/.svn/entries' stored as '%s/xyz/.svn/entries' " % pbucket(1) ],
-	must_not_find_re = [ "linked.png"])
+	must_not_find = [ "File 'testsuite/etc/linked.png' stored as '%s/xyz/etc/linked.png" % pbucket(1) ])
            
 
 
@@ -392,6 +392,10 @@ test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % p
 	              "File %s/xyz/blahBlah/blah.txt copied to %s/copy/blahBlah/blah.txt" % (pbucket(1), pbucket(2)) ],
 	must_not_find = [ ".svn" ])
 
+## ====== Sync symbolic links
+test_s3cmd("Sync symbolic links", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--follow-symlinks' ],
+	must_find_re = [ "linked.png"])
+
 ## ====== Verify ACL and MIME type
 test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
 	must_find_re = [ "MIME type:.*image/png", 
@@ -440,7 +444,3 @@ test_s3cmd("Remove empty bucket", ['rb', pbucket(1)],
 test_s3cmd("Remove remaining buckets", ['rb', '--recursive', pbucket(2), pbucket(3)],
 	must_find = [ "Bucket '%s/' removed" % pbucket(2),
 		      "Bucket '%s/' removed" % pbucket(3) ])
-
-## ====== Sync symbolic links
-test_s3cmd("Sync symbolic links", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt' ],
-	must_find_re = [ "linked.png"])

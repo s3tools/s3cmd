@@ -635,9 +635,8 @@ def _get_filelist_local(local_uri):
 			if not os.path.isfile(full_name):
 				continue
 			if os.path.islink(full_name):
-				## Synchronize symlinks... one day
-				## for now skip over
-				continue
+                                if not cfg.follow_symlinks:
+                                        continue
 			relative_file = unicodise(os.path.join(rel_root, f))
 			if os.path.sep != "/":
 				# Convert non-unix dir separators to '/'
@@ -1623,6 +1622,7 @@ def main():
 	optparser.add_option("-v", "--verbose", dest="verbosity", action="store_const", const=logging.INFO, help="Enable verbose output.")
 	optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output.")
 	optparser.add_option(      "--version", dest="show_version", action="store_true", help="Show s3cmd version (%s) and exit." % (PkgInfo.version))
+	optparser.add_option("-F", "--follow-symlinks", dest="follow_symlinks", action="store_true", default=False, help="Follow symbolic links as if they are regular files")
 
 	optparser.set_usage(optparser.usage + " COMMAND [parameters]")
 	optparser.set_description('S3cmd is a tool for managing objects in '+
@@ -1756,6 +1756,9 @@ def main():
 	patterns_list, patterns_textual = process_patterns(options.rinclude, options.rinclude_from, is_glob = False, option_txt = "rinclude")
 	cfg.include.extend(patterns_list)
 	cfg.debug_include.update(patterns_textual)
+
+        ## Process --follow-symlinks
+	cfg.update_option("follow_symlinks", options.follow_symlinks)
 
 	if cfg.encrypt and cfg.gpg_passphrase == "":
 		error(u"Encryption requested but no passphrase set in config file.")
