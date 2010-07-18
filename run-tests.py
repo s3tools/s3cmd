@@ -397,8 +397,7 @@ test_s3cmd("Put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/x
 
 ## ====== Sync symbolic links
 test_s3cmd("Sync symbolic links", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--follow-symlinks' ],
-	must_find = ["File 'testsuite/etc/linked.png' stored as '%s/xyz/etc/linked.png'" % pbucket(1),
-                     "File 'testsuite/etc/more/give-me-more.txt' stored as '%s/xyz/etc/more/give-me-more.txt'" % pbucket(1)],
+	must_find = ["File 'testsuite/etc/linked.png' stored as '%s/xyz/etc/linked.png'" % pbucket(1)],
            # Don't want to recursively copy linked directories!
            must_not_find_re = ["etc/more/linked-dir/more/give-me-more.txt",
                                "etc/brokenlink.png"],
