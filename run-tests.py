@@ -12,14 +12,6 @@ import re
 from subprocess import Popen, PIPE, STDOUT
 import locale
 
-# Set up options
-# from optparse import OptionParser
-# optparser = OptionParser()
-# optparser.add_option("-p", "--bucket-prefix", dest="bucket_prefix", default="",
-#                      help="Prefix for names of test buckets (to make them unique)")
-# (options, args) = optparser.parse_args()
-
-
 count_pass = 0
 count_fail = 0
 count_skip = 0
@@ -393,16 +385,21 @@ test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % p
 	must_not_find = [ ".svn" ])
 
 ## ====== Don't Put symbolic link
-test_s3cmd("Put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),],
+test_s3cmd("Don't put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),],
 	must_not_find_re = [ "linked1.png"])
 
 ## ====== Put symbolic link
 test_s3cmd("Put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),'--follow-symlinks' ],
-	must_find_re = [ "linked1.png"])
+           must_find = [ "File 'testsuite/etc/linked1.png' stored as '%s/xyz/linked1.png'" % pbucket(1)])
 
 ## ====== Sync symbolic links
 test_s3cmd("Sync symbolic links", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--follow-symlinks' ],
-	must_find_re = [ "linked.png"])
+	must_find = ["File 'testsuite/etc/linked.png' stored as '%s/xyz/etc/linked.png'" % pbucket(1),
+                     "File 'testsuite/etc/more/give-me-more.txt' stored as '%s/xyz/etc/more/give-me-more.txt'" % pbucket(1)],
+           # Don't want to recursively copy linked directories!
+           must_not_find_re = ["etc/more/linked-dir/more/give-me-more.txt",
+                               "etc/brokenlink.png"],
+           )
 
 ## ====== Verify ACL and MIME type
 test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
