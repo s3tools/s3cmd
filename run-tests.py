@@ -174,6 +174,9 @@ bucket_prefix = ''
 argv = sys.argv[1:]
 while argv:
 	arg = argv.pop(0)
+        if arg.startswith('--bucket-prefix='):
+                print "Usage: '--bucket-prefix PREFIX', not '--bucket-prefix=PREFIX'"
+                sys.exit(0)
 	if arg in ("-h", "--help"):
 		print "%s A B K..O -N" % sys.argv[0]
 		print "Run tests number A, B and K through to O, except for N"
