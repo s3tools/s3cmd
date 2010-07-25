@@ -39,19 +39,22 @@ def check_args_type(args, type, verbose_type):
 def fswalk_follow_symlinks(path):
         '''
         Walk filesystem, following symbolic links (but without recursion), on python2.4 and later
+
+        If a recursive directory link is detected, emit a warning and skip.
         '''
         assert os.path.isdir(path) # only designed for directory argument
         walkdirs = set([path])
-        symlink_targets = set()
+        targets = set()
         for dirpath, dirnames, filenames in os.walk(path):
                 for dirname in dirnames:
-                        if os.path.islink(dirname):
-                                target = os.path.realpath(dirname)
-                                if target in symlink_targets:
-                                        warning(u"Skipping recursively symlinked directory %s" % dirname)
+                        current = os.path.join(dirpath, dirname)
+                        target = os.path.realpath(current)
+                        if os.path.islink(current):
+                                if target in targets:
+                                        warning("Skipping recursively symlinked directory %s" % dirname)
                                 else:
-                                        walkdirs.add(dirname)
-                                        symlink_targets.add(target)
+                                        walkdirs.add(current)
+                        targets.add(target)
         for walkdir in walkdirs:
                 for value in os.walk(walkdir):
                         yield value
