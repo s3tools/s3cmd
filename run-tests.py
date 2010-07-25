@@ -210,7 +210,10 @@ if not run_tests:
 # helper functions for generating bucket names
 def bucket(tail):
         '''Test bucket name'''
-        return '%ss3cmd-autotest-%s' % (bucket_prefix, tail)
+        label = 'autotest'
+        if str(tail) == '3':
+                label = 'Autotest'
+        return '%ss3cmd-%s-%s' % (bucket_prefix, label, tail)
 def pbucket(tail):
         '''Like bucket(), but prepends "s3://" for you'''
         return 's3://' + bucket(tail)
@@ -242,7 +245,7 @@ test_s3cmd("Invalid bucket name", ["mb", "--bucket-location=EU", pbucket('EU')],
 
 ## ====== Buckets list
 test_s3cmd("Buckets list", ["ls"], 
-	must_find = [ "autotest-1", "autotest-2", "autotest-3" ], must_not_find_re = "autotest-EU")
+	must_find = [ "autotest-1", "autotest-2", "Autotest-3" ], must_not_find_re = "autotest-EU")
 
 
 ## ====== Sync to S3
