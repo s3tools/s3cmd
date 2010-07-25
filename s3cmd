@@ -36,6 +36,31 @@ def check_args_type(args, type, verbose_type):
 		if S3Uri(arg).type != type:
 			raise ParameterError("Expecting %s instead of '%s'" % (verbose_type, arg))
 
+def fswalk_follow_symlinks(path):
+        '''
+        Walk filesystem, following symbolic links (but without recursion), on python2.4 and later
+        '''
+        assert os.path.isdir(path) # only designed for directory argument
+        walkdirs = set([path])
+        symlink_targets = set()
+        for dirpath, dirnames, filenames in os.walk(path):
+                for dirname in dirnames:
+                        if os.path.islink(dirname):
+                                target = os.path.realpath(dirname)
+                                if target in symlink_targets:
+                                        warning(u"Skipping recursively symlinked directory %s" % dirname)
+                                else:
+                                        walkdirs.add(dirname)
+                                        symlink_targets.add(target)
+        for walkdir in walkdirs:
+                for value in os.walk(walkdir):
+                        yield value
+
+def fswalk(path, follow_symlinks):
+        if follow_symlinks:
+                return fswalk_follow_symlinks(path)
+        return os.walk(path)
+
 def cmd_du(args):
 	s3 = S3(Config())
 	if len(args) > 0:
@@ -620,7 +645,7 @@ def _get_filelist_local(local_uri):
 	if local_uri.isdir():
 		local_base = deunicodise(local_uri.basename())
 		local_path = deunicodise(local_uri.path())
-		filelist = os.walk(local_path)
+		filelist = fswalk(local_path, cfg.follow_symlinks)
 		single_file = False
 	else:
 		local_base = ""
