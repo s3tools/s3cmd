@@ -36,6 +36,41 @@ def check_args_type(args, type, verbose_type):
 		if S3Uri(arg).type != type:
 			raise ParameterError("Expecting %s instead of '%s'" % (verbose_type, arg))
 
+def _fswalk_follow_symlinks(path):
+        '''
+        Walk filesystem, following symbolic links (but without recursion), on python2.4 and later
+
+        If a recursive directory link is detected, emit a warning and skip.
+        '''
+        assert os.path.isdir(path) # only designed for directory argument
+        walkdirs = set([path])
+        targets = set()
+        for dirpath, dirnames, filenames in os.walk(path):
+                for dirname in dirnames:
+                        current = os.path.join(dirpath, dirname)
+                        target = os.path.realpath(current)
+                        if os.path.islink(current):
+                                if target in targets:
+                                        warning("Skipping recursively symlinked directory %s" % dirname)
+                                else:
+                                        walkdirs.add(current)
+                        targets.add(target)
+        for walkdir in walkdirs:
+                for value in os.walk(walkdir):
+                        yield value
+
+def fswalk(path, follow_symlinks):
+        '''
+        Directory tree generator
+
+        path (str) is the root of the directory tree to walk
+
+        follow_symlinks (bool) indicates whether to descend into symbolically linked directories
+        '''
+        if follow_symlinks:
+                return _fswalk_follow_symlinks(path)
+        return os.walk(path)
+
 def cmd_du(args):
 	s3 = S3(Config())
 	if len(args) > 0:
@@ -620,7 +655,7 @@ def _get_filelist_local(local_uri):
 	if local_uri.isdir():
 		local_base = deunicodise(local_uri.basename())
 		local_path = deunicodise(local_uri.path())
-		filelist = os.walk(local_path)
+		filelist = fswalk(local_path, cfg.follow_symlinks)
 		single_file = False
 	else:
 		local_base = ""
@@ -635,9 +670,8 @@ def _get_filelist_local(local_uri):
 			if not os.path.isfile(full_name):
 				continue
 			if os.path.islink(full_name):
-				## Synchronize symlinks... one day
-				## for now skip over
-				continue
+                                if not cfg.follow_symlinks:
+                                        continue
 			relative_file = unicodise(os.path.join(rel_root, f))
 			if os.path.sep != "/":
 				# Convert non-unix dir separators to '/'
@@ -1623,6 +1657,7 @@ def main():
 	optparser.add_option("-v", "--verbose", dest="verbosity", action="store_const", const=logging.INFO, help="Enable verbose output.")
 	optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output.")
 	optparser.add_option(      "--version", dest="show_version", action="store_true", help="Show s3cmd version (%s) and exit." % (PkgInfo.version))
+	optparser.add_option("-F", "--follow-symlinks", dest="follow_symlinks", action="store_true", default=False, help="Follow symbolic links as if they are regular files")
 
 	optparser.set_usage(optparser.usage + " COMMAND [parameters]")
 	optparser.set_description('S3cmd is a tool for managing objects in '+
@@ -1756,6 +1791,9 @@ def main():
 	patterns_list, patterns_textual = process_patterns(options.rinclude, options.rinclude_from, is_glob = False, option_txt = "rinclude")
 	cfg.include.extend(patterns_list)
 	cfg.debug_include.update(patterns_textual)
+
+        ## Process --follow-symlinks
+	cfg.update_option("follow_symlinks", options.follow_symlinks)
 
 	if cfg.encrypt and cfg.gpg_passphrase == "":
 		error(u"Encryption requested but no passphrase set in config file.")

@@ -138,6 +138,10 @@ Continue getting a partially downloaded file (only for \fIget\fR command). This 
 \fB\-\-skip\-existing\fR
 Skip over files that exist at the destination (only for \fIget\fR and \fIsync\fR commands).
 .TP
+\fB\-\-follow\-symlinks\fR
+Treat local symbolic links as if they are regular files,
+copying their targets to the remote. (Only for \fIput\fR and \fIsync\fR commands).
+.TP
 \fB\-m\fR MIME/TYPE, \fB\-\-mime\-type\fR=MIME/TYPE
 Default MIME\-type to be set for objects stored.
 .TP

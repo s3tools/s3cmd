@@ -74,6 +74,7 @@ class Config(object):
 	urlencoding_mode = "normal"
 	log_target_prefix = ""
 	reduced_redundancy = False
+        follow_symlinks=False
 
 	## Creating a singleton
 	def __new__(self, configfile = None):

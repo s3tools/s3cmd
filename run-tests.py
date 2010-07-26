@@ -48,7 +48,7 @@ if not have_encoding and os.path.isfile('testsuite/encodings/%s.tar.gz' % encodi
 	have_encoding = os.path.isdir('testsuite/encodings/' + encoding)
 
 if have_encoding:
-	enc_base_remote = "s3://s3cmd-autotest-1/xyz/%s/" % encoding
+	#enc_base_remote = "%s/xyz/%s/" % (pbucket(1), encoding)
 	enc_pattern = patterns[encoding]
 else:
 	print encoding + " specific files not found."
@@ -170,9 +170,13 @@ def test_flushdir(label, dir_name):
 	test_rmdir(label + "(rm)", dir_name)
 	return test_mkdir(label + "(mk)", dir_name)
 
+bucket_prefix = ''
 argv = sys.argv[1:]
 while argv:
 	arg = argv.pop(0)
+        if arg.startswith('--bucket-prefix='):
+                print "Usage: '--bucket-prefix PREFIX', not '--bucket-prefix=PREFIX'"
+                sys.exit(0)
 	if arg in ("-h", "--help"):
 		print "%s A B K..O -N" % sys.argv[0]
 		print "Run tests number A, B and K through to O, except for N"
@@ -183,6 +187,13 @@ while argv:
 	if arg in ("-v", "--verbose"):
 		verbose = True
 		continue
+        if arg in ("-p", "--bucket-prefix"):
+                try:
+                        bucket_prefix = argv.pop(0)
+                except IndexError:
+                        print "Bucket prefix option must explicitly supply a bucket name prefix"
+                        sys.exit(0)
+                continue
 	if arg.find("..") >= 0:
 		range_idx = arg.find("..")
 		range_start = arg[:range_idx] or 0
@@ -196,66 +207,77 @@ while argv:
 if not run_tests:
 	run_tests = range(0, 999)
 
+# helper functions for generating bucket names
+def bucket(tail):
+        '''Test bucket name'''
+        label = 'autotest'
+        if str(tail) == '3':
+                label = 'Autotest'
+        return '%ss3cmd-%s-%s' % (bucket_prefix, label, tail)
+def pbucket(tail):
+        '''Like bucket(), but prepends "s3://" for you'''
+        return 's3://' + bucket(tail)
+
 ## ====== Remove test buckets
-test_s3cmd("Remove test buckets", ['rb', '-r', 's3://s3cmd-autotest-1', 's3://s3cmd-autotest-2', 's3://s3cmd-Autotest-3'],
-	must_find = [ "Bucket 's3://s3cmd-autotest-1/' removed",
-		      "Bucket 's3://s3cmd-autotest-2/' removed",
-		      "Bucket 's3://s3cmd-Autotest-3/' removed" ])
+test_s3cmd("Remove test buckets", ['rb', '-r', pbucket(1), pbucket(2), pbucket(3)],
+	must_find = [ "Bucket '%s/' removed" % pbucket(1),
+		      "Bucket '%s/' removed" % pbucket(2),
+		      "Bucket '%s/' removed" % pbucket(3) ])
 
 
 ## ====== Create one bucket (EU)
-test_s3cmd("Create one bucket (EU)", ['mb', '--bucket-location=EU', 's3://s3cmd-autotest-1'], 
-	must_find = "Bucket 's3://s3cmd-autotest-1/' created")
+test_s3cmd("Create one bucket (EU)", ['mb', '--bucket-location=EU', pbucket(1)], 
+	must_find = "Bucket '%s/' created" % pbucket(1))
 
 
 
 ## ====== Create multiple buckets
-test_s3cmd("Create multiple buckets", ['mb', 's3://s3cmd-autotest-2', 's3://s3cmd-Autotest-3'], 
-	must_find = [ "Bucket 's3://s3cmd-autotest-2/' created", "Bucket 's3://s3cmd-Autotest-3/' created" ])
+test_s3cmd("Create multiple buckets", ['mb', pbucket(2), pbucket(3)], 
+	must_find = [ "Bucket '%s/' created" % pbucket(2), "Bucket '%s/' created" % pbucket(3)])
 
 
 ## ====== Invalid bucket name
-test_s3cmd("Invalid bucket name", ["mb", "--bucket-location=EU", "s3://s3cmd-Autotest-EU"], 
+test_s3cmd("Invalid bucket name", ["mb", "--bucket-location=EU", pbucket('EU')], 
 	retcode = 1,
-	must_find = "ERROR: Parameter problem: Bucket name 's3cmd-Autotest-EU' contains disallowed character", 
+	must_find = "ERROR: Parameter problem: Bucket name '%s' contains disallowed character" % bucket('EU'), 
 	must_not_find_re = "Bucket.*created")
 
 
 ## ====== Buckets list
 test_s3cmd("Buckets list", ["ls"], 
-	must_find = [ "autotest-1", "autotest-2", "Autotest-3" ], must_not_find_re = "Autotest-EU")
+	must_find = [ "autotest-1", "autotest-2", "Autotest-3" ], must_not_find_re = "autotest-EU")
 
 
 ## ====== Sync to S3
-test_s3cmd("Sync to S3", ['sync', 'testsuite/', 's3://s3cmd-autotest-1/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings' ],
+test_s3cmd("Sync to S3", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings' ],
 	must_find = [ "WARNING: 32 non-printable characters replaced in: crappy-file-name/too-crappy ^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_^? +-[\]^<>%%\"'#{}`&?.end",
-	              "stored as 's3://s3cmd-autotest-1/xyz/crappy-file-name/too-crappy ^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_^? +-[\\]^<>%%\"'#{}`&?.end'" ],
+	              "stored as '%s/xyz/crappy-file-name/too-crappy ^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_^? +-[\\]^<>%%%%\"'#{}`&?.end'" % pbucket(1) ],
 	must_not_find_re = [ "\.svn/", "\.png$" ])
 
 if have_encoding:
 	## ====== Sync UTF-8 / GBK / ... to S3
-	test_s3cmd("Sync %s to S3" % encoding, ['sync', 'testsuite/encodings/' + encoding, 's3://s3cmd-autotest-1/xyz/encodings/', '--exclude', '.svn/*', '--no-encrypt' ],
-		must_find = [ u"File 'testsuite/encodings/%(encoding)s/%(pattern)s' stored as 's3://s3cmd-autotest-1/xyz/encodings/%(encoding)s/%(pattern)s'" % { 'encoding' : encoding, 'pattern' : enc_pattern } ])
+	test_s3cmd("Sync %s to S3" % encoding, ['sync', 'testsuite/encodings/' + encoding, '%s/xyz/encodings/' % pbucket(1), '--exclude', '.svn/*', '--no-encrypt' ],
+		must_find = [ u"File 'testsuite/encodings/%(encoding)s/%(pattern)s' stored as '%(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s'" % { 'encoding' : encoding, 'pattern' : enc_pattern , 'pbucket' : pbucket(1)} ])
 
 
 ## ====== List bucket content
-must_find_re = [ u"DIR   s3://s3cmd-autotest-1/xyz/binary/$", u"DIR   s3://s3cmd-autotest-1/xyz/etc/$" ]
+must_find_re = [ u"DIR   %s/xyz/binary/$" % pbucket(1) , u"DIR   %s/xyz/etc/$" % pbucket(1) ]
 must_not_find = [ u"random-crap.md5", u".svn" ]
-test_s3cmd("List bucket content", ['ls', 's3://s3cmd-autotest-1/xyz/'],
+test_s3cmd("List bucket content", ['ls', '%s/xyz/' % pbucket(1) ],
 	must_find_re = must_find_re,
 	must_not_find = must_not_find)
 
 
 ## ====== List bucket recursive
-must_find = [ u"s3://s3cmd-autotest-1/xyz/binary/random-crap.md5" ]
+must_find = [ u"%s/xyz/binary/random-crap.md5" % pbucket(1) ]
 if have_encoding:
-	must_find.append(u"s3://s3cmd-autotest-1/xyz/encodings/%(encoding)s/%(pattern)s" % { 'encoding' : encoding, 'pattern' : enc_pattern })
-test_s3cmd("List bucket recursive", ['ls', '--recursive', 's3://s3cmd-autotest-1'],
+	must_find.append(u"%(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s" % { 'encoding' : encoding, 'pattern' : enc_pattern, 'pbucket' : pbucket(1) })
+test_s3cmd("List bucket recursive", ['ls', '--recursive', pbucket(1)],
 	must_find = must_find,
 	must_not_find = [ "logo.png" ])
 
 ## ====== FIXME
-# test_s3cmd("Recursive put", ['put', '--recursive', 'testsuite/etc', 's3://s3cmd-autotest-1/xyz/'])
+# test_s3cmd("Recursive put", ['put', '--recursive', 'testsuite/etc', '%s/xyz/' % pbucket(1) ])
 
 
 ## ====== Clean up local destination dir
@@ -263,10 +285,10 @@ test_flushdir("Clean testsuite-out/", "testsuite-out")
 
 
 ## ====== Sync from S3
-must_find = [ "File 's3://s3cmd-autotest-1/xyz/binary/random-crap.md5' stored as 'testsuite-out/xyz/binary/random-crap.md5'" ]
+must_find = [ "File '%s/xyz/binary/random-crap.md5' stored as 'testsuite-out/xyz/binary/random-crap.md5'" % pbucket(1) ]
 if have_encoding:
-	must_find.append(u"File 's3://s3cmd-autotest-1/xyz/encodings/%(encoding)s/%(pattern)s' stored as 'testsuite-out/xyz/encodings/%(encoding)s/%(pattern)s' " % { 'encoding' : encoding, 'pattern' : enc_pattern })
-test_s3cmd("Sync from S3", ['sync', 's3://s3cmd-autotest-1/xyz', 'testsuite-out'],
+	must_find.append(u"File '%(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s' stored as 'testsuite-out/xyz/encodings/%(encoding)s/%(pattern)s' " % { 'encoding' : encoding, 'pattern' : enc_pattern, 'pbucket' : pbucket(1) })
+test_s3cmd("Sync from S3", ['sync', '%s/xyz' % pbucket(1), 'testsuite-out'],
 	must_find = must_find)
 
 
@@ -275,61 +297,63 @@ test_flushdir("Clean testsuite-out/", "testsuite-out")
 
 
 ## ====== Put public, guess MIME
-test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public', 'testsuite/etc/logo.png', 's3://s3cmd-autotest-1/xyz/etc/logo.png'],
-	must_find = [ "stored as 's3://s3cmd-autotest-1/xyz/etc/logo.png'" ])
+test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public', 'testsuite/etc/logo.png', '%s/xyz/etc/logo.png' % pbucket(1)],
+	must_find = [ "stored as '%s/xyz/etc/logo.png'" % pbucket(1) ])
 
 
 ## ====== Retrieve from URL
 if have_wget:
-	test("Retrieve from URL", ['wget', '-O', 'testsuite-out/logo.png', 'http://s3cmd-autotest-1.s3.amazonaws.com/xyz/etc/logo.png'],
+	test("Retrieve from URL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.s3.amazonaws.com/xyz/etc/logo.png' % bucket(1)],
 		must_find_re = [ 'logo.png.*saved \[22059/22059\]' ])
 
 
 ## ====== Change ACL to Private
-test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', 's3://s3cmd-autotest-1/xyz/etc/l*.png'],
+test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', '%s/xyz/etc/l*.png' % pbucket(1)],
 	must_find = [ "logo.png: ACL set to Private" ])
 
 
 ## ====== Verify Private ACL
 if have_wget:
-	test("Verify Private ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://s3cmd-autotest-1.s3.amazonaws.com/xyz/etc/logo.png'],
+	test("Verify Private ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.s3.amazonaws.com/xyz/etc/logo.png' % bucket(1)],
 		retcode = 1,
 		must_find_re = [ 'ERROR 403: Forbidden' ])
 
 
 ## ====== Change ACL to Public
-test_s3cmd("Change ACL to Public", ['setacl', '--acl-public', '--recursive', 's3://s3cmd-autotest-1/xyz/etc/', '-v'],
+test_s3cmd("Change ACL to Public", ['setacl', '--acl-public', '--recursive', '%s/xyz/etc/' % pbucket(1) , '-v'],
 	must_find = [ "logo.png: ACL set to Public" ])
 
 
 ## ====== Verify Public ACL
 if have_wget:
-	test("Verify Public ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://s3cmd-autotest-1.s3.amazonaws.com/xyz/etc/logo.png'],
+	test("Verify Public ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.s3.amazonaws.com/xyz/etc/logo.png' % bucket(1)],
 		must_find_re = [ 'logo.png.*saved \[22059/22059\]' ])
 
 
 ## ====== Sync more to S3
-test_s3cmd("Sync more to S3", ['sync', 'testsuite/', 's3://s3cmd-autotest-1/xyz/', '--no-encrypt' ],
-	must_find = [ "File 'testsuite/.svn/entries' stored as 's3://s3cmd-autotest-1/xyz/.svn/entries' " ])
+test_s3cmd("Sync more to S3", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt' ],
+	must_find = [ "File 'testsuite/.svn/entries' stored as '%s/xyz/.svn/entries' " % pbucket(1) ],
+	must_not_find = [ "File 'testsuite/etc/linked.png' stored as '%s/xyz/etc/linked.png" % pbucket(1) ])
+           
 
 
 ## ====== Rename within S3
-test_s3cmd("Rename within S3", ['mv', 's3://s3cmd-autotest-1/xyz/etc/logo.png', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG'],
-	must_find = [ 'File s3://s3cmd-autotest-1/xyz/etc/logo.png moved to s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG' ])
+test_s3cmd("Rename within S3", ['mv', '%s/xyz/etc/logo.png' % pbucket(1), '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
+	must_find = [ 'File %s/xyz/etc/logo.png moved to %s/xyz/etc2/Logo.PNG' % (pbucket(1), pbucket(1))])
 
 
 ## ====== Rename (NoSuchKey)
-test_s3cmd("Rename (NoSuchKey)", ['mv', 's3://s3cmd-autotest-1/xyz/etc/logo.png', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG'],
+test_s3cmd("Rename (NoSuchKey)", ['mv', '%s/xyz/etc/logo.png' % pbucket(1), '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
 	retcode = 1,
 	must_find_re = [ 'ERROR:.*NoSuchKey' ],
-	must_not_find = [ 'File s3://s3cmd-autotest-1/xyz/etc/logo.png moved to s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG' ])
+	must_not_find = [ 'File %s/xyz/etc/logo.png moved to %s/xyz/etc2/Logo.PNG' % (pbucket(1), pbucket(1)) ])
 
 
 ## ====== Sync more from S3
-test_s3cmd("Sync more from S3", ['sync', '--delete-removed', 's3://s3cmd-autotest-1/xyz', 'testsuite-out'],
+test_s3cmd("Sync more from S3", ['sync', '--delete-removed', '%s/xyz' % pbucket(1), 'testsuite-out'],
 	must_find = [ "deleted: testsuite-out/logo.png",
-	              "File 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG' stored as 'testsuite-out/xyz/etc2/Logo.PNG' (22059 bytes", 
-	              "File 's3://s3cmd-autotest-1/xyz/.svn/entries' stored as 'testsuite-out/xyz/.svn/entries' " ],
+	              "File '%s/xyz/etc2/Logo.PNG' stored as 'testsuite-out/xyz/etc2/Logo.PNG' (22059 bytes" % pbucket(1), 
+	              "File '%s/xyz/.svn/entries' stored as 'testsuite-out/xyz/.svn/entries' " % pbucket(1) ],
 	must_not_find_re = [ "not-deleted.*etc/logo.png" ])
 
 
@@ -338,7 +362,7 @@ test_rmdir("Remove dst dir for get", "testsuite-out")
 
 
 ## ====== Get multiple files
-test_s3cmd("Get multiple files", ['get', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG', 's3://s3cmd-autotest-1/xyz/etc/AtomicClockRadio.ttf', 'testsuite-out'],
+test_s3cmd("Get multiple files", ['get', '%s/xyz/etc2/Logo.PNG' % pbucket(1), '%s/xyz/etc/AtomicClockRadio.ttf' % pbucket(1), 'testsuite-out'],
 	retcode = 1,
 	must_find = [ 'Destination must be a directory when downloading multiple sources.' ])
 
@@ -348,69 +372,85 @@ test_mkdir("Make dst dir for get", "testsuite-out")
 
 
 ## ====== Get multiple files
-test_s3cmd("Get multiple files", ['get', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG', 's3://s3cmd-autotest-1/xyz/etc/AtomicClockRadio.ttf', 'testsuite-out'],
+test_s3cmd("Get multiple files", ['get', '%s/xyz/etc2/Logo.PNG' % pbucket(1), '%s/xyz/etc/AtomicClockRadio.ttf' % pbucket(1), 'testsuite-out'],
 	must_find = [ u"saved as 'testsuite-out/Logo.PNG'", u"saved as 'testsuite-out/AtomicClockRadio.ttf'" ])
 
 ## ====== Upload files differing in capitalisation
-test_s3cmd("blah.txt / Blah.txt", ['put', '-r', 'testsuite/blahBlah', 's3://s3cmd-autotest-1/'],
-	must_find = [ 's3://s3cmd-autotest-1/blahBlah/Blah.txt', 's3://s3cmd-autotest-1/blahBlah/blah.txt' ])
+test_s3cmd("blah.txt / Blah.txt", ['put', '-r', 'testsuite/blahBlah', pbucket(1)],
+	must_find = [ '%s/blahBlah/Blah.txt' % pbucket(1), '%s/blahBlah/blah.txt' % pbucket(1)])
 
 ## ====== Copy between buckets
-test_s3cmd("Copy between buckets", ['cp', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG', 's3://s3cmd-Autotest-3/xyz/etc2/logo.png'],
-	must_find = [ "File s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG copied to s3://s3cmd-Autotest-3/xyz/etc2/logo.png" ])
+test_s3cmd("Copy between buckets", ['cp', '%s/xyz/etc2/Logo.PNG' % pbucket(1), '%s/xyz/etc2/logo.png' % pbucket(3)],
+	must_find = [ "File %s/xyz/etc2/Logo.PNG copied to %s/xyz/etc2/logo.png" % (pbucket(1), pbucket(3)) ])
 
 ## ====== Recursive copy
-test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', 's3://s3cmd-autotest-1/xyz/', 's3://s3cmd-autotest-2/copy', '--exclude', '.svn/*', '--exclude', 'too-crappy*'],
-	must_find = [ "File s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG copied to s3://s3cmd-autotest-2/copy/etc2/Logo.PNG",
-	              "File s3://s3cmd-autotest-1/xyz/blahBlah/Blah.txt copied to s3://s3cmd-autotest-2/copy/blahBlah/Blah.txt",
-	              "File s3://s3cmd-autotest-1/xyz/blahBlah/blah.txt copied to s3://s3cmd-autotest-2/copy/blahBlah/blah.txt" ],
+test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % pbucket(1), '%s/copy' % pbucket(2), '--exclude', '.svn/*', '--exclude', 'too-crappy*'],
+	must_find = [ "File %s/xyz/etc2/Logo.PNG copied to %s/copy/etc2/Logo.PNG" % (pbucket(1), pbucket(2)),
+	              "File %s/xyz/blahBlah/Blah.txt copied to %s/copy/blahBlah/Blah.txt" % (pbucket(1), pbucket(2)),
+	              "File %s/xyz/blahBlah/blah.txt copied to %s/copy/blahBlah/blah.txt" % (pbucket(1), pbucket(2)) ],
 	must_not_find = [ ".svn" ])
 
+## ====== Don't Put symbolic link
+test_s3cmd("Don't put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),],
+	must_not_find_re = [ "linked1.png"])
+
+## ====== Put symbolic link
+test_s3cmd("Put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),'--follow-symlinks' ],
+           must_find = [ "File 'testsuite/etc/linked1.png' stored as '%s/xyz/linked1.png'" % pbucket(1)])
+
+## ====== Sync symbolic links
+test_s3cmd("Sync symbolic links", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--follow-symlinks' ],
+	must_find = ["File 'testsuite/etc/linked.png' stored as '%s/xyz/etc/linked.png'" % pbucket(1)],
+           # Don't want to recursively copy linked directories!
+           must_not_find_re = ["etc/more/linked-dir/more/give-me-more.txt",
+                               "etc/brokenlink.png"],
+           )
+
 ## ====== Verify ACL and MIME type
-test_s3cmd("Verify ACL and MIME type", ['info', 's3://s3cmd-autotest-2/copy/etc2/Logo.PNG' ],
+test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
 	must_find_re = [ "MIME type:.*image/png", 
 	                 "ACL:.*\*anon\*: READ",
-					 "URL:.*http://s3cmd-autotest-2.s3.amazonaws.com/copy/etc2/Logo.PNG" ])
+					 "URL:.*http://%s.s3.amazonaws.com/copy/etc2/Logo.PNG" % bucket(2) ])
 
 ## ====== Multi source move
-test_s3cmd("Multi-source move", ['mv', '-r', 's3://s3cmd-autotest-2/copy/blahBlah/Blah.txt', 's3://s3cmd-autotest-2/copy/etc/', 's3://s3cmd-autotest-2/moved/'],
-	must_find = [ "File s3://s3cmd-autotest-2/copy/blahBlah/Blah.txt moved to s3://s3cmd-autotest-2/moved/Blah.txt",
-	              "File s3://s3cmd-autotest-2/copy/etc/AtomicClockRadio.ttf moved to s3://s3cmd-autotest-2/moved/AtomicClockRadio.ttf",
-				  "File s3://s3cmd-autotest-2/copy/etc/TypeRa.ttf moved to s3://s3cmd-autotest-2/moved/TypeRa.ttf" ],
+test_s3cmd("Multi-source move", ['mv', '-r', '%s/copy/blahBlah/Blah.txt' % pbucket(2), '%s/copy/etc/' % pbucket(2), '%s/moved/' % pbucket(2)],
+	must_find = [ "File %s/copy/blahBlah/Blah.txt moved to %s/moved/Blah.txt" % (pbucket(2), pbucket(2)),
+	              "File %s/copy/etc/AtomicClockRadio.ttf moved to %s/moved/AtomicClockRadio.ttf" % (pbucket(2), pbucket(2)),
+				  "File %s/copy/etc/TypeRa.ttf moved to %s/moved/TypeRa.ttf" % (pbucket(2), pbucket(2)) ],
 	must_not_find = [ "blah.txt" ])
 
 ## ====== Verify move
-test_s3cmd("Verify move", ['ls', '-r', 's3://s3cmd-autotest-2'],
-	must_find = [ "s3://s3cmd-autotest-2/moved/Blah.txt",
-	              "s3://s3cmd-autotest-2/moved/AtomicClockRadio.ttf",
-				  "s3://s3cmd-autotest-2/moved/TypeRa.ttf",
-				  "s3://s3cmd-autotest-2/copy/blahBlah/blah.txt" ],
-	must_not_find = [ "s3://s3cmd-autotest-2/copy/blahBlah/Blah.txt",
-					  "s3://s3cmd-autotest-2/copy/etc/AtomicClockRadio.ttf",
-					  "s3://s3cmd-autotest-2/copy/etc/TypeRa.ttf" ])
+test_s3cmd("Verify move", ['ls', '-r', pbucket(2)],
+	must_find = [ "%s/moved/Blah.txt" % pbucket(2),
+	              "%s/moved/AtomicClockRadio.ttf" % pbucket(2),
+				  "%s/moved/TypeRa.ttf" % pbucket(2),
+				  "%s/copy/blahBlah/blah.txt" % pbucket(2) ],
+	must_not_find = [ "%s/copy/blahBlah/Blah.txt" % pbucket(2),
+					  "%s/copy/etc/AtomicClockRadio.ttf" % pbucket(2),
+					  "%s/copy/etc/TypeRa.ttf" % pbucket(2) ])
 
 ## ====== Simple delete
-test_s3cmd("Simple delete", ['del', 's3://s3cmd-autotest-1/xyz/etc2/Logo.PNG'],
-	must_find = [ "File s3://s3cmd-autotest-1/xyz/etc2/Logo.PNG deleted" ])
+test_s3cmd("Simple delete", ['del', '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
+	must_find = [ "File %s/xyz/etc2/Logo.PNG deleted" % pbucket(1) ])
 
 
 ## ====== Recursive delete
-test_s3cmd("Recursive delete", ['del', '--recursive', '--exclude', 'Atomic*', 's3://s3cmd-autotest-1/xyz/etc'],
-	must_find = [ "File s3://s3cmd-autotest-1/xyz/etc/TypeRa.ttf deleted" ],
+test_s3cmd("Recursive delete", ['del', '--recursive', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],
+	must_find = [ "File %s/xyz/etc/TypeRa.ttf deleted" % pbucket(1) ],
 	must_find_re = [ "File .*\.svn/entries deleted" ],
 	must_not_find = [ "AtomicClockRadio.ttf" ])
 
 ## ====== Recursive delete all
-test_s3cmd("Recursive delete all", ['del', '--recursive', '--force', 's3://s3cmd-autotest-1'],
+test_s3cmd("Recursive delete all", ['del', '--recursive', '--force', pbucket(1)],
 	must_find_re = [ "File .*binary/random-crap deleted" ])
 
 
 ## ====== Remove empty bucket
-test_s3cmd("Remove empty bucket", ['rb', 's3://s3cmd-autotest-1'],
-	must_find = [ "Bucket 's3://s3cmd-autotest-1/' removed" ])
+test_s3cmd("Remove empty bucket", ['rb', pbucket(1)],
+	must_find = [ "Bucket '%s/' removed" % pbucket(1) ])
 
 
 ## ====== Remove remaining buckets
-test_s3cmd("Remove remaining buckets", ['rb', '--recursive', 's3://s3cmd-autotest-2', 's3://s3cmd-Autotest-3'],
-	must_find = [ "Bucket 's3://s3cmd-autotest-2/' removed",
-		      "Bucket 's3://s3cmd-Autotest-3/' removed" ])
+test_s3cmd("Remove remaining buckets", ['rb', '--recursive', pbucket(2), pbucket(3)],
+	must_find = [ "Bucket '%s/' removed" % pbucket(2),
+		      "Bucket '%s/' removed" % pbucket(3) ])
