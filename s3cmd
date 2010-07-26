@@ -60,6 +60,13 @@ def fswalk_follow_symlinks(path):
                         yield value
 
 def fswalk(path, follow_symlinks):
+        '''
+        Directory tree generator
+
+        path (str) is the root of the directory tree to walk
+
+        follow_symlinks (bool) indicates whether to descend into symbolically linked directories
+        '''
         if follow_symlinks:
                 return fswalk_follow_symlinks(path)
         return os.walk(path)
