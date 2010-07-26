@@ -1,3 +1,10 @@
+2010-07-25  Aaron Maxwell  <amax@resymbol.net>
+
+	* S3/Config.py, testsuite/etc/brokenlink.png, testsuite/etc/more/linked-dir, testsuite/etc/more/give-me-more.txt, testsuite/etc/linked.png, testsuite/etc/linked1.png, run-tests.py, s3cmd.1, s3cmd:
+	  Option to follow local symlinks for sync and put (--follow-symlinks option), including tests and documentation
+	* run-tests.py:
+	  --bucket-prefix option, to allow different developers to run tests in their own sandbox
+
 2010-07-08  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* run-tests.py, testsuite/crappy-file-name.tar.gz:
