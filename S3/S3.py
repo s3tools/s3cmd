@@ -468,7 +468,7 @@ class S3(object):
 		try:
 			# "Stringify" all headers
 			for header in headers.keys():
-				headers[header] = str(headers[header]))
+				headers[header] = str(headers[header])
 			conn = self.get_connection(resource['bucket'])
 			conn.request(method_string, self.format_uri(resource), body, headers)
 			response = {}
