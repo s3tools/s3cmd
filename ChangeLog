@@ -1,3 +1,11 @@
+2010-10-25  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* s3cmd, S3/S3.py: Ignore inaccessible (and missing) files
+	  on upload.
+	* run-tests.py: Extended [sync] test to verify correct
+	  handling of inaccessible files.
+	* testsuite/permission-tests: New testsuite files.
+
 2010-10-24  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* S3/S3.py: "Stringify" all headers. Httplib should do

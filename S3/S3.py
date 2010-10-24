@@ -255,7 +255,7 @@ class S3(object):
 		try:
 			file = open(filename, "rb")
 			size = os.stat(filename)[ST_SIZE]
-		except IOError, e:
+		except (IOError, OSError), e:
 			raise InvalidFileError(u"%s: %s" % (unicodise(filename), e.strerror))
 		headers = SortedDict(ignore_case = True)
 		if extra_headers:

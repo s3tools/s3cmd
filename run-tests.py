@@ -58,6 +58,10 @@ if not os.path.isdir('testsuite/crappy-file-name'):
 	# TODO: also unpack if the tarball is newer than the directory timestamp
 	#       for instance when a new version was pulled from SVN.
 
+## Fix up permissions for permission-denied tests
+os.chmod("testsuite/permission-tests/permission-denied-dir", 0444)
+os.chmod("testsuite/permission-tests/permission-denied.txt", 0000)
+
 def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = []):
 	def command_output():
 		print "----"
@@ -251,8 +255,9 @@ test_s3cmd("Buckets list", ["ls"],
 ## ====== Sync to S3
 test_s3cmd("Sync to S3", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings' ],
 	must_find = [ "WARNING: 32 non-printable characters replaced in: crappy-file-name/non-printables ^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_^? +-[\]^<>%%\"'#{}`&?.end",
+				  "WARNING: File can not be uploaded: testsuite/permission-tests/permission-denied.txt: Permission denied",
 	              "stored as '%s/xyz/crappy-file-name/non-printables ^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_^? +-[\\]^<>%%%%\"'#{}`&?.end'" % pbucket(1) ],
-	must_not_find_re = [ "\.svn/", "\.png$" ])
+	must_not_find_re = [ "\.svn/", "\.png$", "permission-denied-dir" ])
 
 if have_encoding:
 	## ====== Sync UTF-8 / GBK / ... to S3
