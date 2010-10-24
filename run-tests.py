@@ -112,6 +112,9 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 	if run_tests.count(test_counter) == 0 or exclude_tests.count(test_counter) > 0:
 		return skip()
 
+	if not cmd_args:
+		return skip()
+
 	p = Popen(cmd_args, stdout = PIPE, stderr = STDOUT, universal_newlines = True)
 	stdout, stderr = p.communicate()
 	if retcode != p.returncode:
@@ -151,7 +154,7 @@ def test_s3cmd(label, cmd_args = [], **kwargs):
 
 def test_mkdir(label, dir_name):
 	if os.name in ("posix", "nt"):
-		cmd = ['mkdir']
+		cmd = ['mkdir', '-p']
 	else:
 		print "Unknown platform: %s" % os.name
 		sys.exit(1)
@@ -169,6 +172,8 @@ def test_rmdir(label, dir_name):
 			sys.exit(1)
 		cmd.append(dir_name)
 		return test(label, cmd)
+	else:
+		return test(label, [])
 
 def test_flushdir(label, dir_name):
 	test_rmdir(label + "(rm)", dir_name)
@@ -295,6 +300,19 @@ if have_encoding:
 	must_find.append(u"File '%(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s' stored as 'testsuite-out/xyz/encodings/%(encoding)s/%(pattern)s' " % { 'encoding' : encoding, 'pattern' : enc_pattern, 'pbucket' : pbucket(1) })
 test_s3cmd("Sync from S3", ['sync', '%s/xyz' % pbucket(1), 'testsuite-out'],
 	must_find = must_find)
+
+
+## ====== Remove 'demo' directory
+test_rmdir("Remove 'demo/'", "testsuite-out/xyz/demo/")
+
+
+## ====== Create dir with name of a file
+test_mkdir("Create some-file.xml dir", "testsuite-out/xyz/demo/some-file.xml")
+
+
+## ====== Skip dst dirs
+test_s3cmd("Skip over dir", ['sync', '%s/xyz' % pbucket(1), 'testsuite-out'],
+	must_find = "WARNING: testsuite-out/xyz/demo/some-file.xml is a directory - skipping over")
 
 
 ## ====== Clean up local destination dir

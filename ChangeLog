@@ -1,5 +1,11 @@
 2010-10-25  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* s3cmd: Don't fail when a local node is a directory
+	  and we expected a file. (as if for example /etc/passwd 
+	  was a dir)
+
+2010-10-25  Michal Ludvig  <mludvig@logix.net.nz>
+
 	* s3cmd, S3/S3.py: Ignore inaccessible (and missing) files
 	  on upload.
 	* run-tests.py: Extended [sync] test to verify correct

@@ -930,6 +930,9 @@ def cmd_sync_remote2local(args):
 				if e.errno in (errno.EPERM, errno.EACCES):
 					warning(u"%s not writable: %s" % (dst_file, e.strerror))
 					continue
+				if e.errno == errno.EISDIR:
+					warning(u"%s is a directory - skipping over" % dst_file)
+					continue
 				raise e
 			except KeyboardInterrupt:
 				try: dst_stream.close()
