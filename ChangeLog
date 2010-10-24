@@ -1,3 +1,9 @@
+2010-10-24  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* S3/S3.py: "Stringify" all headers. Httplib should do
+	  it but some Python 2.7 users reported problems that should
+	  now be fixed.
+
 2010-07-25  Aaron Maxwell  <amax@resymbol.net>
 
 	* S3/Config.py, testsuite/etc/brokenlink.png, testsuite/etc/more/linked-dir, testsuite/etc/more/give-me-more.txt, testsuite/etc/linked.png, testsuite/etc/linked1.png, run-tests.py, s3cmd.1, s3cmd:
