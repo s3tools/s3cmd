@@ -3,6 +3,7 @@
 	* S3/S3.py: "Stringify" all headers. Httplib should do
 	  it but some Python 2.7 users reported problems that should
 	  now be fixed.
+	* run-tests.py: Fixed test #6
 
 2010-07-25  Aaron Maxwell  <amax@resymbol.net>
 

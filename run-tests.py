@@ -250,8 +250,8 @@ test_s3cmd("Buckets list", ["ls"],
 
 ## ====== Sync to S3
 test_s3cmd("Sync to S3", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude', '.svn/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings' ],
-	must_find = [ "WARNING: 32 non-printable characters replaced in: crappy-file-name/too-crappy ^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_^? +-[\]^<>%%\"'#{}`&?.end",
-	              "stored as '%s/xyz/crappy-file-name/too-crappy ^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_^? +-[\\]^<>%%%%\"'#{}`&?.end'" % pbucket(1) ],
+	must_find = [ "WARNING: 32 non-printable characters replaced in: crappy-file-name/non-printables ^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_^? +-[\]^<>%%\"'#{}`&?.end",
+	              "stored as '%s/xyz/crappy-file-name/non-printables ^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_^? +-[\\]^<>%%%%\"'#{}`&?.end'" % pbucket(1) ],
 	must_not_find_re = [ "\.svn/", "\.png$" ])
 
 if have_encoding:
@@ -384,7 +384,7 @@ test_s3cmd("Copy between buckets", ['cp', '%s/xyz/etc2/Logo.PNG' % pbucket(1), '
 	must_find = [ "File %s/xyz/etc2/Logo.PNG copied to %s/xyz/etc2/logo.png" % (pbucket(1), pbucket(3)) ])
 
 ## ====== Recursive copy
-test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % pbucket(1), '%s/copy' % pbucket(2), '--exclude', '.svn/*', '--exclude', 'too-crappy*'],
+test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % pbucket(1), '%s/copy' % pbucket(2), '--exclude', '.svn/*', '--exclude', 'non-printables*'],
 	must_find = [ "File %s/xyz/etc2/Logo.PNG copied to %s/copy/etc2/Logo.PNG" % (pbucket(1), pbucket(2)),
 	              "File %s/xyz/blahBlah/Blah.txt copied to %s/copy/blahBlah/Blah.txt" % (pbucket(1), pbucket(2)),
 	              "File %s/xyz/blahBlah/blah.txt copied to %s/copy/blahBlah/blah.txt" % (pbucket(1), pbucket(2)) ],
