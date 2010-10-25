@@ -2,6 +2,8 @@
 
 	* s3cmd: Improved 'fixbucket' command. Thanks to Srinivasa
 	  Moorthy.
+	* s3cmd: Read config file even if User Profile directory on 
+	  Windows contains non-ascii symbols. Thx Slava Vishnyakov
 
 2010-10-25  Michal Ludvig  <mludvig@logix.net.nz>
 
