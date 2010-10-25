@@ -1,5 +1,10 @@
 2010-10-25  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* s3cmd: Improved 'fixbucket' command. Thanks to Srinivasa
+	  Moorthy.
+
+2010-10-25  Michal Ludvig  <mludvig@logix.net.nz>
+
 	* s3cmd: Don't fail when a local node is a directory
 	  and we expected a file. (as if for example /etc/passwd 
 	  was a dir)
