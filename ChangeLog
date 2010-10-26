@@ -1,3 +1,8 @@
+2010-10-26  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* s3cmd, S3/CloudFront.py, S3/Config.py: Added support
+	  for CloudFront DefaultRootObject. Thanks to Luke Andrew.
+
 2010-10-25  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* s3cmd: Improved 'fixbucket' command. Thanks to Srinivasa
