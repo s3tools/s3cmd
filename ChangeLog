@@ -1,3 +1,8 @@
+2010-10-27  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* TODO: Updated.
+	* upload-to-sf.sh: Updated for new SF.net system
+
 2010-10-26  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* Released version 1.0.0-rc1

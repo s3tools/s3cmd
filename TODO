@@ -16,13 +16,16 @@ TODO list for s3cmd project
   - Get s3://bucket/non-existent creates empty local file 'non-existent'
   - Add 'geturl' command, both Unicode and urlencoded output.
   - Add a command for generating "Query String Authentication" URLs.
+  - Support --acl-grant (together with --acl-public/private) for [put] and [sync]
+  - Filter 's3cmd ls' output by --bucket-location=
 
 - After 1.0.0
-  - Speed up upload / download with multiple threads.
-  - Sync should be able to update metadata (UID, timstamps, etc)
-    if only these change (i.e. same content, different metainfo).
   - Sync must backup non-files as well. At least directories, 
     symlinks and device nodes.
+  - Speed up upload / download with multiple threads.
+    (see http://blog.50projects.com/p/s3cmd-modifications.html)
+  - Sync should be able to update metadata (UID, timstamps, etc)
+    if only these change (i.e. same content, different metainfo).
   - If GPG fails error() and exit. If un-GPG fails save the 
     file with .gpg extension.
   - Keep backup files remotely on put/sync-to if requested 
