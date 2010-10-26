@@ -1,11 +1,14 @@
-s3cmd 0.9.9.92 -  ???
-==============
+s3cmd 1.0.0-rc1 -  2010-10-26
+===============
 * Added [accesslog] command. (needs manpage!)
 * Added access logging for CloudFront distributions 
   using [cfmodify --log]
-* Added --acl-grant and --acl-revoke (by Timothee Linden).
+* Added --acl-grant and --acl-revoke [Timothee Linden]
 * Allow s3:// URI as well as cf:// URI as a distribution
   name for most CloudFront related commands.
+* Support for Reduced Redundancy Storage (--reduced-redundancy)
+* Follow symlinks in [put] and [sync] with --follow-symlinks
+* Support for CloudFront DefaultRootObject [Luke Andrew]
 
 s3cmd 0.9.9.91 -  2009-10-08
 ==============

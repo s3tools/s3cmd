@@ -1,7 +1,7 @@
 TODO list for s3cmd project
 ===========================
 
-- For 0.9.9.x
+- Before 1.0.0 (or asap after 1.0.0)
   - Make 'sync s3://bkt/some-filename local/other-filename' work
     (at the moment it'll always download).
   - Enable --exclude for [ls].
@@ -11,13 +11,11 @@ TODO list for s3cmd project
   - Don't let --continue fail if the file is already fully downloaded.
   - Option --mime-type should set mime type with 'cp' and 'mv'. 
     If possible --guess-mime-type should do as well.
-  - Skip files that disapper during upload. Now it fails.
   - Make upload throttling configurable.
-
-- For 1.0.0
+  - Allow removing 'DefaultRootObject' from CloudFront distributions.
+  - Get s3://bucket/non-existent creates empty local file 'non-existent'
   - Add 'geturl' command, both Unicode and urlencoded output.
   - Add a command for generating "Query String Authentication" URLs.
-  - Add a command for setting up access logging.
 
 - After 1.0.0
   - Speed up upload / download with multiple threads.
@@ -45,7 +43,7 @@ TODO list for s3cmd project
    call).
   Or we can only compare local timestamps with remote object 
   timestamps. If the local one is older we'll *assume* it 
-  hasn't been changed.
+  hasn't been changed. But what to do about remote2local sync?
 
 - Keep man page up to date and write some more documentation
   - Yeah, right ;-)
