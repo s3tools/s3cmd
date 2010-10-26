@@ -1,5 +1,9 @@
 2010-10-26  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* Released version 1.0.0-rc1
+	  --------------------------
+
+	* S3/PkgInfo.py: Updated to 1.0.0-rc1
 	* NEWS, TODO: Updated.
 
 2010-10-26  Michal Ludvig  <mludvig@logix.net.nz>
