@@ -1,5 +1,11 @@
 2010-10-27  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* run-tests.py, testsuite.tar.gz: Keep the testsuite in
+	  SVN as a tarball. There's too many "strange" things 
+	  in the directory for it to be kept in SVN.
+
+2010-10-27  Michal Ludvig  <mludvig@logix.net.nz>
+
 	* TODO: Updated.
 	* upload-to-sf.sh: Updated for new SF.net system
 
