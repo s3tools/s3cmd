@@ -770,12 +770,18 @@ def _filelist_filter_exclude_include(src_list):
 			debug(u"PASS: %s" % (file))
 	return src_list, exclude_list
 
-def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
+def _compare_filelists(src_list, dst_list, src_remote, dst_remote):
+	def __direction_str(is_remote):
+		return is_remote and "remote" or "local"
+
+	# We don't support local->local sync, use 'rsync' or something like that instead ;-)
+	assert(not(src_remote == False and dst_remote == False))
+
 	info(u"Verifying attributes...")
 	cfg = Config()
 	exists_list = SortedDict(ignore_case = False)
 
-	debug("Comparing filelists (src_is_local_and_dst_is_remote=%s)" % src_is_local_and_dst_is_remote)
+	debug("Comparing filelists (direction: %s -> %s)" % (__direction_str(src_remote), __direction_str(dst_remote)))
 	debug("src_list.keys: %s" % src_list.keys())
 	debug("dst_list.keys: %s" % dst_list.keys())
 
@@ -799,12 +805,16 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 			
 			if attribs_match and 'md5' in cfg.sync_checks:
 				## ... same size, check MD5
-				if src_is_local_and_dst_is_remote:
+				if src_remote == False and dst_remote == True:
 					src_md5 = Utils.hash_file_md5(src_list[file]['full_name'])
 					dst_md5 = dst_list[file]['md5']
-				else:
+				elif src_remote == True and dst_remote == False:
 					src_md5 = src_list[file]['md5']
 					dst_md5 = Utils.hash_file_md5(dst_list[file]['full_name'])
+				elif src_remote == True and dst_remote == True:
+					src_md5 = src_list[file]['md5']
+					dst_md5 = dst_list[file]['md5']
+
 				if src_md5 != dst_md5:
 					## Checksums are different.
 					attribs_match = False
@@ -820,6 +830,80 @@ def _compare_filelists(src_list, dst_list, src_is_local_and_dst_is_remote):
 			del(dst_list[file])
 
 	return src_list, dst_list, exists_list
+
+def cmd_sync_remote2remote(args):
+	s3 = S3(Config())
+
+	# Normalise s3://uri (e.g. assert trailing slash)
+	destination_base = unicode(S3Uri(args[-1]))
+
+	src_list = fetch_remote_list(args[:-1], recursive = True, require_attribs = True)
+	dst_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
+	 
+	src_count = len(src_list)
+	dst_count = len(dst_list)
+
+	info(u"Found %d source files, %d destination files" % (src_count, dst_count))
+
+	src_list, exclude_list = _filelist_filter_exclude_include(src_list)
+
+	src_list, dst_list, existing_list = _compare_filelists(src_list, dst_list, src_remote = True, dst_remote = True)
+
+	src_count = len(src_list)
+	dst_count = len(dst_list)
+
+	print(u"Summary: %d source files to copy, %d files at destination to delete" % (src_count, dst_count))
+
+	if src_count > 0:
+		### Populate 'remote_uri' only if we've got something to sync from src to dst
+		for key in src_list:
+			src_list[key]['target_uri'] = destination_base + key
+
+	if cfg.dry_run:
+		for key in exclude_list:
+			output(u"exclude: %s" % unicodise(key))
+		if cfg.delete_removed:
+			for key in dst_list:
+				output(u"delete: %s" % dst_list[key]['object_uri_str'])
+		for key in src_list:
+			output(u"Sync: %s -> %s" % (src_list[key]['object_uri_str'], src_list[key]['target_uri']))
+		warning(u"Exitting now because of --dry-run")
+		return
+
+	# Delete items in destination that are not in source
+	if cfg.delete_removed:
+		if cfg.dry_run:
+			for key in dst_list:
+				output(u"delete: %s" % dst_list[key]['object_uri_str'])
+		else:
+			for key in dst_list:
+				uri = S3Uri(dst_list[key]['object_uri_str'])
+				s3.object_delete(uri)
+				output(u"deleted: '%s'" % uri)
+	
+	# Perform the synchronization of files
+	timestamp_start = time.time()
+	seq = 0
+	file_list = src_list.keys()
+	file_list.sort()
+	for file in file_list:
+		seq += 1
+		item = src_list[file]
+		src_uri = S3Uri(item['object_uri_str'])
+		dst_uri = S3Uri(item['target_uri'])
+		seq_label = "[%d of %d]" % (seq, src_count)
+		extra_headers = copy(cfg.extra_headers)
+		try:
+			response = s3.object_copy(src_uri, dst_uri, extra_headers)
+			output("File %(src)s copied to %(dst)s" % { "src" : src_uri, "dst" : dst_uri })
+		except S3Error, e:
+			error("File %(src)s could not be copied: %(e)s" % { "src" : src_uri, "e" : e })
+	total_elapsed = time.time() - timestamp_start
+	outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s" % (seq, total_elapsed, seq/total_elapsed)
+	if seq > 0:
+		output(outstr)
+	else:
+		info(outstr)
 
 def cmd_sync_remote2local(args):
 	def _parse_attrs_header(attrs_header):
@@ -842,7 +926,7 @@ def cmd_sync_remote2local(args):
 
 	remote_list, exclude_list = _filelist_filter_exclude_include(remote_list)
 
-	remote_list, local_list, existing_list = _compare_filelists(remote_list, local_list, False)
+	remote_list, local_list, existing_list = _compare_filelists(remote_list, local_list, src_remote = True, dst_remote = False)
 
 	local_count = len(local_list)
 	remote_count = len(remote_list)
@@ -1031,7 +1115,7 @@ def cmd_sync_local2remote(args):
 		# Flush remote_list, by the way
 		remote_list = { local_list.keys()[0] : remote_list_entry }
 
-	local_list, remote_list, existing_list = _compare_filelists(local_list, remote_list, True)
+	local_list, remote_list, existing_list = _compare_filelists(local_list, remote_list, src_remote = False, dst_remote = True)
 
 	local_count = len(local_list)
 	remote_count = len(remote_list)
@@ -1118,6 +1202,8 @@ def cmd_sync(args):
 		return cmd_sync_local2remote(args)
 	if S3Uri(args[0]).type == "s3" and S3Uri(args[-1]).type == "file":
 		return cmd_sync_remote2local(args)
+	if S3Uri(args[0]).type == "s3" and S3Uri(args[-1]).type == "s3":
+		return cmd_sync_remote2remote(args)
 	raise ParameterError("Invalid source/destination: '%s'" % "' '".join(args))
 
 def cmd_setacl(args):

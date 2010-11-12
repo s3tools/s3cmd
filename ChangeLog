@@ -1,3 +1,9 @@
+2010-11-13  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* s3cmd: Added support for remote-to-remote sync.
+	  (Based on patch from Sundar Raman - thanks!)
+	* run-tests.py: Testsuite for the above.
+
 2010-11-12  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* s3cmd: Fixed typo in "s3cmd du" error path.

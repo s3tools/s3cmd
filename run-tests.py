@@ -423,11 +423,28 @@ test_s3cmd("Copy between buckets", ['cp', '%s/xyz/etc2/Logo.PNG' % pbucket(1), '
 	must_find = [ "File %s/xyz/etc2/Logo.PNG copied to %s/xyz/etc2/logo.png" % (pbucket(1), pbucket(3)) ])
 
 ## ====== Recursive copy
-test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % pbucket(1), '%s/copy' % pbucket(2), '--exclude', 'demo/*', '--exclude', 'non-printables*'],
+test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % pbucket(1), '%s/copy' % pbucket(2), '--exclude', 'demo/dir?/*.txt', '--exclude', 'non-printables*'],
 	must_find = [ "File %s/xyz/etc2/Logo.PNG copied to %s/copy/etc2/Logo.PNG" % (pbucket(1), pbucket(2)),
 	              "File %s/xyz/blahBlah/Blah.txt copied to %s/copy/blahBlah/Blah.txt" % (pbucket(1), pbucket(2)),
 	              "File %s/xyz/blahBlah/blah.txt copied to %s/copy/blahBlah/blah.txt" % (pbucket(1), pbucket(2)) ],
-	must_not_find = [ "demo/" ])
+	must_not_find = [ "demo/dir1/file1-1.txt" ])
+
+## ====== Verify ACL and MIME type
+test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+	must_find_re = [ "MIME type:.*image/png", 
+	                 "ACL:.*\*anon\*: READ",
+					 "URL:.*http://%s.s3.amazonaws.com/copy/etc2/Logo.PNG" % bucket(2) ])
+
+## ====== Rename within S3
+test_s3cmd("Rename within S3", ['mv', '%s/copy/etc2/Logo.PNG' % pbucket(2), '%s/copy/etc/logo.png' % pbucket(2)],
+	must_find = [ 'File %s/copy/etc2/Logo.PNG moved to %s/copy/etc/logo.png' % (pbucket(2), pbucket(2))])
+
+## ====== Sync between buckets
+test_s3cmd("Sync remote2remote", ['sync', '%s/xyz/' % pbucket(1), '%s/copy/' % pbucket(2), '--delete-removed', '--exclude', 'non-printables*'],
+	must_find = [ "File %s/xyz/demo/dir1/file1-1.txt copied to %s/copy/demo/dir1/file1-1.txt" % (pbucket(1), pbucket(2)),
+	              "File %s/xyz/etc2/Logo.PNG copied to %s/copy/etc2/Logo.PNG" % (pbucket(1), pbucket(2)),
+	              "deleted: '%s/copy/etc/logo.png'" % pbucket(2) ],
+	must_not_find = [ "blah.txt" ])
 
 ## ====== Don't Put symbolic link
 test_s3cmd("Don't put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),],
@@ -444,12 +461,6 @@ test_s3cmd("Sync symbolic links", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket
            must_not_find_re = ["etc/more/linked-dir/more/give-me-more.txt",
                                "etc/brokenlink.png"],
            )
-
-## ====== Verify ACL and MIME type
-test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
-	must_find_re = [ "MIME type:.*image/png", 
-	                 "ACL:.*\*anon\*: READ",
-					 "URL:.*http://%s.s3.amazonaws.com/copy/etc2/Logo.PNG" % bucket(2) ])
 
 ## ====== Multi source move
 test_s3cmd("Multi-source move", ['mv', '-r', '%s/copy/blahBlah/Blah.txt' % pbucket(2), '%s/copy/etc/' % pbucket(2), '%s/moved/' % pbucket(2)],
