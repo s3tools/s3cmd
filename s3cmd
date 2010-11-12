@@ -102,8 +102,8 @@ def subcmd_bucket_usage(s3, uri):
 	try:
 		response = s3.bucket_list(bucket, prefix = object, recursive = True)
 	except S3Error, e:
-		if S3.codes.has_key(e.Code):
-			error(S3.codes[e.Code] % bucket)
+		if S3.codes.has_key(e.info["Code"]):
+			error(S3.codes[e.info["Code"]] % bucket)
 			return
 		else:
 			raise
