@@ -1,3 +1,9 @@
+2010-11-12  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* format-manpage.pl: new manpage auto-formatter
+	* s3cmd.1: Updated using the above helper script
+	* setup.py: Warn if manpage is too old.
+
 2010-10-27  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* run-tests.py, testsuite.tar.gz: Keep the testsuite in

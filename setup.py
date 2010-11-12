@@ -33,6 +33,14 @@ try:
 except:
 	pass
 
+## Re-create the manpage
+## (Beware! Perl script on the loose!!)
+if sys.argv[1] == "sdist":
+	if os.stat_result(os.stat("s3cmd.1")).st_mtime < os.stat_result(os.stat("s3cmd")).st_mtime:
+		sys.stderr.write("Re-create man page first!\n")
+		sys.stderr.write("Run: ./s3cmd --help | ./format-manpage.pl > s3cmd.1\n")
+		sys.exit(1)
+
 ## Don't install manpages and docs when $S3CMD_PACKAGING is set
 ## This was a requirement of Debian package maintainer. 
 if not os.getenv("S3CMD_PACKAGING"):

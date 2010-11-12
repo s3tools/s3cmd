@@ -1,3 +1,4 @@
+
 .TH s3cmd 1
 .SH NAME
 s3cmd \- tool for managing Amazon S3 storage space and Amazon CloudFront content delivery network
@@ -11,71 +12,79 @@ is a command line client for copying files to/from
 Amazon S3 (Simple Storage Service) and performing other
 related tasks, for instance creating and removing buckets,
 listing objects, etc.
+
+.SH COMMANDS
 .PP
 .B s3cmd
 can do several \fIactions\fR specified by the following \fIcommands\fR.
 .TP
-\fBmb\fR \fIs3://BUCKET\fR
+s3cmd \fBmb\fR \fIs3://BUCKET\fR
 Make bucket
 .TP
-\fBrb\fR \fIs3://BUCKET\fR
+s3cmd \fBrb\fR \fIs3://BUCKET\fR
 Remove bucket
 .TP
-\fBls\fR \fI[s3://BUCKET[/PREFIX]]\fR
+s3cmd \fBls\fR \fI[s3://BUCKET[/PREFIX]]\fR
 List objects or buckets
 .TP
-\fBla\fR
+s3cmd \fBla\fR \fI\fR
 List all object in all buckets
 .TP
-\fBput\fR \fIFILE [FILE...] s3://BUCKET[/PREFIX]\fR
-Put file into bucket (i.e. upload to S3)
+s3cmd \fBput\fR \fIFILE [FILE...] s3://BUCKET[/PREFIX]\fR
+Put file into bucket
 .TP
-\fBget\fR \fIs3://BUCKET/OBJECT LOCAL_FILE\fR
-Get file from bucket (i.e. download from S3)
+s3cmd \fBget\fR \fIs3://BUCKET/OBJECT LOCAL_FILE\fR
+Get file from bucket
 .TP
-\fBdel\fR \fIs3://BUCKET/OBJECT\fR
+s3cmd \fBdel\fR \fIs3://BUCKET/OBJECT\fR
 Delete file from bucket
 .TP
-\fBsync\fR \fILOCAL_DIR s3://BUCKET[/PREFIX]\fR
-Backup a directory tree to S3
+s3cmd \fBsync\fR \fILOCAL_DIR s3://BUCKET[/PREFIX] or s3://BUCKET[/PREFIX] LOCAL_DIR\fR
+Synchronize a directory tree to S3
 .TP
-\fBsync\fR \fIs3://BUCKET[/PREFIX] LOCAL_DIR\fR
-Restore a tree from S3 to local directory
+s3cmd \fBdu\fR \fI[s3://BUCKET[/PREFIX]]\fR
+Disk usage by buckets
 .TP
-\fBcp\fR \fIs3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]\fR, \fBmv\fR \fIs3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]\fR 
-Make a copy of a file (\fIcp\fR) or move a file (\fImv\fR). 
-Destination can be in the same bucket with a different name
-or in another bucket with the same or different name.
-Adding \fI\-\-acl\-public\fR will make the destination object 
-publicly accessible (see below).
+s3cmd \fBinfo\fR \fIs3://BUCKET[/OBJECT]\fR
+Get various information about Buckets or Files
 .TP
-\fBsetacl\fR \fIs3://BUCKET[/OBJECT]\fR
-Modify \fIAccess control list\fI for Bucket or Files. Use with 
-\fI\-\-acl\-public\fR or \fI\-\-acl\-private\fR
-.TP 
-\fBinfo\fR \fIs3://BUCKET[/OBJECT]\fR
-Get various information about a Bucket or Object
+s3cmd \fBcp\fR \fIs3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]\fR
+Copy object
 .TP
-\fBdu\fR \fI[s3://BUCKET[/PREFIX]]\fR
-Disk usage \- amount of data stored in S3
+s3cmd \fBmv\fR \fIs3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]\fR
+Move object
+.TP
+s3cmd \fBsetacl\fR \fIs3://BUCKET[/OBJECT]\fR
+Modify Access control list for Bucket or Files
+.TP
+s3cmd \fBaccesslog\fR \fIs3://BUCKET\fR
+Enable/disable bucket access logging
+.TP
+s3cmd \fBsign\fR \fISTRING-TO-SIGN\fR
+Sign arbitrary string using the secret key
+.TP
+s3cmd \fBfixbucket\fR \fIs3://BUCKET[/PREFIX]\fR
+Fix invalid file names in a bucket
+
 
 .PP
 Commands for CloudFront management
 .TP
-\fBcflist\fR
+s3cmd \fBcflist\fR \fI\fR
 List CloudFront distribution points
 .TP
-\fBcfinfo\fR [\fIcf://DIST_ID\fR]
+s3cmd \fBcfinfo\fR \fI[cf://DIST_ID]\fR
 Display CloudFront distribution point parameters
 .TP
-\fBcfcreate\fR \fIs3://BUCKET\fR
+s3cmd \fBcfcreate\fR \fIs3://BUCKET\fR
 Create CloudFront distribution point
 .TP
-\fBcfdelete\fR \fIcf://DIST_ID\fR
+s3cmd \fBcfdelete\fR \fIcf://DIST_ID\fR
 Delete CloudFront distribution point
 .TP
-\fBcfmodify\fR \fIcf://DIST_ID\fR
+s3cmd \fBcfmodify\fR \fIcf://DIST_ID\fR
 Change CloudFront distribution point parameters
+
 
 .SH OPTIONS
 .PP
@@ -85,129 +94,186 @@ values set in
 config file (by default $HOME/.s3cmd). As it's a simple text file 
 feel free to open it with your favorite text editor and do any
 changes you like. 
-.PP
-\fIConfig file related options.\fR
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+show this help message and exit
 .TP
 \fB\-\-configure\fR
-Invoke interactive (re)configuration tool. Don't worry, you won't 
-lose your settings on subsequent runs.
+Invoke interactive (re)configuration tool.
 .TP
 \fB\-c\fR FILE, \fB\-\-config\fR=FILE
-Config file name. Defaults to $HOME/.s3cfg
+Config file name. Defaults to /home/mludvig/.s3cfg
 .TP
 \fB\-\-dump\-config\fR
 Dump current configuration after parsing config files
 and command line options and exit.
-.PP
-\fIOptions specific for \fIfile transfer commands\fR (\fBsync\fR, \fBput\fR and \fBget\fR):
 .TP
 \fB\-n\fR, \fB\-\-dry\-run\fR
-Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other in
-formation though.
-.TP
-\fB\-\-delete\-removed\fR
-Delete remote objects with no corresponding local file when \fIsync\fRing \fBto\fR S3 or delete local files with no corresponding object in S3 when \fIsync\fRing \fBfrom\fR S3.
-.TP
-\fB\-\-no\-delete\-removed\fR
-Don't delete remote objects. Default for \fIsync\fR command.
-.TP
-\fB\-p\fR, \fB\-\-preserve\fR
-Preserve filesystem attributes (mode, ownership, timestamps). Default for \fIsync\fR command.
-.TP
-\fB\-\-no\-preserve\fR
-Don't store filesystem attributes with uploaded files.
-.TP
-\fB\-\-exclude GLOB\fR
-Exclude files matching GLOB (a.k.a. shell-style wildcard) from \fIsync\fI. See FILE TRANSFERS section and \fIhttp://s3tools.org/s3cmd-sync\fR for more information.
-.TP
-\fB\-\-exclude\-from FILE\fR
-Same as \-\-exclude but reads GLOBs from the given FILE instead of expecting them on the command line.
-.TP
-\fB\-\-rexclude REGEXP\fR
-Same as \-\-exclude but works with REGEXPs (Regular expressions).
-.TP
-\fB\-\-rexclude\-from FILE\fR
-Same as \-\-exclude\-from but works with REGEXPs.
-.TP
-\fB\-\-include=GLOB\fR, \fB\-\-include\-from=FILE\fR, \fB\-\-rinclude=REGEXP\fR, \fB\-\-rinclude\-from=FILE\fR
-Filenames and paths matching GLOB or REGEXP will be included even if previously excluded by one of \-\-(r)exclude(\-from) patterns
-.TP
-\fB\-\-continue\fR
-Continue getting a partially downloaded file (only for \fIget\fR command). This comes handy once download of a large file, say an ISO image, from a S3 bucket fails and a partially downloaded file is left on the disk. Unfortunately \fIput\fR command doesn't support restarting of failed upload due to Amazon S3 limitations.
-.TP
-\fB\-\-skip\-existing\fR
-Skip over files that exist at the destination (only for \fIget\fR and \fIsync\fR commands).
-.TP
-\fB\-\-follow\-symlinks\fR
-Treat local symbolic links as if they are regular files,
-copying their targets to the remote. (Only for \fIput\fR and \fIsync\fR commands).
-.TP
-\fB\-m\fR MIME/TYPE, \fB\-\-mime\-type\fR=MIME/TYPE
-Default MIME\-type to be set for objects stored.
-.TP
-\fB\-M\fR, \fB\-\-guess\-mime\-type\fR
-Guess MIME\(hytype of files by their extension. Falls
-back to default MIME\(hyType as specified by \fB\-\-mime\-type\fR
-option
-.TP
-\fB\-\-add\-header=NAME:VALUE\fR
-Add a given HTTP header to the upload request. Can be used multiple times with different header names. For instance set 'Expires' or 'Cache-Control' headers (or both) using this options if you like.
-.TP
-\fB\-P\fR, \fB\-\-acl\-public\fR
-Store objects with permissions allowing read for anyone. See \fIhttp://s3tools.org/s3cmd-public\fR for details and hints for storing publicly accessible files.
-.TP
-\fB\-\-acl\-private\fR
-Store objects with default ACL allowing access for you only.
+Only show what should be uploaded or downloaded but
+don't actually do it. May still perform S3 requests to
+get bucket listings and other information though (only
+for file transfer commands)
 .TP
 \fB\-e\fR, \fB\-\-encrypt\fR
-Use GPG encryption to protect stored objects from unauthorized access. See \fIhttp://s3tools.org/s3cmd-public\fR for details about encryption.
+Encrypt files before uploading to S3.
 .TP
 \fB\-\-no\-encrypt\fR
 Don't encrypt files.
-.PP
-\fIOptions for CloudFront commands\fR:
-.PP
-See \fIhttp://s3tools.org/s3cmd-cloudfront\fR for more details.
-.TP
-\fB\-\-enable\fR
-Enable given CloudFront distribution (only for \fIcfmodify\fR command)
-.TP
-\fB\-\-disable\fR
-Enable given CloudFront distribution (only for \fIcfmodify\fR command)
-.TP
-\fB\-\-cf\-add\-cname=CNAME\fR
-Add given CNAME to a CloudFront distribution (only for \fIcfcreate\fR and \fIcfmodify\fR commands)
-.TP
-\fB\-\-cf\-remove\-cname=CNAME\fR
-Remove given CNAME from a CloudFront distribution (only for \fIcfmodify\fR command)
-.TP
-\fB\-\-cf\-comment=COMMENT\fR
-Set COMMENT for a given CloudFront distribution (only for \fIcfcreate\fR and \fIcfmodify\fR commands)
-.PP
-\fIOptions common for all commands\fR (where it makes sense indeed):
-.TP
-\fB\-r\fR, \fB\-\-recursive\fR
-Recursive upload, download or removal. When used with \fIdel\fR it can
-remove all the files in a bucket.
 .TP
 \fB\-f\fR, \fB\-\-force\fR
-Force overwrite and other dangerous operations. Can be used to remove 
-a non\-empty buckets with \fIs3cmd rb \-\-force s3://bkt\fR
+Force overwrite and other dangerous operations.
+.TP
+\fB\-\-continue\fR
+Continue getting a partially downloaded file (only for
+[get] command).
+.TP
+\fB\-\-skip\-existing\fR
+Skip over files that exist at the destination (only
+for [get] and [sync] commands).
+.TP
+\fB\-r\fR, \fB\-\-recursive\fR
+Recursive upload, download or removal.
+.TP
+\fB\-P\fR, \fB\-\-acl\-public\fR
+Store objects with ACL allowing read for anyone.
+.TP
+\fB\-\-acl\-private\fR
+Store objects with default ACL allowing access for you
+only.
+.TP
+\fB\-\-acl\-grant\fR=PERMISSION:EMAIL or USER_CANONICAL_ID
+Grant stated permission to a given amazon user.
+Permission is one of: read, write, read_acp,
+write_acp, full_control, all
+.TP
+\fB\-\-acl\-revoke\fR=PERMISSION:USER_CANONICAL_ID
+Revoke stated permission for a given amazon user.
+Permission is one of: read, write, read_acp, wr
+ite_acp, full_control, all
+.TP
+\fB\-\-delete\-removed\fR
+Delete remote objects with no corresponding local file
+[sync]
+.TP
+\fB\-\-no\-delete\-removed\fR
+Don't delete remote objects.
+.TP
+\fB\-p\fR, \fB\-\-preserve\fR
+Preserve filesystem attributes (mode, ownership,
+timestamps). Default for [sync] command.
+.TP
+\fB\-\-no\-preserve\fR
+Don't store FS attributes
+.TP
+\fB\-\-exclude\fR=GLOB
+Filenames and paths matching GLOB will be excluded
+from sync
+.TP
+\fB\-\-exclude\-from\fR=FILE
+Read --exclude GLOBs from FILE
+.TP
+\fB\-\-rexclude\fR=REGEXP
+Filenames and paths matching REGEXP (regular
+expression) will be excluded from sync
+.TP
+\fB\-\-rexclude\-from\fR=FILE
+Read --rexclude REGEXPs from FILE
+.TP
+\fB\-\-include\fR=GLOB
+Filenames and paths matching GLOB will be included
+even if previously excluded by one of
+.TP
+\fB\-\-(r)exclude(\-from)\fR patterns
+.TP
+\fB\-\-include\-from\fR=FILE
+Read --include GLOBs from FILE
+.TP
+\fB\-\-rinclude\fR=REGEXP
+Same as --include but uses REGEXP (regular expression)
+instead of GLOB
+.TP
+\fB\-\-rinclude\-from\fR=FILE
+Read --rinclude REGEXPs from FILE
 .TP
 \fB\-\-bucket\-location\fR=BUCKET_LOCATION
-Specify datacentre where to create the bucket. Possible values are \fIUS\fR (default) or \fIEU\fR.
+Datacentre to create bucket in. As of now the
+datacenters are: US (default), EU, us-west-1, and ap-
+southeast-1
 .TP
-\fB\-H\fR, \fB\-\-human\-readable\-sizes\fR
-Print sizes in human readable form.
+\fB\-\-reduced\-redundancy\fR, \fB\-\-rr\fR
+Store object with 'Reduced redundancy'. Lower per-GB
+price. [put, cp, mv]
+.TP
+\fB\-\-access\-logging\-target\-prefix\fR=LOG_TARGET_PREFIX
+Target prefix for access logs (S3 URI) (for [cfmodify]
+and [accesslog] commands)
+.TP
+\fB\-\-no\-access\-logging\fR
+Disable access logging (for [cfmodify] and [accesslog]
+commands)
+.TP
+\fB\-m\fR MIME/TYPE, \fB\-\-mime\-type\fR=MIME/TYPE
+Default MIME-type to be set for objects stored.
+.TP
+\fB\-M\fR, \fB\-\-guess\-mime\-type\fR
+Guess MIME-type of files by their extension. Falls
+back to default MIME-Type as specified by --mime-type
+option
+.TP
+\fB\-\-add\-header\fR=NAME:VALUE
+Add a given HTTP header to the upload request. Can be
+used multiple times. For instance set 'Expires' or
+'Cache-Control' headers (or both) using this options
+if you like.
+.TP
+\fB\-\-encoding\fR=ENCODING
+Override autodetected terminal and filesystem encoding
+(character set). Autodetected: UTF-8
+.TP
+\fB\-\-verbatim\fR
+Use the S3 name as given on the command line. No pre-
+processing, encoding, etc. Use with caution!
 .TP
 \fB\-\-list\-md5\fR
-Include MD5 sums in bucket listings (only for \fIls\fR command).
+Include MD5 sums in bucket listings (only for 'ls'
+command).
 .TP
-\fB\-\-progress\fR, \fB\-\-no\-progress\fR
-Display or don't display progress meter. When running on TTY (e.g. console or xterm) the default is to display progress meter. If not on TTY (e.g. output is redirected somewhere or running from cron) the default is to not display progress meter.
+\fB\-H\fR, \fB\-\-human\-readable\-sizes\fR
+Print sizes in human readable form (eg 1kB instead of
+1234).
 .TP
-\fB\-\-encoding=ENCODING\fR
-Override autodetected terminal and filesystem encoding (character set).
+\fB\-\-progress\fR
+Display progress meter (default on TTY).
+.TP
+\fB\-\-no\-progress\fR
+Don't display progress meter (default on non-TTY).
+.TP
+\fB\-\-enable\fR
+Enable given CloudFront distribution (only for
+[cfmodify] command)
+.TP
+\fB\-\-disable\fR
+Enable given CloudFront distribution (only for
+[cfmodify] command)
+.TP
+\fB\-\-cf\-add\-cname\fR=CNAME
+Add given CNAME to a CloudFront distribution (only for
+[cfcreate] and [cfmodify] commands)
+.TP
+\fB\-\-cf\-remove\-cname\fR=CNAME
+Remove given CNAME from a CloudFront distribution
+(only for [cfmodify] command)
+.TP
+\fB\-\-cf\-comment\fR=COMMENT
+Set COMMENT for a given CloudFront distribution (only
+for [cfcreate] and [cfmodify] commands)
+.TP
+\fB\-\-cf\-default\-root\-object\fR=DEFAULT_ROOT_OBJECT
+Set the default root object to return when no object
+is specified in the URL. Use a relative path, i.e.
+default/index.html instead of /default/index.html or
+s3://bucket/default/index.html (only for [cfcreate]
+and [cfmodify] commands)
 .TP
 \fB\-v\fR, \fB\-\-verbose\fR
 Enable verbose output.
@@ -215,15 +281,14 @@ Enable verbose output.
 \fB\-d\fR, \fB\-\-debug\fR
 Enable debug output.
 .TP
-\fB\-h\fR, \fB\-\-help\fR
-Show the help message and exit
-.TP
 \fB\-\-version\fR
-Show
-.B s3cmd
-version and exit.
+Show s3cmd version (1.0.0-rc1) and exit.
+.TP
+\fB\-F\fR, \fB\-\-follow\-symlinks\fR
+Follow symbolic links as if they are regular files
 
-.SH FILE TRANSFERS
+
+.SH EXAMPLES
 One of the most powerful commands of \fIs3cmd\fR is \fBs3cmd sync\fR used for 
 synchronising complete directory trees to or from remote S3 storage. To some extent 
 \fBs3cmd put\fR and \fBs3cmd get\fR share a similar behaviour with \fBsync\fR.
@@ -308,7 +373,7 @@ For more info about usage, examples and other related info visit project homepag
 .B http://s3tools.org
 
 .SH AUTHOR
-Written by Michal Ludvig <michal@logix.cz>
+Written by Michal Ludvig <mludvig@logix.net.nz>
 .SH CONTACT, SUPPORT
 Prefered way to get support is our mailing list:
 .I s3tools\-general@lists.sourceforge.net
@@ -316,7 +381,7 @@ Prefered way to get support is our mailing list:
 Report bugs to 
 .I s3tools\-bugs@lists.sourceforge.net
 .SH COPYRIGHT
-Copyright \(co 2007,2008,2009 Michal Ludvig <http://www.logix.cz/michal>
+Copyright \(co 2007,2008,2009,2010 Michal Ludvig <http://www.logix.cz/michal>
 .br
 This is free software.  You may redistribute copies of it under the terms of
 the GNU General Public License version 2 <http://www.gnu.org/licenses/gpl.html>.
