@@ -1,4 +1,4 @@
-s3cmd 1.0.0-rc2 -  2010-??-??
+s3cmd 1.0.0-rc2 -  2010-12-09
 ===============
 * [sync] now supports bucket-to-bucket synchronisation
 
