@@ -1,3 +1,7 @@
+s3cmd 1.0.0-rc2 -  2010-??-??
+===============
+* [sync] now supports bucket-to-bucket synchronisation
+
 s3cmd 1.0.0-rc1 -  2010-10-26
 ===============
 * Added [accesslog] command. (needs manpage!)

@@ -1,3 +1,11 @@
+2010-12-09  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* Released version 1.0.0-rc2
+	  --------------------------
+
+	* S3/PkgInfo.py: Updated to 1.0.0-rc2
+	* NEWS, TODO, s3cmd.1: Updated.
+
 2010-11-13  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* s3cmd: Added support for remote-to-remote sync.
