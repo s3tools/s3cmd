@@ -1714,6 +1714,8 @@ def main():
 	optparser.add_option(      "--continue", dest="get_continue", action="store_true", help="Continue getting a partially downloaded file (only for [get] command).")
 	optparser.add_option(      "--skip-existing", dest="skip_existing", action="store_true", help="Skip over files that exist at the destination (only for [get] and [sync] commands).")
 	optparser.add_option("-r", "--recursive", dest="recursive", action="store_true", help="Recursive upload, download or removal.")
+	optparser.add_option(      "--check-md5", dest="check_md5", action="store_true", help="Check MD5 sums when comparing files for [sync]. (default)")
+	optparser.add_option(      "--no-check-md5", dest="check_md5", action="store_false", help="Do not check MD5 sums when comparing files for [sync]. Only size be compared. May significantly speed up transfer but may also miss some changed files.")
 	optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read for anyone.")
 	optparser.add_option(      "--acl-private", dest="acl_public", action="store_false", help="Store objects with default ACL allowing access for you only.")
 	optparser.add_option(      "--acl-grant", dest="acl_grants", type="s3acl", action="append", metavar="PERMISSION:EMAIL or USER_CANONICAL_ID", help="Grant stated permission to a given amazon user. Permission is one of: read, write, read_acp, write_acp, full_control, all")
@@ -1840,6 +1842,15 @@ def main():
 	if options.acl_revokes:
 		for grant in options.acl_revokes:
 			cfg.acl_revokes.append(grant)
+
+	## Process --(no-)check-md5
+	if options.check_md5 == False:
+		try:
+			cfg.sync_checks.remove("md5")
+		except:
+			pass
+	if options.check_md5 == True and cfg.sync_checks.count("md5") == 0:
+		cfg.sync_checks.append("md5")
 
 	## Update Config with other parameters
 	for option in cfg.option_list():

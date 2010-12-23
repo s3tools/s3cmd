@@ -1,5 +1,6 @@
 2010-12-24  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* s3cmd: Added --(no-)check-md5 for [sync].
 	* s3cmd: Don't crash when file disappears before
 	  checking MD5.
 
