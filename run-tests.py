@@ -189,6 +189,18 @@ def test_flushdir(label, dir_name):
 	test_rmdir(label + "(rm)", dir_name)
 	return test_mkdir(label + "(mk)", dir_name)
 
+def test_copy(label, src_file, dst_file):
+	if os.name == "posix":
+		cmd = ['cp', '-f']
+	elif os.name == "nt":
+		cmd = ['copy']
+	else:
+		print "Unknown platform: %s" % os.name
+		sys.exit(1)
+	cmd.append(src_file)
+	cmd.append(dst_file)
+	return test(label, cmd)
+
 try:
 	pwd = pwd.getpwuid(os.getuid())
 	bucket_prefix = "%s.%s-" % (pwd.pw_name, pwd.pw_uid)
@@ -287,6 +299,19 @@ if have_encoding:
 		must_find = [ u"File 'testsuite/encodings/%(encoding)s/%(pattern)s' stored as '%(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s'" % { 'encoding' : encoding, 'pattern' : enc_pattern , 'pbucket' : pbucket(1)} ])
 
 
+## ====== Don't check MD5 sum on Sync
+test_copy("Change file cksum1.txt", "testsuite/checksum/cksum2.txt", "testsuite/checksum/cksum1.txt")
+test_copy("Change file cksum33.txt", "testsuite/checksum/cksum2.txt", "testsuite/checksum/cksum33.txt")
+test_s3cmd("Don't check MD5", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--no-check-md5'],
+	must_find = [ "cksum33.txt" ],
+	must_not_find = [ "cksum1.txt" ])
+
+
+## ====== Check MD5 sum on Sync
+test_s3cmd("Check MD5", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--check-md5'],
+	must_find = [ "cksum1.txt" ])
+
+
 ## ====== List bucket content
 test_s3cmd("List bucket content", ['ls', '%s/xyz/' % pbucket(1) ],
 	must_find_re = [ u"DIR   %s/xyz/binary/$" % pbucket(1) , u"DIR   %s/xyz/etc/$" % pbucket(1) ],
@@ -374,7 +399,6 @@ test_s3cmd("Sync more to S3", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1),
 	must_find = [ "File 'testsuite/demo/some-file.xml' stored as '%s/xyz/demo/some-file.xml' " % pbucket(1) ],
 	must_not_find = [ "File 'testsuite/etc/linked.png' stored as '%s/xyz/etc/linked.png" % pbucket(1) ])
            
-
 
 ## ====== Rename within S3
 test_s3cmd("Rename within S3", ['mv', '%s/xyz/etc/logo.png' % pbucket(1), '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
