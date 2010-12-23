@@ -1,3 +1,8 @@
+2010-12-24  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* s3cmd: Don't crash when file disappears before
+	  checking MD5.
+
 2010-12-09  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* Released version 1.0.0-rc2

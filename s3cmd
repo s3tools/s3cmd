@@ -805,15 +805,23 @@ def _compare_filelists(src_list, dst_list, src_remote, dst_remote):
 			
 			if attribs_match and 'md5' in cfg.sync_checks:
 				## ... same size, check MD5
-				if src_remote == False and dst_remote == True:
-					src_md5 = Utils.hash_file_md5(src_list[file]['full_name'])
-					dst_md5 = dst_list[file]['md5']
-				elif src_remote == True and dst_remote == False:
-					src_md5 = src_list[file]['md5']
-					dst_md5 = Utils.hash_file_md5(dst_list[file]['full_name'])
-				elif src_remote == True and dst_remote == True:
-					src_md5 = src_list[file]['md5']
-					dst_md5 = dst_list[file]['md5']
+				try:
+					if src_remote == False and dst_remote == True:
+						src_md5 = Utils.hash_file_md5(src_list[file]['full_name'])
+						dst_md5 = dst_list[file]['md5']
+					elif src_remote == True and dst_remote == False:
+						src_md5 = src_list[file]['md5']
+						dst_md5 = Utils.hash_file_md5(dst_list[file]['full_name'])
+					elif src_remote == True and dst_remote == True:
+						src_md5 = src_list[file]['md5']
+						dst_md5 = dst_list[file]['md5']
+				except:
+					# MD5 sum verification failed - ignore that file altogether
+					debug(u"IGNR: %s (disappeared)" % (file))
+					warning(u"%s: file disappeared, ignoring." % (file))
+					del(src_list[file])
+					del(dst_list[file])
+					continue
 
 				if src_md5 != dst_md5:
 					## Checksums are different.
