@@ -1,5 +1,6 @@
 2010-12-24  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* s3cmd: Set 10s socket timeout for read()/write().
 	* s3cmd: Added --(no-)check-md5 for [sync].
 	* run-tests.py, testsuite.tar.gz: Added testsuite for
 	  the above.

@@ -22,6 +22,7 @@ import codecs
 import locale
 import subprocess
 import htmlentitydefs
+import socket
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -1906,8 +1907,11 @@ def main():
 	cfg.include.extend(patterns_list)
 	cfg.debug_include.update(patterns_textual)
 
-        ## Process --follow-symlinks
+	## Process --follow-symlinks
 	cfg.update_option("follow_symlinks", options.follow_symlinks)
+
+	## Set socket read()/write() timeout
+	socket.setdefaulttimeout(cfg.socket_timeout)
 
 	if cfg.encrypt and cfg.gpg_passphrase == "":
 		error(u"Encryption requested but no passphrase set in config file.")

@@ -1,6 +1,7 @@
 s3cmd 1.0.0
 ===========
 * [sync] now supports --no-check-md5
+* Network connections now have 10s timeout
 
 s3cmd 1.0.0-rc2 -  2010-12-09
 ===============
