@@ -159,7 +159,6 @@ about matching file names against exclude and include rules.
 For example to exclude all files with \".jpg\" extension except those beginning with a number use:
 .PP
 	\\-\\-exclude '*.jpg' \\-\\-rinclude '[0-9].*\\.jpg'
-
 .SH SEE ALSO
 For the most up to date list of options run 
 .B s3cmd \\-\\-help
@@ -167,9 +166,12 @@ For the most up to date list of options run
 For more info about usage, examples and other related info visit project homepage at
 .br
 .B http://s3tools.org
-
+.SH DONATIONS
+Please consider a donation if you have found s3cmd useful:
+.br
+.B http://s3tools.org/donate
 .SH AUTHOR
-Written by Michal Ludvig <mludvig\@logix.net.nz>
+Written by Michal Ludvig <mludvig\@logix.net.nz> and 15+ contributors
 .SH CONTACT, SUPPORT
 Prefered way to get support is our mailing list:
 .I s3tools\\-general\@lists.sourceforge.net
@@ -177,7 +179,7 @@ Prefered way to get support is our mailing list:
 Report bugs to 
 .I s3tools\\-bugs\@lists.sourceforge.net
 .SH COPYRIGHT
-Copyright \\(co 2007,2008,2009,2010 Michal Ludvig <http://www.logix.cz/michal>
+Copyright \\(co 2007,2008,2009,2010,2011 Michal Ludvig <http://www.logix.cz/michal>
 .br
 This is free software.  You may redistribute copies of it under the terms of
 the GNU General Public License version 2 <http://www.gnu.org/licenses/gpl.html>.
