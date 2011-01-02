@@ -816,7 +816,7 @@ def _compare_filelists(src_list, dst_list, src_remote, dst_remote):
 					elif src_remote == True and dst_remote == True:
 						src_md5 = src_list[file]['md5']
 						dst_md5 = dst_list[file]['md5']
-				except:
+				except (IOError,OSError), e:
 					# MD5 sum verification failed - ignore that file altogether
 					debug(u"IGNR: %s (disappeared)" % (file))
 					warning(u"%s: file disappeared, ignoring." % (file))

@@ -1,5 +1,7 @@
 2011-01-02  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* s3cmd: Improved r457 (Don't crash when file disappears
+	  before checking MD5).
 	* s3cmd, s3cmd.1, format-manpage.pl: Improved --help text
 	  and manpage.
 	* s3cmd: Removed explicit processing of --follow-symlinks
