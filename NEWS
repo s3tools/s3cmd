@@ -1,18 +1,12 @@
-s3cmd 1.0.0
+s3cmd 1.0.0   -   2011-01-18
 ===========
 * [sync] now supports --no-check-md5
 * Network connections now have 10s timeout
-
-s3cmd 1.0.0-rc2 -  2010-12-09
-===============
 * [sync] now supports bucket-to-bucket synchronisation
-
-s3cmd 1.0.0-rc1 -  2010-10-26
-===============
-* Added [accesslog] command. (needs manpage!)
+* Added [accesslog] command.
 * Added access logging for CloudFront distributions 
   using [cfmodify --log]
-* Added --acl-grant and --acl-revoke [Timothee Linden]
+* Added --acl-grant and --acl-revoke [Timothee Groleau]
 * Allow s3:// URI as well as cf:// URI as a distribution
   name for most CloudFront related commands.
 * Support for Reduced Redundancy Storage (--reduced-redundancy)

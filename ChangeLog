@@ -1,3 +1,11 @@
+2011-01-09  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* Released version 1.0.0
+	  ----------------------
+
+	* S3/PkgInfo.py: Updated to 1.0.0
+	* NEWS: Updated.
+
 2011-01-02  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* s3cmd: Improved r457 (Don't crash when file disappears
