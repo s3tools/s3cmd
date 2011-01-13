@@ -1,3 +1,8 @@
+2011-01-13  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* s3cmd, S3/FileLists.py: Move file/object listing functions
+	  to S3/FileLists.py
+
 2011-01-09  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* Released version 1.0.0
