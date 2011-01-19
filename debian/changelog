@@ -1,0 +1,11 @@
+s3cmd (1.0.0-2) stable; urgency=low
+
+  * Minor build system changes.
+
+ -- Michal Ludvig <mludvig@logix.net.nz>  Thu, 20 Jan 2011 02:30:01 +1300
+
+s3cmd (1.0.0-1) stable; urgency=low
+
+  * Initial release.
+
+ -- Michal Ludvig <mludvig@logix.net.nz>  Thu, 20 Jan 2011 02:03:13 +1300

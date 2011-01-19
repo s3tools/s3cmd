@@ -6,3 +6,4 @@ dist
 build
 .*.swp
 s3cmd.1.gz
+debian-build
