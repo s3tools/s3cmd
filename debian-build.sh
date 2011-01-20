@@ -25,7 +25,8 @@ echo -e "\033[1;32m=== Build: Success ===\033[0m"
 rm -f s3cmd_${VERSION}*.build
 mkdir -p repository/${DISTRIB}
 mv s3cmd_* repository/${DISTRIB}
-gpg --export -a "${SIGNKEY}" > repository/${DISTRIB}/s3tools.key
+cp s3cmd-${VERSION}/debian/s3tools.key repository/${DISTRIB}/s3tools.key
+sed "s/%DISTRIB%/$DISTRIB/g" s3cmd-${VERSION}/debian/s3tools.list.template > repository/${DISTRIB}/s3tools.list
 
 cd repository/
 cp -a ../s3cmd-${VERSION}/debian/mini-dinstall* .

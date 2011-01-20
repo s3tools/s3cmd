@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Michal Ludvig <mludvig@logix.net.nz>
 Build-Depends: debhelper (>= 7), quilt (>= 0.40), python
 Build-Depends-Indep: python-support (>= 0.6.4)
-Standards-Version: 3.8.4
+Standards-Version: 3.8.0
 Homepage: http://s3tools.org/s3cmd
 
 Package: s3cmd

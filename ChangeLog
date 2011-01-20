@@ -1,5 +1,9 @@
 2011-01-20  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* debian-build.sh, debian/*: Improved Debian packaging files.
+
+2011-01-20  Michal Ludvig  <mludvig@logix.net.nz>
+
 	* debian-build.sh, debian/*: Added Debian packaging files.
 
 2011-01-09  Michal Ludvig  <mludvig@logix.net.nz>
