@@ -123,10 +123,10 @@ class DistributionConfig(object):
 	EMPTY_CONFIG = "<DistributionConfig><Origin/><CallerReference/><Enabled>true</Enabled></DistributionConfig>"
 	xmlns = "http://cloudfront.amazonaws.com/doc/2010-07-15/"
 	def __init__(self, xml = None, tree = None):
-		if not xml:
+		if xml is None:
 			xml = DistributionConfig.EMPTY_CONFIG
 
-		if not tree:
+		if tree is None:
 			tree = getTreeFromXml(xml)
 
 		if tree.tag != "DistributionConfig":

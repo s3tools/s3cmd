@@ -1,5 +1,6 @@
 2011-03-30  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* S3/CloudFront.py: Fix warning with Python 2.7
 	* S3/CloudFront.py: Cmd._get_dist_name_for_bucket() moved to
 	  CloudFront class.
 
