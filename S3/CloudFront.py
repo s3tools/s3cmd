@@ -190,6 +190,7 @@ class CloudFront(object):
 
 	## Maximum attempts of re-issuing failed requests
 	_max_retries = 5
+	dist_list = None
 
 	def __init__(self, config):
 		self.config = config
@@ -388,6 +389,21 @@ class CloudFront(object):
 		# Wait a few seconds. The more it fails the more we wait.
 		return (self._max_retries - retries + 1) * 3
 
+	def get_dist_name_for_bucket(self, uri):
+		if (uri.type == "cf"):
+			return uri
+		if (uri.type != "s3"):
+			raise ParameterError("CloudFront or S3 URI required instead of: %s" % arg)
+
+		debug("_get_dist_name_for_bucket(%r)" % uri)
+		if CloudFront.dist_list is None:
+			response = self.GetList()
+			CloudFront.dist_list = {}
+			for d in response['dist_list'].dist_summs:
+				CloudFront.dist_list[getBucketFromHostname(d.info['Origin'])[0]] = d.uri()
+			debug("dist_list: %s" % CloudFront.dist_list)
+		return CloudFront.dist_list[uri.bucket()]
+
 class Cmd(object):
 	"""
 	Class that implements CloudFront commands
@@ -408,34 +424,17 @@ class Cmd(object):
 			setattr(Cmd.options, option, value)
 
 	options = Options()
-	dist_list = None
-
-	@staticmethod
-	def _get_dist_name_for_bucket(uri):
-		cf = CloudFront(Config())
-		debug("_get_dist_name_for_bucket(%r)" % uri)
-		assert(uri.type == "s3")
-		if Cmd.dist_list is None:
-			response = cf.GetList()
-			Cmd.dist_list = {}
-			for d in response['dist_list'].dist_summs:
-				Cmd.dist_list[getBucketFromHostname(d.info['Origin'])[0]] = d.uri()
-			debug("dist_list: %s" % Cmd.dist_list)
-		return Cmd.dist_list[uri.bucket()]
 
 	@staticmethod
 	def _parse_args(args):
+		cf = CloudFront(Config())
 		cfuris = []
 		for arg in args:
-			uri = S3Uri(arg)
-			if uri.type == 's3':
-				try:
-					uri = Cmd._get_dist_name_for_bucket(uri)
-				except Exception, e:
-					debug(e)
-					raise ParameterError("Unable to translate S3 URI to CloudFront distribution name: %s" % uri)
-			if uri.type != 'cf':
-				raise ParameterError("CloudFront URI required instead of: %s" % arg)
+			try:
+				uri = cf.get_dist_name_for_bucket(S3Uri(arg))
+			except Exception, e:
+				debug(e)
+				raise ParameterError("Unable to translate S3 URI to CloudFront distribution name: %s" % arg)
 			cfuris.append(uri)
 		return cfuris
 

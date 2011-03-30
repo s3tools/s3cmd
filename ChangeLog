@@ -1,3 +1,8 @@
+2011-03-30  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* S3/CloudFront.py: Cmd._get_dist_name_for_bucket() moved to
+	  CloudFront class.
+
 2011-01-13  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* s3cmd, S3/FileLists.py: Move file/object listing functions
