@@ -1,5 +1,7 @@
 2011-04-10  Michal Ludvig  <mludvig@logix.net.nz>
 
+	* s3cmd, S3/CloudFront.py, S3/S3Uri.py: Support for checking 
+	  status of CF Invalidation Requests [cfinvalinfo].
 	* s3cmd, S3/CloudFront.py, S3/Config.py: Support for CloudFront
 	  invalidation using [sync --cf-invalidate] command.
 	* S3/Utils.py: getDictFromTree() now recurses into

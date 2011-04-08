@@ -191,6 +191,63 @@ class DistributionConfig(object):
 			tree.append(logging_el)
 		return ET.tostring(tree)
 
+class Invalidation(object):
+	## Example:
+	##
+	## <Invalidation xmlns="http://cloudfront.amazonaws.com/doc/2010-11-01/">
+	##   <Id>id</Id>
+	##   <Status>status</Status>
+	##   <CreateTime>date</CreateTime>
+	##   <InvalidationBatch>
+	##       <Path>/image1.jpg</Path>
+	##       <Path>/image2.jpg</Path>
+	##       <Path>/videos/movie.flv</Path>
+	##       <CallerReference>my-batch</CallerReference>
+	##   </InvalidationBatch>
+	## </Invalidation>
+
+	def __init__(self, xml):
+		tree = getTreeFromXml(xml)
+		if tree.tag != "Invalidation":
+			raise ValueError("Expected <Invalidation /> xml, got: <%s />" % tree.tag)
+		self.parse(tree)
+
+	def parse(self, tree):
+		self.info = getDictFromTree(tree)
+
+	def __str__(self):
+		return str(self.info)
+
+class InvalidationList(object):
+	## Example:
+	##
+	## <InvalidationList>
+	##   <Marker/>
+	##   <NextMarker>Invalidation ID</NextMarker>
+	##   <MaxItems>2</MaxItems>
+	##   <IsTruncated>true</IsTruncated>
+	##   <InvalidationSummary>
+	##     <Id>[Second Invalidation ID]</Id>
+	##     <Status>Completed</Status>
+	##   </InvalidationSummary>
+	##   <InvalidationSummary>
+	##     <Id>[First Invalidation ID]</Id>
+	##     <Status>Completed</Status>
+	##   </InvalidationSummary>
+	## </InvalidationList>
+
+	def __init__(self, xml):
+		tree = getTreeFromXml(xml)
+		if tree.tag != "InvalidationList":
+			raise ValueError("Expected <InvalidationList /> xml, got: <%s />" % tree.tag)
+		self.parse(tree)
+
+	def parse(self, tree):
+		self.info = getDictFromTree(tree)
+
+	def __str__(self):
+		return str(self.info)
+
 class InvalidationBatch(object):
 	## Example:
 	##
@@ -240,7 +297,7 @@ class CloudFront(object):
 		"SetDistConfig" : { 'method' : "PUT", 'resource' : "/%(dist_id)s/config" },
 		"Invalidate" : { 'method' : "POST", 'resource' : "/%(dist_id)s/invalidation" },
 		"GetInvalList" : { 'method' : "GET", 'resource' : "/%(dist_id)s/invalidation" },
-		"GetInvalStatus" : { 'method' : "GET", 'resource' : "/%(dist_id)s/invalidation/%(invalidation_id)s" },
+		"GetInvalInfo" : { 'method' : "GET", 'resource' : "/%(dist_id)s/invalidation/%(request_id)s" },
 	}
 
 	## Maximum attempts of re-issuing failed requests
@@ -384,18 +441,38 @@ class CloudFront(object):
 		debug("InvalidateObjects(): request_body: %s" % invalbatch)
 		response = self.send_request("Invalidate", dist_id = cfuri.dist_id(),
 		                             body = str(invalbatch))
+		response['dist_id'] = cfuri.dist_id()
+		if response['status'] == 201:
+			inval_info = Invalidation(response['data']).info
+			response['request_id'] = inval_info['Id']
 		debug("InvalidateObjects(): response: %s" % response)
-		return response, invalbatch.get_reference()
+		return response
+
+	def GetInvalList(self, cfuri):
+		if cfuri.type != "cf":
+			raise ValueError("Expected CFUri instead of: %s" % cfuri)
+		response = self.send_request("GetInvalList", dist_id = cfuri.dist_id())
+		response['inval_list'] = InvalidationList(response['data'])
+		return response
+
+	def GetInvalInfo(self, cfuri):
+		if cfuri.type != "cf":
+			raise ValueError("Expected CFUri instead of: %s" % cfuri)
+		if cfuri.request_id() is None:
+			raise ValueError("Expected CFUri with Request ID")
+		response = self.send_request("GetInvalInfo", dist_id = cfuri.dist_id(), request_id = cfuri.request_id())
+		response['inval_status'] = Invalidation(response['data'])
+		return response
 
 	## --------------------------------------------------
 	## Low-level methods for handling CloudFront requests
 	## --------------------------------------------------
 
-	def send_request(self, op_name, dist_id = None, body = None, headers = {}, retries = _max_retries):
+	def send_request(self, op_name, dist_id = None, request_id = None, body = None, headers = {}, retries = _max_retries):
 		operation = self.operations[op_name]
 		if body:
 			headers['content-type'] = 'text/plain'
-		request = self.create_request(operation, dist_id, headers)
+		request = self.create_request(operation, dist_id, request_id, headers)
 		conn = self.get_connection()
 		debug("send_request(): %s %s" % (request['method'], request['resource']))
 		conn.request(request['method'], request['resource'], body, request['headers'])
@@ -425,9 +502,9 @@ class CloudFront(object):
 
 		return response
 
-	def create_request(self, operation, dist_id = None, headers = None):
+	def create_request(self, operation, dist_id = None, request_id = None, headers = None):
 		resource = cloudfront_resource + (
-		           operation['resource'] % { 'dist_id' : dist_id })
+		           operation['resource'] % { 'dist_id' : dist_id, 'request_id' : request_id })
 
 		if not headers:
 			headers = {}
@@ -635,5 +712,24 @@ class Cmd(object):
 		pretty_output("Etag", response['headers']['etag'])
 
 	@staticmethod
-	def invalidate(args):
+	def invalinfo(args):
 		cf = CloudFront(Config())
+		cfuris = Cmd._parse_args(args)
+		requests = []
+		for cfuri in cfuris:
+			if cfuri.request_id():
+				requests.append(str(cfuri))
+			else:
+				inval_list = cf.GetInvalList(cfuri)
+				for i in inval_list['inval_list'].info['InvalidationSummary']:
+					requests.append("/".join(["cf:/", cfuri.dist_id(), i["Id"]]))
+		for req in requests:
+			cfuri = S3Uri(req)
+			inval_info = cf.GetInvalInfo(cfuri)
+			st = inval_info['inval_status'].info
+			pretty_output("URI", str(cfuri))
+			pretty_output("Status", st['Status'])
+			pretty_output("Created", st['CreateTime'])
+			pretty_output("Nr of paths", len(st['InvalidationBatch']['Path']))
+			pretty_output("Reference", st['InvalidationBatch']['CallerReference'])
+			output("")

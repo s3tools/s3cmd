@@ -158,19 +158,26 @@ class S3UriFile(S3Uri):
 
 class S3UriCloudFront(S3Uri):
 	type = "cf"
-	_re = re.compile("^cf://([^/]*)/?", re.IGNORECASE)
+	_re = re.compile("^cf://([^/]*)(/.*)?", re.IGNORECASE)
 	def __init__(self, string):
 		match = self._re.match(string)
 		if not match:
 			raise ValueError("%s: not a CloudFront URI" % string)
 		groups = match.groups()
 		self._dist_id = groups[0]
+		self._request_id = groups[1] != "/" and groups[1] or None
 
 	def dist_id(self):
 		return self._dist_id
 
+	def request_id(self):
+		return self._request_id
+
 	def uri(self):
-		return "/".join(["cf:/", self.dist_id()])
+		uri = "cf://" + self.dist_id()
+		if self.request_id():
+			uri += "/" + self.request_id()
+		return uri
 
 if __name__ == "__main__":
 	uri = S3Uri("s3://bucket/object")
