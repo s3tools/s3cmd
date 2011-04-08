@@ -82,14 +82,16 @@ def getDictFromTree(tree):
 	ret_dict = {}
 	for child in tree.getchildren():
 		if child.getchildren():
-			## Complex-type child. We're not interested
-			continue
+			## Complex-type child. Recurse
+			content = getDictFromTree(child)
+		else:
+			content = child.text
 		if ret_dict.has_key(child.tag):
 			if not type(ret_dict[child.tag]) == list:
 				ret_dict[child.tag] = [ret_dict[child.tag]]
-			ret_dict[child.tag].append(child.text or "")
+			ret_dict[child.tag].append(content or "")
 		else:
-			ret_dict[child.tag] = child.text or ""
+			ret_dict[child.tag] = content or ""
 	return ret_dict
 __all__.append("getDictFromTree")
 

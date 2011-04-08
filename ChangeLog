@@ -1,3 +1,8 @@
+2011-04-10  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* S3/Utils.py: getDictFromTree() now recurses into
+	  sub-trees.
+
 2011-03-30  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* S3/CloudFront.py: Fix warning with Python 2.7
