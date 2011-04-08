@@ -19,7 +19,6 @@ class Config(object):
 	host_bucket = "%(bucket)s.s3.amazonaws.com"
 	simpledb_host = "sdb.amazonaws.com"
 	cloudfront_host = "cloudfront.amazonaws.com"
-	cloudfront_resource = "/2010-07-15/distribution"
 	verbosity = logging.WARNING
 	progress_meter = True
 	progress_class = Progress.ProgressCR
@@ -76,6 +75,7 @@ class Config(object):
 	reduced_redundancy = False
 	follow_symlinks = False
 	socket_timeout = 10
+	invalidate_on_cf = False
 
 	## Creating a singleton
 	def __new__(self, configfile = None):

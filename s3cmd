@@ -841,6 +841,7 @@ def cmd_sync_local2remote(args):
 			s3.object_delete(uri)
 			output(u"deleted: '%s'" % uri)
 
+	uploaded_objects_list = []
 	total_size = 0
 	total_elapsed = 0.0
 	timestamp_start = time.time()
@@ -872,6 +873,7 @@ def cmd_sync_local2remote(args):
 				(item['full_name_unicode'], uri, response["size"], response["elapsed"], 
 				speed_fmt[0], speed_fmt[1], seq_label))
 		total_size += response["size"]
+		uploaded_objects_list.append(uri.object())
 
 	total_elapsed = time.time() - timestamp_start
 	total_speed = total_elapsed and total_size/total_elapsed or 0.0
@@ -884,6 +886,16 @@ def cmd_sync_local2remote(args):
 		output(outstr)
 	else:
 		info(outstr)
+
+	if cfg.invalidate_on_cf:
+		if len(uploaded_objects_list) == 0:
+			info("Nothing to invalidate in CloudFront")
+		else:
+			# 'uri' from the last iteration is still valid at this point
+			cf = CloudFront(cfg)
+			result, inval_id = cf.InvalidateObjects(uri, uploaded_objects_list)
+			print result
+			output("Created invalidation request: %s" % inval_id)
 
 def cmd_sync(args):
 	if (len(args) < 2):
@@ -1438,6 +1450,7 @@ def main():
 	optparser.add_option(      "--no-progress", dest="progress_meter", action="store_false", help="Don't display progress meter (default on non-TTY).")
 	optparser.add_option(      "--enable", dest="enable", action="store_true", help="Enable given CloudFront distribution (only for [cfmodify] command)")
 	optparser.add_option(      "--disable", dest="enable", action="store_false", help="Enable given CloudFront distribution (only for [cfmodify] command)")
+	optparser.add_option(      "--cf-invalidate", dest="invalidate_on_cf", action="store_true", help="Invalidate the uploaded filed in CloudFront. Also see [cfinval] command.")
 	optparser.add_option(      "--cf-add-cname", dest="cf_cnames_add", action="append", metavar="CNAME", help="Add given CNAME to a CloudFront distribution (only for [cfcreate] and [cfmodify] commands)")
 	optparser.add_option(      "--cf-remove-cname", dest="cf_cnames_remove", action="append", metavar="CNAME", help="Remove given CNAME from a CloudFront distribution (only for [cfmodify] command)")
 	optparser.add_option(      "--cf-comment", dest="cf_comment", action="store", metavar="COMMENT", help="Set COMMENT for a given CloudFront distribution (only for [cfcreate] and [cfmodify] commands)")
@@ -1684,6 +1697,7 @@ if __name__ == '__main__':
 		from S3.Utils import *
 		from S3.Progress import Progress
 		from S3.CloudFront import Cmd as CfCmd
+		from S3.CloudFront import CloudFront
 		from S3.FileLists import *
 
 		main()

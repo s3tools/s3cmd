@@ -6,6 +6,8 @@
 import sys
 import time
 import httplib
+import random
+from datetime import datetime
 from logging import debug, info, warning, error
 
 try:
@@ -17,6 +19,10 @@ from Config import Config
 from Exceptions import *
 from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, sign_string, getBucketFromHostname, getHostnameFromBucket
 from S3Uri import S3Uri, S3UriS3
+from FileLists import fetch_remote_list
+
+cloudfront_api_version = "2010-11-01"
+cloudfront_resource = "/%(api_ver)s/distribution" % { 'api_ver' : cloudfront_api_version }
 
 def output(message):
 	sys.stdout.write(message + "\n")
@@ -34,7 +40,12 @@ class DistributionSummary(object):
 	##	<Status>Deployed</Status>
 	##	<LastModifiedTime>2009-01-16T11:49:02.189Z</LastModifiedTime>
 	##	<DomainName>blahblahblah.cloudfront.net</DomainName>
-	##	<Origin>example.bucket.s3.amazonaws.com</Origin>
+	##	<S3Origin>
+	##     <DNSName>example.bucket.s3.amazonaws.com</DNSName>
+	##  </S3Origin>
+	##  <CNAME>cdn.example.com</CNAME>
+	##  <CNAME>img.example.com</CNAME>
+	##  <Comment>What Ever</Comment>
 	##	<Enabled>true</Enabled>
 	## </DistributionSummary>
 
@@ -46,6 +57,8 @@ class DistributionSummary(object):
 	def parse(self, tree):
 		self.info = getDictFromTree(tree)
 		self.info['Enabled'] = (self.info['Enabled'].lower() == "true")
+		if self.info.has_key("CNAME") and type(self.info['CNAME']) != list:
+			self.info['CNAME'] = [self.info['CNAME']]
 
 	def uri(self):
 		return S3Uri("cf://%s" % self.info['Id'])
@@ -121,7 +134,7 @@ class DistributionConfig(object):
 	## </DistributionConfig>
 
 	EMPTY_CONFIG = "<DistributionConfig><Origin/><CallerReference/><Enabled>true</Enabled></DistributionConfig>"
-	xmlns = "http://cloudfront.amazonaws.com/doc/2010-07-15/"
+	xmlns = "http://cloudfront.amazonaws.com/doc/%(api_ver)s/" % { 'api_ver' : cloudfront_api_version }
 	def __init__(self, xml = None, tree = None):
 		if xml is None:
 			xml = DistributionConfig.EMPTY_CONFIG
@@ -178,6 +191,45 @@ class DistributionConfig(object):
 			tree.append(logging_el)
 		return ET.tostring(tree)
 
+class InvalidationBatch(object):
+	## Example:
+	##
+	## <InvalidationBatch>
+	##   <Path>/image1.jpg</Path>
+	##   <Path>/image2.jpg</Path>
+	##   <Path>/videos/movie.flv</Path>
+	##   <Path>/sound%20track.mp3</Path>
+	##   <CallerReference>my-batch</CallerReference>
+	## </InvalidationBatch>
+
+	def __init__(self, reference = None, distribution = None, paths = []):
+		if reference:
+			self.reference = reference
+		else:
+			if not distribution:
+				distribution="0"
+			self.reference = "%s.%s.%s" % (distribution,
+				datetime.strftime(datetime.now(),"%Y%m%d%H%M%S"),
+				random.randint(1000,9999))
+		self.paths = []
+		self.add_objects(paths)
+
+	def add_objects(self, paths):
+		self.paths.extend(paths)
+
+	def get_reference(self):
+		return self.reference
+
+	def __str__(self):
+		tree = ET.Element("InvalidationBatch")
+
+		for path in self.paths:
+			if path[0] != "/":
+				path = "/" + path
+			appendXmlTextNode("Path", path, tree)
+		appendXmlTextNode("CallerReference", self.reference, tree)
+		return ET.tostring(tree)
+
 class CloudFront(object):
 	operations = {
 		"CreateDist" : { 'method' : "POST", 'resource' : "" },
@@ -186,6 +238,9 @@ class CloudFront(object):
 		"GetDistInfo" : { 'method' : "GET", 'resource' : "/%(dist_id)s" },
 		"GetDistConfig" : { 'method' : "GET", 'resource' : "/%(dist_id)s/config" },
 		"SetDistConfig" : { 'method' : "PUT", 'resource' : "/%(dist_id)s/config" },
+		"Invalidate" : { 'method' : "POST", 'resource' : "/%(dist_id)s/invalidation" },
+		"GetInvalList" : { 'method' : "GET", 'resource' : "/%(dist_id)s/invalidation" },
+		"GetInvalStatus" : { 'method' : "GET", 'resource' : "/%(dist_id)s/invalidation/%(invalidation_id)s" },
 	}
 
 	## Maximum attempts of re-issuing failed requests
@@ -311,6 +366,27 @@ class CloudFront(object):
 		                             body = request_body, headers = headers)
 		return response
 
+	def InvalidateObjects(self, uri, paths):
+		# uri could be either cf:// or s3:// uri
+		cfuri = self.get_dist_name_for_bucket(uri)
+		if len(paths) > 999:
+			try:
+				tmp_filename = Utils.mktmpfile()
+				f = open(tmp_filename, "w")
+				f.write("\n".join(paths)+"\n")
+				f.close()
+				warning("Request to invalidate %d paths (max 999 supported)" % len(paths))
+				warning("All the paths are now saved in: %s" % tmp_filename)
+			except:
+				pass
+			raise ParameterError("Too many paths to invalidate")
+		invalbatch = InvalidationBatch(distribution = cfuri.dist_id(), paths = paths)
+		debug("InvalidateObjects(): request_body: %s" % invalbatch)
+		response = self.send_request("Invalidate", dist_id = cfuri.dist_id(),
+		                             body = str(invalbatch))
+		debug("InvalidateObjects(): response: %s" % response)
+		return response, invalbatch.get_reference()
+
 	## --------------------------------------------------
 	## Low-level methods for handling CloudFront requests
 	## --------------------------------------------------
@@ -350,7 +426,7 @@ class CloudFront(object):
 		return response
 
 	def create_request(self, operation, dist_id = None, headers = None):
-		resource = self.config.cloudfront_resource + (
+		resource = cloudfront_resource + (
 		           operation['resource'] % { 'dist_id' : dist_id })
 
 		if not headers:
@@ -400,9 +476,13 @@ class CloudFront(object):
 			response = self.GetList()
 			CloudFront.dist_list = {}
 			for d in response['dist_list'].dist_summs:
-				CloudFront.dist_list[getBucketFromHostname(d.info['Origin'])[0]] = d.uri()
+				CloudFront.dist_list[getBucketFromHostname(d.info['S3Origin']['DNSName'])[0]] = d.uri()
 			debug("dist_list: %s" % CloudFront.dist_list)
-		return CloudFront.dist_list[uri.bucket()]
+		try:
+			return CloudFront.dist_list[uri.bucket()]
+		except Exception, e:
+			debug(e)
+			raise ParameterError("Unable to translate S3 URI to CloudFront distribution name: %s" % arg)
 
 class Cmd(object):
 	"""
@@ -430,11 +510,7 @@ class Cmd(object):
 		cf = CloudFront(Config())
 		cfuris = []
 		for arg in args:
-			try:
-				uri = cf.get_dist_name_for_bucket(S3Uri(arg))
-			except Exception, e:
-				debug(e)
-				raise ParameterError("Unable to translate S3 URI to CloudFront distribution name: %s" % arg)
+			uri = cf.get_dist_name_for_bucket(S3Uri(arg))
 			cfuris.append(uri)
 		return cfuris
 
@@ -444,9 +520,17 @@ class Cmd(object):
 		if not args:
 			response = cf.GetList()
 			for d in response['dist_list'].dist_summs:
-				pretty_output("Origin", S3UriS3.httpurl_to_s3uri(d.info['Origin']))
+				if d.info.has_key("S3Origin"):
+					origin = S3UriS3.httpurl_to_s3uri(d.info['S3Origin']['DNSName'])
+				elif d.info.has_key("CustomOrigin"):
+					origin = "http://%s/" % d.info['CustomOrigin']['DNSName']
+				else:
+					origin = "<unknown>"
+				pretty_output("Origin", origin)
 				pretty_output("DistId", d.uri())
 				pretty_output("DomainName", d.info['DomainName'])
+				if d.info.has_key("CNAME"):
+					pretty_output("CNAMEs", ", ".join(d.info['CNAME']))
 				pretty_output("Status", d.info['Status'])
 				pretty_output("Enabled", d.info['Enabled'])
 				output("")
@@ -456,11 +540,18 @@ class Cmd(object):
 				response = cf.GetDistInfo(cfuri)
 				d = response['distribution']
 				dc = d.info['DistributionConfig']
-				pretty_output("Origin", S3UriS3.httpurl_to_s3uri(dc.info['Origin']))
+				if dc.info.has_key("S3Origin"):
+					origin = S3UriS3.httpurl_to_s3uri(dc.info['S3Origin']['DNSName'])
+				elif dc.info.has_key("CustomOrigin"):
+					origin = "http://%s/" % dc.info['CustomOrigin']['DNSName']
+				else:
+					origin = "<unknown>"
+				pretty_output("Origin", origin)
 				pretty_output("DistId", d.uri())
 				pretty_output("DomainName", d.info['DomainName'])
+				if dc.info.has_key("CNAME"):
+					pretty_output("CNAMEs", ", ".join(dc.info['CNAME']))
 				pretty_output("Status", d.info['Status'])
-				pretty_output("CNAMEs", ", ".join(dc.info['CNAME']))
 				pretty_output("Comment", dc.info['Comment'])
 				pretty_output("Enabled", dc.info['Enabled'])
 				pretty_output("DfltRootObject", dc.info['DefaultRootObject'])
@@ -542,3 +633,7 @@ class Cmd(object):
 		pretty_output("Enabled", dc.info['Enabled'])
 		pretty_output("DefaultRootObject", dc.info['DefaultRootObject'])
 		pretty_output("Etag", response['headers']['etag'])
+
+	@staticmethod
+	def invalidate(args):
+		cf = CloudFront(Config())
