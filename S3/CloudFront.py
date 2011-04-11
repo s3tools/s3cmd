@@ -721,8 +721,11 @@ class Cmd(object):
 				requests.append(str(cfuri))
 			else:
 				inval_list = cf.GetInvalList(cfuri)
-				for i in inval_list['inval_list'].info['InvalidationSummary']:
-					requests.append("/".join(["cf:/", cfuri.dist_id(), i["Id"]]))
+				try:
+					for i in inval_list['inval_list'].info['InvalidationSummary']:
+						requests.append("/".join(["cf:/", cfuri.dist_id(), i["Id"]]))
+				except:
+					continue
 		for req in requests:
 			cfuri = S3Uri(req)
 			inval_info = cf.GetInvalInfo(cfuri)
