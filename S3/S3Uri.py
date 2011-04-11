@@ -158,7 +158,7 @@ class S3UriFile(S3Uri):
 
 class S3UriCloudFront(S3Uri):
 	type = "cf"
-	_re = re.compile("^cf://([^/]*)(/.*)?", re.IGNORECASE)
+	_re = re.compile("^cf://([^/]*)/*(.*)", re.IGNORECASE)
 	def __init__(self, string):
 		match = self._re.match(string)
 		if not match:
