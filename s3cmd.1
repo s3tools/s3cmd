@@ -84,6 +84,9 @@ Delete CloudFront distribution point
 .TP
 s3cmd \fBcfmodify\fR \fIcf://DIST_ID\fR
 Change CloudFront distribution point parameters
+.TP
+s3cmd \fBcfinvalinfo\fR \fIcf://DIST_ID[/INVAL_ID]\fR
+Display CloudFront invalidation request(s) status
 
 
 .SH OPTIONS
@@ -265,6 +268,10 @@ Enable given CloudFront distribution (only for
 Enable given CloudFront distribution (only for
 [cfmodify] command)
 .TP
+\fB\-\-cf\-invalidate\fR
+Invalidate the uploaded filed in CloudFront. Also see
+[cfinval] command.
+.TP
 \fB\-\-cf\-add\-cname\fR=CNAME
 Add given CNAME to a CloudFront distribution (only for
 [cfcreate] and [cfmodify] commands)
@@ -291,7 +298,7 @@ Enable verbose output.
 Enable debug output.
 .TP
 \fB\-\-version\fR
-Show s3cmd version (1.0.0) and exit.
+Show s3cmd version (1.1.0-beta1) and exit.
 .TP
 \fB\-F\fR, \fB\-\-follow\-symlinks\fR
 Follow symbolic links as if they are regular files
