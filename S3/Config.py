@@ -75,7 +75,7 @@ class Config(object):
 	log_target_prefix = ""
 	reduced_redundancy = False
 	follow_symlinks = False
-	socket_timeout = 10
+	socket_timeout = 300
 
 	## Creating a singleton
 	def __new__(self, configfile = None):

@@ -1,3 +1,7 @@
+2011-04-11  Michal Ludvig  <mludvig@logix.net.nz>
+
+	* S3/Config.py: Increase socket_timeout from 10 secs to 5 mins.
+
 2011-01-20  Michal Ludvig  <mludvig@logix.net.nz>
 
 	* debian-build.sh, debian/*: Improved Debian packaging files.
