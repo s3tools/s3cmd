@@ -76,6 +76,9 @@ class S3DownloadError(S3Exception):
 class S3RequestError(S3Exception):
 	pass
 
+class S3ResponseError(S3Exception):
+	pass
+
 class InvalidFileError(S3Exception):
 	pass
 
