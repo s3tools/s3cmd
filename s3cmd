@@ -1609,7 +1609,7 @@ def main():
 	if options.check_md5 == False:
 		try:
 			cfg.sync_checks.remove("md5")
-		except:
+		except Exception:
 			pass
 	if options.check_md5 == True and cfg.sync_checks.count("md5") == 0:
 		cfg.sync_checks.append("md5")
