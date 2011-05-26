@@ -296,7 +296,7 @@ def cmd_object_put(args):
 		if Config().encrypt:
 			exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
 		try:
-			response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label)
+			response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label, multipart = True) # XXX temporarily forcing multipart=True
 		except S3UploadError, e:
 			error(u"Upload of '%s' failed too many times. Skipping that file." % full_name_orig)
 			continue

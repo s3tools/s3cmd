@@ -20,11 +20,12 @@ except ImportError:
 
 from Utils import *
 from SortedDict import SortedDict
+from AccessLog import AccessLog
+from ACL import ACL, GranteeLogDelivery
 from BidirMap import BidirMap
 from Config import Config
 from Exceptions import *
-from ACL import ACL, GranteeLogDelivery
-from AccessLog import AccessLog
+from MultiPart import MultiPartUpload
 from S3Uri import S3Uri
 
 __all__ = []
@@ -40,7 +41,7 @@ class S3Request(object):
 		self.sign()
 
 	def update_timestamp(self):
-		if self.headers.has_key("date"):
+		if "date" in self.headers:
 			del(self.headers["date"])
 		self.headers["x-amz-date"] = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
 
@@ -88,15 +89,16 @@ class S3(object):
 		PUT = 0x02,
 		HEAD = 0x04,
 		DELETE = 0x08,
-		MASK = 0x0F,
-		)
+		POST = 0x10,
+		MASK = 0x1F,
+	)
 	
 	targets = BidirMap(
 		SERVICE = 0x0100,
 		BUCKET = 0x0200,
 		OBJECT = 0x0400,
 		MASK = 0x0700,
-		)
+	)
 
 	operations = BidirMap(
 		UNDFINED = 0x0000,
@@ -108,13 +110,14 @@ class S3(object):
 		OBJECT_GET = targets["OBJECT"] | http_methods["GET"],
 		OBJECT_HEAD = targets["OBJECT"] | http_methods["HEAD"],
 		OBJECT_DELETE = targets["OBJECT"] | http_methods["DELETE"],
+		OBJECT_POST = targets["OBJECT"] | http_methods["POST"],
 	)
 
 	codes = {
 		"NoSuchBucket" : "Bucket '%s' does not exist",
 		"AccessDenied" : "Access to bucket '%s' was denied",
 		"BucketAlreadyExists" : "Bucket '%s' already exists",
-		}
+	}
 
 	## S3 sometimes sends HTTP-307 response 
 	redir_map = {}
@@ -136,7 +139,7 @@ class S3(object):
 
 	def get_hostname(self, bucket):
 		if bucket and check_bucket_name_dns_conformity(bucket):
-			if self.redir_map.has_key(bucket):
+			if bucket in self.redir_map:
 				host = self.redir_map[bucket]
 			else:
 				host = getHostnameFromBucket(bucket)
@@ -309,12 +312,12 @@ class S3(object):
 
 		return response
 
-	def object_put(self, filename, uri, extra_headers = None, extra_label = ""):
+	def object_put(self, filename, uri, extra_headers = None, extra_label = "", multipart = False):
 		# TODO TODO
 		# Make it consistent with stream-oriented object_get()
 		if uri.type != "s3":
 			raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
-
+		
 		if not os.path.isfile(filename):
 			raise InvalidFileError(u"%s is not a regular file" % unicodise(filename))
 		try:
@@ -322,9 +325,15 @@ class S3(object):
 			size = os.stat(filename)[ST_SIZE]
 		except (IOError, OSError), e:
 			raise InvalidFileError(u"%s: %s" % (unicodise(filename), e.strerror))
+		
 		headers = SortedDict(ignore_case = True)
 		if extra_headers:
 			headers.update(extra_headers)
+		
+		if multipart:
+			# Multipart requests are quite different... drop here
+			return self.send_file_multipart(file, headers, uri)
+		
 		headers["content-length"] = size
 		content_type = None
 		if self.config.guess_mime_type:
@@ -337,8 +346,8 @@ class S3(object):
 			headers["x-amz-acl"] = "public-read"
 		if self.config.reduced_redundancy:
 			headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
-		request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
 		labels = { 'source' : unicodise(filename), 'destination' : unicodise(uri.uri()), 'extra' : extra_label }
+		request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
 		response = self.send_file(request, file, labels)
 		return response
 
@@ -528,14 +537,16 @@ class S3(object):
 	def send_request(self, request, body = None, retries = _max_retries):
 		method_string, resource, headers = request.get_triplet()
 		debug("Processing request, please wait...")
-		if not headers.has_key('content-length'):
+		if "content-length" not in headers:
 			headers['content-length'] = body and len(body) or 0
 		try:
 			# "Stringify" all headers
 			for header in headers.keys():
 				headers[header] = str(headers[header])
 			conn = self.get_connection(resource['bucket'])
-			conn.request(method_string, self.format_uri(resource), body, headers)
+			uri = self.format_uri(resource)
+			debug("Sending request method_string=%r, uri=%r, headers=%r, body=(%i bytes)" % (method_string, uri, headers, len(body or "")))
+			conn.request(method_string, uri, body, headers)
 			response = {}
 			http_response = conn.getresponse()
 			response["status"] = http_response.status
@@ -663,10 +674,10 @@ class S3(object):
 
 		# S3 from time to time doesn't send ETag back in a response :-(
 		# Force re-upload here.
-		if not response['headers'].has_key('etag'):
+		if "etag" not in response["headers"]:
 			response['headers']['etag'] = '' 
 
-		if response["status"] < 200 or response["status"] > 299:
+		if response["status"] < 200 or response["status"] >= 300:
 			try_retry = False
 			if response["status"] >= 500:
 				## AWS internal error - retry
@@ -701,7 +712,16 @@ class S3(object):
 				raise S3UploadError
 
 		return response
-
+	
+	def send_file_multipart(self, file, headers, uri):
+		upload = MultiPartUpload(self, file, uri)
+		bucket, key, upload_id = upload.initiate_multipart_upload()
+		
+		file.seek(0)
+		parts = upload.upload_all_parts()
+		upload.complete_multipart_upload(parts)
+		exit() # TODO return response
+	
 	def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
 		method_string, resource, headers = request.get_triplet()
 		if self.config.progress_meter:
