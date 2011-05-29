@@ -14,8 +14,8 @@ class MultiPartUpload(object):
 	MAX_CHUNKS = 100
 	MAX_FILE_SIZE = 42949672960 # 5TB
 	
-	def __init__(self, bucket, file, uri):
-		self.bucket = bucket
+	def __init__(self, s3, file, uri):
+		self.s3 = s3
 		self.file = file
 		self.uri = uri
 		self.upload_id = None
@@ -25,12 +25,12 @@ class MultiPartUpload(object):
 		Begin a multipart upload
 		http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadInitiate.html
 		"""
-		request = self.bucket.create_request("OBJECT_POST", uri = self.uri, extra = "?uploads")
-		response = self.bucket.send_request(request)
+		request = self.s3.create_request("OBJECT_POST", uri = self.uri, extra = "?uploads")
+		response = self.s3.send_request(request)
 		data = response["data"]
-		bucket, key, upload_id = getTextFromXml(data, "Bucket"), getTextFromXml(data, "Key"), getTextFromXml(data, "UploadId")
+		s3, key, upload_id = getTextFromXml(data, "Bucket"), getTextFromXml(data, "Key"), getTextFromXml(data, "UploadId")
 		self.upload_id = upload_id
-		return bucket, key, upload_id
+		return s3, key, upload_id
 	
 	def upload_all_parts(self, num_processes = 1, chunk_size = MIN_CHUNK_SIZE):
 		"""
@@ -67,8 +67,8 @@ class MultiPartUpload(object):
 		debug("Uploading part %i of %r (%s bytes)" % (id, self.upload_id, content_length))
 		headers = { "Content-Length": content_length }
 		query_string = "?partNumber=%i&uploadId=%s" % (id, self.upload_id)
-		request = self.bucket.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
-		response = self.bucket.send_request(request, body = data)
+		request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
+		response = self.s3.send_request(request, body = data)
 		
 		return response["headers"]["etag"]
 	
@@ -84,5 +84,5 @@ class MultiPartUpload(object):
 		body = "<CompleteMultipartUpload>%s</CompleteMultipartUpload>" % ("".join(parts_xml))
 		
 		headers = { "Content-Length": len(body) }
-		request = self.bucket.create_request("OBJECT_POST", uri = self.uri, headers = headers, extra = "?uploadId=%s" % (self.upload_id))
-		response = self.bucket.send_request(request, body = body)
+		request = self.s3.create_request("OBJECT_POST", uri = self.uri, headers = headers, extra = "?uploadId=%s" % (self.upload_id))
+		response = self.s3.send_request(request, body = body)
