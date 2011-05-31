@@ -1505,6 +1505,8 @@ def main():
 	optparser.add_option(      "--encoding", dest="encoding", metavar="ENCODING", help="Override autodetected terminal and filesystem encoding (character set). Autodetected: %s" % preferred_encoding)
 	optparser.add_option(      "--verbatim", dest="urlencoding_mode", action="store_const", const="verbatim", help="Use the S3 name as given on the command line. No pre-processing, encoding, etc. Use with caution!")
 
+	optparser.add_option(      "--enable-multipart", dest="enable_multipart", action="store_true", default=False, help="Force multipart upload on files < 100MB")
+
 	optparser.add_option(      "--list-md5", dest="list_md5", action="store_true", help="Include MD5 sums in bucket listings (only for 'ls' command).")
 	optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form (eg 1kB instead of 1234).")
 
@@ -1524,7 +1526,7 @@ def main():
 	optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output.")
 	optparser.add_option(      "--version", dest="show_version", action="store_true", help="Show s3cmd version (%s) and exit." % (PkgInfo.version))
 	optparser.add_option("-F", "--follow-symlinks", dest="follow_symlinks", action="store_true", default=False, help="Follow symbolic links as if they are regular files")
-
+	
 	optparser.set_usage(optparser.usage + " COMMAND [parameters]")
 	optparser.set_description('S3cmd is a tool for managing objects in '+
 		'Amazon S3 storage. It allows for making and removing '+
