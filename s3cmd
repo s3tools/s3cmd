@@ -241,7 +241,7 @@ def cmd_bucket_delete(args):
 		_bucket_delete_one(uri)
 		output(u"Bucket '%s' removed" % uri.uri())
 
-def cmd_object_put(args):
+def cmd_object_put(args, multipart):
 	cfg = Config()
 	s3 = S3(cfg)
 
@@ -296,7 +296,7 @@ def cmd_object_put(args):
 		if Config().encrypt:
 			exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
 		try:
-			response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label, multipart = True) # XXX temporarily forcing multipart=True
+			response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label, multipart = multipart)
 		except S3UploadError, e:
 			error(u"Upload of '%s' failed too many times. Skipping that file." % full_name_orig)
 			continue
@@ -1709,7 +1709,10 @@ def main():
 		sys.exit(1)
 
 	try:
-		cmd_func(args)
+		if cmd_func == cmd_object_put:
+			cmd_func(args, options.enable_multipart)
+		else:
+			cmd_func(args)
 	except S3Error, e:
 		error(u"S3 error: %s" % e)
 		sys.exit(1)

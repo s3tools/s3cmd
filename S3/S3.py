@@ -330,6 +330,10 @@ class S3(object):
 		if extra_headers:
 			headers.update(extra_headers)
 		
+		if not multipart:
+			if size > 104857600: # 100MB
+				multipart = True
+		
 		if multipart:
 			# Multipart requests are quite different... drop here
 			return self.send_file_multipart(file, headers, uri, size)
@@ -731,7 +735,7 @@ class S3(object):
 			chunk_size = self.config.multipart_chunk_size or MultiPartUpload.MIN_CHUNK_SIZE
 		
 		file.seek(0)
-		upload.upload_all_parts()
+		upload.upload_all_parts(num_threads, chunk_size)
 		response = upload.complete_multipart_upload(num_threads, chunk_size)
 		response["speed"] = 0 # XXX
 		return response
