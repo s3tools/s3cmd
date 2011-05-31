@@ -70,7 +70,7 @@ class MultiPartUpload(object):
 		self.upload_id = upload_id
 		return s3, key, upload_id
 	
-	def upload_all_parts(self, num_threads = 4, chunk_size = MIN_CHUNK_SIZE):
+	def upload_all_parts(self, num_threads, chunk_size):
 		"""
 		Execute a full multipart upload on a file
 		Returns the id/etag dict

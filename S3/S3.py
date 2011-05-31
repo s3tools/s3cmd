@@ -332,7 +332,7 @@ class S3(object):
 		
 		if multipart:
 			# Multipart requests are quite different... drop here
-			return self.send_file_multipart(file, headers, uri)
+			return self.send_file_multipart(file, headers, uri, size)
 		
 		headers["content-length"] = size
 		content_type = None
@@ -713,16 +713,28 @@ class S3(object):
 
 		return response
 	
-	def send_file_multipart(self, file, headers, uri):
+	def send_file_multipart(self, file, headers, uri, size):
 		upload = MultiPartUpload(self, file, uri)
 		bucket, key, upload_id = upload.initiate_multipart_upload()
 		
+		num_threads = self.config.multipart_num_threads or 4
+		
+		if size > MultiPartUpload.MAX_FILE_SIZE:
+			raise RuntimeError("File is too large (%i bytes, max %i)" % (size, MultiPartUpload.MAX_FILE_SIZE))
+		elif size > 107374182400: # 100GB
+			chunk_size = size / 10000
+		elif size > 10737418240: # 10GB
+			chunk_size = size / 1000
+		elif size > 1073741824: # 1GB
+			chunk_size = size / 100
+		else:
+			chunk_size = self.config.multipart_chunk_size or MultiPartUpload.MIN_CHUNK_SIZE
+		
 		file.seek(0)
 		upload.upload_all_parts()
-		response = upload.complete_multipart_upload()
+		response = upload.complete_multipart_upload(num_threads, chunk_size)
 		response["speed"] = 0 # XXX
 		return response
-		exit() # TODO return response
 	
 	def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
 		method_string, resource, headers = request.get_triplet()
