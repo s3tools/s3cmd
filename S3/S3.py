@@ -675,7 +675,7 @@ class S3(object):
 		# S3 from time to time doesn't send ETag back in a response :-(
 		# Force re-upload here.
 		if "etag" not in response["headers"]:
-			response['headers']['etag'] = '' 
+			response["headers"]["etag"] = ""
 
 		if response["status"] < 200 or response["status"] >= 300:
 			try_retry = False
@@ -718,8 +718,10 @@ class S3(object):
 		bucket, key, upload_id = upload.initiate_multipart_upload()
 		
 		file.seek(0)
-		parts = upload.upload_all_parts()
-		upload.complete_multipart_upload(parts)
+		upload.upload_all_parts()
+		response = upload.complete_multipart_upload()
+		response["speed"] = 0 # XXX
+		return response
 		exit() # TODO return response
 	
 	def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):

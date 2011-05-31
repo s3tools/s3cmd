@@ -56,6 +56,7 @@ class MultiPartUpload(object):
 		self.file = file
 		self.uri = uri
 		self.upload_id = None
+		self.parts = {}
 	
 	def initiate_multipart_upload(self):
 		"""
@@ -69,7 +70,7 @@ class MultiPartUpload(object):
 		self.upload_id = upload_id
 		return s3, key, upload_id
 	
-	def upload_all_parts(self, num_processes = 1, chunk_size = MIN_CHUNK_SIZE):
+	def upload_all_parts(self, num_threads = 4, chunk_size = MIN_CHUNK_SIZE):
 		"""
 		Execute a full multipart upload on a file
 		Returns the id/etag dict
@@ -80,7 +81,7 @@ class MultiPartUpload(object):
 		
 		chunk_size = max(self.MIN_CHUNK_SIZE, chunk_size)
 		id = 1
-		parts = {}
+		pool = ThreadPool(num_threads)
 		
 		while True:
 			if id == self.MAX_CHUNKS:
@@ -89,10 +90,11 @@ class MultiPartUpload(object):
 				data = self.file.read(chunk_size)
 			if not data:
 				break
-			parts[id] = self.upload_part(data, id)
+			pool.add_task(self.upload_part, data, id)
 			id += 1
 		
-		return parts
+		debug("Thread pool with %i threads and %i tasks awaiting completion." % (num_threads, id))
+		pool.wait_completion()
 	
 	def upload_part(self, data, id):
 		"""
@@ -107,19 +109,21 @@ class MultiPartUpload(object):
 		request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
 		response = self.s3.send_request(request, body = data)
 		
-		return response["headers"]["etag"]
+		self.parts[id] = response["headers"]["etag"]
 	
-	def complete_multipart_upload(self, parts):
+	def complete_multipart_upload(self):
 		"""
 		Finish a multipart upload
 		http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadComplete.html
 		"""
 		parts_xml = []
 		part_xml = "<Part><PartNumber>%i</PartNumber><ETag>%s</ETag></Part>"
-		for id, etag in parts.items():
+		for id, etag in self.parts.items():
 			parts_xml.append(part_xml % (id, etag))
 		body = "<CompleteMultipartUpload>%s</CompleteMultipartUpload>" % ("".join(parts_xml))
 		
 		headers = { "Content-Length": len(body) }
 		request = self.s3.create_request("OBJECT_POST", uri = self.uri, headers = headers, extra = "?uploadId=%s" % (self.upload_id))
 		response = self.s3.send_request(request, body = body)
+		
+		return response
