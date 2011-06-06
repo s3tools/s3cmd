@@ -1,0 +1,5 @@
+*.pyc
+*.swp
+testsuite
+/MANIFEST
+/dist
