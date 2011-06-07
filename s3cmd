@@ -164,20 +164,21 @@ def cmd_bucket_create(args):
 			else:
 				raise
 
-def cmd_website_list(args):
+def cmd_website_info(args):
 	s3 = S3(Config())
 	for arg in args:
 		uri = S3Uri(arg)
 		if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
 			raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % arg)
 		try:
-			response = s3.website_list(uri, cfg.bucket_location)
+			response = s3.website_info(uri, cfg.bucket_location)
 			if response:
-				import xml.dom.minidom
-				xml = xml.dom.minidom.parseString(response['data'])
-				output(u"Bucket '%s': website configuration:\n%s" % (uri.uri(), xml.toprettyxml()))
+				output(u"Bucket %s: Website configuration" % uri.uri())
+				output(u"Website endpoint: %s" % response['website_endpoint'])
+				output(u"Index document:   %s" % response['index_document'])
+				output(u"Error document:   %s" % response['error_document'])
 			else:
-				output(u"Bucket '%s': unable to receive website configuration. None set?" % (uri.uri()))
+				output(u"Bucket %s: Unable to receive website configuration." % (uri.uri()))
 		except S3Error, e:
 			if S3.codes.has_key(e.info["Code"]):
 				error(S3.codes[e.info["Code"]] % uri.bucket())
@@ -1379,7 +1380,7 @@ def get_commands_list():
 	## Website commands
 	{"cmd":"ws-create", "label":"Create Website from bucket", "param":"s3://BUCKET", "func":cmd_website_create, "argc":1},
 	{"cmd":"ws-delete", "label":"Delete Website", "param":"s3://BUCKET", "func":cmd_website_delete, "argc":1},
-	{"cmd":"ws-list", "label":"List Websites", "param":"s3://BUCKET", "func":cmd_website_list, "argc":1},
+	{"cmd":"ws-info", "label":"Info about Website", "param":"s3://BUCKET", "func":cmd_website_info, "argc":1},
 
 	## CloudFront commands
 	{"cmd":"cflist", "label":"List CloudFront distribution points", "param":"", "func":CfCmd.info, "argc":0},

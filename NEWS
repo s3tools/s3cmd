@@ -2,6 +2,8 @@ s3cmd 1.1.0   -   ???
 ===========
 * CloudFront invalidation via [sync --cf-invalidate] and [cfinvalinfo].
 * Increased socket_timeout from 10 secs to 5 mins.
+* Added "Static WebSite" support [ws-create / ws-delete / ws-info]
+  (contributed by Jens Braeuer)
 
 s3cmd 1.0.0   -   2011-01-18
 ===========

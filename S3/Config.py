@@ -77,7 +77,8 @@ class Config(object):
 	socket_timeout = 300
 	invalidate_on_cf = False
 	website_index = "index.html"
-	website_error = None
+	website_error = ""
+	website_endpoint = "http://%(bucket)s.s3-website-%(location)s.amazonaws.com/"
 
 	## Creating a singleton
 	def __new__(self, configfile = None):

@@ -238,27 +238,41 @@ class S3(object):
 		response = self.send_request(request)
 		return response
 
-	def bucket_info(self, uri):
+	def get_bucket_location(self, uri):
 		request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?location")
 		response = self.send_request(request)
-		response['bucket-location'] = getTextFromXml(response['data'], "LocationConstraint") or "any"
+		location = getTextFromXml(response['data'], "LocationConstraint")
+		if not location or location in [ "", "US" ]:
+			location = "us-east-1"
+		elif location == "EU":
+			location = "eu-west-1"
+		return location
+
+	def bucket_info(self, uri):
+		# For now reports only "Location". One day perhaps more.
+		response = {}
+		response['bucket-location'] = self.get_bucket_location(uri)
 		return response
 
-	def website_list(self, uri, bucket_location = None):
+	def website_info(self, uri, bucket_location = None):
 		headers = SortedDict(ignore_case = True)
 		bucket = uri.bucket()
 		body = ""
 
 		request = self.create_request("BUCKET_LIST", bucket = bucket, extra="?website")
-		response = None
 		try:
 			response = self.send_request(request, body)
+			response['index_document'] = getTextFromXml(response['data'], ".//IndexDocument//Suffix")
+			response['error_document'] = getTextFromXml(response['data'], ".//ErrorDocument//Key")
+			response['website_endpoint'] = self.config.website_endpoint % {
+				"bucket" : uri.bucket(),
+				"location" : self.get_bucket_location(uri)}
+			return response
 		except S3Error, e:
 			if e.status == 404:
-				debug("Could not get ?website. Assuming none set.")
-			else:
-				raise
-		return response
+				debug("Could not get /?website - website probably not configured for this bucket")
+				return None
+			raise
 
 	def website_create(self, uri, bucket_location = None):
 		headers = SortedDict(ignore_case = True)
