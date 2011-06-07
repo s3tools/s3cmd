@@ -371,7 +371,7 @@ test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', '%s/xyz/etc/l*.p
 ## ====== Verify Private ACL
 if have_wget:
 	test("Verify Private ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.s3.amazonaws.com/xyz/etc/logo.png' % bucket(1)],
-		retcode = 1,
+		retcode = 8,
 		must_find_re = [ 'ERROR 403: Forbidden' ])
 
 
