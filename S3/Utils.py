@@ -4,16 +4,12 @@
 ## License: GPL Version 2
 
 import os
+import sys
 import time
 import re
 import string
 import random
 import rfc822
-try:
-    from hashlib import md5, sha1
-except ImportError:
-    from md5 import md5
-    import sha as sha1
 import hmac
 import base64
 import errno
@@ -22,6 +18,13 @@ from logging import debug, info, warning, error
 
 import Config
 import Exceptions
+
+# hashlib backported to python 2.4 / 2.5 is not compatible with hmac!
+if sys.version_info[0] == 2 and sys.version_info[1] < 6:
+    from md5 import md5
+    import sha as sha1
+else:
+    from hashlib import md5, sha1
 
 try:
     import xml.etree.ElementTree as ET
