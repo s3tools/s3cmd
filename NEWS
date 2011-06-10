@@ -1,3 +1,8 @@
+s3cmd 1.0.1   -   2011-06-10
+===========
+* Increased socket_timeout from 10 sec to 5 min
+* Improved compatibility with Python 2.4 on RHEL 5 / CentOS 5
+
 s3cmd 1.0.0   -   2011-01-18
 ===========
 * [sync] now supports --no-check-md5
