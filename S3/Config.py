@@ -60,7 +60,8 @@ class Config(object):
     use_https = False
     bucket_location = "US"
     default_mime_type = "binary/octet-stream"
-    guess_mime_type = True
+    guess_mime_type = False
+    mime_type = ""
     # List of checks to be performed for 'sync'
     sync_checks = ['size', 'md5']   # 'weak-timestamp'
     # List of compiled REGEXPs

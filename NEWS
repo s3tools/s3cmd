@@ -4,6 +4,8 @@ s3cmd 1.1.0   -   ???
 * Increased socket_timeout from 10 secs to 5 mins.
 * Added "Static WebSite" support [ws-create / ws-delete / ws-info]
   (contributed by Jens Braeuer)
+* Force MIME type with --mime-type=abc/xyz, also --guess-mime-type 
+  is no longer on by default.
 
 s3cmd 1.0.0   -   2011-01-18
 ===========

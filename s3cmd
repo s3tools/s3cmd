@@ -1497,8 +1497,10 @@ def main():
     optparser.add_option(      "--access-logging-target-prefix", dest="log_target_prefix", help="Target prefix for access logs (S3 URI) (for [cfmodify] and [accesslog] commands)")
     optparser.add_option(      "--no-access-logging", dest="log_target_prefix", action="store_false", help="Disable access logging (for [cfmodify] and [accesslog] commands)")
 
-    optparser.add_option("-m", "--mime-type", dest="default_mime_type", type="mimetype", metavar="MIME/TYPE", help="Default MIME-type to be set for objects stored.")
-    optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Falls back to default MIME-Type as specified by --mime-type option")
+    optparser.add_option(      "--default-mime-type", dest="default_mime_type", action="store_true", help="Default MIME-type for stored objects. Application default is binary/octet-stream.")
+    optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension. Fall back to default MIME-Type as specified by --default-mime-type option")
+    optparser.add_option(      "--no-guess-mime-type", dest="guess_mime_type", action="store_false", help="Don't guess MIME-type and use the default type instead.")
+    optparser.add_option("-m", "--mime-type", dest="mime_type", type="mimetype", metavar="MIME/TYPE", help="Force MIME-type. Override both --default-mime-type and --guess-mime-type.")
 
     optparser.add_option(      "--add-header", dest="add_header", action="append", metavar="NAME:VALUE", help="Add a given HTTP header to the upload request. Can be used multiple times. For instance set 'Expires' or 'Cache-Control' headers (or both) using this options if you like.")
 
