@@ -15,6 +15,9 @@ s3cmd 1.1.0   -   ???
   s3cmd --configure accepts an (optional) bucket uri as a parameter
   and if it's provided, the access check will just verify access to this
   bucket individually. Contributed by Mike Repass.
+* Allow STDOUT as a destination even for downloading multiple files.
+  They will be output one after another without any delimiters!
+  Contributed by Rob Wills.
 
 s3cmd 1.0.0   -   2011-01-18
 ===========
