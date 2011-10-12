@@ -1187,7 +1187,7 @@ def gpg_decrypt(filename, gpgenc_header = "", in_place = True):
         tmp_filename = filename
     return (code, tmp_filename)
 
-def run_configure(config_file):
+def run_configure(config_file, args):
     cfg = Config()
     options = [
         ("access_key", "Access Key", "Access key and Secret key are your identifiers for Amazon S3"),
@@ -1246,8 +1246,22 @@ def run_configure(config_file):
             val = raw_input("\nTest access with supplied credentials? [Y/n] ")
             if val.lower().startswith("y") or val == "":
                 try:
-                    output(u"Please wait...")
-                    S3(Config()).bucket_list("", "")
+                    # Default, we try to list 'all' buckets which requires
+                    # ListAllMyBuckets permission
+                    if len(args) == 0:
+                        output(u"Please wait, attempting to list all buckets...")
+                        S3(Config()).bucket_list("", "")
+                    else:
+                        # If user specified a bucket name directly, we check it and only it.
+                        # Thus, access check can succeed even if user only has access to
+                        # to a single bucket and not ListAllMyBuckets permission.
+                        output(u"Please wait, attempting to list bucket: " + args[0])
+                        uri = S3Uri(args[0])
+                        if uri.type == "s3" and uri.has_bucket():
+                            S3(Config()).bucket_list(uri.bucket(), "")
+                        else:
+                            raise Exception(u"Invalid bucket uri: " + args[0])
+
                     output(u"Success. Your access key and secret key worked fine :-)")
 
                     output(u"\nNow verifying that encryption works...")
@@ -1683,7 +1697,7 @@ def main():
         sys.exit(0)
 
     if options.run_configure:
-        run_configure(options.config)
+        run_configure(options.config, args)
         sys.exit(0)
 
     if len(args) < 1:
