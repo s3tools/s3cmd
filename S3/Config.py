@@ -6,6 +6,7 @@
 import logging
 from logging import debug, info, warning, error
 import re
+import os
 import Progress
 from SortedDict import SortedDict
 
@@ -117,6 +118,9 @@ class Config(object):
     def update_option(self, option, value):
         if value is None:
             return
+        #### Handle environment reference
+        if str(value).startswith("$"):
+            return self.update_option(option, os.getenv(str(value)[1:]))
         #### Special treatment of some options
         ## verbosity must be known to "logging" module
         if option == "verbosity":
