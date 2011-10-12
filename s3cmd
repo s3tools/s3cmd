@@ -336,6 +336,7 @@ def cmd_object_get(args):
     ##       - apply exclude/include rules
     ##       - each list item will have MD5sum, Timestamp and pointer to S3Uri
     ##         used as a prefix.
+    ##   - the last arg may be '-' (stdout)
     ##   - the last arg may be a local directory - destination_base
     ##   - if the last one is S3 make current dir the destination_base
     ##   - if the last one doesn't exist check remote list:
@@ -369,10 +370,14 @@ def cmd_object_get(args):
     info(u"Summary: %d remote files to download" % remote_count)
 
     if remote_count > 0:
-        if not os.path.isdir(destination_base) or destination_base == '-':
-            ## We were either given a file name (existing or not) or want STDOUT
+        if destination_base == "-":
+            ## stdout is ok for multiple remote files!
+            for key in remote_list:
+                remote_list[key]['local_filename'] = "-"
+        elif not os.path.isdir(destination_base):
+            ## We were either given a file name (existing or not)
             if remote_count > 1:
-                raise ParameterError("Destination must be a directory when downloading multiple sources.")
+                raise ParameterError("Destination must be a directory or stdout when downloading multiple sources.")
             remote_list[remote_list.keys()[0]]['local_filename'] = deunicodise(destination_base)
         elif os.path.isdir(destination_base):
             if destination_base[-1] != os.path.sep:
