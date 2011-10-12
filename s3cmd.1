@@ -65,6 +65,15 @@ Sign arbitrary string using the secret key
 .TP
 s3cmd \fBfixbucket\fR \fIs3://BUCKET[/PREFIX]\fR
 Fix invalid file names in a bucket
+.TP
+s3cmd \fBws-create\fR \fIs3://BUCKET\fR
+Create Website from bucket
+.TP
+s3cmd \fBws-delete\fR \fIs3://BUCKET\fR
+Delete Website
+.TP
+s3cmd \fBws-info\fR \fIs3://BUCKET\fR
+Info about Website
 
 
 .PP
@@ -227,13 +236,23 @@ and [accesslog] commands)
 Disable access logging (for [cfmodify] and [accesslog]
 commands)
 .TP
-\fB\-m\fR MIME/TYPE, \fB\-\-mime\-type\fR=MIME/TYPE
-Default MIME-type to be set for objects stored.
+\fB\-\-default\-mime\-type\fR
+Default MIME-type for stored objects. Application
+default is binary/octet-stream.
 .TP
 \fB\-M\fR, \fB\-\-guess\-mime\-type\fR
-Guess MIME-type of files by their extension. Falls
-back to default MIME-Type as specified by --mime-type
-option
+Guess MIME-type of files by their extension. Fall back
+to default MIME-Type as specified by --default-mime-
+type option
+.TP
+\fB\-\-no\-guess\-mime\-type\fR
+Don't guess MIME-type and use the default type
+instead.
+.TP
+\fB\-m\fR MIME/TYPE, \fB\-\-mime\-type\fR=MIME/TYPE
+Force MIME-type. Override both --default-mime-type and
+.TP
+\fB\-\-guess\-mime\-type.\fR
 .TP
 \fB\-\-add\-header\fR=NAME:VALUE
 Add a given HTTP header to the upload request. Can be
@@ -256,6 +275,12 @@ command).
 \fB\-H\fR, \fB\-\-human\-readable\-sizes\fR
 Print sizes in human readable form (eg 1kB instead of
 1234).
+.TP
+\fB\-\-ws\-index\fR=WEBSITE_INDEX
+Name of error-document (only for [ws-create] command)
+.TP
+\fB\-\-ws\-error\fR=WEBSITE_ERROR
+Name of index-document (only for [ws-create] command)
 .TP
 \fB\-\-progress\fR
 Display progress meter (default on TTY).
