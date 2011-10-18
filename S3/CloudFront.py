@@ -553,7 +553,11 @@ class CloudFront(object):
             response = self.GetList()
             CloudFront.dist_list = {}
             for d in response['dist_list'].dist_summs:
-                CloudFront.dist_list[getBucketFromHostname(d.info['S3Origin']['DNSName'])[0]] = d.uri()
+                if d.info.has_key("S3Origin"):
+                    CloudFront.dist_list[getBucketFromHostname(d.info['S3Origin']['DNSName'])[0]] = d.uri()
+                else:
+                    # Skip over distributions with CustomOrigin
+                    continue
             debug("dist_list: %s" % CloudFront.dist_list)
         try:
             return CloudFront.dist_list[uri.bucket()]
