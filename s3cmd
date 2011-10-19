@@ -663,6 +663,11 @@ def cmd_sync_remote2local(args):
             attrs[key] = val
         return attrs
 
+    if cfg.parallel_multipart_download:
+        #Disable progress meter 
+        cfg.progress_meter = False
+
+
     s3 = S3(Config())
 
     destination_base = args[-1]
@@ -744,7 +749,10 @@ def cmd_sync_remote2local(args):
                 os.close(os.open(dst_file, open_flags))
                 # Yeah I know there is a race condition here. Sadly I don't know how to open() in exclusive mode.
                 dst_stream = open(dst_file, "wb")
-                response = s3.object_get(uri, dst_stream, extra_label = seq_label)
+                if cfg.parallel_multipart_download == False:
+                    response = s3.object_get(uri, dst_stream, extra_label = seq_label)
+                else:
+                    response = s3.object_multipart_get(uri, dst_stream, cfg, extra_label = seq_label)
                 dst_stream.close()
                 if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
                     attrs = _parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
