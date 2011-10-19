@@ -10,6 +10,8 @@ import httplib
 import logging
 import mimetypes
 import re
+import Queue
+import threading
 from logging import debug, info, warning, error
 from stat import ST_SIZE
 
@@ -22,6 +24,7 @@ from Utils import *
 from SortedDict import SortedDict
 from BidirMap import BidirMap
 from Config import Config
+from Utils import concat_files
 from Exceptions import *
 from ACL import ACL, GranteeLogDelivery
 from AccessLog import AccessLog
@@ -349,6 +352,84 @@ class S3(object):
         labels = { 'source' : unicodise(uri.uri()), 'destination' : unicodise(stream.name), 'extra' : extra_label }
         response = self.recv_file(request, stream, labels, start_position)
         return response
+
+    def object_multipart_get(self, uri, stream, cfg, start_position = 0, extra_label = ""):
+        debug("Executing multipart download")
+        if uri.type != "s3":
+            raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
+        info = self.object_info(uri)
+        file_size = int(info['headers']['content-length'])
+        file_md5sum = info['headers']['etag'].strip('"')
+
+        multipart_ranges = []
+        parts_size = file_size / cfg.parallel_multipart_count 
+        global worker_queue
+        tmp_dir = os.path.join(os.path.dirname(stream.name),'tmps3')
+        os.makedirs(tmp_dir)
+
+        worker_queue = Queue.Queue()
+        i = 0
+        for offset in range(0, file_size, parts_size):
+            start_offset = offset 
+            if start_offset + parts_size < file_size - 1:
+                end_offset = start_offset + parts_size - 1
+            else:
+                end_offset = file_size - 1  
+
+            part_stream = open(os.path.join(tmp_dir, "%s.part-%d" %(os.path.basename(stream.name), i)),'wb+')
+            item = (i, start_offset, end_offset, uri, part_stream)
+
+            multipart_ranges.append(item)
+            worker_queue.put(item)
+            i+=1
+
+        def get_worker():
+            while True:
+                try:
+                    item = worker_queue.get_nowait()
+                except Queue.Empty:
+                    return
+                offset = item[0]
+                start_position = item[1]
+                end_position = item[2]
+                uri = item[3]
+                stream = item[4]
+                request = self.create_request("OBJECT_GET", uri = uri)
+                labels = { 'source' : unicodise(uri.uri()), 'destination' : unicodise(stream.name), 'extra' : extra_label }
+                self.recv_file(request, stream, labels, start_position, retries = self._max_retries, end_position = end_position)
+
+        for i in range(cfg.parallel_multipart_threads):
+            t = threading.Thread(target=get_worker)
+            t.daemon = True
+            t.start()
+
+        timestamp_start = time.time()
+        while threading.active_count() > 1:
+            time.sleep(0.1)
+        debug("Download of file parts complete")
+        source_streams = map(lambda x: x[4], multipart_ranges)
+        md5_hash_download, download_size = concat_files(stream, *source_streams)
+        timestamp_end = time.time()
+        for item in multipart_ranges:
+            item[4].close()
+            os.unlink(item[4].name)
+        os.rmdir(tmp_dir)
+        stream.flush()
+
+        debug("ReceivedFile: Computed MD5 = %s" % md5_hash_download)
+        response = {}
+        response["headers"] = info["headers"]
+        response["md5match"] =  file_md5sum.strip() == md5_hash_download.strip()
+        response["md5"] = file_md5sum 
+        if not response["md5match"]:
+            warning("MD5 signatures do not match: computed=%s, received=%s" % (md5_hash_download, file_md5sum))
+
+        response["elapsed"] = timestamp_end - timestamp_start
+        response["size"] = file_size
+        response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
+        if response["size"] != download_size:
+            warning("Reported size (%s) does not match received size (%s)" % (download_size, response["size"]))
+        return response 
 
     def object_delete(self, uri):
         if uri.type != "s3":

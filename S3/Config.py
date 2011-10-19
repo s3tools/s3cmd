@@ -81,6 +81,9 @@ class Config(object):
     website_index = "index.html"
     website_error = ""
     website_endpoint = "http://%(bucket)s.s3-website-%(location)s.amazonaws.com/"
+    parallel_multipart_download = False
+    parallel_multipart_threads = 10 
+    parallel_multipart_count = 20 
 
     ## Creating a singleton
     def __new__(self, configfile = None):
