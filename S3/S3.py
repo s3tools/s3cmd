@@ -702,7 +702,7 @@ class S3(object):
 
         return response
 
-    def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
+    def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries, end_position = -1):
         method_string, resource, headers = request.get_triplet()
         if self.config.progress_meter:
             progress = self.config.progress_class(labels, 0)
@@ -715,9 +715,12 @@ class S3(object):
             conn.putrequest(method_string, self.format_uri(resource))
             for header in headers.keys():
                 conn.putheader(header, str(headers[header]))
-            if start_position > 0:
+            if start_position > 0 and end_position == -1:
                 debug("Requesting Range: %d .. end" % start_position)
                 conn.putheader("Range", "bytes=%d-" % start_position)
+            elif end_position != -1:
+                debug("Requesting Range: %d .. %d" % (start_position, end_position))
+                conn.putheader("Range", "bytes=%d-%d" % (start_position, end_position))
             conn.endheaders()
             response = {}
             http_response = conn.getresponse()
@@ -733,7 +736,7 @@ class S3(object):
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 # Connection error -> same throttle value
-                return self.recv_file(request, stream, labels, start_position, retries - 1)
+                return self.recv_file(request, stream, labels, start_position, retries - 1, end_position)
             else:
                 raise S3DownloadError("Download failed for: %s" % resource['uri'])
 
@@ -744,12 +747,12 @@ class S3(object):
             redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
             self.set_hostname(redir_bucket, redir_hostname)
             warning("Redirected to: %s" % (redir_hostname))
-            return self.recv_file(request, stream, labels)
+            return self.recv_file(request, stream, labels, start_position, retries, end_position)
 
         if response["status"] < 200 or response["status"] > 299:
             raise S3Error(response)
 
-        if start_position == 0:
+        if start_position == 0 and end_position == -1:
             # Only compute MD5 on the fly if we're downloading from beginning
             # Otherwise we'd get a nonsense.
             md5_hash = md5()
@@ -767,7 +770,7 @@ class S3(object):
                 this_chunk = size_left > self.config.recv_chunk and self.config.recv_chunk or size_left
                 data = http_response.read(this_chunk)
                 stream.write(data)
-                if start_position == 0:
+                if start_position == 0 and end_position == -1:
                     md5_hash.update(data)
                 current_position += len(data)
                 ## Call progress meter from here...
@@ -796,30 +799,31 @@ class S3(object):
             progress.update()
             progress.done("done")
 
-        if start_position == 0:
-            # Only compute MD5 on the fly if we were downloading from the beginning
-            response["md5"] = md5_hash.hexdigest()
-        else:
-            # Otherwise try to compute MD5 of the output file
-            try:
-                response["md5"] = hash_file_md5(stream.name)
-            except IOError, e:
-                if e.errno != errno.ENOENT:
-                    warning("Unable to open file: %s: %s" % (stream.name, e))
-                warning("Unable to verify MD5. Assume it matches.")
-                response["md5"] = response["headers"]["etag"]
+        if end_position == -1:
+            if start_position == 0:
+                # Only compute MD5 on the fly if we were downloading from the beginning
+                response["md5"] = md5_hash.hexdigest()
+            else:
+                # Otherwise try to compute MD5 of the output file
+                try:
+                    response["md5"] = hash_file_md5(stream.name)
+                except IOError, e:
+                    if e.errno != errno.ENOENT:
+                        warning("Unable to open file: %s: %s" % (stream.name, e))
+                    warning("Unable to verify MD5. Assume it matches.")
+                    response["md5"] = response["headers"]["etag"]
 
-        response["md5match"] = response["headers"]["etag"].find(response["md5"]) >= 0
+            response["md5match"] = response["headers"]["etag"].find(response["md5"]) >= 0
+            debug("ReceiveFile: Computed MD5 = %s" % response["md5"])
+            if not response["md5match"]:
+                warning("MD5 signatures do not match: computed=%s, received=%s" % (
+                    response["md5"], response["headers"]["etag"]))
         response["elapsed"] = timestamp_end - timestamp_start
         response["size"] = current_position
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
         if response["size"] != start_position + long(response["headers"]["content-length"]):
             warning("Reported size (%s) does not match received size (%s)" % (
                 start_position + response["headers"]["content-length"], response["size"]))
-        debug("ReceiveFile: Computed MD5 = %s" % response["md5"])
-        if not response["md5match"]:
-            warning("MD5 signatures do not match: computed=%s, received=%s" % (
-                response["md5"], response["headers"]["etag"]))
         return response
 __all__.append("S3")
 
