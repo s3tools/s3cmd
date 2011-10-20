@@ -404,7 +404,7 @@ class S3(object):
             t.start()
 
         timestamp_start = time.time()
-        while threading.active_count() > 1:
+        while threading.activeCount() > 1:
             time.sleep(0.1)
         debug("Download of file parts complete")
         source_streams = map(lambda x: x[4], multipart_ranges)
