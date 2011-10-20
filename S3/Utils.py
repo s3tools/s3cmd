@@ -223,7 +223,7 @@ def hash_file_md5(filename):
     return h.hexdigest()
 __all__.append("hash_file_md5")
 
-def concat_files(dest_handle, *source_handles):
+def concat_files(dest_handle, unlink = True, *source_handles):
     """
     Read data from source file handles and write the data into dest_handle
     Return md5-hash and file size
@@ -238,8 +238,14 @@ def concat_files(dest_handle, *source_handles):
             if not data:
                 break
             h.update(data)
+
+        if unlink == True:
+            source.close()
+            os.unlink(source.name)
+
     return h.hexdigest(), dest_handle.tell()
 __all__.append("concat_files")
+
 
 def mkdir_with_parents(dir_name):
     """

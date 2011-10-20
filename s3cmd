@@ -32,6 +32,16 @@ from distutils.spawn import find_executable
 def output(message):
     sys.stdout.write(message + "\n")
 
+def clean_tempfiles(dest_handler):
+    path = os.path.join(os.path.dirname(dest_handler.name),'tmps3')
+    if os.path.exists(path):
+        for f in os.listdir(path):
+            fpath = os.path.join(path,f)
+            os.unlink(fpath)                                                                                                                                                    
+        os.rmdir(path)
+    if os.stat(dest_handler.name).st_size == 0:
+        os.unlink(dest_handler.name)
+
 def check_args_type(args, type, verbose_type):
     for arg in args:
         if S3Uri(arg).type != type:
@@ -764,7 +774,9 @@ def cmd_sync_remote2local(args):
                         os.utime(dst_file, (atime, mtime))
                     ## FIXME: uid/gid / uname/gname handling comes here! TODO
             except OSError, e:
-                try: dst_stream.close()
+                try: 
+                    dst_stream.close()
+                    clean_tempfiles(dst_stream)
                 except: pass
                 if e.errno == errno.EEXIST:
                     warning(u"%s exists - not overwriting" % (dst_file))
@@ -777,19 +789,25 @@ def cmd_sync_remote2local(args):
                     continue
                 raise e
             except KeyboardInterrupt:
-                try: dst_stream.close()
+                try: 
+                    dst_stream.close()
+                    clean_tempfiles(dst_stream)
                 except: pass
                 warning(u"Exiting after keyboard interrupt")
                 return
             except Exception, e:
-                try: dst_stream.close()
+                try: 
+                    dst_stream.close()
+                    clean_tempfiles(dst_stream)
                 except: pass
                 error(u"%s: %s" % (file, e))
                 continue
             # We have to keep repeating this call because
             # Python 2.4 doesn't support try/except/finally
             # construction :-(
-            try: dst_stream.close()
+            try: 
+                dst_stream.close()
+                clean_tempfiles(dst_stream)
             except: pass
         except S3DownloadError, e:
             error(u"%s: download failed too many times. Skipping that file." % file)

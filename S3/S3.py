@@ -408,11 +408,8 @@ class S3(object):
             time.sleep(0.1)
         debug("Download of file parts complete")
         source_streams = map(lambda x: x[4], multipart_ranges)
-        md5_hash_download, download_size = concat_files(stream, *source_streams)
+        md5_hash_download, download_size = concat_files(stream, True, *source_streams)
         timestamp_end = time.time()
-        for item in multipart_ranges:
-            item[4].close()
-            os.unlink(item[4].name)
         os.rmdir(tmp_dir)
         stream.flush()
 
