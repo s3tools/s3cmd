@@ -63,7 +63,7 @@ class S3Request(object):
         return param_str and "?" + param_str[1:]
 
     def sign(self):
-        h  = self.method_string + "\n"
+        h  = self.method_string + "\n" 
         h += self.headers.get("content-md5", "")+"\n"
         h += self.headers.get("content-type", "")+"\n"
         h += self.headers.get("date", "")+"\n"
@@ -73,9 +73,20 @@ class S3Request(object):
         if self.resource['bucket']:
             h += "/" + self.resource['bucket']
         h += self.resource['uri']
+
+        tmp_params = "" 
+        for parameter in self.params:
+            if parameter in ['uploads', 'partNumber', 'uploadId', 'acl', 'location', 'logging', 'torrent']:
+                if self.params[parameter] != "":
+                    tmp_params += '&%s=%s' %(parameter, self.params[parameter])
+                else:
+                    tmp_params += '&%s' %parameter 
+
+        if tmp_params != "":
+            h+='?'+tmp_params[1:].encode('UTF-8')
+                                                                                                                                                                                                     
         debug("SignHeaders: " + repr(h))
         signature = sign_string(h)
-
         self.headers["Authorization"] = "AWS "+self.s3.config.access_key+":"+signature
 
     def get_triplet(self):
