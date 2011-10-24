@@ -24,11 +24,12 @@ from Utils import *
 from SortedDict import SortedDict
 from BidirMap import BidirMap
 from Config import Config
-from Utils import concat_files
+from Utils import concat_files, hash_file_md5 
 from Exceptions import *
 from ACL import ACL, GranteeLogDelivery
 from AccessLog import AccessLog
 from S3Uri import S3Uri
+from email.utils import formatdate
 
 __all__ = []
 class S3Request(object):
@@ -81,10 +82,8 @@ class S3Request(object):
                     tmp_params += '&%s=%s' %(parameter, self.params[parameter])
                 else:
                     tmp_params += '&%s' %parameter 
-
         if tmp_params != "":
             h+='?'+tmp_params[1:].encode('UTF-8')
-                                                                                                                                                                                                     
         debug("SignHeaders: " + repr(h))
         signature = sign_string(h)
         self.headers["Authorization"] = "AWS "+self.s3.config.access_key+":"+signature
@@ -102,7 +101,8 @@ class S3(object):
         PUT = 0x02,
         HEAD = 0x04,
         DELETE = 0x08,
-        MASK = 0x0F,
+        POST = 0x20,
+        MASK = 0xFF,
         )
 
     targets = BidirMap(
@@ -121,6 +121,7 @@ class S3(object):
         OBJECT_PUT = targets["OBJECT"] | http_methods["PUT"],
         OBJECT_GET = targets["OBJECT"] | http_methods["GET"],
         OBJECT_HEAD = targets["OBJECT"] | http_methods["HEAD"],
+        OBJECT_POST = targets["OBJECT"] | http_methods["POST"],
         OBJECT_DELETE = targets["OBJECT"] | http_methods["DELETE"],
     )
 
@@ -323,6 +324,145 @@ class S3(object):
 
         return response
 
+    def object_multipart_upload(self, filename, uri, cfg, extra_headers = None, extra_label = ""):
+        if uri.type != "s3":
+            raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
+
+        if not os.path.isfile(filename):
+            raise InvalidFileError(u"%s is not a regular file" % unicodise(filename))
+        try:
+            file = open(filename, "rb")
+            file_size = os.stat(filename)[ST_SIZE]
+        except (IOError, OSError), e:
+            raise InvalidFileError(u"%s: %s" % (unicodise(filename), e.strerror))
+
+        parts_size = file_size / cfg.parallel_multipart_count 
+        if parts_size < 5*1024*1024:
+            warning("File part size is less than minimum required size (5 MB). Disabled parallel multipart upload")
+            return self.object_put(filename, uri, extra_headers = extra_headers, extra_label = extra_label)
+
+        headers = SortedDict(ignore_case = True)
+        if extra_headers:
+            headers.update(extra_headers)
+
+        content_type = self.config.mime_type
+        if not content_type and self.config.guess_mime_type:
+            content_type = mimetypes.guess_type(filename)[0]
+        if not content_type:
+            content_type = self.config.default_mime_type
+        debug("Content-Type set to '%s'" % content_type)
+        headers["content-type"] = content_type
+        if self.config.acl_public:
+            headers["x-amz-acl"] = "public-read"
+        if self.config.reduced_redundancy:
+            headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
+
+        headers = {}
+        headers['date'] = formatdate(usegmt=True)
+        initiate_request = self.create_request("OBJECT_POST", headers = headers, uri = uri, uploads='')
+        initiate_response = self.send_request(initiate_request)
+        upload_id = getTextFromXml(initiate_response["data"], ".//UploadId")
+        #Upload single file size
+
+        debug("Upload ID = %s" %upload_id)
+
+        multipart_ranges = []
+        global upload_worker_queue
+        global part_upload_list
+
+        part_upload_list = {}
+        upload_worker_queue = Queue.Queue()
+        i = 1
+        for offset in range(0, file_size, parts_size):
+            start_offset = offset 
+            if start_offset + parts_size < file_size - 1:
+                end_offset = start_offset + parts_size - 1
+            else:
+                end_offset = file_size - 1  
+
+            item = {'part_no':i, 'start_position':start_offset, 'end_position':end_offset, 'uri':uri, 'upload_id':upload_id, 'filename':filename}
+
+            multipart_ranges.append(item)
+            upload_worker_queue.put(item)
+            i+=1
+
+        def part_upload_worker():
+            while True:
+                try:
+                    part_info = upload_worker_queue.get_nowait()
+                except Queue.Empty:
+                    return
+                part_number = part_info['part_no']
+                start_position = part_info['start_position']
+                end_position = part_info['end_position']
+                uri = part_info['uri']
+                upload_id = part_info['upload_id']
+                filename = part_info['filename']
+
+                file = open(filename, 'rb')
+
+                headers = SortedDict(ignore_case = True)
+                #if extra_headers:
+                #    headers.update(extra_headers)
+
+                headers["content-length"] = end_position - start_position + 1
+                headers['Expect'] = '100-continue'
+
+                request = self.create_request("OBJECT_PUT", uri = uri, headers = headers, partNumber = part_number, uploadId = upload_id)
+                labels = { 'source' : unicodise(filename), 'destination' : unicodise(uri.uri()), 'extra' : extra_label }
+                try:
+                    response = self.send_file(request, file, labels, retries = self._max_retries, part_info = part_info)
+                except S3UploadError, e:
+                    self.abort_multipart_upload(uri, upload_id)
+                    file.close()
+                    raise S3UploadError("Failed to upload part-%d to S3" %part_info['part_no'])
+                part_upload_list[part_number] = response["headers"]["etag"].strip('"\'')
+                file.close()
+
+        for i in range(cfg.parallel_multipart_threads):
+            t = threading.Thread(target=part_upload_worker)
+            t.daemon = True
+            t.start()
+
+        timestamp_start = time.time()
+        while threading.activeCount() > 1:
+            time.sleep(0.1)
+        debug("Upload of file parts complete")
+
+        body = "<CompleteMultipartUpload>\n"
+        for part in part_upload_list.keys():
+            body += "  <Part>\n"
+            body += "   <PartNumber>%d</PartNumber>\n" %part
+            body += "   <ETag>%s</ETag>\n" %part_upload_list[part]
+            body += "  </Part>\n"
+        body += "</CompleteMultipartUpload>"
+
+        complete_request = self.create_request("OBJECT_POST", uri = uri, uploadId = upload_id)
+        response = self.send_request(complete_request, body)
+        timestamp_end = time.time()
+
+        object_info = self.object_info(uri)
+        upload_size = int(object_info['headers']['content-length'])
+        #file_md5sum = info['headers']['etag'].strip('"')
+
+        response = {}
+        response["headers"] = object_info["headers"]
+        #response["md5match"] = file_md5sum.strip() == md5_hash_file.strip()
+        response["md5"] = md5_hash
+        #if not response["md5match"]:
+        #    warning("MD5 signatures do not match: computed=%s, received=%s" % (md5_hash_file, file_md5sum))
+        #    warning("Aborting file upload")
+        #    self.abort_multipart_upload(uri, upload_id)
+        #    raise S3UploadError
+
+        response["elapsed"] = timestamp_end - timestamp_start
+        response["size"] = file_size
+        response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
+        if response["size"] != upload_size:
+            warning("Reported size (%s) does not match received size (%s)" % (upload_size, response["size"]))
+        return response
+
+
     def object_put(self, filename, uri, extra_headers = None, extra_label = ""):
         # TODO TODO
         # Make it consistent with stream-oriented object_get()
@@ -353,7 +493,7 @@ class S3(object):
             headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
         request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
         labels = { 'source' : unicodise(filename), 'destination' : unicodise(uri.uri()), 'extra' : extra_label }
-        response = self.send_file(request, file, labels)
+        response = self.send_file(request, file, labels, retries = self._max_retries)
         return response
 
     def object_get(self, uri, stream, start_position = 0, extra_label = ""):
@@ -608,6 +748,7 @@ class S3(object):
         request = S3Request(self, method_string, resource, headers, params)
 
         debug("CreateRequest: resource[uri]=" + resource['uri'])
+        debug("Request: headers="+str(headers))
         return request
 
     def _fail_wait(self, retries):
@@ -624,6 +765,7 @@ class S3(object):
             for header in headers.keys():
                 headers[header] = str(headers[header])
             conn = self.get_connection(resource['bucket'])
+            debug("Sending Request: method:%s body: %s uri: %s headers:%s" %(method_string,body,self.format_uri(resource),str(headers)))
             conn.request(method_string, self.format_uri(resource), body, headers)
             response = {}
             http_response = conn.getresponse()
@@ -666,13 +808,24 @@ class S3(object):
 
         return response
 
-    def send_file(self, request, file, labels, throttle = 0, retries = _max_retries):
+    def abort_multipart_upload(self, uri, upload_id):
+        headers = {}
+        headers['date'] = time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime())
+        request = self.create_request("OBJECT_DELETE", headers = headers, uri = uri, UploadId = upload_id)
+        response = self.send_request(request)
+        return response 
+
+    def send_file(self, request, file, labels, throttle = 0, retries = _max_retries, part_info = None):
         method_string, resource, headers = request.get_triplet()
         size_left = size_total = headers.get("content-length")
         if self.config.progress_meter:
             progress = self.config.progress_class(labels, size_total)
         else:
-            info("Sending file '%s', please wait..." % file.name)
+            if part_info:
+                info("Sending file '%s' part-%d, please wait..." % (file.name, part_info['part_no']))
+            else:
+                info("Sending file '%s', please wait..." % file.name)
+
         timestamp_start = time.time()
         try:
             conn = self.get_connection(resource['bucket'])
@@ -689,15 +842,24 @@ class S3(object):
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 # Connection error -> same throttle value
-                return self.send_file(request, file, labels, throttle, retries - 1)
+                return self.send_file(request, file, labels, throttle, retries - 1, part_info)
             else:
                 raise S3UploadError("Upload failed for: %s" % resource['uri'])
-        file.seek(0)
+
+        if part_info:
+            file.seek(part_info['start_position'])
+        else:
+            file.seek(0)
+
         md5_hash = md5()
         try:
             while (size_left > 0):
                 #debug("SendFile: Reading up to %d bytes from '%s'" % (self.config.send_chunk, file.name))
-                data = file.read(self.config.send_chunk)
+                if size_left < self.config.send_chunk:
+                    chunk_size = size_left
+                else:
+                    chunk_size = self.config.send_chunk
+                data = file.read(chunk_size)
                 md5_hash.update(data)
                 conn.send(data)
                 if self.config.progress_meter:
@@ -718,6 +880,7 @@ class S3(object):
         except Exception, e:
             if self.config.progress_meter:
                 progress.done("failed")
+            debug("Retries:"+str(retries))
             if retries:
                 if retries < self._max_retries:
                     throttle = throttle and throttle * 5 or 0.01
@@ -726,7 +889,7 @@ class S3(object):
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 # Connection error -> same throttle value
-                return self.send_file(request, file, labels, throttle, retries - 1)
+                return self.send_file(request, file, labels, throttle, retries - 1, part_info)
             else:
                 debug("Giving up on '%s' %s" % (file.name, e))
                 raise S3UploadError("Upload failed for: %s" % resource['uri'])
@@ -748,7 +911,7 @@ class S3(object):
             redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
             self.set_hostname(redir_bucket, redir_hostname)
             warning("Redirected to: %s" % (redir_hostname))
-            return self.send_file(request, file, labels)
+            return self.send_file(request, file, labels, retries, part_info)
 
         # S3 from time to time doesn't send ETag back in a response :-(
         # Force re-upload here.
@@ -771,7 +934,7 @@ class S3(object):
                     warning("Upload failed: %s (%s)" % (resource['uri'], S3Error(response)))
                     warning("Waiting %d sec..." % self._fail_wait(retries))
                     time.sleep(self._fail_wait(retries))
-                    return self.send_file(request, file, labels, throttle, retries - 1)
+                    return self.send_file(request, file, labels, throttle, retries - 1, part_info)
                 else:
                     warning("Too many failures. Giving up on '%s'" % (file.name))
                     raise S3UploadError
@@ -779,15 +942,17 @@ class S3(object):
             ## Non-recoverable error
             raise S3Error(response)
 
-        debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
-        if response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
-            warning("MD5 Sums don't match!")
-            if retries:
-                warning("Retrying upload of %s" % (file.name))
-                return self.send_file(request, file, labels, throttle, retries - 1)
-            else:
-                warning("Too many failures. Giving up on '%s'" % (file.name))
-                raise S3UploadError
+        if not part_info:
+            debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
+            if response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
+                warning("MD5 Sums don't match!")
+                if retries:
+                    warning("Retrying upload of %s" % (file.name))
+                    return self.send_file(request, file, labels, throttle, retries - 1, part_info)
+                else:
+                    warning("Too many failures. Giving up on '%s'" % (file.name))
+                    raise S3UploadError
+
 
         return response
 
@@ -797,6 +962,7 @@ class S3(object):
             progress = self.config.progress_class(labels, 0)
         else:
             info("Receiving file '%s', please wait..." % stream.name)
+        stream.seek(0)
         timestamp_start = time.time()
         try:
             conn = self.get_connection(resource['bucket'])
