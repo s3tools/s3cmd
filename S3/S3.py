@@ -29,7 +29,6 @@ from Exceptions import *
 from ACL import ACL, GranteeLogDelivery
 from AccessLog import AccessLog
 from S3Uri import S3Uri
-from email.utils import formatdate
 
 __all__ = []
 class S3Request(object):
@@ -358,7 +357,7 @@ class S3(object):
             headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
 
         headers = {}
-        headers['date'] = formatdate(usegmt=True)
+        headers['date'] = time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime())
         initiate_request = self.create_request("OBJECT_POST", headers = headers, uri = uri, uploads='')
         initiate_response = self.send_request(initiate_request)
         upload_id = getTextFromXml(initiate_response["data"], ".//UploadId")
