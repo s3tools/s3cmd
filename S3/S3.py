@@ -335,10 +335,14 @@ class S3(object):
         except (IOError, OSError), e:
             raise InvalidFileError(u"%s: %s" % (unicodise(filename), e.strerror))
 
-        parts_size = file_size / cfg.parallel_multipart_count 
+        parts_size = file_size / cfg.parallel_multipart_count
+        debug("File size=%d parts size=%d" %(file_size, parts_size))
         if parts_size < 5*1024*1024:
             warning("File part size is less than minimum required size (5 MB). Disabled parallel multipart upload")
             return self.object_put(filename, uri, extra_headers = extra_headers, extra_label = extra_label)
+
+        uri_original = uri
+        uri =  S3Uri(uri.uri()+'_S3__tmp')
 
         headers = SortedDict(ignore_case = True)
         if extra_headers:
@@ -374,8 +378,11 @@ class S3(object):
         i = 1
         for offset in range(0, file_size, parts_size):
             start_offset = offset 
-            if start_offset + parts_size < file_size - 1:
+         
+            if start_offset + parts_size - 1 < file_size:
                 end_offset = start_offset + parts_size - 1
+                if i == cfg.parallel_multipart_count:
+                    end_offset = file_size - 1
             else:
                 end_offset = file_size - 1  
 
@@ -383,7 +390,10 @@ class S3(object):
 
             multipart_ranges.append(item)
             upload_worker_queue.put(item)
+            debug("Part %d start=%d end=%d (part size=%d)" %(i, start_offset, end_offset, parts_size))
             i+=1
+            if end_offset == file_size - 1:
+                break
 
         def part_upload_worker():
             while True:
@@ -507,9 +517,9 @@ class S3(object):
         debug("Executing multipart download")
         if uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
-        info = self.object_info(uri)
-        file_size = int(info['headers']['content-length'])
-        file_md5sum = info['headers']['etag'].strip('"')
+        object_info = self.object_info(uri)
+        file_size = int(object_info['headers']['content-length'])
+        file_md5sum = object_info['headers']['etag'].strip('"')
 
         multipart_ranges = []
         parts_size = file_size / cfg.parallel_multipart_count 
@@ -518,11 +528,13 @@ class S3(object):
         os.makedirs(tmp_dir)
 
         worker_queue = Queue.Queue()
-        i = 0
+        i = 1
         for offset in range(0, file_size, parts_size):
             start_offset = offset 
-            if start_offset + parts_size < file_size - 1:
+            if start_offset + parts_size - 1 < file_size:
                 end_offset = start_offset + parts_size - 1
+                if i == cfg.parallel_multipart_count:
+                    end_offset = file_size - 1
             else:
                 end_offset = file_size - 1  
 
@@ -532,6 +544,10 @@ class S3(object):
             multipart_ranges.append(item)
             worker_queue.put(item)
             i+=1
+
+            if end_offset == file_size - 1:
+                break
+
 
         def get_worker():
             while True:
@@ -565,7 +581,7 @@ class S3(object):
 
         debug("ReceivedFile: Computed MD5 = %s" % md5_hash_download)
         response = {}
-        response["headers"] = info["headers"]
+        response["headers"] = object_info["headers"]
         response["md5match"] =  file_md5sum.strip() == md5_hash_download.strip()
         response["md5"] = file_md5sum 
         if not response["md5match"]:
@@ -1039,7 +1055,10 @@ class S3(object):
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 # Connection error -> same throttle value
-                return self.recv_file(request, stream, labels, current_position, retries - 1)
+                if end_position != -1:
+                   return self.recv_file(request, stream, labels, current_position, retries - 1)
+                else:
+                   return self.recv_file(request, stream, labels, start_position, retries - 1, end_position)
             else:
                 raise S3DownloadError("Download failed for: %s" % resource['uri'])
 
