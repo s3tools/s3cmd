@@ -341,9 +341,8 @@ class S3(object):
             warning("File part size is less than minimum required size (5 MB). Disabled parallel multipart upload")
             return self.object_put(filename, uri, extra_headers = extra_headers, extra_label = extra_label)
 
-        uri_original = uri
-        uri =  S3Uri(uri.uri()+'_S3__tmp')
-
+        md5_hash = hash_file_md5(filename)
+        info("Calculating md5sum for %s" %filename)
         headers = SortedDict(ignore_case = True)
         if extra_headers:
             headers.update(extra_headers)

@@ -573,7 +573,10 @@ def cmd_info(args):
                 output(u"   File size: %s" % info['headers']['content-length'])
                 output(u"   Last mod:  %s" % info['headers']['last-modified'])
                 output(u"   MIME type: %s" % info['headers']['content-type'])
-                output(u"   MD5 sum:   %s" % info['headers']['etag'].strip('"'))
+                if info['headers'].has_key('x-amz-meta-md5sum'):
+                    output(u"   MD5 sum:   %s" % info['headers']['x-amz-meta-md5sum'].strip('"'))
+                else:
+                    output(u"   MD5 sum:   %s" % info['headers']['etag'].strip('"'))
             else:
                 info = s3.bucket_info(uri)
                 output(u"%s (bucket):" % uri.uri())
