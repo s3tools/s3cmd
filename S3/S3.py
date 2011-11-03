@@ -429,7 +429,7 @@ class S3(object):
 
         for i in range(cfg.parallel_multipart_threads):
             t = threading.Thread(target=part_upload_worker)
-            t.daemon = True
+            t.setDaemon(True)
             t.start()
 
         timestamp_start = time.time()
@@ -565,7 +565,7 @@ class S3(object):
 
         for i in range(cfg.parallel_multipart_threads):
             t = threading.Thread(target=get_worker)
-            t.daemon = True
+            t.setDaemon(True)
             t.start()
 
         timestamp_start = time.time()
