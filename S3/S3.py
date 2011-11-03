@@ -361,6 +361,7 @@ class S3(object):
 
         headers = {}
         headers['date'] = time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime())
+        headers['x-amz-meta-md5sum'] = md5_hash
         initiate_request = self.create_request("OBJECT_POST", headers = headers, uri = uri, uploads='')
         initiate_response = self.send_request(initiate_request)
         upload_id = getTextFromXml(initiate_response["data"], ".//UploadId")
@@ -519,6 +520,11 @@ class S3(object):
         object_info = self.object_info(uri)
         file_size = int(object_info['headers']['content-length'])
         file_md5sum = object_info['headers']['etag'].strip('"')
+        if len(file_md5sum.split('-')) == 2:
+            try:
+                file_md5sum = object_info['headers']['x-amz-meta-md5sum']
+            except:
+                warning('md5sum meta information not found in multipart uploaded file')
 
         multipart_ranges = []
         parts_size = file_size / cfg.parallel_multipart_count 
@@ -1085,7 +1091,14 @@ class S3(object):
                     warning("Unable to verify MD5. Assume it matches.")
                     response["md5"] = response["headers"]["etag"]
 
-            response["md5match"] = response["headers"]["etag"].find(response["md5"]) >= 0
+            file_md5sum = response["headers"]["etag"].strip('"\'')
+            if len(response["headers"]["etag"].split('-')) == 2:
+                try:
+                    file_md5sum = response['headers']['x-amz-meta-md5sum']
+                except:
+                    warning('md5sum meta information not found in multipart uploaded file')
+
+            response["md5match"] = file_md5sum == response["md5"]
             debug("ReceiveFile: Computed MD5 = %s" % response["md5"])
             if not response["md5match"]:
                 warning("MD5 signatures do not match: computed=%s, received=%s" % (
