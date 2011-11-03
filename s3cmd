@@ -864,6 +864,10 @@ def cmd_sync_local2remote(args):
         for k in attrs: result += "%s:%s/" % (k, attrs[k])
         return { 'x-amz-meta-s3cmd-attrs' : result[:-1] }
 
+    if cfg.parallel_multipart_upload:
+        #Disable progress meter 
+        cfg.progress_meter = False
+
     s3 = S3(cfg)
 
     if cfg.encrypt:
