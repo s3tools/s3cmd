@@ -346,7 +346,7 @@ class S3(object):
         except (IOError, OSError), e:
             raise InvalidFileError(u"%s: %s" % (unicodise(filename), e.strerror))
 
-        parts_size = file_size / cfg.parallel_multipart_count
+        parts_size = file_size / cfg.parallel_multipart_upload_count
         debug("File size=%d parts size=%d" %(file_size, parts_size))
         if parts_size < 5*1024*1024:
             warning("File part size is less than minimum required size (5 MB). Disabled parallel multipart upload")
@@ -392,7 +392,7 @@ class S3(object):
          
             if start_offset + parts_size - 1 < file_size:
                 end_offset = start_offset + parts_size - 1
-                if i == cfg.parallel_multipart_count:
+                if i == cfg.parallel_multipart_upload_count:
                     end_offset = file_size - 1
             else:
                 end_offset = file_size - 1  
@@ -439,7 +439,7 @@ class S3(object):
                 part_upload_list[part_number] = response["headers"]["etag"].strip('"\'')
                 file.close()
 
-        for i in range(cfg.parallel_multipart_threads):
+        for i in range(cfg.parallel_multipart_upload_threads):
             t = threading.Thread(target=part_upload_worker)
             t.setDaemon(True)
             t.start()
@@ -539,7 +539,7 @@ class S3(object):
                 warning('md5sum meta information not found in multipart uploaded file')
 
         multipart_ranges = []
-        parts_size = file_size / cfg.parallel_multipart_count 
+        parts_size = file_size / cfg.parallel_multipart_download_count 
         global worker_queue
         tmp_dir = os.path.join(os.path.dirname(stream.name),'tmps3')
         os.makedirs(tmp_dir)
@@ -550,7 +550,7 @@ class S3(object):
             start_offset = offset 
             if start_offset + parts_size - 1 < file_size:
                 end_offset = start_offset + parts_size - 1
-                if i == cfg.parallel_multipart_count:
+                if i == cfg.parallel_multipart_download_count:
                     end_offset = file_size - 1
             else:
                 end_offset = file_size - 1  
@@ -581,7 +581,7 @@ class S3(object):
                 labels = { 'source' : unicodise(uri.uri()), 'destination' : unicodise(stream.name), 'extra' : extra_label }
                 self.recv_file(request, stream, labels, start_position, retries = self._max_retries, end_position = end_position)
 
-        for i in range(cfg.parallel_multipart_threads):
+        for i in range(cfg.parallel_multipart_download_threads):
             t = threading.Thread(target=get_worker)
             t.setDaemon(True)
             t.start()
