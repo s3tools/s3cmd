@@ -325,6 +325,8 @@ def cmd_object_put(args):
             debug(u"Removing temporary encrypted file: %s" % unicodise(full_name))
             os.remove(full_name)
 
+    return s3.exit_status
+
 def cmd_object_get(args):
     cfg = Config()
     s3 = S3(cfg)
@@ -458,6 +460,8 @@ def cmd_object_get(args):
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
             output(u"File %s saved as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s)" %
                 (uri, destination, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1]))
+
+    return s3.exit_status
 
 def cmd_object_del(args):
     for uri_str in args:
@@ -797,7 +801,7 @@ def cmd_sync_remote2local(args):
                     clean_tempfiles(dst_stream)
                 except: pass
                 warning(u"Exiting after keyboard interrupt")
-                return
+                return s3.error_codes["KEYBOARD_INTERRUPT"]
             except Exception, e:
                 try: 
                     dst_stream.close()
@@ -832,6 +836,8 @@ def cmd_sync_remote2local(args):
         output(outstr)
     else:
         info(outstr)
+
+    return s3.exit_status
 
 def cmd_sync_local2remote(args):
     def _build_attr_header(src):
@@ -992,6 +998,8 @@ def cmd_sync_local2remote(args):
             if result['status'] == 201:
                 output("Created invalidation request for %d paths" % len(uploaded_objects_list))
                 output("Check progress with: s3cmd cfinvalinfo cf://%s/%s" % (result['dist_id'], result['request_id']))
+    return s3.exit_status
+
 
 def cmd_sync(args):
     if (len(args) < 2):
@@ -1765,7 +1773,8 @@ def main():
         sys.exit(1)
 
     try:
-        cmd_func(args)
+        rv = cmd_func(args)
+        sys.exit(rv)
     except S3Error, e:
         error(u"S3 error: %s" % e)
         sys.exit(1)
@@ -1839,7 +1848,7 @@ if __name__ == '__main__':
 
     except KeyboardInterrupt:
         sys.stderr.write("See ya!\n")
-        sys.exit(1)
+        sys.exit(6)
 
     except Exception, e:
         report_exception(e)

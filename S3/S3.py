@@ -38,6 +38,7 @@ class S3Request(object):
         self.resource = resource
         self.method_string = method_string
         self.params = params
+        self.exit_status = 0
 
         self.update_timestamp()
         self.sign()
@@ -129,6 +130,16 @@ class S3(object):
         "AccessDenied" : "Access to bucket '%s' was denied",
         "BucketAlreadyExists" : "Bucket '%s' already exists",
         }
+
+    error_codes = {
+        "SIZE_MISMATCH":1,
+        "MD5_MISMATCH":2,
+        "RETRIES_EXCEEDED":3,
+        "UPLOAD_ABORT":4,
+        "MD5_META_NOTFOUND":5,
+        "KEYBOARD_INTERRUPT":6
+        }
+
 
     ## S3 sometimes sends HTTP-307 response
     redir_map = {}
@@ -469,6 +480,7 @@ class S3(object):
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
         if response["size"] != upload_size:
             warning("Reported size (%s) does not match received size (%s)" % (upload_size, response["size"]))
+            self.abort_multipart_upload()
         return response
 
 
@@ -591,12 +603,14 @@ class S3(object):
         response["md5"] = file_md5sum 
         if not response["md5match"]:
             warning("MD5 signatures do not match: computed=%s, received=%s" % (md5_hash_download, file_md5sum))
+            self.exit_status = self.error_codes["MD5_MISMATCH"]
 
         response["elapsed"] = timestamp_end - timestamp_start
         response["size"] = file_size
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
         if response["size"] != download_size:
             warning("Reported size (%s) does not match received size (%s)" % (download_size, response["size"]))
+            self.exit_status = self.error_codes["SIZE_MISMATCH"]
         return response 
 
     def object_delete(self, uri):
@@ -833,6 +847,7 @@ class S3(object):
         headers['date'] = time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime())
         request = self.create_request("OBJECT_DELETE", headers = headers, uri = uri, UploadId = upload_id)
         response = self.send_request(request)
+        self.exit_status = self.error_codes["UPLOAD_ABORT"]
         return response 
 
     def send_file(self, request, file, labels, throttle = 0, retries = _max_retries, part_info = None):
@@ -864,6 +879,7 @@ class S3(object):
                 # Connection error -> same throttle value
                 return self.send_file(request, file, labels, throttle, retries - 1, part_info)
             else:
+                self.exit_status = self.error_codes["RETRIES_EXCEEDED"]
                 raise S3UploadError("Upload failed for: %s" % resource['uri'])
 
         if part_info:
@@ -912,6 +928,7 @@ class S3(object):
                 return self.send_file(request, file, labels, throttle, retries - 1, part_info)
             else:
                 debug("Giving up on '%s' %s" % (file.name, e))
+                self.exit_status = self.error_codes["RETRIES_EXCEEDED"]
                 raise S3UploadError("Upload failed for: %s" % resource['uri'])
 
         timestamp_end = time.time()
@@ -957,22 +974,23 @@ class S3(object):
                     return self.send_file(request, file, labels, throttle, retries - 1, part_info)
                 else:
                     warning("Too many failures. Giving up on '%s'" % (file.name))
+                    self.exit_status = self.error_codes["RETRIES_EXCEEDED"]
                     raise S3UploadError
 
             ## Non-recoverable error
             raise S3Error(response)
 
-        if not part_info:
-            debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
-            if response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
-                warning("MD5 Sums don't match!")
-                if retries:
-                    warning("Retrying upload of %s" % (file.name))
-                    return self.send_file(request, file, labels, throttle, retries - 1, part_info)
-                else:
-                    warning("Too many failures. Giving up on '%s'" % (file.name))
-                    raise S3UploadError
-
+        debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
+        if response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
+            warning("MD5 Sums don't match!")
+            self.exit_status = self.error_codes["MD5_MISMATCH"]
+            if retries:
+                warning("Retrying upload of %s" % (file.name))
+                return self.send_file(request, file, labels, throttle, retries - 1, part_info)
+            else:
+                warning("Too many failures. Giving up on '%s'" % (file.name))
+                self.exit_status = self.error_codes["RETRIES_EXCEEDED"]
+                raise S3UploadError
 
         return response
 
@@ -1013,6 +1031,7 @@ class S3(object):
                 # Connection error -> same throttle value
                 return self.recv_file(request, stream, labels, start_position, retries - 1, end_position)
             else:
+                self.exit_status = self.error_codes["RETRIES_EXCEEDED"]
                 raise S3DownloadError("Download failed for: %s" % resource['uri'])
 
         if response["status"] == 307:
@@ -1065,6 +1084,7 @@ class S3(object):
                 else:
                    return self.recv_file(request, stream, labels, start_position, retries - 1, end_position)
             else:
+                self.exit_status = self.error_codes["RETRIES_EXCEEDED"]
                 raise S3DownloadError("Download failed for: %s" % resource['uri'])
 
         stream.flush()
@@ -1097,18 +1117,21 @@ class S3(object):
                     file_md5sum = response['headers']['x-amz-meta-md5sum']
                 except:
                     warning('md5sum meta information not found in multipart uploaded file')
+                    self.exit_status = self.error_codes["MD5_META_NOTFOUND"]
 
             response["md5match"] = file_md5sum == response["md5"]
             debug("ReceiveFile: Computed MD5 = %s" % response["md5"])
             if not response["md5match"]:
                 warning("MD5 signatures do not match: computed=%s, received=%s" % (
                     response["md5"], response["headers"]["etag"]))
+                self.exit_status = self.error_codes["MD5_MISMATCH"]
         response["elapsed"] = timestamp_end - timestamp_start
         response["size"] = current_position
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
         if response["size"] != start_position + long(response["headers"]["content-length"]):
             warning("Reported size (%s) does not match received size (%s)" % (
                 start_position + response["headers"]["content-length"], response["size"]))
+            self.exit_status = self.error_codes["SIZE_MISMATCH"]
         return response
 __all__.append("S3")
 
