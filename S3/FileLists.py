@@ -194,15 +194,18 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
             else:
                 key = object['Key'][rem_base_len:]      ## Beware - this may be '' if object['Key']==rem_base !!
                 object_uri_str = remote_uri.uri() + key
-            response = S3(cfg).object_info(S3Uri( object_uri_str ))
             rem_list[key] = {
-                'size' : int(response['headers']['x-amz-meta-s3tools-orig_size'].strip('"\'')) if response['headers'].has_key('x-amz-meta-s3tools-orig_size') else int(response['headers']['content-length']),
-                'timestamp' : dateS3toUnix(object['LastModified']), ## Sadly it's upload time, not our lastmod time :-(
-                'md5': response['headers']['x-amz-meta-s3tools-orig_md5'].strip('"\'') if response['headers'].has_key('x-amz-meta-s3tools-orig_md5') else response['headers']['etag'].strip('"\''),
                 'object_key' : object['Key'],
                 'object_uri_str' : object_uri_str,
                 'base_uri' : remote_uri,
             }
+            if require_attribs:
+                response = S3(cfg).object_info(S3Uri( object_uri_str ))
+                rem_list[key].update({
+                    'size' : int(response['headers']['x-amz-meta-s3tools-orig_size'].strip('"\'')) if response['headers'].has_key('x-amz-meta-s3tools-orig_size') else int(response['headers']['content-length']),
+                    'timestamp' : dateS3toUnix(object['LastModified']), ## Sadly it's upload time, not our lastmod time :-(
+                    'md5': response['headers']['x-amz-meta-s3tools-orig_md5'].strip('"\'') if response['headers'].has_key('x-amz-meta-s3tools-orig_md5') else response['headers']['etag'].strip('"\''),
+                })
             if break_now:
                 break
         return rem_list
