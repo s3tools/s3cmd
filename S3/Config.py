@@ -39,6 +39,7 @@ class Config(object):
     proxy_host = ""
     proxy_port = 3128
     encrypt = False
+    temp_location = "/tmp/tmpfile-"
     dry_run = False
     preserve_attrs = True
     preserve_attrs_list = [

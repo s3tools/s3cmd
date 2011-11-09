@@ -1161,7 +1161,7 @@ def gpg_command(command, passphrase = ""):
     return p_exitcode
 
 def gpg_encrypt(filename):
-    tmp_filename = Utils.mktmpfile()
+    tmp_filename = Utils.mktmpfile( cfg.temp_location )
     args = {
         "gpg_command" : cfg.gpg_command,
         "passphrase_fd" : "0",
@@ -1488,6 +1488,7 @@ def main():
 
     optparser.add_option("-e", "--encrypt", dest="encrypt", action="store_true", help="Encrypt files before uploading to S3.")
     optparser.add_option(      "--no-encrypt", dest="encrypt", action="store_false", help="Don't encrypt files.")
+    optparser.add_option(      "--temp-location", dest="temp_location", metavar="FOLDER", help="Location to store temporary files for encrypt. Add trailing / to signify directory and leave off to signify file prefix. Defaults to /tmp/tmpfile-")
     optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations.")
     optparser.add_option(      "--continue", dest="get_continue", action="store_true", help="Continue getting a partially downloaded file (only for [get] command).")
     optparser.add_option(      "--skip-existing", dest="skip_existing", action="store_true", help="Skip over files that exist at the destination (only for [get] and [sync] commands).")
