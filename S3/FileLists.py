@@ -314,9 +314,9 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
                     elif src_remote == True and dst_remote == True:
                         src_md5 = src_list[file]['md5']
                         dst_md5 = dst_list[file]['md5']
-                    if src_remote == True and cfg.encrypt:
+                    if cfg.encrypt and src_md5 in metadata.metadata['md5_trans'] and src_remote == True:
                         src_md5 = metadata.metadata['md5_trans'][src_md5]
-                    if dst_remote == True and cfg.encrypt:
+                    if cfg.encrypt and dst_md5 in metadata.metadata['md5_trans'] and dst_remote == True:
                         dst_md5 = metadata.metadata['md5_trans'][dst_md5]
                 except (IOError,OSError), e:
                     # MD5 sum verification failed - ignore that file altogether
