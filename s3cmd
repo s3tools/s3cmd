@@ -912,6 +912,7 @@ def cmd_sync_local2remote(args):
         seq += 1
         item = local_list[file]
         src = item['full_name']
+        src_orig = src
         uri = S3Uri(item['remote_uri'])
         seq_label = "[%d of %d]" % (seq, local_count)
         extra_headers = copy(cfg.extra_headers)
@@ -921,7 +922,6 @@ def cmd_sync_local2remote(args):
                 debug(u"attr_header: %s" % attr_header)
                 extra_headers.update(attr_header)
             if cfg.encrypt:
-                src_orig = src
                 exitcode, src, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(src_orig)
                 metadata.metadata['md5_trans'][Utils.hash_file_md5(src)] = Utils.hash_file_md5(src_orig)
             response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
@@ -938,6 +938,9 @@ def cmd_sync_local2remote(args):
                 speed_fmt[0], speed_fmt[1], seq_label))
         total_size += response["size"]
         uploaded_objects_list.append(uri.object())
+        if cfg.encrypt and src != src_orig:
+            debug(u"Removing temporary encrypted file: %s" % unicodise(src))
+            os.remove(src)
 
     metadata.save()
     total_elapsed = time.time() - timestamp_start
