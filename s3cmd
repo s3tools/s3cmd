@@ -284,6 +284,7 @@ def cmd_object_put(args):
         return
 
     seq = 0
+    metadata = MetaData()
     for key in local_list:
         seq += 1
 
@@ -295,6 +296,7 @@ def cmd_object_put(args):
         seq_label = "[%d of %d]" % (seq, local_count)
         if Config().encrypt:
             exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
+            metadata.metadata['md5_trans'][Utils.hash_file_md5(full_name)] = Utils.hash_file_md5(full_name_orig)
         try:
             response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label)
         except S3UploadError, e:
@@ -314,6 +316,7 @@ def cmd_object_put(args):
         if Config().encrypt and full_name != full_name_orig:
             debug(u"Removing temporary encrypted file: %s" % unicodise(full_name))
             os.remove(full_name)
+    metadata.save()
 
 def cmd_object_get(args):
     cfg = Config()
@@ -907,6 +910,7 @@ def cmd_sync_local2remote(args):
     seq = 0
     file_list = local_list.keys()
     file_list.sort()
+    metadata = MetaData()
     for file in file_list:
         seq += 1
         item = local_list[file]
@@ -919,6 +923,10 @@ def cmd_sync_local2remote(args):
                 attr_header = _build_attr_header(src)
                 debug(u"attr_header: %s" % attr_header)
                 extra_headers.update(attr_header)
+            if cfg.encrypt:
+                src_orig = src
+                exitcode, src, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(src_orig)
+                metadata.metadata['md5_trans'][Utils.hash_file_md5(src)] = Utils.hash_file_md5(src_orig)
             response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
         except InvalidFileError, e:
             warning(u"File can not be uploaded: %s" % e)
@@ -934,6 +942,7 @@ def cmd_sync_local2remote(args):
         total_size += response["size"]
         uploaded_objects_list.append(uri.object())
 
+    metadata.save()
     total_elapsed = time.time() - timestamp_start
     total_speed = total_elapsed and total_size/total_elapsed or 0.0
     speed_fmt = formatSize(total_speed, human_readable = True, floating_point = True)
@@ -1636,6 +1645,10 @@ def main():
     if options.check_md5 == True and cfg.sync_checks.count("md5") == 0:
         cfg.sync_checks.append("md5")
 
+    ## if encrypt, can't really check size on sync
+    if cfg.encrypt:
+        cfg.sync_checks.remove("size")
+
     ## Update Config with other parameters
     for option in cfg.option_list():
         try:
@@ -1787,6 +1800,7 @@ if __name__ == '__main__':
         from S3.CloudFront import Cmd as CfCmd
         from S3.CloudFront import CloudFront
         from S3.FileLists import *
+        from S3.MetaData import MetaData
 
         main()
         sys.exit(0)
