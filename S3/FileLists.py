@@ -5,6 +5,7 @@
 
 from S3 import S3
 from Config import Config
+from MetaData import MetaData
 from S3Uri import S3Uri
 from SortedDict import SortedDict
 from Utils import *
@@ -282,6 +283,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
     debug("src_list.keys: %s" % src_list.keys())
     debug("dst_list.keys: %s" % dst_list.keys())
 
+    metadata = MetaData()
     for file in src_list.keys():
         debug(u"CHECK: %s" % file)
         if dst_list.has_key(file):
@@ -312,6 +314,10 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
                     elif src_remote == True and dst_remote == True:
                         src_md5 = src_list[file]['md5']
                         dst_md5 = dst_list[file]['md5']
+                    if src_remote == True and cfg.encrypt:
+                        src_md5 = metadata.metadata['md5_trans'][src_md5]
+                    if dst_remote == True and cfg.encrypt:
+                        dst_md5 = metadata.metadata['md5_trans'][dst_md5]
                 except (IOError,OSError), e:
                     # MD5 sum verification failed - ignore that file altogether
                     debug(u"IGNR: %s (disappeared)" % (file))
@@ -323,6 +329,11 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
                 if src_md5 != dst_md5:
                     ## Checksums are different.
                     attribs_match = False
+                    ## If encrypt, remove all matching keys from the metadata file
+                    if cfg.encrypt and src_md5 in metadata.metadata['md5_trans']:
+                        del(metadata.metadata['md5_trans'][src_md5])
+                    if cfg.encrypt and dst_md5 in metadata.metadata['md5_trans']:
+                        del(metadata.metadata['md5_trans'][dst_md5])
                     debug(u"XFER: %s (md5 mismatch: src=%s dst=%s)" % (file, src_md5, dst_md5))
 
             if attribs_match:

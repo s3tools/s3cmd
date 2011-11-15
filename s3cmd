@@ -749,6 +749,9 @@ def cmd_sync_remote2local(args):
                 dst_stream = open(dst_file, "wb")
                 response = s3.object_get(uri, dst_stream, extra_label = seq_label)
                 dst_stream.close()
+                if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
+                    gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
+                    response["size"] = os.stat(destination)[6]
                 if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
                     attrs = _parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
                     if attrs.has_key('mode'):
@@ -839,12 +842,6 @@ def cmd_sync_local2remote(args):
         return { 'x-amz-meta-s3cmd-attrs' : result[:-1] }
 
     s3 = S3(cfg)
-
-    if cfg.encrypt:
-        error(u"S3cmd 'sync' doesn't yet support GPG encryption, sorry.")
-        error(u"Either use unconditional 's3cmd put --recursive'")
-        error(u"or disable encryption with --no-encrypt parameter.")
-        sys.exit(1)
 
     ## Normalize URI to convert s3://bkt to s3://bkt/ (trailing slash)
     destination_base_uri = S3Uri(args[-1])
@@ -1645,10 +1642,6 @@ def main():
     if options.check_md5 == True and cfg.sync_checks.count("md5") == 0:
         cfg.sync_checks.append("md5")
 
-    ## if encrypt, can't really check size on sync
-    if cfg.encrypt:
-        cfg.sync_checks.remove("size")
-
     ## Update Config with other parameters
     for option in cfg.option_list():
         try:
@@ -1658,6 +1651,10 @@ def main():
         except AttributeError:
             ## Some Config() options are not settable from command line
             pass
+
+    ## if encrypt, can't really check size on sync
+    if cfg.encrypt:
+        cfg.sync_checks.remove("size")
 
     ## Special handling for tri-state options (True, False, None)
     cfg.update_option("enable", options.enable)
