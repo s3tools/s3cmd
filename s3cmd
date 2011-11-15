@@ -750,8 +750,8 @@ def cmd_sync_remote2local(args):
                 response = s3.object_get(uri, dst_stream, extra_label = seq_label)
                 dst_stream.close()
                 if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
-                    gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
-                    response["size"] = os.stat(destination)[6]
+                    gpg_decrypt(dst_file, response["headers"]["x-amz-meta-s3tools-gpgenc"])
+                    response["size"] = os.stat(dst_file)[6]
                 if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
                     attrs = _parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
                     if attrs.has_key('mode'):
