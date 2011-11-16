@@ -5,6 +5,7 @@
 
 import cPickle
 import os
+from logging import debug, info, warning, error
 
 class MetaData(object):
     _instance = None
@@ -24,6 +25,8 @@ class MetaData(object):
         elif os.name == "nt" and os.getenv("USERPROFILE"):
             metadata_file = os.path.join(os.getenv("USERPROFILE").decode('mbcs'), "Application Data", "s3metadata.ini")
 
+        debug(u"Loading metadata from %s" % metadata_file)
+
         if os.path.exists(metadata_file):
             self.metadata = cPickle.load(open(metadata_file, 'rb'))
 
@@ -35,6 +38,7 @@ class MetaData(object):
         elif os.name == "nt" and os.getenv("USERPROFILE"):
             metadata_file = os.path.join(os.getenv("USERPROFILE").decode('mbcs'), "Application Data", "s3metadata.ini")
 
+        debug(u"Saving metadata to %s" % metadata_file)
         try:
             cPickle.dump(self.metadata, open(metadata_file, 'wb'), -1)
         except IOError, e:
