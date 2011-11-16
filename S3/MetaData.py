@@ -18,22 +18,26 @@ class MetaData(object):
         return self._instance
 
     def __init__(self):
+        metadata_file = ".s3metadata"
         if os.getenv("HOME"):
             metadata_file = os.path.join(os.getenv("HOME"), ".s3metadata")
-            if os.path.exists(metadata_file):
-                self.metadata = cPickle.load(open(metadata_file, 'rb'))
         elif os.name == "nt" and os.getenv("USERPROFILE"):
             metadata_file = os.path.join(os.getenv("USERPROFILE").decode('mbcs'), "Application Data", "s3metadata.ini")
-            if os.path.exists(metadata_file):
-                self.metadata = cPickle.load(open(metadata_file, 'rb'))
+
+        if os.path.exists(metadata_file):
+            self.metadata = cPickle.load(open(metadata_file, 'rb'))
 
 
     def save(self):
+        metadata_file = ".s3metadata"
         if os.getenv("HOME"):
             metadata_file = os.path.join(os.getenv("HOME"), ".s3metadata")
-            cPickle.dump(self.metadata, open(metadata_file, 'wb'))
         elif os.name == "nt" and os.getenv("USERPROFILE"):
             metadata_file = os.path.join(os.getenv("USERPROFILE").decode('mbcs'), "Application Data", "s3metadata.ini")
-            cPickle.dump(self.metadata, open(metadata_file, 'wb'))
+
+        try:
+            cPickle.dump(self.metadata, open(metadata_file, 'wb'), -1)
+        except IOError, e:
+            error(u"Can't write out metadata file to %s: %s" % (metadata_file, e.strerror))
 
 # vim:et:ts=4:sts=4:ai
