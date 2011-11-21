@@ -34,7 +34,7 @@ try:
         magic_ = magic.Magic(mime=True)
         def mime_magic(file):
             return magic_.from_file(file)
-    except NameError:
+    except AttributeError:
         ## Older python-magic versions
         magic_ = magic.open(magic.MAGIC_MIME)
         magic_.load()
