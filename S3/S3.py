@@ -27,6 +27,29 @@ from ACL import ACL, GranteeLogDelivery
 from AccessLog import AccessLog
 from S3Uri import S3Uri
 
+try:
+    import magic
+    try:
+        ## https://github.com/ahupp/python-magic
+        magic_ = magic.Magic(mime=True)
+        def mime_magic(file):
+            return magic_.from_file(file)
+    except AttributeError:
+        ## Older python-magic versions
+        magic_ = magic.open(magic.MAGIC_MIME)
+        magic_.load()
+        def mime_magic(file):
+            return magic_.file(file)
+except ImportError:
+    magic_warned = False
+    def mime_magic(file):
+        global magic_warned
+        if (not magic_warned):
+            warning("python-magic is not available, guessing MIME types based on file extensions only")
+            magic_warned = True
+        return mimetypes.guess_type(file)[0]
+
+
 __all__ = []
 class S3Request(object):
     def __init__(self, s3, method_string, resource, headers, params = {}):
@@ -328,7 +351,7 @@ class S3(object):
         headers["content-length"] = size
         content_type = self.config.mime_type
         if not content_type and self.config.guess_mime_type:
-            content_type = mimetypes.guess_type(filename)[0]
+            content_type = mime_magic(filename)
         if not content_type:
             content_type = self.config.default_mime_type
         debug("Content-Type set to '%s'" % content_type)
