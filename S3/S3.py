@@ -357,7 +357,6 @@ class S3(object):
                 content_type = self.config.default_mime_type
             headers["content-type"] = content_type
             debug("Content-Type set to '%s'" % content_type)
-
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
         if self.config.reduced_redundancy:
