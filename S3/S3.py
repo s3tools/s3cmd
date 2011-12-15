@@ -349,13 +349,15 @@ class S3(object):
         if extra_headers:
             headers.update(extra_headers)
         headers["content-length"] = size
-        content_type = self.config.mime_type
-        if not content_type and self.config.guess_mime_type:
-            content_type = mime_magic(filename)
-        if not content_type:
-            content_type = self.config.default_mime_type
-        debug("Content-Type set to '%s'" % content_type)
-        headers["content-type"] = content_type
+        if not "content-type" in headers:
+            content_type = self.config.mime_type
+            if not content_type and self.config.guess_mime_type:
+                content_type = mime_magic(filename)
+            if not content_type:
+                content_type = self.config.default_mime_type
+            headers["content-type"] = content_type
+            debug("Content-Type set to '%s'" % content_type)
+
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
         if self.config.reduced_redundancy:
