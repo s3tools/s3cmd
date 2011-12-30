@@ -1419,7 +1419,7 @@ def format_commands(progname, commands_list):
 
 class OptionMimeType(Option):
     def check_mimetype(option, opt, value):
-        if re.compile("^[a-z0-9]+/[a-z0-9+\.-]+$", re.IGNORECASE).match(value):
+        if re.compile("^[a-z0-9]+/[a-z0-9+\.-]+(;.*)?$", re.IGNORECASE).match(value):
             return value
         raise OptionValueError("option %s: invalid MIME-Type format: %r" % (opt, value))
 
