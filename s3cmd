@@ -32,6 +32,16 @@ from distutils.spawn import find_executable
 def output(message):
     sys.stdout.write(message + "\n")
 
+def clean_tempfiles(dest_handler):
+    path = os.path.join(os.path.dirname(dest_handler.name),'tmps3')
+    if os.path.exists(path):
+        for f in os.listdir(path):
+            fpath = os.path.join(path,f)
+            os.unlink(fpath)                                                                                                                                                    
+        os.rmdir(path)
+    if os.stat(dest_handler.name).st_size == 0:
+        os.unlink(dest_handler.name)
+
 def check_args_type(args, type, verbose_type):
     for arg in args:
         if S3Uri(arg).type != type:
@@ -315,6 +325,8 @@ def cmd_object_put(args):
             debug(u"Removing temporary encrypted file: %s" % unicodise(full_name))
             os.remove(full_name)
 
+    return s3.exit_status
+
 def cmd_object_get(args):
     cfg = Config()
     s3 = S3(cfg)
@@ -449,6 +461,8 @@ def cmd_object_get(args):
             output(u"File %s saved as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s)" %
                 (uri, destination, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1]))
 
+    return s3.exit_status
+
 def cmd_object_del(args):
     for uri_str in args:
         uri = S3Uri(uri_str)
@@ -563,7 +577,10 @@ def cmd_info(args):
                 output(u"   File size: %s" % info['headers']['content-length'])
                 output(u"   Last mod:  %s" % info['headers']['last-modified'])
                 output(u"   MIME type: %s" % info['headers']['content-type'])
-                output(u"   MD5 sum:   %s" % info['headers']['etag'].strip('"'))
+                if info['headers'].has_key('x-amz-meta-md5sum'):
+                    output(u"   MD5 sum:   %s" % info['headers']['x-amz-meta-md5sum'].strip('"'))
+                else:
+                    output(u"   MD5 sum:   %s" % info['headers']['etag'].strip('"'))
             else:
                 info = s3.bucket_info(uri)
                 output(u"%s (bucket):" % uri.uri())
@@ -663,6 +680,11 @@ def cmd_sync_remote2local(args):
             attrs[key] = val
         return attrs
 
+    if cfg.parallel_multipart_download:
+        #Disable progress meter 
+        cfg.progress_meter = False
+
+
     s3 = S3(Config())
 
     destination_base = args[-1]
@@ -744,7 +766,10 @@ def cmd_sync_remote2local(args):
                 os.close(os.open(dst_file, open_flags))
                 # Yeah I know there is a race condition here. Sadly I don't know how to open() in exclusive mode.
                 dst_stream = open(dst_file, "wb")
-                response = s3.object_get(uri, dst_stream, extra_label = seq_label)
+                if cfg.parallel_multipart_download == False:
+                    response = s3.object_get(uri, dst_stream, extra_label = seq_label)
+                else:
+                    response = s3.object_multipart_get(uri, dst_stream, cfg, extra_label = seq_label)
                 dst_stream.close()
                 if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
                     attrs = _parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
@@ -756,7 +781,9 @@ def cmd_sync_remote2local(args):
                         os.utime(dst_file, (atime, mtime))
                     ## FIXME: uid/gid / uname/gname handling comes here! TODO
             except OSError, e:
-                try: dst_stream.close()
+                try: 
+                    dst_stream.close()
+                    clean_tempfiles(dst_stream)
                 except: pass
                 if e.errno == errno.EEXIST:
                     warning(u"%s exists - not overwriting" % (dst_file))
@@ -769,19 +796,25 @@ def cmd_sync_remote2local(args):
                     continue
                 raise e
             except KeyboardInterrupt:
-                try: dst_stream.close()
+                try: 
+                    dst_stream.close()
+                    clean_tempfiles(dst_stream)
                 except: pass
                 warning(u"Exiting after keyboard interrupt")
-                return
+                return s3.error_codes["KEYBOARD_INTERRUPT"]
             except Exception, e:
-                try: dst_stream.close()
+                try: 
+                    dst_stream.close()
+                    clean_tempfiles(dst_stream)
                 except: pass
                 error(u"%s: %s" % (file, e))
                 continue
             # We have to keep repeating this call because
             # Python 2.4 doesn't support try/except/finally
             # construction :-(
-            try: dst_stream.close()
+            try: 
+                dst_stream.close()
+                clean_tempfiles(dst_stream)
             except: pass
         except S3DownloadError, e:
             error(u"%s: download failed too many times. Skipping that file." % file)
@@ -803,6 +836,8 @@ def cmd_sync_remote2local(args):
         output(outstr)
     else:
         info(outstr)
+
+    return s3.exit_status
 
 def cmd_sync_local2remote(args):
     def _build_attr_header(src):
@@ -834,6 +869,10 @@ def cmd_sync_local2remote(args):
         result = ""
         for k in attrs: result += "%s:%s/" % (k, attrs[k])
         return { 'x-amz-meta-s3cmd-attrs' : result[:-1] }
+
+    if cfg.parallel_multipart_upload:
+        #Disable progress meter 
+        cfg.progress_meter = False
 
     s3 = S3(cfg)
 
@@ -919,7 +958,10 @@ def cmd_sync_local2remote(args):
                 attr_header = _build_attr_header(src)
                 debug(u"attr_header: %s" % attr_header)
                 extra_headers.update(attr_header)
-            response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
+            if cfg.parallel_multipart_upload:
+                response = s3.object_multipart_upload(src, uri, cfg, extra_headers, extra_label = seq_label)
+            else:
+                response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
         except InvalidFileError, e:
             warning(u"File can not be uploaded: %s" % e)
             continue
@@ -956,6 +998,8 @@ def cmd_sync_local2remote(args):
             if result['status'] == 201:
                 output("Created invalidation request for %d paths" % len(uploaded_objects_list))
                 output("Check progress with: s3cmd cfinvalinfo cf://%s/%s" % (result['dist_id'], result['request_id']))
+    return s3.exit_status
+
 
 def cmd_sync(args):
     if (len(args) < 2):
@@ -1729,7 +1773,8 @@ def main():
         sys.exit(1)
 
     try:
-        cmd_func(args)
+        rv = cmd_func(args)
+        sys.exit(rv)
     except S3Error, e:
         error(u"S3 error: %s" % e)
         sys.exit(1)
@@ -1803,7 +1848,7 @@ if __name__ == '__main__':
 
     except KeyboardInterrupt:
         sys.stderr.write("See ya!\n")
-        sys.exit(1)
+        sys.exit(6)
 
     except Exception, e:
         report_exception(e)
