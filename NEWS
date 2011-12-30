@@ -4,6 +4,20 @@ s3cmd 1.1.0   -   ???
 * Increased socket_timeout from 10 secs to 5 mins.
 * Added "Static WebSite" support [ws-create / ws-delete / ws-info]
   (contributed by Jens Braeuer)
+* Force MIME type with --mime-type=abc/xyz, also --guess-mime-type 
+  is no longer on by default.
+* Support for environment variables as config values. For instance
+  in ~/.s3cmd put "access_key=$S3_ACCESS_KEY". Contributed by Ori Bar.
+* Support for --configure checking access to a specific bucket instead
+  of listing all buckets.
+  Listing buckets requires the S3 ListAllMyBuckets permission which
+  is typically not available to delegated IAM accounts. With this change,
+  s3cmd --configure accepts an (optional) bucket uri as a parameter
+  and if it's provided, the access check will just verify access to this
+  bucket individually. Contributed by Mike Repass.
+* Allow STDOUT as a destination even for downloading multiple files.
+  They will be output one after another without any delimiters!
+  Contributed by Rob Wills.
 
 s3cmd 1.0.0   -   2011-01-18
 ===========
