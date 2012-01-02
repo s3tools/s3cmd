@@ -335,7 +335,7 @@ class S3(object):
 
         return response
 
-    def object_put(self, filename, uri, extra_headers = None, extra_label = "", multipart = False):
+    def object_put(self, filename, uri, extra_headers = None, extra_label = ""):
         # TODO TODO
         # Make it consistent with stream-oriented object_get()
         if uri.type != "s3":
@@ -353,8 +353,9 @@ class S3(object):
         if extra_headers:
             headers.update(extra_headers)
 
-        if not multipart:
-            if size > 104857600: # 100MB
+        multipart = False
+        if self.config.enable_multipart:
+            if size > 2 * self.config.multipart_chunk_size:
                 multipart = True
 
         if multipart:
@@ -744,18 +745,11 @@ class S3(object):
         upload = MultiPartUpload(self, file, uri)
         bucket, key, upload_id = upload.initiate_multipart_upload()
 
-        num_threads = self.config.multipart_num_threads or 4
+        num_threads = self.config.multipart_num_threads
+        chunk_size = self.config.multipart_chunk_size or MultiPartUpload.MIN_CHUNK_SIZE
 
-        if size > MultiPartUpload.MAX_FILE_SIZE:
-            raise RuntimeError("File is too large (%i bytes, max %i)" % (size, MultiPartUpload.MAX_FILE_SIZE))
-        elif size > 107374182400: # 100GB
-            chunk_size = size / 10000
-        elif size > 10737418240: # 10GB
-            chunk_size = size / 1000
-        elif size > 1073741824: # 1GB
-            chunk_size = size / 100
-        else:
-            chunk_size = self.config.multipart_chunk_size or MultiPartUpload.MIN_CHUNK_SIZE
+        if chunk_size > MultiPartUpload.MAX_CHUNK_SIZE:
+            raise RuntimeError("Chunk size is too large (%i bytes, max %i). Please adjust with --multipart-chunk-size=SIZE." % (size, MultiPartUpload.MAX_CHUNK_SIZE))
 
         file.seek(0)
         upload.upload_all_parts(num_threads, chunk_size)

@@ -46,10 +46,8 @@ class ThreadPool(object):
 
 class MultiPartUpload(object):
 
-    MIN_CHUNK_SIZE = 5242880 # 5MB
     MAX_CHUNK_SIZE = 5368709120 # 5GB
     MAX_CHUNKS = 100
-    MAX_FILE_SIZE = 42949672960 # 5TB
 
     def __init__(self, s3, file, uri):
         self.s3 = s3
@@ -79,7 +77,6 @@ class MultiPartUpload(object):
         if not self.upload_id:
             raise RuntimeError("Attempting to use a multipart upload that has not been initiated.")
 
-        chunk_size = max(self.MIN_CHUNK_SIZE, chunk_size)
         id = 1
         if num_threads > 1:
             debug("MultiPart: Uploading in %d threads" % num_threads)

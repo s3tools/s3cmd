@@ -241,7 +241,7 @@ def cmd_bucket_delete(args):
         _bucket_delete_one(uri)
         output(u"Bucket '%s' removed" % uri.uri())
 
-def cmd_object_put(args, multipart):
+def cmd_object_put(args):
     cfg = Config()
     s3 = S3(cfg)
 
@@ -296,7 +296,7 @@ def cmd_object_put(args, multipart):
         if Config().encrypt:
             exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
         try:
-            response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label, multipart = multipart)
+            response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label)
         except S3UploadError, e:
             error(u"Upload of '%s' failed too many times. Skipping that file." % full_name_orig)
             continue
@@ -1526,7 +1526,9 @@ def main():
     optparser.add_option(      "--encoding", dest="encoding", metavar="ENCODING", help="Override autodetected terminal and filesystem encoding (character set). Autodetected: %s" % preferred_encoding)
     optparser.add_option(      "--verbatim", dest="urlencoding_mode", action="store_const", const="verbatim", help="Use the S3 name as given on the command line. No pre-processing, encoding, etc. Use with caution!")
 
-    optparser.add_option(      "--enable-multipart", dest="enable_multipart", action="store_true", default=False, help="Force multipart upload on files < 100MB")
+    optparser.add_option(      "--disable-multipart", dest="enable_multipart", action="store_false", help="Disable multipart upload on files bigger than --multipart-chunk-size")
+    optparser.add_option(      "--multipart-chunk-size", dest="multipart_chunk_size", action="store", metavar="SIZE", help="Size of each chunk of a multipart upload. Files bigger than 2*SIZE are automatically uploaded as multithreaded-multipart, smaller files are uploaded using the traditional method. SIZE is in Bytes.")
+
     optparser.add_option(      "--list-md5", dest="list_md5", action="store_true", help="Include MD5 sums in bucket listings (only for 'ls' command).")
     optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form (eg 1kB instead of 1234).")
 
@@ -1730,10 +1732,7 @@ def main():
         sys.exit(1)
 
     try:
-        if cmd_func == cmd_object_put:
-            cmd_func(args, options.enable_multipart)
-        else:
-            cmd_func(args)
+        cmd_func(args)
     except S3Error, e:
         error(u"S3 error: %s" % e)
         sys.exit(1)

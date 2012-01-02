@@ -63,6 +63,7 @@ class Config(object):
     default_mime_type = "binary/octet-stream"
     guess_mime_type = False
     mime_type = ""
+    enable_multipart = True
     multipart_num_threads = 4
     multipart_chunk_size = 5242880
     # List of checks to be performed for 'sync'
