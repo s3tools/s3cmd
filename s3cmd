@@ -1527,7 +1527,7 @@ def main():
     optparser.add_option(      "--verbatim", dest="urlencoding_mode", action="store_const", const="verbatim", help="Use the S3 name as given on the command line. No pre-processing, encoding, etc. Use with caution!")
 
     optparser.add_option(      "--disable-multipart", dest="enable_multipart", action="store_false", help="Disable multipart upload on files bigger than --multipart-chunk-size")
-    optparser.add_option(      "--multipart-chunk-size", dest="multipart_chunk_size", type="int", action="store", metavar="SIZE", help="Size of each chunk of a multipart upload. Files bigger than SIZE are automatically uploaded as multithreaded-multipart, smaller files are uploaded using the traditional method. SIZE is in Mega-Bytes, default chunk size is %defaultMB, minimum allowed chunk size is 5MB, maximum is 5GB.")
+    optparser.add_option(      "--multipart-chunk-size-mb", dest="multipart_chunk_size_mb", type="int", action="store", metavar="SIZE", help="Size of each chunk of a multipart upload. Files bigger than SIZE are automatically uploaded as multithreaded-multipart, smaller files are uploaded using the traditional method. SIZE is in Mega-Bytes, default chunk size is %defaultMB, minimum allowed chunk size is 5MB, maximum is 5GB.")
 
     optparser.add_option(      "--list-md5", dest="list_md5", action="store_true", help="Include MD5 sums in bucket listings (only for 'ls' command).")
     optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form (eg 1kB instead of 1234).")
@@ -1653,10 +1653,10 @@ def main():
     cfg.update_option("acl_public", options.acl_public)
 
     ## Check multipart chunk constraints
-    if cfg.multipart_chunk_size < MultiPartUpload.MIN_CHUNK_SIZE_MB:
-        raise ParameterError("Chunk size %d MB is too small, must be >= %d MB. Please adjust --multipart-chunk-size" % (cfg.multipart_chunk_size, MultiPartUpload.MIN_CHUNK_SIZE_MB))
-    if cfg.multipart_chunk_size > MultiPartUpload.MAX_CHUNK_SIZE_MB:
-        raise ParameterError("Chunk size %d MB is too large, must be <= %d MB. Please adjust --multipart-chunk-size" % (cfg.multipart_chunk_size, MultiPartUpload.MAX_CHUNK_SIZE_MB))
+    if cfg.multipart_chunk_size_mb < MultiPartUpload.MIN_CHUNK_SIZE_MB:
+        raise ParameterError("Chunk size %d MB is too small, must be >= %d MB. Please adjust --multipart-chunk-size-mb" % (cfg.multipart_chunk_size_mb, MultiPartUpload.MIN_CHUNK_SIZE_MB))
+    if cfg.multipart_chunk_size_mb > MultiPartUpload.MAX_CHUNK_SIZE_MB:
+        raise ParameterError("Chunk size %d MB is too large, must be <= %d MB. Please adjust --multipart-chunk-size-mb" % (cfg.multipart_chunk_size_mb, MultiPartUpload.MAX_CHUNK_SIZE_MB))
 
     ## CloudFront's cf_enable and Config's enable share the same --enable switch
     options.cf_enable = options.enable

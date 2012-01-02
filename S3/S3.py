@@ -355,7 +355,7 @@ class S3(object):
 
         multipart = False
         if self.config.enable_multipart:
-            if size > self.config.multipart_chunk_size:
+            if size > self.config.multipart_chunk_size_mb * 1024 * 1024:
                 multipart = True
 
         if multipart:
@@ -746,7 +746,7 @@ class S3(object):
         bucket, key, upload_id = upload.initiate_multipart_upload()
 
         num_threads = self.config.multipart_num_threads
-        chunk_size = self.config.multipart_chunk_size
+        chunk_size = self.config.multipart_chunk_size_mb * 1024 * 1024
 
         file.seek(0)
         upload.upload_all_parts(num_threads, chunk_size)
