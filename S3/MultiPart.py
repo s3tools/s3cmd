@@ -46,8 +46,10 @@ class ThreadPool(object):
 
 class MultiPartUpload(object):
 
-    MAX_CHUNK_SIZE = 5368709120 # 5GB
+    MIN_CHUNK_SIZE_MB = 5       # 5MB
+    MAX_CHUNK_SIZE_MB = 5120    # 5GB
     MAX_CHUNKS = 100
+    MAX_FILE_SIZE = 42949672960 # 5TB
 
     def __init__(self, s3, file, uri):
         self.s3 = s3

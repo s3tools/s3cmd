@@ -355,7 +355,7 @@ class S3(object):
 
         multipart = False
         if self.config.enable_multipart:
-            if size > 2 * self.config.multipart_chunk_size:
+            if size > self.config.multipart_chunk_size:
                 multipart = True
 
         if multipart:
@@ -746,10 +746,7 @@ class S3(object):
         bucket, key, upload_id = upload.initiate_multipart_upload()
 
         num_threads = self.config.multipart_num_threads
-        chunk_size = self.config.multipart_chunk_size or MultiPartUpload.MIN_CHUNK_SIZE
-
-        if chunk_size > MultiPartUpload.MAX_CHUNK_SIZE:
-            raise RuntimeError("Chunk size is too large (%i bytes, max %i). Please adjust with --multipart-chunk-size=SIZE." % (size, MultiPartUpload.MAX_CHUNK_SIZE))
+        chunk_size = self.config.multipart_chunk_size
 
         file.seek(0)
         upload.upload_all_parts(num_threads, chunk_size)
