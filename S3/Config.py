@@ -204,3 +204,4 @@ class ConfigDumper(object):
         for option in config.option_list():
             self.stream.write("%s = %s\n" % (option, getattr(config, option)))
 
+# vim:et:ts=4:sts=4:ai

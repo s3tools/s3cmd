@@ -127,3 +127,5 @@ class MultiPartUpload(object):
         response = self.s3.send_request(request, body = body)
 
         return response
+
+# vim:et:ts=4:sts=4:ai
