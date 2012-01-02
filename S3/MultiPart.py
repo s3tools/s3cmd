@@ -81,7 +81,11 @@ class MultiPartUpload(object):
 
         chunk_size = max(self.MIN_CHUNK_SIZE, chunk_size)
         id = 1
-        pool = ThreadPool(num_threads)
+        if num_threads > 1:
+            debug("MultiPart: Uploading in %d threads" % num_threads)
+            pool = ThreadPool(num_threads)
+        else:
+            debug("MultiPart: Uploading in a single thread")
 
         while True:
             if id == self.MAX_CHUNKS:
@@ -90,11 +94,15 @@ class MultiPartUpload(object):
                 data = self.file.read(chunk_size)
             if not data:
                 break
-            pool.add_task(self.upload_part, data, id)
+            if num_threads > 1:
+                pool.add_task(self.upload_part, data, id)
+            else:
+                self.upload_part(data, id)
             id += 1
 
-        debug("Thread pool with %i threads and %i tasks awaiting completion." % (num_threads, id))
-        pool.wait_completion()
+        if num_threads > 1:
+            debug("Thread pool with %i threads and %i tasks awaiting completion." % (num_threads, id))
+            pool.wait_completion()
 
     def upload_part(self, data, id):
         """
