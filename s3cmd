@@ -284,6 +284,7 @@ def cmd_object_put(args):
         return
 
     seq = 0
+    metadata = MetaData()
     for key in local_list:
         seq += 1
 
@@ -295,6 +296,7 @@ def cmd_object_put(args):
         seq_label = "[%d of %d]" % (seq, local_count)
         if Config().encrypt:
             exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
+            metadata.metadata['md5_trans'][Utils.hash_file_md5(full_name)] = Utils.hash_file_md5(full_name_orig)
         try:
             response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label)
         except S3UploadError, e:
@@ -314,6 +316,7 @@ def cmd_object_put(args):
         if Config().encrypt and full_name != full_name_orig:
             debug(u"Removing temporary encrypted file: %s" % unicodise(full_name))
             os.remove(full_name)
+    metadata.save()
 
 def cmd_object_get(args):
     cfg = Config()
@@ -746,6 +749,9 @@ def cmd_sync_remote2local(args):
                 dst_stream = open(dst_file, "wb")
                 response = s3.object_get(uri, dst_stream, extra_label = seq_label)
                 dst_stream.close()
+                if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
+                    gpg_decrypt(dst_file, response["headers"]["x-amz-meta-s3tools-gpgenc"])
+                    response["size"] = os.stat(dst_file)[6]
                 if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
                     attrs = _parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
                     if attrs.has_key('mode'):
@@ -837,12 +843,6 @@ def cmd_sync_local2remote(args):
 
     s3 = S3(cfg)
 
-    if cfg.encrypt:
-        error(u"S3cmd 'sync' doesn't yet support GPG encryption, sorry.")
-        error(u"Either use unconditional 's3cmd put --recursive'")
-        error(u"or disable encryption with --no-encrypt parameter.")
-        sys.exit(1)
-
     ## Normalize URI to convert s3://bkt to s3://bkt/ (trailing slash)
     destination_base_uri = S3Uri(args[-1])
     if destination_base_uri.type != 's3':
@@ -907,10 +907,12 @@ def cmd_sync_local2remote(args):
     seq = 0
     file_list = local_list.keys()
     file_list.sort()
+    metadata = MetaData()
     for file in file_list:
         seq += 1
         item = local_list[file]
         src = item['full_name']
+        src_orig = src
         uri = S3Uri(item['remote_uri'])
         seq_label = "[%d of %d]" % (seq, local_count)
         extra_headers = copy(cfg.extra_headers)
@@ -919,6 +921,9 @@ def cmd_sync_local2remote(args):
                 attr_header = _build_attr_header(src)
                 debug(u"attr_header: %s" % attr_header)
                 extra_headers.update(attr_header)
+            if cfg.encrypt:
+                exitcode, src, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(src_orig)
+                metadata.metadata['md5_trans'][Utils.hash_file_md5(src)] = Utils.hash_file_md5(src_orig)
             response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
         except InvalidFileError, e:
             warning(u"File can not be uploaded: %s" % e)
@@ -933,7 +938,11 @@ def cmd_sync_local2remote(args):
                 speed_fmt[0], speed_fmt[1], seq_label))
         total_size += response["size"]
         uploaded_objects_list.append(uri.object())
+        if cfg.encrypt and src != src_orig:
+            debug(u"Removing temporary encrypted file: %s" % unicodise(src))
+            os.remove(src)
 
+    metadata.save()
     total_elapsed = time.time() - timestamp_start
     total_speed = total_elapsed and total_size/total_elapsed or 0.0
     speed_fmt = formatSize(total_speed, human_readable = True, floating_point = True)
@@ -1162,7 +1171,7 @@ def gpg_command(command, passphrase = ""):
     return p_exitcode
 
 def gpg_encrypt(filename):
-    tmp_filename = Utils.mktmpfile()
+    tmp_filename = Utils.mktmpfile( cfg.temp_location )
     args = {
         "gpg_command" : cfg.gpg_command,
         "passphrase_fd" : "0",
@@ -1486,6 +1495,7 @@ def main():
 
     optparser.add_option("-e", "--encrypt", dest="encrypt", action="store_true", help="Encrypt files before uploading to S3.")
     optparser.add_option(      "--no-encrypt", dest="encrypt", action="store_false", help="Don't encrypt files.")
+    optparser.add_option(      "--temp-location", dest="temp_location", metavar="FOLDER", help="Location to store temporary files for encrypt. Add trailing / to signify directory and leave off to signify file prefix. Defaults to /tmp/tmpfile-")
     optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations.")
     optparser.add_option(      "--continue", dest="get_continue", action="store_true", help="Continue getting a partially downloaded file (only for [get] command).")
     optparser.add_option(      "--skip-existing", dest="skip_existing", action="store_true", help="Skip over files that exist at the destination (only for [get] and [sync] commands).")
@@ -1645,6 +1655,10 @@ def main():
             ## Some Config() options are not settable from command line
             pass
 
+    ## if encrypt, can't really check size on sync
+    if cfg.encrypt:
+        cfg.sync_checks.remove("size")
+
     ## Special handling for tri-state options (True, False, None)
     cfg.update_option("enable", options.enable)
     cfg.update_option("acl_public", options.acl_public)
@@ -1786,6 +1800,7 @@ if __name__ == '__main__':
         from S3.CloudFront import Cmd as CfCmd
         from S3.CloudFront import CloudFront
         from S3.FileLists import *
+        from S3.MetaData import MetaData
 
         main()
         sys.exit(0)
