@@ -753,7 +753,7 @@ class S3(object):
 
         file.seek(0)
         upload.upload_all_parts(num_threads, chunk_size)
-        response = upload.complete_multipart_upload(num_threads, chunk_size)
+        response = upload.complete_multipart_upload()
         response["speed"] = 0 # XXX
         return response
 
