@@ -6,6 +6,8 @@ s3cmd 1.1.0   -   ???
   (contributed by Jens Braeuer)
 * Force MIME type with --mime-type=abc/xyz, also --guess-mime-type 
   is no longer on by default.
+* Allow parameters in MIME types, for example:
+  --mime-type="text/plain; charset=utf-8"
 * Support for environment variables as config values. For instance
   in ~/.s3cmd put "access_key=$S3_ACCESS_KEY". Contributed by Ori Bar.
 * Support for --configure checking access to a specific bucket instead
