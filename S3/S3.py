@@ -747,10 +747,8 @@ class S3(object):
         return response
 
     def send_file_multipart(self, file, headers, uri, size):
-        upload = MultiPartUpload(self, file, uri)
-
         chunk_size = self.config.multipart_chunk_size_mb * 1024 * 1024
-
+        upload = MultiPartUpload(self, file, uri, headers)
         upload.upload_all_parts()
         response = upload.complete_multipart_upload()
         response["speed"] = 0 # XXX

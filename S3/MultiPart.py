@@ -14,11 +14,12 @@ class MultiPartUpload(object):
     MAX_CHUNK_SIZE_MB = 5120    # 5GB
     MAX_FILE_SIZE = 42949672960 # 5TB
 
-    def __init__(self, s3, file, uri):
+    def __init__(self, s3, file, uri, headers_baseline = {}):
         self.s3 = s3
         self.file = file
         self.uri = uri
         self.parts = {}
+        self.headers_baseline = headers_baseline
         self.upload_id = self.initiate_multipart_upload()
 
     def initiate_multipart_upload(self):
@@ -26,7 +27,7 @@ class MultiPartUpload(object):
         Begin a multipart upload
         http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadInitiate.html
         """
-        request = self.s3.create_request("OBJECT_POST", uri = self.uri, extra = "?uploads")
+        request = self.s3.create_request("OBJECT_POST", uri = self.uri, headers = self.headers_baseline, extra = "?uploads")
         response = self.s3.send_request(request)
         data = response["data"]
         self.upload_id = getTextFromXml(data, "UploadId")
