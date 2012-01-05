@@ -58,10 +58,10 @@ class MultiPartUpload(object):
             }
             try:
                 self.upload_part(seq, offset, current_chunk_size, labels)
-            except S3UploadError, e:
-                error(u"Upload of '%s' part %d failed too many times. Aborting multipart upload." % (self.file.name, seq))
+            except:
+                error(u"Upload of '%s' part %d failed. Aborting multipart upload." % (self.file.name, seq))
                 self.abort_upload()
-                raise e
+                raise
             seq += 1
 
         debug("MultiPart: Upload finished: %d parts", seq - 1)
@@ -106,7 +106,7 @@ class MultiPartUpload(object):
         """
         debug("MultiPart: Aborting upload: %s" % self.upload_id)
         request = self.s3.create_request("OBJECT_DELETE", uri = self.uri, extra = "?uploadId=%s" % (self.upload_id))
-        response = self.s3.send_request(request, body = body)
+        response = self.s3.send_request(request)
         return response
 
 # vim:et:ts=4:sts=4:ai
