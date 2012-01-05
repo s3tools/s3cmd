@@ -353,16 +353,7 @@ class S3(object):
         if extra_headers:
             headers.update(extra_headers)
 
-        multipart = False
-        if self.config.enable_multipart:
-            if size > self.config.multipart_chunk_size_mb * 1024 * 1024:
-                multipart = True
-
-        if multipart:
-            # Multipart requests are quite different... drop here
-            return self.send_file_multipart(file, headers, uri, size)
-
-        headers["content-length"] = size
+        ## MIME-type handling
         content_type = self.config.mime_type
         if not content_type and self.config.guess_mime_type:
             content_type = mime_magic(filename)
@@ -370,10 +361,24 @@ class S3(object):
             content_type = self.config.default_mime_type
         debug("Content-Type set to '%s'" % content_type)
         headers["content-type"] = content_type
+
+        ## Other Amazon S3 attributes
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
         if self.config.reduced_redundancy:
             headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
+
+        ## Multipart decision
+        multipart = False
+        if self.config.enable_multipart:
+            if size > self.config.multipart_chunk_size_mb * 1024 * 1024:
+                multipart = True
+        if multipart:
+            # Multipart requests are quite different... drop here
+            return self.send_file_multipart(file, headers, uri, size)
+
+        ## Not multipart...
+        headers["content-length"] = size
         request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
         labels = { 'source' : unicodise(filename), 'destination' : unicodise(uri.uri()), 'extra' : extra_label }
         response = self.send_file(request, file, labels)
