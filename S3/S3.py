@@ -743,7 +743,6 @@ class S3(object):
 
     def send_file_multipart(self, file, headers, uri, size):
         upload = MultiPartUpload(self, file, uri)
-        upload_id = upload.initiate_multipart_upload()
 
         chunk_size = self.config.multipart_chunk_size_mb * 1024 * 1024
 

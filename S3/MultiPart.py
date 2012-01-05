@@ -18,8 +18,8 @@ class MultiPartUpload(object):
         self.s3 = s3
         self.file = file
         self.uri = uri
-        self.upload_id = None
         self.parts = {}
+        self.upload_id = self.initiate_multipart_upload()
 
     def initiate_multipart_upload(self):
         """
@@ -35,7 +35,7 @@ class MultiPartUpload(object):
     def upload_all_parts(self):
         """
         Execute a full multipart upload on a file
-        Returns the id/etag dict
+        Returns the seq/etag dict
         TODO use num_processes to thread it
         """
         if not self.upload_id:
@@ -46,38 +46,38 @@ class MultiPartUpload(object):
         nr_parts = file_size / self.chunk_size + (file_size % self.chunk_size and 1)
         debug("MultiPart: Uploading %s in %d parts" % (self.file.name, nr_parts))
 
-        id = 1
+        seq = 1
         while size_left > 0:
-            offset = self.chunk_size * (id - 1)
+            offset = self.chunk_size * (seq - 1)
             current_chunk_size = min(file_size - offset, self.chunk_size)
             size_left -= current_chunk_size
             labels = {
                 'source' : unicodise(self.file.name),
                 'destination' : unicodise(self.uri.uri()),
-                'extra' : "[part %d of %d, %s]" % (id, nr_parts, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
+                'extra' : "[part %d of %d, %s]" % (seq, nr_parts, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
             }
             try:
-                self.upload_part(id, offset, current_chunk_size, labels)
+                self.upload_part(seq, offset, current_chunk_size, labels)
             except S3UploadError, e:
-                error(u"Upload of '%s' part %d failed too many times. Aborting multipart upload." % (self.file.name, id))
+                error(u"Upload of '%s' part %d failed too many times. Aborting multipart upload." % (self.file.name, seq))
                 self.abort_upload()
                 raise e
-            id += 1
+            seq += 1
 
-        debug("MultiPart: Upload finished: %d parts", id - 1)
+        debug("MultiPart: Upload finished: %d parts", seq - 1)
 
-    def upload_part(self, id, offset, chunk_size, labels):
+    def upload_part(self, seq, offset, chunk_size, labels):
         """
         Upload a file chunk
         http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadUploadPart.html
         """
         # TODO implement Content-MD5
-        debug("Uploading part %i of %r (%s bytes)" % (id, self.upload_id, chunk_size))
+        debug("Uploading part %i of %r (%s bytes)" % (seq, self.upload_id, chunk_size))
         headers = { "content-length": chunk_size }
-        query_string = "?partNumber=%i&uploadId=%s" % (id, self.upload_id)
+        query_string = "?partNumber=%i&uploadId=%s" % (seq, self.upload_id)
         request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
         response = self.s3.send_file(request, self.file, labels, offset = offset, chunk_size = chunk_size)
-        self.parts[id] = response["headers"]["etag"]
+        self.parts[seq] = response["headers"]["etag"]
         return response
 
     def complete_multipart_upload(self):
@@ -89,8 +89,8 @@ class MultiPartUpload(object):
 
         parts_xml = []
         part_xml = "<Part><PartNumber>%i</PartNumber><ETag>%s</ETag></Part>"
-        for id, etag in self.parts.items():
-            parts_xml.append(part_xml % (id, etag))
+        for seq, etag in self.parts.items():
+            parts_xml.append(part_xml % (seq, etag))
         body = "<CompleteMultipartUpload>%s</CompleteMultipartUpload>" % ("".join(parts_xml))
 
         headers = { "content-length": len(body) }
