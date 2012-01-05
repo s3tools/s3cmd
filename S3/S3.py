@@ -616,7 +616,7 @@ class S3(object):
 
         return response
 
-    def send_file(self, request, file, labels, throttle = 0, retries = _max_retries):
+    def send_file(self, request, file, labels, throttle = 0, retries = _max_retries, offset = 0, chunk_size = -1):
         method_string, resource, headers = request.get_triplet()
         size_left = size_total = headers.get("content-length")
         if self.config.progress_meter:
@@ -639,15 +639,15 @@ class S3(object):
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 # Connection error -> same throttle value
-                return self.send_file(request, file, labels, throttle, retries - 1)
+                return self.send_file(request, file, labels, throttle, retries - 1, offset, chunk_size)
             else:
                 raise S3UploadError("Upload failed for: %s" % resource['uri'])
-        file.seek(0)
+        file.seek(offset)
         md5_hash = md5()
         try:
             while (size_left > 0):
                 #debug("SendFile: Reading up to %d bytes from '%s'" % (self.config.send_chunk, file.name))
-                data = file.read(self.config.send_chunk)
+                data = file.read(min(self.config.send_chunk, size_left))
                 md5_hash.update(data)
                 conn.send(data)
                 if self.config.progress_meter:
@@ -676,7 +676,7 @@ class S3(object):
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 # Connection error -> same throttle value
-                return self.send_file(request, file, labels, throttle, retries - 1)
+                return self.send_file(request, file, labels, throttle, retries - 1, offset, chunk_size)
             else:
                 debug("Giving up on '%s' %s" % (file.name, e))
                 raise S3UploadError("Upload failed for: %s" % resource['uri'])
@@ -698,7 +698,7 @@ class S3(object):
             redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
             self.set_hostname(redir_bucket, redir_hostname)
             warning("Redirected to: %s" % (redir_hostname))
-            return self.send_file(request, file, labels)
+            return self.send_file(request, file, labels, offset = offset, chunk_size = chunk_size)
 
         # S3 from time to time doesn't send ETag back in a response :-(
         # Force re-upload here.
@@ -721,7 +721,7 @@ class S3(object):
                     warning("Upload failed: %s (%s)" % (resource['uri'], S3Error(response)))
                     warning("Waiting %d sec..." % self._fail_wait(retries))
                     time.sleep(self._fail_wait(retries))
-                    return self.send_file(request, file, labels, throttle, retries - 1)
+                    return self.send_file(request, file, labels, throttle, retries - 1, offset, chunk_size)
                 else:
                     warning("Too many failures. Giving up on '%s'" % (file.name))
                     raise S3UploadError
@@ -734,7 +734,7 @@ class S3(object):
             warning("MD5 Sums don't match!")
             if retries:
                 warning("Retrying upload of %s" % (file.name))
-                return self.send_file(request, file, labels, throttle, retries - 1)
+                return self.send_file(request, file, labels, throttle, retries - 1, offset, chunk_size)
             else:
                 warning("Too many failures. Giving up on '%s'" % (file.name))
                 raise S3UploadError
@@ -743,13 +743,12 @@ class S3(object):
 
     def send_file_multipart(self, file, headers, uri, size):
         upload = MultiPartUpload(self, file, uri)
-        bucket, key, upload_id = upload.initiate_multipart_upload()
+        upload_id = upload.initiate_multipart_upload()
 
         num_threads = self.config.multipart_num_threads
         chunk_size = self.config.multipart_chunk_size_mb * 1024 * 1024
 
-        file.seek(0)
-        upload.upload_all_parts(num_threads, chunk_size)
+        upload.upload_all_parts()
         response = upload.complete_multipart_upload()
         response["speed"] = 0 # XXX
         return response

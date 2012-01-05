@@ -2,53 +2,16 @@
 ## Author: Jerome Leclanche <jerome.leclanche@gmail.com>
 ## License: GPL Version 2
 
-from Queue import Queue
-from threading import Thread
+import os
+from stat import ST_SIZE
 from logging import debug, info, warning, error
-from Utils import getTextFromXml
-
-class Worker(Thread):
-    """
-    Thread executing tasks from a given tasks queue
-    """
-    def __init__(self, tasks):
-        super(Worker, self).__init__()
-        self.tasks = tasks
-        self.daemon = True
-        self.start()
-
-    def run(self):
-        while True:
-            func, args, kargs = self.tasks.get()
-            func(*args, **kargs)
-            self.tasks.task_done()
-
-class ThreadPool(object):
-    """
-    Pool of threads consuming tasks from a queue
-    """
-    def __init__(self, num_threads):
-        self.tasks = Queue(num_threads)
-        for _ in range(num_threads):
-            Worker(self.tasks)
-
-    def add_task(self, func, *args, **kargs):
-        """
-        Add a task to the queue
-        """
-        self.tasks.put((func, args, kargs))
-
-    def wait_completion(self):
-        """
-        Wait for completion of all the tasks in the queue
-        """
-        self.tasks.join()
+from Utils import getTextFromXml, formatSize, unicodise
+from Exceptions import S3UploadError
 
 class MultiPartUpload(object):
 
     MIN_CHUNK_SIZE_MB = 5       # 5MB
     MAX_CHUNK_SIZE_MB = 5120    # 5GB
-    MAX_CHUNKS = 100
     MAX_FILE_SIZE = 42949672960 # 5TB
 
     def __init__(self, s3, file, uri):
@@ -66,11 +29,10 @@ class MultiPartUpload(object):
         request = self.s3.create_request("OBJECT_POST", uri = self.uri, extra = "?uploads")
         response = self.s3.send_request(request)
         data = response["data"]
-        s3, key, upload_id = getTextFromXml(data, "Bucket"), getTextFromXml(data, "Key"), getTextFromXml(data, "UploadId")
-        self.upload_id = upload_id
-        return s3, key, upload_id
+        self.upload_id = getTextFromXml(data, "UploadId")
+        return self.upload_id
 
-    def upload_all_parts(self, num_threads, chunk_size):
+    def upload_all_parts(self):
         """
         Execute a full multipart upload on a file
         Returns the id/etag dict
@@ -79,50 +41,52 @@ class MultiPartUpload(object):
         if not self.upload_id:
             raise RuntimeError("Attempting to use a multipart upload that has not been initiated.")
 
-        id = 1
-        if num_threads > 1:
-            debug("MultiPart: Uploading in %d threads" % num_threads)
-            pool = ThreadPool(num_threads)
-        else:
-            debug("MultiPart: Uploading in a single thread")
+        size_left = file_size = os.stat(self.file.name)[ST_SIZE]
+        self.chunk_size = self.s3.config.multipart_chunk_size_mb * 1024 * 1024
+        nr_parts = file_size / self.chunk_size + (file_size % self.chunk_size and 1)
+        debug("MultiPart: Uploading %s in %d parts" % (self.file.name, nr_parts))
 
-        while True:
-            if id == self.MAX_CHUNKS:
-                data = self.file.read(-1)
-            else:
-                data = self.file.read(chunk_size)
-            if not data:
-                break
-            if num_threads > 1:
-                pool.add_task(self.upload_part, data, id)
-            else:
-                self.upload_part(data, id)
+        id = 1
+        while size_left > 0:
+            offset = self.chunk_size * (id - 1)
+            current_chunk_size = min(file_size - offset, self.chunk_size)
+            size_left -= current_chunk_size
+            labels = {
+                'source' : unicodise(self.file.name),
+                'destination' : unicodise(self.uri.uri()),
+                'extra' : "[part %d of %d, %s]" % (id, nr_parts, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
+            }
+            try:
+                self.upload_part(id, offset, current_chunk_size, labels)
+            except S3UploadError, e:
+                error(u"Upload of '%s' part %d failed too many times. Aborting multipart upload." % (self.file.name, id))
+                self.abort_upload()
+                raise e
             id += 1
 
-        if num_threads > 1:
-            debug("Thread pool with %i threads and %i tasks awaiting completion." % (num_threads, id))
-            pool.wait_completion()
+        debug("MultiPart: Upload finished: %d parts", id - 1)
 
-    def upload_part(self, data, id):
+    def upload_part(self, id, offset, chunk_size, labels):
         """
         Upload a file chunk
         http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadUploadPart.html
         """
         # TODO implement Content-MD5
-        content_length = str(len(data))
-        debug("Uploading part %i of %r (%s bytes)" % (id, self.upload_id, content_length))
-        headers = { "content-length": content_length }
+        debug("Uploading part %i of %r (%s bytes)" % (id, self.upload_id, chunk_size))
+        headers = { "content-length": chunk_size }
         query_string = "?partNumber=%i&uploadId=%s" % (id, self.upload_id)
         request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
-        response = self.s3.send_request(request, body = data)
-
+        response = self.s3.send_file(request, self.file, labels, offset = offset, chunk_size = chunk_size)
         self.parts[id] = response["headers"]["etag"]
+        return response
 
     def complete_multipart_upload(self):
         """
         Finish a multipart upload
         http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadComplete.html
         """
+        debug("MultiPart: Completing upload: %s" % self.upload_id)
+
         parts_xml = []
         part_xml = "<Part><PartNumber>%i</PartNumber><ETag>%s</ETag></Part>"
         for id, etag in self.parts.items():
@@ -133,6 +97,16 @@ class MultiPartUpload(object):
         request = self.s3.create_request("OBJECT_POST", uri = self.uri, headers = headers, extra = "?uploadId=%s" % (self.upload_id))
         response = self.s3.send_request(request, body = body)
 
+        return response
+
+    def abort_upload(self):
+        """
+        Abort multipart upload
+        http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadAbort.html
+        """
+        debug("MultiPart: Aborting upload: %s" % self.upload_id)
+        request = self.s3.create_request("OBJECT_DELETE", uri = self.uri, extra = "?uploadId=%s" % (self.upload_id))
+        response = self.s3.send_request(request, body = body)
         return response
 
 # vim:et:ts=4:sts=4:ai
