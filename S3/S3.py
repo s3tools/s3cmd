@@ -745,7 +745,6 @@ class S3(object):
         upload = MultiPartUpload(self, file, uri)
         upload_id = upload.initiate_multipart_upload()
 
-        num_threads = self.config.multipart_num_threads
         chunk_size = self.config.multipart_chunk_size_mb * 1024 * 1024
 
         upload.upload_all_parts()
