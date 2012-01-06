@@ -8,6 +8,8 @@ s3cmd 1.1.0   -   ???
   is now on by default, -M is no longer shorthand for --guess-mime-type
 * Allow parameters in MIME types, for example:
   --mime-type="text/plain; charset=utf-8"
+* MIME type can be guessed by python-magic which is a lot better than
+  relying on the extension. Contributed by Karsten Sperling.
 * Support for environment variables as config values. For instance
   in ~/.s3cmd put "access_key=$S3_ACCESS_KEY". Contributed by Ori Bar.
 * Support for --configure checking access to a specific bucket instead
