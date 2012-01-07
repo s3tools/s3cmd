@@ -8,6 +8,7 @@ from Config import Config
 from S3Uri import S3Uri
 from SortedDict import SortedDict
 from Utils import *
+from Exceptions import ParameterError
 
 from logging import debug, info, warning, error
 
