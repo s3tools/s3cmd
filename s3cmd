@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 ## Amazon S3 manager
 ## Author: Michal Ludvig <michal@logix.cz>
@@ -509,11 +509,11 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
         for key in remote_list:
             remote_list[key]['dest_name'] = destination_base + key
     else:
-        key = remote_list.keys()[0]
-        if destination_base.endswith("/"):
-            remote_list[key]['dest_name'] = destination_base + key
-        else:
-            remote_list[key]['dest_name'] = destination_base
+        for key in remote_list:
+            if destination_base.endswith("/"):
+                remote_list[key]['dest_name'] = destination_base + key
+            else:
+                remote_list[key]['dest_name'] = destination_base
 
     if cfg.dry_run:
         for key in exclude_list:
