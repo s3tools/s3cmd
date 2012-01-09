@@ -35,21 +35,25 @@ try:
         magic_ = magic.Magic(mime=True)
         def mime_magic(file):
             return magic_.from_file(file)
-    except AttributeError:
+    except (TypeError, AttributeError):
         ## Older python-magic versions
-        magic_ = magic.open(magic.MAGIC_MIME)
+        magic_ = magic.open(magic.MAGIC_MIME_TYPE)
         magic_.load()
         def mime_magic(file):
             return magic_.file(file)
-except ImportError:
+except ImportError, e:
+    if e.message.find("magic") >= 0:
+        magic_message = "Module python-magic is not available."
+    else:
+        magic_message = "Module python-magic can't be used (%s)." % e.message
+    magic_message += " Guessing MIME types based on file extensions."
     magic_warned = False
     def mime_magic(file):
         global magic_warned
         if (not magic_warned):
-            warning("python-magic is not available, guessing MIME types based on file extensions only")
+            warning(magic_message)
             magic_warned = True
         return mimetypes.guess_type(file)[0]
-
 
 __all__ = []
 class S3Request(object):
