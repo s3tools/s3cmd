@@ -42,7 +42,7 @@ try:
         def mime_magic(file):
             return magic_.file(file)
 except ImportError, e:
-    if e.message.find("magic") >= 0:
+    if str(e).find("magic") >= 0:
         magic_message = "Module python-magic is not available."
     else:
         magic_message = "Module python-magic can't be used (%s)." % e.message
