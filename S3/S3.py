@@ -756,6 +756,7 @@ class S3(object):
         upload.upload_all_parts()
         response = upload.complete_multipart_upload()
         response["speed"] = 0 # XXX
+        response["size"] = size
         return response
 
     def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):

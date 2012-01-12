@@ -1,5 +1,7 @@
 s3cmd 1.1.0   -   ???
 ===========
+* MultiPart upload enabled for both [put] and [sync]. Default chunk
+  size is 15MB.
 * CloudFront invalidation via [sync --cf-invalidate] and [cfinvalinfo].
 * Increased socket_timeout from 10 secs to 5 mins.
 * Added "Static WebSite" support [ws-create / ws-delete / ws-info]

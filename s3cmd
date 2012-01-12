@@ -837,10 +837,6 @@ def cmd_sync_local2remote(args):
 
     s3 = S3(cfg)
 
-    ## FIXME
-    cfg.multipart_enabled = False
-    warning(u"MultiPart: disabled for 'sync' command. Don't panic, we'll fix it!")
-
     if cfg.encrypt:
         error(u"S3cmd 'sync' doesn't yet support GPG encryption, sorry.")
         error(u"Either use unconditional 's3cmd put --recursive'")

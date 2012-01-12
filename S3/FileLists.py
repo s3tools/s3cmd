@@ -301,8 +301,13 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
                 debug(u"XFER: %s (size mismatch: src=%s dst=%s)" % (file, src_list[file]['size'], dst_list[file]['size']))
                 attribs_match = False
 
-            if attribs_match and 'md5' in cfg.sync_checks:
-                ## ... same size, check MD5
+            ## Check MD5
+            compare_md5 = 'md5' in cfg.sync_checks
+            # Multipart-uploaded files don't have a valid MD5 sum - it ends with "...-NN"
+            if compare_md5 and (src_remote == True and src_list[file]['md5'].find("-") >= 0) or (dst_remote == True and dst_list[file]['md5'].find("-") >= 0):
+                compare_md5 = False
+                info(u"Disabled MD5 check for %s" % file)
+            if attribs_match and compare_md5:
                 try:
                     if src_remote == False and dst_remote == True:
                         src_md5 = hash_file_md5(src_list[file]['full_name'])
