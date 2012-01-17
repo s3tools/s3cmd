@@ -752,11 +752,14 @@ class S3(object):
 
     def send_file_multipart(self, file, headers, uri, size):
         chunk_size = self.config.multipart_chunk_size_mb * 1024 * 1024
+        timestamp_start = time.time()
         upload = MultiPartUpload(self, file, uri, headers)
         upload.upload_all_parts()
         response = upload.complete_multipart_upload()
-        response["speed"] = 0 # XXX
+        timestamp_end = time.time()
+        response["elapsed"] = timestamp_end - timestamp_start
         response["size"] = size
+        response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
         return response
 
     def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
