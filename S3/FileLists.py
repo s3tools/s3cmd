@@ -24,18 +24,12 @@ def _fswalk_follow_symlinks(path):
         If a recursive directory link is detected, emit a warning and skip.
         '''
         assert os.path.isdir(path) # only designed for directory argument
-        walkdirs = set([path])
-        targets = set()
+        walkdirs = [path]
         for dirpath, dirnames, filenames in os.walk(path):
                 for dirname in dirnames:
                         current = os.path.join(dirpath, dirname)
-                        target = os.path.realpath(current)
                         if os.path.islink(current):
-                                if target in targets:
-                                        warning("Skipping recursively symlinked directory %s" % dirname)
-                                else:
-                                        walkdirs.add(current)
-                        targets.add(target)
+				walkdirs.append(current)
         for walkdir in walkdirs:
                 for value in os.walk(walkdir):
                         yield value
