@@ -68,6 +68,19 @@ Fix invalid file names in a bucket
 
 
 .PP
+Commands for static WebSites configuration
+.TP
+s3cmd \fBws-create\fR \fIs3://BUCKET\fR
+Create Website from bucket
+.TP
+s3cmd \fBws-delete\fR \fIs3://BUCKET\fR
+Delete Website
+.TP
+s3cmd \fBws-info\fR \fIs3://BUCKET\fR
+Info about Website
+
+
+.PP
 Commands for CloudFront management
 .TP
 s3cmd \fBcflist\fR \fI\fR
@@ -102,7 +115,10 @@ changes you like.
 show this help message and exit
 .TP
 \fB\-\-configure\fR
-Invoke interactive (re)configuration tool.
+Invoke interactive (re)configuration tool. Optionally
+use as '\fB--configure\fR s3://come-bucket' to test access
+to a specific bucket instead of attempting to list
+them all.
 .TP
 \fB\-c\fR FILE, \fB\-\-config\fR=FILE
 Config file name. Defaults to /home/mludvig/.s3cfg
@@ -194,8 +210,7 @@ Read --rexclude REGEXPs from FILE
 \fB\-\-include\fR=GLOB
 Filenames and paths matching GLOB will be included
 even if previously excluded by one of
-.TP
-\fB\-\-(r)exclude(\-from)\fR patterns
+\fB--(r)exclude(-from)\fR patterns
 .TP
 \fB\-\-include\-from\fR=FILE
 Read --include GLOBs from FILE
@@ -224,13 +239,22 @@ and [accesslog] commands)
 Disable access logging (for [cfmodify] and [accesslog]
 commands)
 .TP
-\fB\-m\fR MIME/TYPE, \fB\-\-mime\-type\fR=MIME/TYPE
-Default MIME-type to be set for objects stored.
+\fB\-\-default\-mime\-type\fR
+Default MIME-type for stored objects. Application
+default is binary/octet-stream.
 .TP
-\fB\-M\fR, \fB\-\-guess\-mime\-type\fR
-Guess MIME-type of files by their extension. Falls
-back to default MIME-Type as specified by --mime-type
-option
+\fB\-\-guess\-mime\-type\fR
+Guess MIME-type of files by their extension or mime
+magic. Fall back to default MIME-Type as specified by
+\fB--default-mime-type\fR option
+.TP
+\fB\-\-no\-guess\-mime\-type\fR
+Don't guess MIME-type and use the default type
+instead.
+.TP
+\fB\-m\fR MIME/TYPE, \fB\-\-mime\-type\fR=MIME/TYPE
+Force MIME-type. Override both \fB--default-mime-type\fR and
+\fB--guess-mime-type\fR.
 .TP
 \fB\-\-add\-header\fR=NAME:VALUE
 Add a given HTTP header to the upload request. Can be
@@ -246,6 +270,18 @@ Override autodetected terminal and filesystem encoding
 Use the S3 name as given on the command line. No pre-
 processing, encoding, etc. Use with caution!
 .TP
+\fB\-\-disable\-multipart\fR
+Disable multipart upload on files bigger than
+\fB--multipart-chunk-size-mb\fR
+.TP
+\fB\-\-multipart\-chunk\-size\-mb\fR=SIZE
+Size of each chunk of a multipart upload. Files bigger
+than SIZE are automatically uploaded as multithreaded-
+multipart, smaller files are uploaded using the
+traditional method. SIZE is in Mega-Bytes, default
+chunk size is noneMB, minimum allowed chunk size is
+5MB, maximum is 5GB.
+.TP
 \fB\-\-list\-md5\fR
 Include MD5 sums in bucket listings (only for 'ls'
 command).
@@ -253,6 +289,12 @@ command).
 \fB\-H\fR, \fB\-\-human\-readable\-sizes\fR
 Print sizes in human readable form (eg 1kB instead of
 1234).
+.TP
+\fB\-\-ws\-index\fR=WEBSITE_INDEX
+Name of error-document (only for [ws-create] command)
+.TP
+\fB\-\-ws\-error\fR=WEBSITE_ERROR
+Name of index-document (only for [ws-create] command)
 .TP
 \fB\-\-progress\fR
 Display progress meter (default on TTY).
@@ -298,7 +340,7 @@ Enable verbose output.
 Enable debug output.
 .TP
 \fB\-\-version\fR
-Show s3cmd version (1.1.0-beta1) and exit.
+Show s3cmd version (1.1.0-beta3) and exit.
 .TP
 \fB\-F\fR, \fB\-\-follow\-symlinks\fR
 Follow symbolic links as if they are regular files
@@ -399,7 +441,7 @@ Prefered way to get support is our mailing list:
 Report bugs to 
 .I s3tools\-bugs@lists.sourceforge.net
 .SH COPYRIGHT
-Copyright \(co 2007,2008,2009,2010,2011 Michal Ludvig <http://www.logix.cz/michal>
+Copyright \(co 2007,2008,2009,2010,2011,2012 Michal Ludvig <http://www.logix.cz/michal>
 .br
 This is free software.  You may redistribute copies of it under the terms of
 the GNU General Public License version 2 <http://www.gnu.org/licenses/gpl.html>.

@@ -8,6 +8,7 @@ use strict;
 
 my $commands = "";
 my $cfcommands = "";
+my $wscommands = "";
 my $options = "";
 
 while (<>) {
@@ -20,6 +21,8 @@ while (<>) {
 			$cmd = $1;
 			if ($cmd =~ /^cf/) {
 				$cfcommands .= ".TP\n$cmdline\n$desc\n";
+			} elsif ($cmd =~ /^ws/) {
+				$wscommands .= ".TP\n$cmdline\n$desc\n";
 			} else {
 				$commands .= ".TP\n$cmdline\n$desc\n";
 			}
@@ -29,18 +32,20 @@ while (<>) {
 		my ($opt, $desc);
 		while (<>) {
 			last if (/^\s*$/);
-			$_ =~ s/\s*(.*?)\s*$/$1/;
+			$_ =~ s/(.*?)\s*$/$1/;
 			$desc = "";
 			$opt = "";
-			if (/^(-.*)/) {
+			if (/^  (-.*)/) {
 				$opt = $1;
 				if ($opt =~ /  /) {
 					($opt, $desc) = split(/\s\s+/, $opt, 2);
 				}
-				$opt =~ s/(-[^ ,=]+)/\\fB$1\\fR/g;
+				$opt =~ s/(-[^ ,=\.]+)/\\fB$1\\fR/g;
 				$opt =~ s/-/\\-/g;
 				$options .= ".TP\n$opt\n";
 			} else {
+				$_ =~ s/\s*(.*?)\s*$/$1/;
+				$_ =~ s/(--[^ ,=\.]+)/\\fB$1\\fR/g;
 				$desc .= $_;
 			}
 			if ($desc) {
@@ -69,6 +74,10 @@ listing objects, etc.
 .B s3cmd
 can do several \\fIactions\\fR specified by the following \\fIcommands\\fR.
 $commands
+
+.PP
+Commands for static WebSites configuration
+$wscommands
 
 .PP
 Commands for CloudFront management
@@ -179,7 +188,7 @@ Prefered way to get support is our mailing list:
 Report bugs to 
 .I s3tools\\-bugs\@lists.sourceforge.net
 .SH COPYRIGHT
-Copyright \\(co 2007,2008,2009,2010,2011 Michal Ludvig <http://www.logix.cz/michal>
+Copyright \\(co 2007,2008,2009,2010,2011,2012 Michal Ludvig <http://www.logix.cz/michal>
 .br
 This is free software.  You may redistribute copies of it under the terms of
 the GNU General Public License version 2 <http://www.gnu.org/licenses/gpl.html>.
