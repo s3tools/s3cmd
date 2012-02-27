@@ -28,6 +28,7 @@ def _fswalk_follow_symlinks(path):
         walkdirs = set([path])
         targets = set()
         for dirpath, dirnames, filenames in os.walk(path):
+ 		handle_exclude_include_walk(dirpath, dirnames, [])
                 for dirname in dirnames:
                         current = os.path.join(dirpath, dirname)
                         target = os.path.realpath(current)
@@ -38,8 +39,9 @@ def _fswalk_follow_symlinks(path):
                                         walkdirs.add(current)
                         targets.add(target)
         for walkdir in walkdirs:
-                for value in os.walk(walkdir):
-                        yield value
+		for dirpath, dirnames, filenames in os.walk(walkdir):
+			handle_exclude_include_walk(dirpath, dirnames, [])
+                        yield (dirpath, dirnames, filenames)
 
 def _fswalk(path, follow_symlinks):
         '''
@@ -50,8 +52,10 @@ def _fswalk(path, follow_symlinks):
         follow_symlinks (bool) indicates whether to descend into symbolically linked directories
         '''
         if follow_symlinks:
-                return _fswalk_follow_symlinks(path)
-        return os.walk(path)
+                yield _fswalk_follow_symlinks(path)
+	for dirpath, dirnames, filenames in os.walk(path):
+		handle_exclude_include_walk(dirpath, dirnames, filenames)
+		yield (dirpath, dirnames, filenames)
 
 def filter_exclude_include(src_list):
     info(u"Applying --exclude/--include")
@@ -153,7 +157,6 @@ def fetch_local_list(args, recursive = None):
             single_file = True
         loc_list = SortedDict(ignore_case = False)
         for root, dirs, files in filelist:
-	    handle_exclude_include_walk(root, dirs, files)
             rel_root = root.replace(local_path, local_base, 1)
             for f in files:
                 full_name = os.path.join(root, f)
