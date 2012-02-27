@@ -25,18 +25,12 @@ def _fswalk_follow_symlinks(path):
         If a recursive directory link is detected, emit a warning and skip.
         '''
         assert os.path.isdir(path) # only designed for directory argument
-        walkdirs = set([path])
-        targets = set()
+        walkdirs = [path]
         for dirpath, dirnames, filenames in os.walk(path):
                 for dirname in dirnames:
                         current = os.path.join(dirpath, dirname)
-                        target = os.path.realpath(current)
                         if os.path.islink(current):
-                                if target in targets:
-                                        warning("Skipping recursively symlinked directory %s" % dirname)
-                                else:
-                                        walkdirs.add(current)
-                        targets.add(target)
+				walkdirs.append(current)
         for walkdir in walkdirs:
                 for value in os.walk(walkdir):
                         yield value
@@ -362,9 +356,10 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
             ## Check MD5
             compare_md5 = 'md5' in cfg.sync_checks
             # Multipart-uploaded files don't have a valid MD5 sum - it ends with "...-NN"
-            if compare_md5 and (src_remote == True and src_list[file]['md5'].find("-") >= 0) or (dst_remote == True and dst_list[file]['md5'].find("-") >= 0):
-                compare_md5 = False
-                info(u"Disabled MD5 check for %s" % file)
+            if compare_md5:
+                if (src_remote == True and src_list[file]['md5'].find("-") >= 0) or (dst_remote == True and dst_list[file]['md5'].find("-") >= 0):
+                    compare_md5 = False
+                    info(u"Disabled MD5 check for %s" % file)
             if attribs_match and compare_md5:
                 try:
                     if src_remote == False and dst_remote == True:
