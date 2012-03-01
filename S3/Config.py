@@ -54,6 +54,7 @@ class Config(object):
     ]
     delete_removed = False
     _doc['delete_removed'] = "[sync] Remove remote S3 objects when local file has been deleted"
+    delay_updates = False
     gpg_passphrase = ""
     gpg_command = ""
     gpg_encrypt = "%(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
