@@ -266,7 +266,13 @@ def cmd_object_put(args):
     info(u"Summary: %d local files to upload" % local_count)
 
     if local_count > 0:
-        if not destination_base.endswith("/"):
+        if not single_file_local:
+            for key in local_list:
+                if key == "-":
+                    raise ParameterError("Cannot specify multiple local files if uploading from '-' (ie stdin)")
+        elif single_file_local and local_list.keys()[0] == "-" and destination_base.endswith("/"):
+            raise ParameterError("Destination S3 URI must not end with '/' when uploading from stdin.")
+        elif not destination_base.endswith("/"):
             if not single_file_local:
                 raise ParameterError("Destination S3 URI must end with '/' (ie must refer to a directory on the remote side).")
             local_list[local_list.keys()[0]]['remote_uri'] = unicodise(destination_base)
@@ -278,7 +284,7 @@ def cmd_object_put(args):
         for key in exclude_list:
             output(u"exclude: %s" % unicodise(key))
         for key in local_list:
-            output(u"upload: %s -> %s" % (local_list[key]['full_name_unicode'], local_list[key]['remote_uri']))
+            output(u"upload: %s -> %s" % (local_list[key]['full_name_unicode'] if key != "-" else "<stdin>", local_list[key]['remote_uri']))
 
         warning(u"Exitting now because of --dry-run")
         return
