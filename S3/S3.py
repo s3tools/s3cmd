@@ -29,24 +29,37 @@ from MultiPart import MultiPartUpload
 from S3Uri import S3Uri
 
 try:
-    import magic
+    import magic, gzip
     try:
         ## https://github.com/ahupp/python-magic
         magic_ = magic.Magic(mime=True)
-        def mime_magic(file):
+        def mime_magic_file(file):
             return magic_.from_file(file)
+        def mime_magic_buffer(buffer):
+            return magic_.from_buffer(buffer)
     except (TypeError, AttributeError):
         ## Older python-magic versions
         magic_ = magic.open(magic.MAGIC_MIME)
         magic_.load()
-        def mime_magic(file):
+        def mime_magic_file(file):
             return magic_.file(file)
+        def mime_magic_buffer(buffer):
+            return magic_.buffer(buffer)
 except ImportError, e:
     if str(e).find("magic") >= 0:
         magic_message = "Module python-magic is not available."
     else:
         magic_message = "Module python-magic can't be used (%s)." % e.message
     magic_message += " Guessing MIME types based on file extensions."
+    
+    def mime_magic(file):
+        type = mime_magic_file(file)
+        if type != "application/x-gzip; charset=binary":
+            return (type, None)
+        else:
+            return (mime_magic_buffer(gzip.open(file).read(8192)), 'gzip')
+            
+except ImportError:
     magic_warned = False
     def mime_magic(file):
         global magic_warned
@@ -359,12 +372,15 @@ class S3(object):
 
         ## MIME-type handling
         content_type = self.config.mime_type
+        content_encoding = None
         if not content_type and self.config.guess_mime_type:
-            content_type = mime_magic(filename)
+            (content_type, content_encoding) = mime_magic(filename)
         if not content_type:
             content_type = self.config.default_mime_type
-        debug("Content-Type set to '%s'" % content_type)
+        debug("Content-Type set to '%s' (encoding %s)" % (content_type, content_encoding))
         headers["content-type"] = content_type
+        if content_encoding is not None:
+            headers["content-encoding"] = content_encoding
 
         ## Other Amazon S3 attributes
         if self.config.acl_public:
