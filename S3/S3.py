@@ -28,18 +28,30 @@ from AccessLog import AccessLog
 from S3Uri import S3Uri
 
 try:
-    import magic
+    import magic, gzip
     try:
         ## https://github.com/ahupp/python-magic
         magic_ = magic.Magic(mime=True)
-        def mime_magic(file):
+        def mime_magic_file(file):
             return magic_.from_file(file)
+        def mime_magic_buffer(buffer):
+            return magic_.from_buffer(buffer)
     except AttributeError:
         ## Older python-magic versions
         magic_ = magic.open(magic.MAGIC_MIME)
         magic_.load()
-        def mime_magic(file):
+        def mime_magic_file(file):
             return magic_.file(file)
+        def mime_magic_buffer(buffer):
+            return magic_.buffer(buffer)
+    
+    def mime_magic(file):
+        type = mime_magic_file(file)
+        if type != "application/x-gzip; charset=binary":
+            return (type, None)
+        else:
+            return (mime_magic_buffer(gzip.open(file).read(8192)), 'gzip')
+            
 except ImportError:
     magic_warned = False
     def mime_magic(file):
@@ -350,12 +362,15 @@ class S3(object):
             headers.update(extra_headers)
         headers["content-length"] = size
         content_type = self.config.mime_type
+        content_encoding = None
         if not content_type and self.config.guess_mime_type:
-            content_type = mime_magic(filename)
+            (content_type, content_encoding) = mime_magic(filename)
         if not content_type:
             content_type = self.config.default_mime_type
-        debug("Content-Type set to '%s'" % content_type)
+        debug("Content-Type set to '%s' (encoding %s)" % (content_type, content_encoding))
         headers["content-type"] = content_type
+        if content_encoding is not None:
+            headers["content-encoding"] = content_encoding
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
         if self.config.reduced_redundancy:
