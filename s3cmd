@@ -582,6 +582,17 @@ def cmd_info(args):
                 raise
 
 def cmd_sync_remote2remote(args):
+    def _do_deletes(s3, dst_list):
+        # Delete items in destination that are not in source
+        if cfg.dry_run:
+            for key in dst_list:
+                output(u"delete: %s" % dst_list[key]['object_uri_str'])
+        else:
+            for key in dst_list:
+                uri = S3Uri(dst_list[key]['object_uri_str'])
+                s3.object_delete(uri)
+                output(u"deleted: '%s'" % uri)
+
     s3 = S3(Config())
 
     # Normalise s3://uri (e.g. assert trailing slash)
@@ -621,15 +632,8 @@ def cmd_sync_remote2remote(args):
         return
 
     # Delete items in destination that are not in source
-    if cfg.delete_removed:
-        if cfg.dry_run:
-            for key in dst_list:
-                output(u"delete: %s" % dst_list[key]['object_uri_str'])
-        else:
-            for key in dst_list:
-                uri = S3Uri(dst_list[key]['object_uri_str'])
-                s3.object_delete(uri)
-                output(u"deleted: '%s'" % uri)
+    if cfg.delete_removed and not cfg.delete_after:
+        _do_deletes(s3, dst_list)
 
     # Perform the synchronization of files
     timestamp_start = time.time()
@@ -655,6 +659,10 @@ def cmd_sync_remote2remote(args):
     else:
         info(outstr)
 
+    # Delete items in destination that are not in source
+    if cfg.delete_removed and cfg.delete_after:
+        _do_deletes(s3, dst_list)
+
 def cmd_sync_remote2local(args):
     def _parse_attrs_header(attrs_header):
         attrs = {}
@@ -662,6 +670,11 @@ def cmd_sync_remote2local(args):
             key, val = attr.split(":")
             attrs[key] = val
         return attrs
+
+    def _do_deletes(local_list):
+        for key in local_list:
+            os.unlink(local_list[key]['full_name'])
+            output(u"deleted: %s" % local_list[key]['full_name_unicode'])
 
     s3 = S3(Config())
 
@@ -709,10 +722,8 @@ def cmd_sync_remote2local(args):
         warning(u"Exitting now because of --dry-run")
         return
 
-    if cfg.delete_removed:
-        for key in local_list:
-            os.unlink(local_list[key]['full_name'])
-            output(u"deleted: %s" % local_list[key]['full_name_unicode'])
+    if cfg.delete_removed and not cfg.delete_after:
+        _do_deletes(local_list)
 
     total_size = 0
     total_elapsed = 0.0
@@ -804,6 +815,9 @@ def cmd_sync_remote2local(args):
     else:
         info(outstr)
 
+    if cfg.delete_removed and cfg.delete_after:
+        _do_deletes(local_list)
+
 def cmd_sync_local2remote(args):
     def _build_attr_header(src):
         import pwd, grp
@@ -834,6 +848,12 @@ def cmd_sync_local2remote(args):
         result = ""
         for k in attrs: result += "%s:%s/" % (k, attrs[k])
         return { 'x-amz-meta-s3cmd-attrs' : result[:-1] }
+
+    def _do_deletes(s3, remote_list):
+        for key in remote_list:
+            uri = S3Uri(remote_list[key]['object_uri_str'])
+            s3.object_delete(uri)
+            output(u"deleted: '%s'" % uri)
 
     s3 = S3(cfg)
 
@@ -894,11 +914,8 @@ def cmd_sync_local2remote(args):
         warning(u"Exitting now because of --dry-run")
         return
 
-    if cfg.delete_removed:
-        for key in remote_list:
-            uri = S3Uri(remote_list[key]['object_uri_str'])
-            s3.object_delete(uri)
-            output(u"deleted: '%s'" % uri)
+    if cfg.delete_removed and not cfg.delete_after:
+        _do_deletes(s3, remote_list)
 
     uploaded_objects_list = []
     total_size = 0
@@ -945,6 +962,9 @@ def cmd_sync_local2remote(args):
         output(outstr)
     else:
         info(outstr)
+
+    if cfg.delete_removed and cfg.delete_after:
+        _do_deletes(s3, remote_list)
 
     if cfg.invalidate_on_cf:
         if len(uploaded_objects_list) == 0:
@@ -1499,6 +1519,7 @@ def main():
 
     optparser.add_option(      "--delete-removed", dest="delete_removed", action="store_true", help="Delete remote objects with no corresponding local file [sync]")
     optparser.add_option(      "--no-delete-removed", dest="delete_removed", action="store_false", help="Don't delete remote objects.")
+    optparser.add_option(      "--delete-after", dest="delete_after", action="store_true", help="Perform deletes after new uploads [sync]")
     optparser.add_option("-p", "--preserve", dest="preserve_attrs", action="store_true", help="Preserve filesystem attributes (mode, ownership, timestamps). Default for [sync] command.")
     optparser.add_option(      "--no-preserve", dest="preserve_attrs", action="store_false", help="Don't store FS attributes")
     optparser.add_option(      "--exclude", dest="exclude", action="append", metavar="GLOB", help="Filenames and paths matching GLOB will be excluded from sync")
