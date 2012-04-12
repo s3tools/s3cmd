@@ -14,6 +14,7 @@ from logging import debug, info, warning, error
 
 import os
 import glob
+import copy
 
 __all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists", "filter_exclude_include"]
 
@@ -26,13 +27,15 @@ def _fswalk_follow_symlinks(path):
         assert os.path.isdir(path) # only designed for directory argument
         walkdirs = [path]
         for dirpath, dirnames, filenames in os.walk(path):
+ 		handle_exclude_include_walk(dirpath, dirnames, [])
                 for dirname in dirnames:
                         current = os.path.join(dirpath, dirname)
                         if os.path.islink(current):
 				walkdirs.append(current)
         for walkdir in walkdirs:
-                for value in os.walk(walkdir):
-                        yield value
+		for dirpath, dirnames, filenames in os.walk(walkdir):
+			handle_exclude_include_walk(dirpath, dirnames, [])
+                        yield (dirpath, dirnames, filenames)
 
 def _fswalk(path, follow_symlinks):
         '''
@@ -43,8 +46,10 @@ def _fswalk(path, follow_symlinks):
         follow_symlinks (bool) indicates whether to descend into symbolically linked directories
         '''
         if follow_symlinks:
-                return _fswalk_follow_symlinks(path)
-        return os.walk(path)
+                yield _fswalk_follow_symlinks(path)
+	for dirpath, dirnames, filenames in os.walk(path):
+		handle_exclude_include_walk(dirpath, dirnames, filenames)
+		yield (dirpath, dirnames, filenames)
 
 def filter_exclude_include(src_list):
     info(u"Applying --exclude/--include")
@@ -74,6 +79,62 @@ def filter_exclude_include(src_list):
         else:
             debug(u"PASS: %s" % (file))
     return src_list, exclude_list
+
+def handle_exclude_include_walk(root, dirs, files):
+    cfg = Config()
+    copydirs = copy.copy(dirs)
+    copyfiles = copy.copy(files)
+
+    # exclude dir matches in the current directory
+    # this prevents us from recursing down trees we know we want to ignore
+    for x in copydirs:
+        d = os.path.join(root, x, '')
+        debug(u"CHECK: %s" % d)
+        excluded = False
+        for r in cfg.exclude:
+            if r.search(d):
+                excluded = True
+                debug(u"EXCL-MATCH: '%s'" % (cfg.debug_exclude[r]))
+                break
+        if excluded:
+            ## No need to check for --include if not excluded
+            for r in cfg.include:
+                if r.search(d):
+                    excluded = False
+                    debug(u"INCL-MATCH: '%s'" % (cfg.debug_include[r]))
+                    break
+        if excluded:
+            ## Still excluded - ok, action it
+            debug(u"EXCLUDE: %s" % d)
+	    dirs.remove(x)
+            continue
+        else:
+            debug(u"PASS: %s" % (d))
+
+    # exclude file matches in the current directory
+    for x in copyfiles:
+        file = os.path.join(root, x)
+        debug(u"CHECK: %s" % file)
+        excluded = False
+        for r in cfg.exclude:
+            if r.search(file):
+                excluded = True
+                debug(u"EXCL-MATCH: '%s'" % (cfg.debug_exclude[r]))
+                break
+        if excluded:
+            ## No need to check for --include if not excluded
+            for r in cfg.include:
+                if r.search(file):
+                    excluded = False
+                    debug(u"INCL-MATCH: '%s'" % (cfg.debug_include[r]))
+                    break
+        if excluded:
+            ## Still excluded - ok, action it
+            debug(u"EXCLUDE: %s" % file)
+            files.remove(x)
+            continue
+        else:
+            debug(u"PASS: %s" % (file))
 
 def fetch_local_list(args, recursive = None):
     def _get_filelist_local(local_uri):
