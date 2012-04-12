@@ -60,6 +60,9 @@ class S3Request(object):
     def __init__(self, s3, method_string, resource, headers, params = {}):
         self.s3 = s3
         self.headers = SortedDict(headers or {}, ignore_case = True)
+        # Add in any extra headers from s3 config object
+        if self.s3.config.extra_headers:
+            self.headers.update(self.s3.config.extra_headers)
         self.resource = resource
         self.method_string = method_string
         self.params = params
