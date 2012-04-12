@@ -15,7 +15,7 @@ from logging import debug, info, warning, error
 import os
 import glob
 
-__all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists", "filter_exclude_include"]
+__all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists", "filter_exclude_include", "parse_attrs_header"]
 
 def _fswalk_follow_symlinks(path):
         '''
@@ -149,6 +149,13 @@ def fetch_local_list(args, recursive = None):
 
     return local_list, single_file
 
+def parse_attrs_header(attrs_header):
+    attrs = {}
+    for attr in attrs_header.split("/"):
+        key, val = attr.split(":")
+	attrs[key] = val
+    return attrs
+
 def fetch_remote_list(args, require_attribs = False, recursive = None):
     def _get_filelist_remote(remote_uri, recursive = True):
         ## If remote_uri ends with '/' then all remote files will have
@@ -197,6 +204,14 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
                 'object_uri_str' : object_uri_str,
                 'base_uri' : remote_uri,
             }
+	    if cfg.preserve_attrs:
+	        objinfo = S3(cfg).object_info(S3Uri(object_uri_str))
+		if objinfo['headers'].has_key('x-amz-meta-s3cmd-attrs'):
+		    attrs = parse_attrs_header(objinfo['headers']['x-amz-meta-s3cmd-attrs'])
+		    if attrs.has_key('mtime'):
+			    rem_list[key].update({
+				    'mtime':int(attrs['mtime'])
+				    })
             if break_now:
                 break
         return rem_list
@@ -259,7 +274,13 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
                     'md5': response['headers']['etag'].strip('"\''),
                     'timestamp' : dateRFC822toUnix(response['headers']['date'])
                     })
-                remote_list[key] = remote_item
+		    if response['headers'].has_key('x-amz-meta-s3cmd-attrs'): # we have the data, it costs nothing to hold onto it
+		        attrs = parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
+			if attrs.has_key('mtime'):
+			    remote_item.update({
+				    'mtime':int(attrs['mtime'])
+				    })
+	        remote_list[key] = remote_item
     return remote_list
 
 def compare_filelists(src_list, dst_list, src_remote, dst_remote):
@@ -294,6 +315,13 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
             if 'size' in cfg.sync_checks and dst_list[file]['size'] != src_list[file]['size']:
                 debug(u"XFER: %s (size mismatch: src=%s dst=%s)" % (file, src_list[file]['size'], dst_list[file]['size']))
                 attribs_match = False
+
+            ## Check mtime next
+            if 'mtime' in cfg.sync_checks:
+	        if dst_list[file].has_key('mtime') and src_list[file].has_key('mtime'):
+		    if dst_list[file]['mtime'] != src_list[file]['mtime']:
+		        debug(u"XFER: %s (mtime mismatch: src=%s dst=%s)" % (file, src_list[file]['mtime'], dst_list[file]['mtime']))
+			attribs_match = False
 
             ## Check MD5
             compare_md5 = 'md5' in cfg.sync_checks

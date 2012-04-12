@@ -656,13 +656,6 @@ def cmd_sync_remote2remote(args):
         info(outstr)
 
 def cmd_sync_remote2local(args):
-    def _parse_attrs_header(attrs_header):
-        attrs = {}
-        for attr in attrs_header.split("/"):
-            key, val = attr.split(":")
-            attrs[key] = val
-        return attrs
-
     s3 = S3(Config())
 
     destination_base = args[-1]
@@ -747,7 +740,7 @@ def cmd_sync_remote2local(args):
                 response = s3.object_get(uri, dst_stream, extra_label = seq_label)
                 dst_stream.close()
                 if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
-                    attrs = _parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
+                    attrs = parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
                     if attrs.has_key('mode'):
                         os.chmod(dst_file, int(attrs['mode']))
                     if attrs.has_key('mtime') or attrs.has_key('atime'):
