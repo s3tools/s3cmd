@@ -262,7 +262,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
                 remote_list[key] = remote_item
     return remote_list
 
-def compare_filelists(src_list, dst_list, src_remote, dst_remote):
+def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates = False):
     def __direction_str(is_remote):
         return is_remote and "remote" or "local"
 
@@ -272,6 +272,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
     info(u"Verifying attributes...")
     cfg = Config()
     exists_list = SortedDict(ignore_case = False)
+    update_list = SortedDict(ignore_case = False)
 
     debug("Comparing filelists (direction: %s -> %s)" % (__direction_str(src_remote), __direction_str(dst_remote)))
     debug("src_list.keys: %s" % src_list.keys())
@@ -331,10 +332,17 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
                 debug(u"IGNR: %s (transfer not needed)" % file)
                 exists_list[file] = src_list[file]
                 del(src_list[file])
+	    else:
+	        if delay_updates:
+	            ## Remove from source-list, all that is left there will be transferred
+		    ## Add to update-list to transfer last
+		    debug(u"XFER UPDATE: %s" % file)
+		    update_list[file] = src_list[file]
+		    del(src_list[file])
 
             ## Remove from destination-list, all that is left there will be deleted
             del(dst_list[file])
 
-    return src_list, dst_list, exists_list
+    return src_list, dst_list, exists_list, update_list
 
 # vim:et:ts=4:sts=4:ai
