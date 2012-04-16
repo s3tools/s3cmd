@@ -932,6 +932,11 @@ def cmd_sync_local2remote(args):
                 (item['full_name_unicode'], uri, response["size"], response["elapsed"],
                 speed_fmt[0], speed_fmt[1], seq_label))
         total_size += response["size"]
+        if cfg.acl_grants or cfg.acl_revokes:
+            try:
+                update_acl(s3, uri)
+            except Exception, e:
+                error(u"%s: Error while setting ACL: %s" % e)
         uploaded_objects_list.append(uri.object())
 
     total_elapsed = time.time() - timestamp_start
@@ -970,45 +975,6 @@ def cmd_sync(args):
     raise ParameterError("Invalid source/destination: '%s'" % "' '".join(args))
 
 def cmd_setacl(args):
-    def _update_acl(uri, seq_label = ""):
-        something_changed = False
-        acl = s3.get_acl(uri)
-        debug(u"acl: %s - %r" % (uri, acl.grantees))
-        if cfg.acl_public == True:
-            if acl.isAnonRead():
-                info(u"%s: already Public, skipping %s" % (uri, seq_label))
-            else:
-                acl.grantAnonRead()
-                something_changed = True
-        elif cfg.acl_public == False: # we explicitely check for False, because it could be None
-            if not acl.isAnonRead():
-                info(u"%s: already Private, skipping %s" % (uri, seq_label))
-            else:
-                acl.revokeAnonRead()
-                something_changed = True
-
-        # update acl with arguments
-        # grant first and revoke later, because revoke has priority
-        if cfg.acl_grants:
-            something_changed = True
-            for grant in cfg.acl_grants:
-                acl.grant(**grant);
-
-        if cfg.acl_revokes:
-            something_changed = True
-            for revoke in cfg.acl_revokes:
-                acl.revoke(**revoke);
-
-        if not something_changed:
-            return
-
-        retsponse = s3.set_acl(uri, acl)
-        if retsponse['status'] == 200:
-            if cfg.acl_public in (True, False):
-                output(u"%s: ACL set to %s  %s" % (uri, set_to_acl, seq_label))
-            else:
-                output(u"%s: ACL updated" % uri)
-
     s3 = S3(cfg)
 
     set_to_acl = cfg.acl_public and "Public" or "Private"
@@ -1024,7 +990,7 @@ def cmd_setacl(args):
                 else:
                     info("Setting bucket-level ACL for %s" % (uri.uri()))
                 if not cfg.dry_run:
-                    _update_acl(uri)
+                    update_acl(s3, uri)
             else:
                 args.append(arg)
 
@@ -1049,7 +1015,7 @@ def cmd_setacl(args):
         seq += 1
         seq_label = "[%d of %d]" % (seq, remote_count)
         uri = S3Uri(remote_list[key]['object_uri_str'])
-        _update_acl(uri, seq_label)
+        update_acl(s3, uri, seq_label)
 
 def cmd_accesslog(args):
     s3 = S3(cfg)
@@ -1416,6 +1382,46 @@ def format_commands(progname, commands_list):
     for cmd in commands_list:
         help += "  %s\n      %s %s %s\n" % (cmd["label"], progname, cmd["cmd"], cmd["param"])
     return help
+
+
+def update_acl(s3, uri, seq_label=""):
+    something_changed = False
+    acl = s3.get_acl(uri)
+    debug(u"acl: %s - %r" % (uri, acl.grantees))
+    if cfg.acl_public == True:
+        if acl.isAnonRead():
+            info(u"%s: already Public, skipping %s" % (uri, seq_label))
+        else:
+            acl.grantAnonRead()
+            something_changed = True
+    elif cfg.acl_public == False:  # we explicitely check for False, because it could be None
+        if not acl.isAnonRead():
+            info(u"%s: already Private, skipping %s" % (uri, seq_label))
+        else:
+            acl.revokeAnonRead()
+            something_changed = True
+
+    # update acl with arguments
+    # grant first and revoke later, because revoke has priority
+    if cfg.acl_grants:
+        something_changed = True
+        for grant in cfg.acl_grants:
+            acl.grant(**grant)
+
+    if cfg.acl_revokes:
+        something_changed = True
+        for revoke in cfg.acl_revokes:
+            acl.revoke(**revoke)
+
+    if not something_changed:
+        return
+
+    retsponse = s3.set_acl(uri, acl)
+    if retsponse['status'] == 200:
+        if cfg.acl_public in (True, False):
+            output(u"%s: ACL set to %s  %s" % (uri, set_to_acl, seq_label))
+        else:
+            output(u"%s: ACL updated" % uri)
 
 class OptionMimeType(Option):
     def check_mimetype(option, opt, value):
