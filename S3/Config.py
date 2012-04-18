@@ -80,6 +80,9 @@ class Config(object):
     follow_symlinks = False
     socket_timeout = 300
     invalidate_on_cf = False
+    # joseprio: new flags for default index invalidation
+    invalidate_default_index_on_cf = False
+    invalidate_default_index_root_on_cf = True
     website_index = "index.html"
     website_error = ""
     website_endpoint = "http://%(bucket)s.s3-website-%(location)s.amazonaws.com/"
