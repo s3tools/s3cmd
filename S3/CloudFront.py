@@ -281,7 +281,7 @@ class InvalidationBatch(object):
         tree = ET.Element("InvalidationBatch")
 
         for path in self.paths:
-            if path[0] != "/":
+            if len(path) < 1 or path[0] != "/":
                 path = "/" + path
             appendXmlTextNode("Path", path, tree)
         appendXmlTextNode("CallerReference", self.reference, tree)
