@@ -1553,8 +1553,8 @@ def main():
     optparser.add_option(      "--cf-invalidate", dest="invalidate_on_cf", action="store_true", help="Invalidate the uploaded filed in CloudFront. Also see [cfinval] command.")
     # joseprio: adding options to invalidate the default index and the default
     # index root
-    optparser.add_option(      "--cf-invalidate-default-index", dest="invalidate_default_index_on_cf", action="store_false", help="When using Custom Origin and S3 static website, setting it to true will invalidate the default index file.")
-    optparser.add_option(      "--cf-invalidate-default-index-root", dest="invalidate_default_index_root_on_cf", action="store_true", help="When using Custom Origin and S3 static website, setting it to true will invalidate the path of the default index file.")
+    optparser.add_option(      "--cf-invalidate-default-index", dest="invalidate_default_index_on_cf", action="store_true", help="When using Custom Origin and S3 static website, invalidate the default index file.")
+    optparser.add_option(      "--cf-no-invalidate-default-index-root", dest="invalidate_default_index_root_on_cf", action="store_false", help="When using Custom Origin and S3 static website, don't invalidate the path to the default index file.")
     optparser.add_option(      "--cf-add-cname", dest="cf_cnames_add", action="append", metavar="CNAME", help="Add given CNAME to a CloudFront distribution (only for [cfcreate] and [cfmodify] commands)")
     optparser.add_option(      "--cf-remove-cname", dest="cf_cnames_remove", action="append", metavar="CNAME", help="Remove given CNAME from a CloudFront distribution (only for [cfmodify] command)")
     optparser.add_option(      "--cf-comment", dest="cf_comment", action="store", metavar="COMMENT", help="Set COMMENT for a given CloudFront distribution (only for [cfcreate] and [cfmodify] commands)")
