@@ -952,7 +952,18 @@ def cmd_sync_local2remote(args):
         else:
             # 'uri' from the last iteration is still valid at this point
             cf = CloudFront(cfg)
-            result = cf.InvalidateObjects(uri, uploaded_objects_list)
+            # joseprio: obtain default index file if we need it for invalidating
+            # the files
+            default_index_file = None
+            if cfg.invalidate_default_index_on_cf or cfg.invalidate_default_index_root_on_cf:
+                info_response = s3.website_info(destination_base_uri, cfg.bucket_location)
+                if info_response:
+                  default_index_file = info_response['index_document']
+                  if len(default_index_file) < 1:
+                      default_index_file = None
+            # joseprio: pass configuration information for invalidating default
+            # index file
+            result = cf.InvalidateObjects(uri, uploaded_objects_list, default_index_file, cfg.invalidate_default_index_on_cf, cfg.invalidate_default_index_root_on_cf)
             if result['status'] == 201:
                 output("Created invalidation request for %d paths" % len(uploaded_objects_list))
                 output("Check progress with: s3cmd cfinvalinfo cf://%s/%s" % (result['dist_id'], result['request_id']))
@@ -1540,6 +1551,10 @@ def main():
     optparser.add_option(      "--enable", dest="enable", action="store_true", help="Enable given CloudFront distribution (only for [cfmodify] command)")
     optparser.add_option(      "--disable", dest="enable", action="store_false", help="Enable given CloudFront distribution (only for [cfmodify] command)")
     optparser.add_option(      "--cf-invalidate", dest="invalidate_on_cf", action="store_true", help="Invalidate the uploaded filed in CloudFront. Also see [cfinval] command.")
+    # joseprio: adding options to invalidate the default index and the default
+    # index root
+    optparser.add_option(      "--cf-invalidate-default-index", dest="invalidate_default_index_on_cf", action="store_false", help="When using Custom Origin and S3 static website, setting it to true will invalidate the default index file.")
+    optparser.add_option(      "--cf-invalidate-default-index-root", dest="invalidate_default_index_root_on_cf", action="store_true", help="When using Custom Origin and S3 static website, setting it to true will invalidate the path of the default index file.")
     optparser.add_option(      "--cf-add-cname", dest="cf_cnames_add", action="append", metavar="CNAME", help="Add given CNAME to a CloudFront distribution (only for [cfcreate] and [cfmodify] commands)")
     optparser.add_option(      "--cf-remove-cname", dest="cf_cnames_remove", action="append", metavar="CNAME", help="Remove given CNAME from a CloudFront distribution (only for [cfmodify] command)")
     optparser.add_option(      "--cf-comment", dest="cf_comment", action="store", metavar="COMMENT", help="Set COMMENT for a given CloudFront distribution (only for [cfcreate] and [cfmodify] commands)")

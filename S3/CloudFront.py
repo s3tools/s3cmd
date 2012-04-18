@@ -423,7 +423,26 @@ class CloudFront(object):
                                      body = request_body, headers = headers)
         return response
 
-    def InvalidateObjects(self, uri, paths):
+    def InvalidateObjects(self, uri, paths, default_index_file, invalidate_default_index_on_cf, invalidate_default_index_root_on_cf):
+        # joseprio: if the user doesn't want to invalidate the default index
+        # path, or if the user wants to invalidate the root of the default
+        # index, we need to process those paths
+        if not invalidate_default_index_on_cf or invalidate_default_index_root_on_cf:
+            new_paths = []
+            default_index_suffix = '/' + default_index_file
+            for path in paths:
+                if path.endswith(default_index_suffix) or path ==  default_index_file:
+                    if invalidate_default_index_on_cf:
+                        new_paths.append(path)
+                        output('Appending ' + path)
+                    if invalidate_default_index_root_on_cf:
+                        new_paths.append(path[:-len(default_index_file)])
+                        output('Appending ' + path[:-len(default_index_file)])
+                else:
+                    new_paths.append(path)
+                    output('Appending ' + path)
+            paths = new_paths
+        
         # uri could be either cf:// or s3:// uri
         cfuri = self.get_dist_name_for_bucket(uri)
         if len(paths) > 999:
