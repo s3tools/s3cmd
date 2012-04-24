@@ -182,7 +182,10 @@ class S3(object):
         if resource['bucket'] and not check_bucket_name_dns_conformity(resource['bucket']):
             uri = "/%s%s" % (resource['bucket'], resource['uri'])
         else:
-            uri = resource['uri']
+            if self.config.swift_compatible and resource['bucket']:
+                uri = "/%s%s" % (resource['bucket'], resource['uri'])
+            else:
+                uri = resource['uri']
         if self.config.proxy_host != "":
             uri = "http://%s%s" % (self.get_hostname(resource['bucket']), uri)
         debug('format_uri(): ' + uri)
