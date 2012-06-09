@@ -456,6 +456,17 @@ class S3(object):
         response = self.send_request(request, body)
         return response
 
+    def set_policy(self, uri, policy):
+        if uri.has_object():
+            request = self.create_request("OBJECT_PUT", uri = uri, extra = "?policy")
+        else:
+            request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(), extra = "?policy")
+
+        body = str(policy)
+        debug(u"set_policy(%s): policy-json: %s" % (uri, body))
+        response = self.send_request(request, body)
+        return response
+
     def get_accesslog(self, uri):
         request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?logging")
         response = self.send_request(request)
