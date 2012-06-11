@@ -284,7 +284,11 @@ def cmd_object_put(args):
         for key in exclude_list:
             output(u"exclude: %s" % unicodise(key))
         for key in local_list:
-            output(u"upload: %s -> %s" % (local_list[key]['full_name_unicode'] if key != "-" else "<stdin>", local_list[key]['remote_uri']))
+            if key != "-":
+                nicekey = local_list[key]['full_name_unicode']
+            else:
+                nicekey = "<stdin>"
+            output(u"upload: %s -> %s" % (nicekey, local_list[key]['remote_uri']))
 
         warning(u"Exitting now because of --dry-run")
         return
