@@ -845,11 +845,13 @@ def remote_copy(s3, remote_list, copy_pairs, destination_base):
     saved_bytes = 0
     for (dst1, dst2) in copy_pairs:
         debug(u"Remote Copying from %s to %s" % (dst1, dst2))
-        dst_uri = S3Uri(destination_base + dst2)
+        dst1_uri = S3Uri(destination_base + dst1)
+        dst2_uri = S3Uri(destination_base + dst2)
         extra_headers = copy(cfg.extra_headers)
         try:
-            s3.object_copy(S3Uri(dst1['object_uri_str']), dst_uri, extra_headers)
-            saved_bytes = saved_bytes + dst1['size']
+            s3.object_copy(dst1_uri, dst2_uri, extra_headers)
+            info = s3.object_info(dst2_uri)
+            saved_bytes = saved_bytes + int(info['headers']['content-length'])
         except:
             raise
     return (len(copy_pairs), saved_bytes)
