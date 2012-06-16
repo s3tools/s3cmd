@@ -50,6 +50,7 @@ class Config(object):
         'mtime',    # Modification timestamp
         'ctime',    # Creation timestamp
         'mode',     # File mode (e.g. rwxr-xr-x = 755)
+        'md5',      # File MD5 (if known)
         #'acl',     # Full ACL (not yet supported)
     ]
     delete_removed = False
