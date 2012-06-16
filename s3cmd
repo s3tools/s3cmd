@@ -608,7 +608,7 @@ def cmd_sync_remote2remote(args):
 
     src_list, exclude_list = filter_exclude_include(src_list)
 
-    src_list, dst_list, existing_list, update_list = compare_filelists(src_list, dst_list, src_remote = True, dst_remote = True, delay_updates = cfg.delay_updates)
+    src_list, dst_list, update_list, copy_pairs = compare_filelists(src_list, dst_list, src_remote = True, dst_remote = True, delay_updates = cfg.delay_updates)
 
     src_count = len(src_list)
     update_count = len(update_list)
@@ -631,6 +631,11 @@ def cmd_sync_remote2remote(args):
             output(u"Sync: %s -> %s" % (src_list[key]['object_uri_str'], src_list[key]['target_uri']))
         warning(u"Exitting now because of --dry-run")
         return
+
+    # if there are copy pairs, we can't do delete_before, on the chance
+    # we need one of the to-be-deleted files as a copy source.
+    if len(copy_pairs) > 0:
+        cfg.delete_after = True
 
     # Delete items in destination that are not in source
     if cfg.delete_removed and not cfg.delete_after:
@@ -658,6 +663,7 @@ def cmd_sync_remote2remote(args):
     seq = 0
     seq = _upload(src_list, seq, src_count + update_count)
     seq = _upload(update_list, seq, src_count + update_count)
+    n_copied, bytes_saved = remote_copy(s3, dst_list, copy_pairs, destination_base)
 
     total_elapsed = time.time() - timestamp_start
     outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s" % (seq, total_elapsed, seq/total_elapsed)
@@ -671,13 +677,6 @@ def cmd_sync_remote2remote(args):
         _do_deletes(s3, dst_list)
 
 def cmd_sync_remote2local(args):
-    def _parse_attrs_header(attrs_header):
-        attrs = {}
-        for attr in attrs_header.split("/"):
-            key, val = attr.split(":")
-            attrs[key] = val
-        return attrs
-
     def _do_deletes(local_list):
         for key in local_list:
             os.unlink(local_list[key]['full_name'])
@@ -696,7 +695,7 @@ def cmd_sync_remote2local(args):
 
     remote_list, exclude_list = filter_exclude_include(remote_list)
 
-    remote_list, local_list, existing_list, update_list = compare_filelists(remote_list, local_list, src_remote = True, dst_remote = False, delay_updates = cfg.delay_updates)
+    remote_list, local_list, update_list, copy_pairs = compare_filelists(remote_list, local_list, src_remote = True, dst_remote = False, delay_updates = cfg.delay_updates)
 
     local_count = len(local_list)
     remote_count = len(remote_list)
@@ -736,6 +735,11 @@ def cmd_sync_remote2local(args):
         warning(u"Exitting now because of --dry-run")
         return
 
+    # if there are copy pairs, we can't do delete_before, on the chance
+    # we need one of the to-be-deleted files as a copy source.
+    if len(copy_pairs) > 0:
+        cfg.delete_after = True
+
     if cfg.delete_removed and not cfg.delete_after:
         _do_deletes(local_list)
 
@@ -768,7 +772,7 @@ def cmd_sync_remote2local(args):
                     response = s3.object_get(uri, dst_stream, extra_label = seq_label)
                     dst_stream.close()
                     if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
-                        attrs = _parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
+                        attrs = parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
                         if attrs.has_key('mode'):
                             os.chmod(dst_file, int(attrs['mode']))
                         if attrs.has_key('mtime') or attrs.has_key('atime'):
@@ -837,33 +841,48 @@ def cmd_sync_remote2local(args):
     if cfg.delete_removed and cfg.delete_after:
         _do_deletes(local_list)
 
+def remote_copy(s3, remote_list, copy_pairs, destination_base):
+    saved_bytes = 0
+    for (dst1, dst2) in copy_pairs:
+        debug(u"Remote Copying from %s to %s" % (dst1, dst2))
+        dst_uri = S3Uri(destination_base + dst2)
+        extra_headers = copy(cfg.extra_headers)
+        try:
+            s3.object_copy(S3Uri(dst1['object_uri_str']), dst_uri, extra_headers)
+            saved_bytes = saved_bytes + dst1['size']
+        except:
+            raise
+    return (len(copy_pairs), saved_bytes)
+
+
 def cmd_sync_local2remote(args):
-    def _build_attr_header(src):
+    def _build_attr_header(local_list, src):
         import pwd, grp
         attrs = {}
-        src = deunicodise(src)
-        try:
-            st = os.stat_result(os.stat(src))
-        except OSError, e:
-            raise InvalidFileError(u"%s: %s" % (unicodise(src), e.strerror))
         for attr in cfg.preserve_attrs_list:
             if attr == 'uname':
                 try:
-                    val = pwd.getpwuid(st.st_uid).pw_name
+                    val = pwd.getpwuid(local_list[src]['uid']).pw_name
                 except KeyError:
                     attr = "uid"
-                    val = st.st_uid
-                    warning(u"%s: Owner username not known. Storing UID=%d instead." % (unicodise(src), val))
+                    val = local_list[src].get(uid)
+                    warning(u"%s: Owner username not known. Storing UID=%d instead." % (src, val))
             elif attr == 'gname':
                 try:
-                    val = grp.getgrgid(st.st_gid).gr_name
+                    val = grp.getgrgid(local_list[src].get('gid')).gr_name
                 except KeyError:
                     attr = "gid"
-                    val = st.st_gid
-                    warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (unicodise(src), val))
+                    val = local_list[src].get('gid')
+                    warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (src, val))
+            elif attr == 'md5':
+                val = local_list.get_md5(src)
             else:
-                val = getattr(st, 'st_' + attr)
+                val = getattr(local_list[src]['sr'], 'st_' + attr)
             attrs[attr] = val
+
+        if 'md5' in attrs and attrs['md5'] is None:
+            del attrs['md5']
+
         result = ""
         for k in attrs: result += "%s:%s/" % (k, attrs[k])
         return { 'x-amz-meta-s3cmd-attrs' : result[:-1] }
@@ -904,15 +923,15 @@ def cmd_sync_local2remote(args):
         # Flush remote_list, by the way
         remote_list = { local_list.keys()[0] : remote_list_entry }
 
-    local_list, remote_list, existing_list, update_list = compare_filelists(local_list, remote_list, src_remote = False, dst_remote = True, delay_updates = cfg.delay_updates)
+    local_list, remote_list, update_list, copy_pairs = compare_filelists(local_list, remote_list, src_remote = False, dst_remote = True, delay_updates = cfg.delay_updates)
 
 
     local_count = len(local_list)
     update_count = len(update_list)
+    copy_count = len(copy_pairs)
     remote_count = len(remote_list)
 
-    info(u"Summary: %d local files to upload, %d remote files to delete" % (local_count + update_count, remote_count))
-
+    info(u"Summary: %d local files to upload, %d files to remote copy, %d remote files to delete" % (local_count + update_count, copy_count, remote_count))
 
     def _set_remote_uri(local_list, destination_base, single_file_local):
         if len(local_list) > 0:
@@ -931,16 +950,23 @@ def cmd_sync_local2remote(args):
     if cfg.dry_run:
         for key in exclude_list:
             output(u"exclude: %s" % unicodise(key))
-        if cfg.delete_removed:
-            for key in remote_list:
-                output(u"delete: %s" % remote_list[key]['object_uri_str'])
         for key in local_list:
             output(u"upload: %s -> %s" % (local_list[key]['full_name_unicode'], local_list[key]['remote_uri']))
         for key in update_list:
             output(u"upload: %s -> %s" % (update_list[key]['full_name_unicode'], update_list[key]['remote_uri']))
+        for (dst1, dst2) in copy_pairs:
+            output(u"remote copy: %s -> %s" % (dst1['object_key'], remote_list[dst2]['object_key']))
+        if cfg.delete_removed:
+            for key in remote_list:
+                output(u"delete: %s" % remote_list[key]['object_uri_str'])
 
         warning(u"Exitting now because of --dry-run")
         return
+
+    # if there are copy pairs, we can't do delete_before, on the chance
+    # we need one of the to-be-deleted files as a copy source.
+    if len(copy_pairs) > 0:
+        cfg.delete_after = True
 
     if cfg.delete_removed and not cfg.delete_after:
         _do_deletes(s3, remote_list)
@@ -962,7 +988,7 @@ def cmd_sync_local2remote(args):
             extra_headers = copy(cfg.extra_headers)
             try:
                 if cfg.preserve_attrs:
-                    attr_header = _build_attr_header(src)
+                    attr_header = _build_attr_header(local_list, file)
                     debug(u"attr_header: %s" % attr_header)
                     extra_headers.update(attr_header)
                 response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
@@ -981,22 +1007,23 @@ def cmd_sync_local2remote(args):
             uploaded_objects_list.append(uri.object())
         return seq, total_size
 
+
     n, total_size = _upload(local_list, 0, local_count, total_size)
     n, total_size = _upload(update_list, n, local_count, total_size)
+    n_copies, saved_bytes = remote_copy(s3, remote_list, copy_pairs, destination_base)
+    if cfg.delete_removed and cfg.delete_after:
+        _do_deletes(s3, remote_list)
     total_elapsed = time.time() - timestamp_start
     total_speed = total_elapsed and total_size/total_elapsed or 0.0
     speed_fmt = formatSize(total_speed, human_readable = True, floating_point = True)
 
     # Only print out the result if any work has been done or
     # if the user asked for verbose output
-    outstr = "Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s" % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1])
-    if total_size > 0:
+    outstr = "Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s.  Copied %d files saving %d bytes transfer." % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1], n_copies, saved_bytes)
+    if total_size + saved_bytes > 0:
         output(outstr)
     else:
         info(outstr)
-
-    if cfg.delete_removed and cfg.delete_after:
-        _do_deletes(s3, remote_list)
 
     if cfg.invalidate_on_cf:
         if len(uploaded_objects_list) == 0:
