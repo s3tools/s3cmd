@@ -663,7 +663,7 @@ def cmd_sync_remote2remote(args):
     seq = 0
     seq = _upload(src_list, seq, src_count + update_count)
     seq = _upload(update_list, seq, src_count + update_count)
-    n_copied, bytes_saved = remote_copy(s3, dst_list, copy_pairs, destination_base)
+    n_copied, bytes_saved = remote_copy(s3, copy_pairs, destination_base)
 
     total_elapsed = time.time() - timestamp_start
     outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s" % (seq, total_elapsed, seq/total_elapsed)
@@ -841,7 +841,7 @@ def cmd_sync_remote2local(args):
     if cfg.delete_removed and cfg.delete_after:
         _do_deletes(local_list)
 
-def remote_copy(s3, remote_list, copy_pairs, destination_base):
+def remote_copy(s3, copy_pairs, destination_base):
     saved_bytes = 0
     for (dst1, dst2) in copy_pairs:
         debug(u"Remote Copying from %s to %s" % (dst1, dst2))
@@ -1012,7 +1012,7 @@ def cmd_sync_local2remote(args):
 
     n, total_size = _upload(local_list, 0, local_count, total_size)
     n, total_size = _upload(update_list, n, local_count, total_size)
-    n_copies, saved_bytes = remote_copy(s3, remote_list, copy_pairs, destination_base)
+    n_copies, saved_bytes = remote_copy(s3, copy_pairs, destination_base)
     if cfg.delete_removed and cfg.delete_after:
         _do_deletes(s3, remote_list)
     total_elapsed = time.time() - timestamp_start
