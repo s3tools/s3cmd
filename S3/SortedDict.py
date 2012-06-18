@@ -27,7 +27,7 @@ class SortedDict(dict):
         """
         dict.__init__(self, mapping, **kwargs)
         self.ignore_case = ignore_case
-        self.hardlinks = dict()
+        self.hardlinks = dict() # { dev: { inode : {'md5':, 'relative_files':}}}
         self.by_md5 = dict() # {md5: set(relative_files)}
 
     def keys(self):
@@ -60,38 +60,23 @@ class SortedDict(dict):
         except:
             return None
             
-
     def get_md5(self, relative_file):
         md5 = None
         if 'md5' in self[relative_file]:
             return self[relative_file]['md5']
-	if self.is_hardlinked(relative_file): # speedup by getting it from one of the hardlinks already processed
-            md5 = self.get_hardlink_md5(relative_file)
-	    if md5 is None:
-                md5 = Utils.hash_file_md5(self[relative_file]['full_name'])
-		self.record_md5(relative_file, md5)
-	        self.set_hardlink_md5(relative_file, md5)
-	else:
-                md5 = Utils.hash_file_md5(self[relative_file]['full_name'])
-	        self[relative_file]['md5'] = md5
-		l.record_md5(relative_file, md5)
+        md5 = self.get_hardlink_md5(relative_file)
+        if md5 is None:
+            md5 = Utils.hash_file_md5(self[relative_file]['full_name'])
+        self.record_md5(relative_file, md5)
+        self[relative_file]['md5'] = md5
 	return md5
 
-    def record_hardlink(self, relative_file, dev, inode):
+    def record_hardlink(self, relative_file, dev, inode, md5):
         if dev not in self.hardlinks:
             self.hardlinks[dev] = dict()
         if inode not in self.hardlinks[dev]:
-            self.hardlinks[dev][inode] = dict(md5=None, relative_files=set())
+            self.hardlinks[dev][inode] = dict(md5=md5, relative_files=set())
         self.hardlinks[dev][inode]['relative_files'].add(relative_file)
-
-    def set_hardlink_md5(self, relative_file, md5):
-        dev = self[relative_file]['dev']
-        inode = self[relative_file]['inode']
-        self.record_hardlink(relative_file, dev, inode)
-        self.hardlinks[dev][inode]['md5'] = md5
-
-    def is_hardlinked(self, relative_file):
-        return self[relative_file]['nlink'] > 1
 
     def get_hardlink_md5(self, relative_file):
         md5 = None
