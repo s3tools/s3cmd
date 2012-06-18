@@ -137,7 +137,7 @@ def handle_exclude_include_walk(root, dirs, files):
             debug(u"PASS: %s" % (file))
 
 def fetch_local_list(args, recursive = None):
-    def _get_filelist_local(local_uri):
+    def _get_filelist_local(loc_list, local_uri):
         info(u"Compiling list of local files...")
         if local_uri.isdir():
             local_base = deunicodise(local_uri.basename())
@@ -149,7 +149,6 @@ def fetch_local_list(args, recursive = None):
             local_path = deunicodise(local_uri.dirname())
             filelist = [( local_path, [], [deunicodise(local_uri.basename())] )]
             single_file = True
-        loc_list = SortedDict(ignore_case = False)
         for root, dirs, files in filelist:
             rel_root = root.replace(local_path, local_base, 1)
             for f in files:
@@ -173,7 +172,6 @@ def fetch_local_list(args, recursive = None):
                     'full_name' : full_name,
                     'size' : sr.st_size,
                     'mtime' : sr.st_mtime,
-		    'nlink' : sr.st_nlink, # record hardlink information
 		    'dev'   : sr.st_dev,
 		    'inode' : sr.st_ino,
 		    'uid' : sr.st_uid,
@@ -181,7 +179,9 @@ def fetch_local_list(args, recursive = None):
 		    'sr': sr # save it all, may need it in preserve_attrs_list
                     ## TODO: Possibly more to save here...
                 }
-		loc_list.record_hardlink(relative_file, sr.st_dev, sr.st_ino)
+		if 'md5' in cfg.sync_checks:
+		    md5 = loc_list.get_md5(relative_file)
+		    loc_list.record_hardlink(relative_file, sr.st_dev, sr.st_ino, md5)
         return loc_list, single_file
 
     cfg = Config()
@@ -204,8 +204,7 @@ def fetch_local_list(args, recursive = None):
         local_uris.append(uri)
 
     for uri in local_uris:
-        list_for_uri, single_file = _get_filelist_local(uri)
-        local_list.update(list_for_uri)
+        list_for_uri, single_file = _get_filelist_local(local_list, uri)
 
     ## Single file is True if and only if the user
     ## specified one local URI and that URI represents
@@ -264,7 +263,6 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
                 'object_key' : object['Key'],
                 'object_uri_str' : object_uri_str,
                 'base_uri' : remote_uri,
-		'nlink' : 1, # S3 doesn't support hardlinks itself
 		'dev' : None,
 		'inode' : None,
             }
@@ -406,7 +404,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
     debug("Comparing filelists (direction: %s -> %s)" % (__direction_str(src_remote), __direction_str(dst_remote)))
 
     for relative_file in src_list.keys():
-        debug(u"CHECK: %s: %s" % (relative_file, src_list.get_md5(relative_file)))
+        debug(u"CHECK: %s" % (relative_file))
 
         if dst_list.has_key(relative_file):
             ## Was --skip-existing requested?
@@ -416,7 +414,14 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
 	        del(dst_list[relative_file])
 	        continue
 
-	    if _compare(src_list, dst_list, src_remote, dst_remote, relative_file):
+	    try:
+                compare_result = _compare(src_list, dst_list, src_remote, dst_remote, relative_file)
+	    except (IOError,OSError), e:
+	        del(src_list[relative_file])
+		del(dst_list[relative_file])
+                continue
+
+	    if compare_result:
 	        debug(u"IGNR: %s (transfer not needed)" % relative_file)
 	        del(src_list[relative_file])
 		del(dst_list[relative_file])
@@ -434,7 +439,6 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
                 else:
 		    # record that we will get this file transferred to us (before all the copies), so if we come across it later again,
 		    # we can copy from _this_ copy (e.g. we only upload it once, and copy thereafter).
-                    debug(u"REMOTE COPY src before")
 		    dst_list.record_md5(relative_file, md5) 
 		    update_list[relative_file] = src_list[relative_file]
 		    del src_list[relative_file]
@@ -448,7 +452,6 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
 	    if dst1 is not None:
                 # Found one, we want to copy
                 debug(u"REMOTE COPY dst: %s -> %s" % (dst1, relative_file))
-		# FIXME this blows up when dst1 is not in dst_list, because we added it below in record_md5 but it's not really in dst_list.
 		copy_pairs.append((dst1, relative_file))
 		del(src_list[relative_file])
 	    else:
@@ -456,7 +459,6 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
 	        # record that we will get this file transferred to us (before all the copies), so if we come across it later again,
 	        # we can copy from _this_ copy (e.g. we only upload it once, and copy thereafter).
 	        dst_list.record_md5(relative_file, md5) 
-		debug(u"REMOTE COPY dst before")
 
     for f in dst_list.keys():
         if not src_list.has_key(f) and not update_list.has_key(f):

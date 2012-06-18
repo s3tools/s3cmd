@@ -23,6 +23,7 @@ import locale
 import subprocess
 import htmlentitydefs
 import socket
+import shutil
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -700,8 +701,9 @@ def cmd_sync_remote2local(args):
     local_count = len(local_list)
     remote_count = len(remote_list)
     update_count = len(update_list)
+    copy_pairs_count = len(copy_pairs)
 
-    info(u"Summary: %d remote files to download, %d local files to delete" % (remote_count + update_count, local_count))
+    info(u"Summary: %d remote files to download, %d local files to delete, %d local files to hardlink" % (remote_count + update_count, local_count, copy_pairs_count))
 
     def _set_local_filename(remote_list, destination_base):
         if not os.path.isdir(destination_base):
@@ -826,6 +828,7 @@ def cmd_sync_remote2local(args):
     seq = 0
     seq, total_size = _download(remote_list, seq, remote_count + update_count, total_size, dir_cache)
     seq, total_size = _download(update_list, seq, remote_count + update_count, total_size, dir_cache)
+    local_hardlink(copy_pairs, destination_base)
     
     total_elapsed = time.time() - timestamp_start
     speed_fmt = formatSize(total_size/total_elapsed, human_readable = True, floating_point = True)
@@ -840,6 +843,15 @@ def cmd_sync_remote2local(args):
 
     if cfg.delete_removed and cfg.delete_after:
         _do_deletes(local_list)
+
+def local_hardlink(copy_pairs, destination_base):
+    for (dst1, dst2) in copy_pairs:
+        try:
+            os.link(destination_base + dst1, destination_base + dst2)
+            debug(u"Hardlinking %s to %s" % (destination_base + dst1, destination_base + dst2))
+        except:
+            shutil.copy2(destination_base + dst1, destination_base + dst2)
+            debug(u"Hardlinking unavailable, copying %s to %s" % (destination_base + dst1, destination_base + dst2))
 
 def remote_copy(s3, copy_pairs, destination_base):
     saved_bytes = 0
