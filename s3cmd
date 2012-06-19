@@ -879,7 +879,7 @@ def cmd_sync_local2remote(args):
                     val = pwd.getpwuid(local_list[src]['uid']).pw_name
                 except KeyError:
                     attr = "uid"
-                    val = local_list[src].get(uid)
+                    val = local_list[src].get('uid')
                     warning(u"%s: Owner username not known. Storing UID=%d instead." % (src, val))
             elif attr == 'gname':
                 try:
