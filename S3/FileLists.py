@@ -9,6 +9,7 @@ from S3Uri import S3Uri
 from SortedDict import SortedDict
 from Utils import *
 from Exceptions import ParameterError
+from HashCache import HashCache
 
 from logging import debug, info, warning, error
 
@@ -137,7 +138,7 @@ def handle_exclude_include_walk(root, dirs, files):
             debug(u"PASS: %s" % (file))
 
 def fetch_local_list(args, recursive = None):
-    def _get_filelist_local(loc_list, local_uri):
+    def _get_filelist_local(loc_list, local_uri, cache):
         info(u"Compiling list of local files...")
         if local_uri.isdir():
             local_base = deunicodise(local_uri.basename())
@@ -180,11 +181,30 @@ def fetch_local_list(args, recursive = None):
                     ## TODO: Possibly more to save here...
                 }
 		if 'md5' in cfg.sync_checks:
-		    md5 = loc_list.get_md5(relative_file)
+                    md5 = cache.md5(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size)
+		    if md5 is None:
+                        md5 = loc_list.get_md5(relative_file) # this does the file I/O
+			cache.add(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size, md5)
 		    loc_list.record_hardlink(relative_file, sr.st_dev, sr.st_ino, md5)
         return loc_list, single_file
 
+    def _maintain_cache(cache, local_list):
+        if cfg.cache_file:
+            cache.mark_all_for_purge()
+	    for i in local_list.keys():
+                cache.unmark_for_purge(local_list[i]['dev'], local_list[i]['inode'], local_list[i]['mtime'], local_list[i]['size'])
+            cache.purge()
+	    cache.save(cfg.cache_file)
+
     cfg = Config()
+
+    cache = HashCache()
+    if cfg.cache_file:
+        try:
+            cache.load(cfg.cache_file)
+	except IOError:
+	    info(u"No cache file found, creating it.")
+    
     local_uris = []
     local_list = SortedDict(ignore_case = False)
     single_file = False
@@ -204,7 +224,7 @@ def fetch_local_list(args, recursive = None):
         local_uris.append(uri)
 
     for uri in local_uris:
-        list_for_uri, single_file = _get_filelist_local(local_list, uri)
+        list_for_uri, single_file = _get_filelist_local(local_list, uri, cache)
 
     ## Single file is True if and only if the user
     ## specified one local URI and that URI represents
@@ -213,6 +233,8 @@ def fetch_local_list(args, recursive = None):
     ## a case of single_file==True.
     if len(local_list) > 1:
         single_file = False
+
+    _maintain_cache(cache, local_list)
 
     return local_list, single_file
 

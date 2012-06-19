@@ -87,6 +87,7 @@ class Config(object):
     website_error = ""
     website_endpoint = "http://%(bucket)s.s3-website-%(location)s.amazonaws.com/"
     additional_destinations = []
+    cache_file = ""
 
     ## Creating a singleton
     def __new__(self, configfile = None):
