@@ -23,6 +23,7 @@ import locale
 import subprocess
 import htmlentitydefs
 import socket
+import shutil
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -582,6 +583,17 @@ def cmd_info(args):
                 raise
 
 def cmd_sync_remote2remote(args):
+    def _do_deletes(s3, dst_list):
+        # Delete items in destination that are not in source
+        if cfg.dry_run:
+            for key in dst_list:
+                output(u"delete: %s" % dst_list[key]['object_uri_str'])
+        else:
+            for key in dst_list:
+                uri = S3Uri(dst_list[key]['object_uri_str'])
+                s3.object_delete(uri)
+                output(u"deleted: '%s'" % uri)
+
     s3 = S3(Config())
 
     # Normalise s3://uri (e.g. assert trailing slash)
@@ -597,9 +609,10 @@ def cmd_sync_remote2remote(args):
 
     src_list, exclude_list = filter_exclude_include(src_list)
 
-    src_list, dst_list, existing_list = compare_filelists(src_list, dst_list, src_remote = True, dst_remote = True)
+    src_list, dst_list, update_list, copy_pairs = compare_filelists(src_list, dst_list, src_remote = True, dst_remote = True, delay_updates = cfg.delay_updates)
 
     src_count = len(src_list)
+    update_count = len(update_list)
     dst_count = len(dst_list)
 
     print(u"Summary: %d source files to copy, %d files at destination to delete" % (src_count, dst_count))
@@ -620,34 +633,39 @@ def cmd_sync_remote2remote(args):
         warning(u"Exitting now because of --dry-run")
         return
 
+    # if there are copy pairs, we can't do delete_before, on the chance
+    # we need one of the to-be-deleted files as a copy source.
+    if len(copy_pairs) > 0:
+        cfg.delete_after = True
+
     # Delete items in destination that are not in source
-    if cfg.delete_removed:
-        if cfg.dry_run:
-            for key in dst_list:
-                output(u"delete: %s" % dst_list[key]['object_uri_str'])
-        else:
-            for key in dst_list:
-                uri = S3Uri(dst_list[key]['object_uri_str'])
-                s3.object_delete(uri)
-                output(u"deleted: '%s'" % uri)
+    if cfg.delete_removed and not cfg.delete_after:
+        _do_deletes(s3, dst_list)
+
+    def _upload(src_list, seq, src_count):
+        file_list = src_list.keys()
+        file_list.sort()
+        for file in file_list:
+            seq += 1
+            item = src_list[file]
+            src_uri = S3Uri(item['object_uri_str'])
+            dst_uri = S3Uri(item['target_uri'])
+            seq_label = "[%d of %d]" % (seq, src_count)
+            extra_headers = copy(cfg.extra_headers)
+            try:
+                response = s3.object_copy(src_uri, dst_uri, extra_headers)
+                output("File %(src)s copied to %(dst)s" % { "src" : src_uri, "dst" : dst_uri })
+            except S3Error, e:
+                error("File %(src)s could not be copied: %(e)s" % { "src" : src_uri, "e" : e })
+        return seq
 
     # Perform the synchronization of files
     timestamp_start = time.time()
     seq = 0
-    file_list = src_list.keys()
-    file_list.sort()
-    for file in file_list:
-        seq += 1
-        item = src_list[file]
-        src_uri = S3Uri(item['object_uri_str'])
-        dst_uri = S3Uri(item['target_uri'])
-        seq_label = "[%d of %d]" % (seq, src_count)
-        extra_headers = copy(cfg.extra_headers)
-        try:
-            response = s3.object_copy(src_uri, dst_uri, extra_headers)
-            output("File %(src)s copied to %(dst)s" % { "src" : src_uri, "dst" : dst_uri })
-        except S3Error, e:
-            error("File %(src)s could not be copied: %(e)s" % { "src" : src_uri, "e" : e })
+    seq = _upload(src_list, seq, src_count + update_count)
+    seq = _upload(update_list, seq, src_count + update_count)
+    n_copied, bytes_saved = remote_copy(s3, copy_pairs, destination_base)
+
     total_elapsed = time.time() - timestamp_start
     outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s" % (seq, total_elapsed, seq/total_elapsed)
     if seq > 0:
@@ -655,13 +673,15 @@ def cmd_sync_remote2remote(args):
     else:
         info(outstr)
 
+    # Delete items in destination that are not in source
+    if cfg.delete_removed and cfg.delete_after:
+        _do_deletes(s3, dst_list)
+
 def cmd_sync_remote2local(args):
-    def _parse_attrs_header(attrs_header):
-        attrs = {}
-        for attr in attrs_header.split("/"):
-            key, val = attr.split(":")
-            attrs[key] = val
-        return attrs
+    def _do_deletes(local_list):
+        for key in local_list:
+            os.unlink(local_list[key]['full_name'])
+            output(u"deleted: %s" % local_list[key]['full_name_unicode'])
 
     s3 = S3(Config())
 
@@ -676,27 +696,33 @@ def cmd_sync_remote2local(args):
 
     remote_list, exclude_list = filter_exclude_include(remote_list)
 
-    remote_list, local_list, existing_list = compare_filelists(remote_list, local_list, src_remote = True, dst_remote = False)
+    remote_list, local_list, update_list, copy_pairs = compare_filelists(remote_list, local_list, src_remote = True, dst_remote = False, delay_updates = cfg.delay_updates)
 
     local_count = len(local_list)
     remote_count = len(remote_list)
+    update_count = len(update_list)
+    copy_pairs_count = len(copy_pairs)
 
-    info(u"Summary: %d remote files to download, %d local files to delete" % (remote_count, local_count))
+    info(u"Summary: %d remote files to download, %d local files to delete, %d local files to hardlink" % (remote_count + update_count, local_count, copy_pairs_count))
 
-    if not os.path.isdir(destination_base):
-        ## We were either given a file name (existing or not) or want STDOUT
-        if remote_count > 1:
-            raise ParameterError("Destination must be a directory when downloading multiple sources.")
-        remote_list[remote_list.keys()[0]]['local_filename'] = deunicodise(destination_base)
-    else:
-        if destination_base[-1] != os.path.sep:
-            destination_base += os.path.sep
-        for key in remote_list:
-            local_filename = destination_base + key
-            if os.path.sep != "/":
-                local_filename = os.path.sep.join(local_filename.split("/"))
-            remote_list[key]['local_filename'] = deunicodise(local_filename)
+    def _set_local_filename(remote_list, destination_base):
+        if not os.path.isdir(destination_base):
+            ## We were either given a file name (existing or not) or want STDOUT
+            if len(remote_list) > 1:
+                raise ParameterError("Destination must be a directory when downloading multiple sources.")
+            remote_list[remote_list.keys()[0]]['local_filename'] = deunicodise(destination_base)
+        else:
+            if destination_base[-1] != os.path.sep:
+                destination_base += os.path.sep
+            for key in remote_list:
+                local_filename = destination_base + key
+                if os.path.sep != "/":
+                    local_filename = os.path.sep.join(local_filename.split("/"))
+                remote_list[key]['local_filename'] = deunicodise(local_filename)
 
+    _set_local_filename(remote_list, destination_base)
+    _set_local_filename(update_list, destination_base)
+    
     if cfg.dry_run:
         for key in exclude_list:
             output(u"exclude: %s" % unicodise(key))
@@ -705,94 +731,105 @@ def cmd_sync_remote2local(args):
                 output(u"delete: %s" % local_list[key]['full_name_unicode'])
         for key in remote_list:
             output(u"download: %s -> %s" % (remote_list[key]['object_uri_str'], remote_list[key]['local_filename']))
+        for key in update_list:
+            output(u"download: %s -> %s" % (update_list[key]['object_uri_str'], update_list[key]['local_filename']))
 
         warning(u"Exitting now because of --dry-run")
         return
 
-    if cfg.delete_removed:
-        for key in local_list:
-            os.unlink(local_list[key]['full_name'])
-            output(u"deleted: %s" % local_list[key]['full_name_unicode'])
+    # if there are copy pairs, we can't do delete_before, on the chance
+    # we need one of the to-be-deleted files as a copy source.
+    if len(copy_pairs) > 0:
+        cfg.delete_after = True
+
+    if cfg.delete_removed and not cfg.delete_after:
+        _do_deletes(local_list)
+
+    def _download(remote_list, seq, total, total_size, dir_cache):
+        file_list = remote_list.keys()
+        file_list.sort()
+        for file in file_list:
+            seq += 1
+            item = remote_list[file]
+            uri = S3Uri(item['object_uri_str'])
+            dst_file = item['local_filename']
+            seq_label = "[%d of %d]" % (seq, total)
+            try:
+                dst_dir = os.path.dirname(dst_file)
+                if not dir_cache.has_key(dst_dir):
+                    dir_cache[dst_dir] = Utils.mkdir_with_parents(dst_dir)
+                if dir_cache[dst_dir] == False:
+                    warning(u"%s: destination directory not writable: %s" % (file, dst_dir))
+                    continue
+                try:
+                    open_flags = os.O_CREAT
+                    open_flags |= os.O_TRUNC
+                    # open_flags |= os.O_EXCL
+
+                    debug(u"dst_file=%s" % unicodise(dst_file))
+                    # This will have failed should the file exist
+                    os.close(os.open(dst_file, open_flags))
+                    # Yeah I know there is a race condition here. Sadly I don't know how to open() in exclusive mode.
+                    dst_stream = open(dst_file, "wb")
+                    response = s3.object_get(uri, dst_stream, extra_label = seq_label)
+                    dst_stream.close()
+                    if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
+                        attrs = parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
+                        if attrs.has_key('mode'):
+                            os.chmod(dst_file, int(attrs['mode']))
+                        if attrs.has_key('mtime') or attrs.has_key('atime'):
+                            mtime = attrs.has_key('mtime') and int(attrs['mtime']) or int(time.time())
+                            atime = attrs.has_key('atime') and int(attrs['atime']) or int(time.time())
+                            os.utime(dst_file, (atime, mtime))
+                        ## FIXME: uid/gid / uname/gname handling comes here! TODO
+                except OSError, e:
+                    try: dst_stream.close()
+                    except: pass
+                    if e.errno == errno.EEXIST:
+                        warning(u"%s exists - not overwriting" % (dst_file))
+                        continue
+                    if e.errno in (errno.EPERM, errno.EACCES):
+                        warning(u"%s not writable: %s" % (dst_file, e.strerror))
+                        continue
+                    if e.errno == errno.EISDIR:
+                        warning(u"%s is a directory - skipping over" % dst_file)
+                        continue
+                    raise e
+                except KeyboardInterrupt:
+                    try: dst_stream.close()
+                    except: pass
+                    warning(u"Exiting after keyboard interrupt")
+                    return
+                except Exception, e:
+                    try: dst_stream.close()
+                    except: pass
+                    error(u"%s: %s" % (file, e))
+                    continue
+                # We have to keep repeating this call because
+                # Python 2.4 doesn't support try/except/finally
+                # construction :-(
+                try: dst_stream.close()
+                except: pass
+            except S3DownloadError, e:
+                error(u"%s: download failed too many times. Skipping that file." % file)
+                continue
+            speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
+            if not Config().progress_meter:
+                output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+                    (uri, unicodise(dst_file), response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
+                    seq_label))
+            total_size += response["size"]
+        return seq, total_size
 
     total_size = 0
     total_elapsed = 0.0
     timestamp_start = time.time()
-    seq = 0
     dir_cache = {}
-    file_list = remote_list.keys()
-    file_list.sort()
-    for file in file_list:
-        seq += 1
-        item = remote_list[file]
-        uri = S3Uri(item['object_uri_str'])
-        dst_file = item['local_filename']
-        seq_label = "[%d of %d]" % (seq, remote_count)
-        try:
-            dst_dir = os.path.dirname(dst_file)
-            if not dir_cache.has_key(dst_dir):
-                dir_cache[dst_dir] = Utils.mkdir_with_parents(dst_dir)
-            if dir_cache[dst_dir] == False:
-                warning(u"%s: destination directory not writable: %s" % (file, dst_dir))
-                continue
-            try:
-                open_flags = os.O_CREAT
-                open_flags |= os.O_TRUNC
-                # open_flags |= os.O_EXCL
-
-                debug(u"dst_file=%s" % unicodise(dst_file))
-                # This will have failed should the file exist
-                os.close(os.open(dst_file, open_flags))
-                # Yeah I know there is a race condition here. Sadly I don't know how to open() in exclusive mode.
-                dst_stream = open(dst_file, "wb")
-                response = s3.object_get(uri, dst_stream, extra_label = seq_label)
-                dst_stream.close()
-                if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
-                    attrs = _parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
-                    if attrs.has_key('mode'):
-                        os.chmod(dst_file, int(attrs['mode']))
-                    if attrs.has_key('mtime') or attrs.has_key('atime'):
-                        mtime = attrs.has_key('mtime') and int(attrs['mtime']) or int(time.time())
-                        atime = attrs.has_key('atime') and int(attrs['atime']) or int(time.time())
-                        os.utime(dst_file, (atime, mtime))
-                    ## FIXME: uid/gid / uname/gname handling comes here! TODO
-            except OSError, e:
-                try: dst_stream.close()
-                except: pass
-                if e.errno == errno.EEXIST:
-                    warning(u"%s exists - not overwriting" % (dst_file))
-                    continue
-                if e.errno in (errno.EPERM, errno.EACCES):
-                    warning(u"%s not writable: %s" % (dst_file, e.strerror))
-                    continue
-                if e.errno == errno.EISDIR:
-                    warning(u"%s is a directory - skipping over" % dst_file)
-                    continue
-                raise e
-            except KeyboardInterrupt:
-                try: dst_stream.close()
-                except: pass
-                warning(u"Exiting after keyboard interrupt")
-                return
-            except Exception, e:
-                try: dst_stream.close()
-                except: pass
-                error(u"%s: %s" % (file, e))
-                continue
-            # We have to keep repeating this call because
-            # Python 2.4 doesn't support try/except/finally
-            # construction :-(
-            try: dst_stream.close()
-            except: pass
-        except S3DownloadError, e:
-            error(u"%s: download failed too many times. Skipping that file." % file)
-            continue
-        speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
-        if not Config().progress_meter:
-            output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
-                (uri, unicodise(dst_file), response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
-                seq_label))
-        total_size += response["size"]
-
+    seq = 0
+    seq, total_size = _download(remote_list, seq, remote_count + update_count, total_size, dir_cache)
+    seq, total_size = _download(update_list, seq, remote_count + update_count, total_size, dir_cache)
+    local_hardlink(copy_pairs, destination_base)
+    
     total_elapsed = time.time() - timestamp_start
     speed_fmt = formatSize(total_size/total_elapsed, human_readable = True, floating_point = True)
 
@@ -804,37 +841,234 @@ def cmd_sync_remote2local(args):
     else:
         info(outstr)
 
+    if cfg.delete_removed and cfg.delete_after:
+        _do_deletes(local_list)
+
+def local_hardlink(copy_pairs, destination_base):
+    for (dst1, dst2) in copy_pairs:
+        try:
+            os.link(destination_base + dst1, destination_base + dst2)
+            debug(u"Hardlinking %s to %s" % (destination_base + dst1, destination_base + dst2))
+        except:
+            shutil.copy2(destination_base + dst1, destination_base + dst2)
+            debug(u"Hardlinking unavailable, copying %s to %s" % (destination_base + dst1, destination_base + dst2))
+
+def remote_copy(s3, copy_pairs, destination_base):
+    saved_bytes = 0
+    for (dst1, dst2) in copy_pairs:
+        debug(u"Remote Copying from %s to %s" % (dst1, dst2))
+        dst1_uri = S3Uri(destination_base + dst1)
+        dst2_uri = S3Uri(destination_base + dst2)
+        extra_headers = copy(cfg.extra_headers)
+        try:
+            s3.object_copy(dst1_uri, dst2_uri, extra_headers)
+            info = s3.object_info(dst2_uri)
+            saved_bytes = saved_bytes + int(info['headers']['content-length'])
+        except:
+            raise
+    return (len(copy_pairs), saved_bytes)
+
+
 def cmd_sync_local2remote(args):
-    def _build_attr_header(src):
+    def _build_attr_header(local_list, src):
         import pwd, grp
         attrs = {}
-        src = deunicodise(src)
-        try:
-            st = os.stat_result(os.stat(src))
-        except OSError, e:
-            raise InvalidFileError(u"%s: %s" % (unicodise(src), e.strerror))
         for attr in cfg.preserve_attrs_list:
             if attr == 'uname':
                 try:
-                    val = pwd.getpwuid(st.st_uid).pw_name
+                    val = pwd.getpwuid(local_list[src]['uid']).pw_name
                 except KeyError:
                     attr = "uid"
-                    val = st.st_uid
-                    warning(u"%s: Owner username not known. Storing UID=%d instead." % (unicodise(src), val))
+                    val = local_list[src].get(uid)
+                    warning(u"%s: Owner username not known. Storing UID=%d instead." % (src, val))
             elif attr == 'gname':
                 try:
-                    val = grp.getgrgid(st.st_gid).gr_name
+                    val = grp.getgrgid(local_list[src].get('gid')).gr_name
                 except KeyError:
                     attr = "gid"
-                    val = st.st_gid
-                    warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (unicodise(src), val))
+                    val = local_list[src].get('gid')
+                    warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (src, val))
+            elif attr == 'md5':
+                val = local_list.get_md5(src)
             else:
-                val = getattr(st, 'st_' + attr)
+                val = getattr(local_list[src]['sr'], 'st_' + attr)
             attrs[attr] = val
+
+        if 'md5' in attrs and attrs['md5'] is None:
+            del attrs['md5']
+
         result = ""
         for k in attrs: result += "%s:%s/" % (k, attrs[k])
         return { 'x-amz-meta-s3cmd-attrs' : result[:-1] }
 
+    def _do_deletes(s3, remote_list):
+        for key in remote_list:
+            uri = S3Uri(remote_list[key]['object_uri_str'])
+            s3.object_delete(uri)
+            output(u"deleted: '%s'" % uri)
+
+    def _single_process(local_list):
+        for dest in destinations:
+            ## Normalize URI to convert s3://bkt to s3://bkt/ (trailing slash)
+            destination_base_uri = S3Uri(dest)
+            if destination_base_uri.type != 's3':
+                raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
+            destination_base = str(destination_base_uri)
+            _child(destination_base, local_list)
+
+    def _parent():
+        # Now that we've done all the disk I/O to look at the local file system and
+        # calculate the md5 for each file, fork for each destination to upload to them separately
+        # and in parallel
+        child_pids = []
+
+        for dest in destinations:
+            ## Normalize URI to convert s3://bkt to s3://bkt/ (trailing slash)
+            destination_base_uri = S3Uri(dest)
+            if destination_base_uri.type != 's3':
+                raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
+            destination_base = str(destination_base_uri)
+            child_pid = os.fork()
+            if child_pid == 0:
+                _child(destination_base, local_list)
+                os._exit(0)
+            else:
+                child_pids.append(child_pid)
+
+        while len(child_pids):
+            (pid, status) = os.wait()
+            child_pids.remove(pid)
+        return
+
+    def _child(destination_base, local_list):
+        def _set_remote_uri(local_list, destination_base, single_file_local):
+            if len(local_list) > 0:
+                ## Populate 'remote_uri' only if we've got something to upload
+                if not destination_base.endswith("/"):
+                    if not single_file_local:
+                        raise ParameterError("Destination S3 URI must end with '/' (ie must refer to a directory on the remote side).")
+                    local_list[local_list.keys()[0]]['remote_uri'] = unicodise(destination_base)
+                else:
+                    for key in local_list:
+                        local_list[key]['remote_uri'] = unicodise(destination_base + key)
+
+        def _upload(local_list, seq, total, total_size):
+            file_list = local_list.keys()
+            file_list.sort()
+            for file in file_list:
+                seq += 1
+                item = local_list[file]
+                src = item['full_name']
+                uri = S3Uri(item['remote_uri'])
+                seq_label = "[%d of %d]" % (seq, total)
+                extra_headers = copy(cfg.extra_headers)
+                try:
+                    if cfg.preserve_attrs:
+                        attr_header = _build_attr_header(local_list, file)
+                        debug(u"attr_header: %s" % attr_header)
+                        extra_headers.update(attr_header)
+                    response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
+                except InvalidFileError, e:
+                    warning(u"File can not be uploaded: %s" % e)
+                    continue
+                except S3UploadError, e:
+                    error(u"%s: upload failed too many times. Skipping that file." % item['full_name_unicode'])
+                    continue
+                speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
+                if not cfg.progress_meter:
+                    output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+                        (item['full_name_unicode'], uri, response["size"], response["elapsed"],
+                        speed_fmt[0], speed_fmt[1], seq_label))
+                total_size += response["size"]
+                uploaded_objects_list.append(uri.object())
+            return seq, total_size
+
+        remote_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
+
+        local_count = len(local_list)
+        remote_count = len(remote_list)
+
+        info(u"Found %d local files, %d remote files" % (local_count, remote_count))
+
+        local_list, exclude_list = filter_exclude_include(local_list)
+
+        if single_file_local and len(local_list) == 1 and len(remote_list) == 1:
+            ## Make remote_key same as local_key for comparison if we're dealing with only one file
+            remote_list_entry = remote_list[remote_list.keys()[0]]
+            # Flush remote_list, by the way
+            remote_list = { local_list.keys()[0] : remote_list_entry }
+
+        local_list, remote_list, update_list, copy_pairs = compare_filelists(local_list, remote_list, src_remote = False, dst_remote = True, delay_updates = cfg.delay_updates)
+
+        local_count = len(local_list)
+        update_count = len(update_list)
+        copy_count = len(copy_pairs)
+        remote_count = len(remote_list)
+
+        info(u"Summary: %d local files to upload, %d files to remote copy, %d remote files to delete" % (local_count + update_count, copy_count, remote_count))
+
+        _set_remote_uri(local_list, destination_base, single_file_local)
+        _set_remote_uri(update_list, destination_base, single_file_local)
+
+        if cfg.dry_run:
+            for key in exclude_list:
+                output(u"exclude: %s" % unicodise(key))
+            for key in local_list:
+                output(u"upload: %s -> %s" % (local_list[key]['full_name_unicode'], local_list[key]['remote_uri']))
+            for key in update_list:
+                output(u"upload: %s -> %s" % (update_list[key]['full_name_unicode'], update_list[key]['remote_uri']))
+            for (dst1, dst2) in copy_pairs:
+                output(u"remote copy: %s -> %s" % (dst1['object_key'], remote_list[dst2]['object_key']))
+            if cfg.delete_removed:
+                for key in remote_list:
+                    output(u"delete: %s" % remote_list[key]['object_uri_str'])
+
+            warning(u"Exitting now because of --dry-run")
+            return
+
+        # if there are copy pairs, we can't do delete_before, on the chance
+        # we need one of the to-be-deleted files as a copy source.
+        if len(copy_pairs) > 0:
+            cfg.delete_after = True
+
+        if cfg.delete_removed and not cfg.delete_after:
+            _do_deletes(s3, remote_list)
+
+        uploaded_objects_list = []
+        total_size = 0
+        total_elapsed = 0.0
+        timestamp_start = time.time()
+        n, total_size = _upload(local_list, 0, local_count, total_size)
+        n, total_size = _upload(update_list, n, local_count, total_size)
+        n_copies, saved_bytes = remote_copy(s3, copy_pairs, destination_base)
+        if cfg.delete_removed and cfg.delete_after:
+            _do_deletes(s3, remote_list)
+        total_elapsed = time.time() - timestamp_start
+        total_speed = total_elapsed and total_size/total_elapsed or 0.0
+        speed_fmt = formatSize(total_speed, human_readable = True, floating_point = True)
+
+        # Only print out the result if any work has been done or
+        # if the user asked for verbose output
+        outstr = "Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s.  Copied %d files saving %d bytes transfer." % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1], n_copies, saved_bytes)
+        if total_size + saved_bytes > 0:
+            output(outstr)
+        else:
+            info(outstr)
+
+        if cfg.invalidate_on_cf:
+            if len(uploaded_objects_list) == 0:
+                info("Nothing to invalidate in CloudFront")
+            else:
+                # 'uri' from the last iteration is still valid at this point
+                cf = CloudFront(cfg)
+                result = cf.InvalidateObjects(uri, uploaded_objects_list)
+                if result['status'] == 201:
+                    output("Created invalidation request for %d paths" % len(uploaded_objects_list))
+                    output("Check progress with: s3cmd cfinvalinfo cf://%s/%s" % (result['dist_id'], result['request_id']))
+
+        return
+
+    # main execution
     s3 = S3(cfg)
 
     if cfg.encrypt:
@@ -843,119 +1077,17 @@ def cmd_sync_local2remote(args):
         error(u"or disable encryption with --no-encrypt parameter.")
         sys.exit(1)
 
-    ## Normalize URI to convert s3://bkt to s3://bkt/ (trailing slash)
-    destination_base_uri = S3Uri(args[-1])
-    if destination_base_uri.type != 's3':
-        raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
-    destination_base = str(destination_base_uri)
-
     local_list, single_file_local = fetch_local_list(args[:-1], recursive = True)
-    remote_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
 
-    local_count = len(local_list)
-    remote_count = len(remote_list)
+    destinations = [args[-1]]
+    if cfg.additional_destinations:
+        destinations = destinations + cfg.additional_destinations
 
-    info(u"Found %d local files, %d remote files" % (local_count, remote_count))
-
-    local_list, exclude_list = filter_exclude_include(local_list)
-
-    if single_file_local and len(local_list) == 1 and len(remote_list) == 1:
-        ## Make remote_key same as local_key for comparison if we're dealing with only one file
-        remote_list_entry = remote_list[remote_list.keys()[0]]
-        # Flush remote_list, by the way
-        remote_list = { local_list.keys()[0] : remote_list_entry }
-
-    local_list, remote_list, existing_list = compare_filelists(local_list, remote_list, src_remote = False, dst_remote = True)
-
-    local_count = len(local_list)
-    remote_count = len(remote_list)
-
-    info(u"Summary: %d local files to upload, %d remote files to delete" % (local_count, remote_count))
-
-    if local_count > 0:
-        ## Populate 'remote_uri' only if we've got something to upload
-        if not destination_base.endswith("/"):
-            if not single_file_local:
-                raise ParameterError("Destination S3 URI must end with '/' (ie must refer to a directory on the remote side).")
-            local_list[local_list.keys()[0]]['remote_uri'] = unicodise(destination_base)
-        else:
-            for key in local_list:
-                local_list[key]['remote_uri'] = unicodise(destination_base + key)
-
-    if cfg.dry_run:
-        for key in exclude_list:
-            output(u"exclude: %s" % unicodise(key))
-        if cfg.delete_removed:
-            for key in remote_list:
-                output(u"delete: %s" % remote_list[key]['object_uri_str'])
-        for key in local_list:
-            output(u"upload: %s -> %s" % (local_list[key]['full_name_unicode'], local_list[key]['remote_uri']))
-
-        warning(u"Exitting now because of --dry-run")
-        return
-
-    if cfg.delete_removed:
-        for key in remote_list:
-            uri = S3Uri(remote_list[key]['object_uri_str'])
-            s3.object_delete(uri)
-            output(u"deleted: '%s'" % uri)
-
-    uploaded_objects_list = []
-    total_size = 0
-    total_elapsed = 0.0
-    timestamp_start = time.time()
-    seq = 0
-    file_list = local_list.keys()
-    file_list.sort()
-    for file in file_list:
-        seq += 1
-        item = local_list[file]
-        src = item['full_name']
-        uri = S3Uri(item['remote_uri'])
-        seq_label = "[%d of %d]" % (seq, local_count)
-        extra_headers = copy(cfg.extra_headers)
-        try:
-            if cfg.preserve_attrs:
-                attr_header = _build_attr_header(src)
-                debug(u"attr_header: %s" % attr_header)
-                extra_headers.update(attr_header)
-            response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
-        except InvalidFileError, e:
-            warning(u"File can not be uploaded: %s" % e)
-            continue
-        except S3UploadError, e:
-            error(u"%s: upload failed too many times. Skipping that file." % item['full_name_unicode'])
-            continue
-        speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
-        if not cfg.progress_meter:
-            output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
-                (item['full_name_unicode'], uri, response["size"], response["elapsed"],
-                speed_fmt[0], speed_fmt[1], seq_label))
-        total_size += response["size"]
-        uploaded_objects_list.append(uri.object())
-
-    total_elapsed = time.time() - timestamp_start
-    total_speed = total_elapsed and total_size/total_elapsed or 0.0
-    speed_fmt = formatSize(total_speed, human_readable = True, floating_point = True)
-
-    # Only print out the result if any work has been done or
-    # if the user asked for verbose output
-    outstr = "Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s" % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1])
-    if total_size > 0:
-        output(outstr)
+    if 'fork' not in os.__all__ or len(destinations) < 2:
+        _single_process(local_list)
     else:
-        info(outstr)
+        _parent()
 
-    if cfg.invalidate_on_cf:
-        if len(uploaded_objects_list) == 0:
-            info("Nothing to invalidate in CloudFront")
-        else:
-            # 'uri' from the last iteration is still valid at this point
-            cf = CloudFront(cfg)
-            result = cf.InvalidateObjects(uri, uploaded_objects_list)
-            if result['status'] == 201:
-                output("Created invalidation request for %d paths" % len(uploaded_objects_list))
-                output("Check progress with: s3cmd cfinvalinfo cf://%s/%s" % (result['dist_id'], result['request_id']))
 
 def cmd_sync(args):
     if (len(args) < 2):
@@ -1499,6 +1631,9 @@ def main():
 
     optparser.add_option(      "--delete-removed", dest="delete_removed", action="store_true", help="Delete remote objects with no corresponding local file [sync]")
     optparser.add_option(      "--no-delete-removed", dest="delete_removed", action="store_false", help="Don't delete remote objects.")
+    optparser.add_option(      "--delete-after", dest="delete_after", action="store_true", help="Perform deletes after new uploads [sync]")
+    optparser.add_option(      "--delay-updates", dest="delay_updates", action="store_true", help="Put all updated files into place at end [sync]")
+    optparser.add_option(      "--add-destination", dest="additional_destinations", action="append", help="Additional destination for parallel uploads, in addition to last arg.  May be repeated.")
     optparser.add_option("-p", "--preserve", dest="preserve_attrs", action="store_true", help="Preserve filesystem attributes (mode, ownership, timestamps). Default for [sync] command.")
     optparser.add_option(      "--no-preserve", dest="preserve_attrs", action="store_false", help="Don't store FS attributes")
     optparser.add_option(      "--exclude", dest="exclude", action="append", metavar="GLOB", help="Filenames and paths matching GLOB will be excluded from sync")
@@ -1673,6 +1808,9 @@ def main():
         except AttributeError:
             ## Some CloudFront.Cmd.Options() options are not settable from command line
             pass
+
+    if options.additional_destinations:
+        cfg.additional_destinations = options.additional_destinations
 
     ## Set output and filesystem encoding for printing out filenames.
     sys.stdout = codecs.getwriter(cfg.encoding)(sys.stdout, "replace")

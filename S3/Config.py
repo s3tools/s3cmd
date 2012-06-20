@@ -50,10 +50,13 @@ class Config(object):
         'mtime',    # Modification timestamp
         'ctime',    # Creation timestamp
         'mode',     # File mode (e.g. rwxr-xr-x = 755)
+        'md5',      # File MD5 (if known)
         #'acl',     # Full ACL (not yet supported)
     ]
     delete_removed = False
+    delete_after = False
     _doc['delete_removed'] = "[sync] Remove remote S3 objects when local file has been deleted"
+    delay_updates = False
     gpg_passphrase = ""
     gpg_command = ""
     gpg_encrypt = "%(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
@@ -83,6 +86,7 @@ class Config(object):
     website_index = "index.html"
     website_error = ""
     website_endpoint = "http://%(bucket)s.s3-website-%(location)s.amazonaws.com/"
+    additional_destinations = []
 
     ## Creating a singleton
     def __new__(self, configfile = None):
