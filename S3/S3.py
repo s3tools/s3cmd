@@ -37,7 +37,14 @@ try:
             return magic_.from_file(file)
         def mime_magic_buffer(buffer):
             return magic_.from_buffer(buffer)
-    except (TypeError, AttributeError):
+    except TypeError:
+        ## http://pypi.python.org/pypi/filemagic
+        magic_ = magic.Magic(flags=magic.MAGIC_MIME)
+        def mime_magic_file(file):
+            return magic_.id_filename(file)
+        def mime_magic_buffer(buffer):
+            return magic_.id_buffer(buffer)
+    except AttributeError:
         ## Older python-magic versions
         magic_ = magic.open(magic.MAGIC_MIME)
         magic_.load()
