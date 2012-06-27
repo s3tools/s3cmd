@@ -52,7 +52,7 @@ try:
             return (type, None)
         else:
             return (mime_magic_buffer(gzip.open(file).read(8192)), 'gzip')
-            
+
 except ImportError, e:
     if str(e).find("magic") >= 0:
         magic_message = "Module python-magic is not available."
