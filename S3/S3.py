@@ -45,12 +45,6 @@ try:
             return magic_.file(file)
         def mime_magic_buffer(buffer):
             return magic_.buffer(buffer)
-except ImportError, e:
-    if str(e).find("magic") >= 0:
-        magic_message = "Module python-magic is not available."
-    else:
-        magic_message = "Module python-magic can't be used (%s)." % e.message
-    magic_message += " Guessing MIME types based on file extensions."
     
     def mime_magic(file):
         type = mime_magic_file(file)
@@ -58,8 +52,13 @@ except ImportError, e:
             return (type, None)
         else:
             return (mime_magic_buffer(gzip.open(file).read(8192)), 'gzip')
-            
-except ImportError:
+
+except ImportError, e:
+    if str(e).find("magic") >= 0:
+        magic_message = "Module python-magic is not available."
+    else:
+        magic_message = "Module python-magic can't be used (%s)." % e.message
+    magic_message += " Guessing MIME types based on file extensions."
     magic_warned = False
     def mime_magic(file):
         global magic_warned
