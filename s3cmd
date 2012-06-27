@@ -1518,7 +1518,7 @@ def main():
     optparser.add_option(      "--no-access-logging", dest="log_target_prefix", action="store_false", help="Disable access logging (for [cfmodify] and [accesslog] commands)")
 
     optparser.add_option(      "--default-mime-type", dest="default_mime_type", action="store_true", help="Default MIME-type for stored objects. Application default is binary/octet-stream.")
-    optparser.add_option(      "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension or mime magic. Fall back to default MIME-Type as specified by --default-mime-type option")
+    optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension or mime magic. Fall back to default MIME-Type as specified by --default-mime-type option")
     optparser.add_option(      "--no-guess-mime-type", dest="guess_mime_type", action="store_false", help="Don't guess MIME-type and use the default type instead.")
     optparser.add_option("-m", "--mime-type", dest="mime_type", type="mimetype", metavar="MIME/TYPE", help="Force MIME-type. Override both --default-mime-type and --guess-mime-type.")
 
