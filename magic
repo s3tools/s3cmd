@@ -1,0 +1,63 @@
+# Additional magic for common web file types
+
+0	string/b	{\ "	JSON data
+!:mime application/json
+0	string/b	{\ }	JSON data
+!:mime application/json
+0	string/b	[	JSON data
+!:mime application/json
+
+0	search/4000	function
+>&0	search/32/b	)\ {	JavaScript program
+!:mime application/javascript
+
+0	search/4000	@media	CSS stylesheet
+!:mime text/css
+0	search/4000	@import	CSS stylesheet
+!:mime text/css
+0	search/4000	@namespace	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ background	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ border	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ bottom	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ color	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ cursor	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ direction	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ display	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ float	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ font	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ height	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ left	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ line-	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ margin	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ padding	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ position	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ right	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ text-	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ top	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ width	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ visibility	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ -moz-	CSS stylesheet
+!:mime text/css
+0	search/4000/b	{\ -webkit-	CSS stylesheet
+!:mime text/css
