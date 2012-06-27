@@ -20,11 +20,12 @@ except ImportError:
 
 from Utils import *
 from SortedDict import SortedDict
+from AccessLog import AccessLog
+from ACL import ACL, GranteeLogDelivery
 from BidirMap import BidirMap
 from Config import Config
 from Exceptions import *
-from ACL import ACL, GranteeLogDelivery
-from AccessLog import AccessLog
+from MultiPart import MultiPartUpload
 from S3Uri import S3Uri
 
 try:
@@ -36,7 +37,7 @@ try:
             return magic_.from_file(file)
         def mime_magic_buffer(buffer):
             return magic_.from_buffer(buffer)
-    except AttributeError:
+    except (TypeError, AttributeError):
         ## Older python-magic versions
         magic_ = magic.open(magic.MAGIC_MIME)
         magic_.load()
@@ -52,15 +53,19 @@ try:
         else:
             return (mime_magic_buffer(gzip.open(file).read(8192)), 'gzip')
             
-except ImportError:
+except ImportError, e:
+    if str(e).find("magic") >= 0:
+        magic_message = "Module python-magic is not available."
+    else:
+        magic_message = "Module python-magic can't be used (%s)." % e.message
+    magic_message += " Guessing MIME types based on file extensions."
     magic_warned = False
     def mime_magic(file):
         global magic_warned
         if (not magic_warned):
-            warning("python-magic is not available, guessing MIME types based on file extensions only")
+            warning(magic_message)
             magic_warned = True
         return mimetypes.guess_type(file)[0]
-
 
 __all__ = []
 class S3Request(object):
@@ -123,15 +128,16 @@ class S3(object):
         PUT = 0x02,
         HEAD = 0x04,
         DELETE = 0x08,
-        MASK = 0x0F,
-        )
+        POST = 0x10,
+        MASK = 0x1F,
+    )
 
     targets = BidirMap(
         SERVICE = 0x0100,
         BUCKET = 0x0200,
         OBJECT = 0x0400,
         MASK = 0x0700,
-        )
+    )
 
     operations = BidirMap(
         UNDFINED = 0x0000,
@@ -143,13 +149,14 @@ class S3(object):
         OBJECT_GET = targets["OBJECT"] | http_methods["GET"],
         OBJECT_HEAD = targets["OBJECT"] | http_methods["HEAD"],
         OBJECT_DELETE = targets["OBJECT"] | http_methods["DELETE"],
+        OBJECT_POST = targets["OBJECT"] | http_methods["POST"],
     )
 
     codes = {
         "NoSuchBucket" : "Bucket '%s' does not exist",
         "AccessDenied" : "Access to bucket '%s' was denied",
         "BucketAlreadyExists" : "Bucket '%s' already exists",
-        }
+    }
 
     ## S3 sometimes sends HTTP-307 response
     redir_map = {}
@@ -357,10 +364,12 @@ class S3(object):
             size = os.stat(filename)[ST_SIZE]
         except (IOError, OSError), e:
             raise InvalidFileError(u"%s: %s" % (unicodise(filename), e.strerror))
+
         headers = SortedDict(ignore_case = True)
         if extra_headers:
             headers.update(extra_headers)
-        headers["content-length"] = size
+
+        ## MIME-type handling
         content_type = self.config.mime_type
         content_encoding = None
         if not content_type and self.config.guess_mime_type:
@@ -371,10 +380,24 @@ class S3(object):
         headers["content-type"] = content_type
         if content_encoding is not None:
             headers["content-encoding"] = content_encoding
+
+        ## Other Amazon S3 attributes
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
         if self.config.reduced_redundancy:
             headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
+
+        ## Multipart decision
+        multipart = False
+        if self.config.enable_multipart:
+            if size > self.config.multipart_chunk_size_mb * 1024 * 1024:
+                multipart = True
+        if multipart:
+            # Multipart requests are quite different... drop here
+            return self.send_file_multipart(file, headers, uri, size)
+
+        ## Not multipart...
+        headers["content-length"] = size
         request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
         labels = { 'source' : unicodise(filename), 'destination' : unicodise(uri.uri()), 'extra' : extra_label }
         response = self.send_file(request, file, labels)
@@ -573,7 +596,9 @@ class S3(object):
             for header in headers.keys():
                 headers[header] = str(headers[header])
             conn = self.get_connection(resource['bucket'])
-            conn.request(method_string, self.format_uri(resource), body, headers)
+            uri = self.format_uri(resource)
+            debug("Sending request method_string=%r, uri=%r, headers=%r, body=(%i bytes)" % (method_string, uri, headers, len(body or "")))
+            conn.request(method_string, uri, body, headers)
             response = {}
             http_response = conn.getresponse()
             response["status"] = http_response.status
@@ -615,7 +640,7 @@ class S3(object):
 
         return response
 
-    def send_file(self, request, file, labels, throttle = 0, retries = _max_retries):
+    def send_file(self, request, file, labels, throttle = 0, retries = _max_retries, offset = 0, chunk_size = -1):
         method_string, resource, headers = request.get_triplet()
         size_left = size_total = headers.get("content-length")
         if self.config.progress_meter:
@@ -638,15 +663,15 @@ class S3(object):
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 # Connection error -> same throttle value
-                return self.send_file(request, file, labels, throttle, retries - 1)
+                return self.send_file(request, file, labels, throttle, retries - 1, offset, chunk_size)
             else:
                 raise S3UploadError("Upload failed for: %s" % resource['uri'])
-        file.seek(0)
+        file.seek(offset)
         md5_hash = md5()
         try:
             while (size_left > 0):
                 #debug("SendFile: Reading up to %d bytes from '%s'" % (self.config.send_chunk, file.name))
-                data = file.read(self.config.send_chunk)
+                data = file.read(min(self.config.send_chunk, size_left))
                 md5_hash.update(data)
                 conn.send(data)
                 if self.config.progress_meter:
@@ -675,7 +700,7 @@ class S3(object):
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 # Connection error -> same throttle value
-                return self.send_file(request, file, labels, throttle, retries - 1)
+                return self.send_file(request, file, labels, throttle, retries - 1, offset, chunk_size)
             else:
                 debug("Giving up on '%s' %s" % (file.name, e))
                 raise S3UploadError("Upload failed for: %s" % resource['uri'])
@@ -697,7 +722,7 @@ class S3(object):
             redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
             self.set_hostname(redir_bucket, redir_hostname)
             warning("Redirected to: %s" % (redir_hostname))
-            return self.send_file(request, file, labels)
+            return self.send_file(request, file, labels, offset = offset, chunk_size = chunk_size)
 
         # S3 from time to time doesn't send ETag back in a response :-(
         # Force re-upload here.
@@ -720,7 +745,7 @@ class S3(object):
                     warning("Upload failed: %s (%s)" % (resource['uri'], S3Error(response)))
                     warning("Waiting %d sec..." % self._fail_wait(retries))
                     time.sleep(self._fail_wait(retries))
-                    return self.send_file(request, file, labels, throttle, retries - 1)
+                    return self.send_file(request, file, labels, throttle, retries - 1, offset, chunk_size)
                 else:
                     warning("Too many failures. Giving up on '%s'" % (file.name))
                     raise S3UploadError
@@ -733,11 +758,23 @@ class S3(object):
             warning("MD5 Sums don't match!")
             if retries:
                 warning("Retrying upload of %s" % (file.name))
-                return self.send_file(request, file, labels, throttle, retries - 1)
+                return self.send_file(request, file, labels, throttle, retries - 1, offset, chunk_size)
             else:
                 warning("Too many failures. Giving up on '%s'" % (file.name))
                 raise S3UploadError
 
+        return response
+
+    def send_file_multipart(self, file, headers, uri, size):
+        chunk_size = self.config.multipart_chunk_size_mb * 1024 * 1024
+        timestamp_start = time.time()
+        upload = MultiPartUpload(self, file, uri, headers)
+        upload.upload_all_parts()
+        response = upload.complete_multipart_upload()
+        timestamp_end = time.time()
+        response["elapsed"] = timestamp_end - timestamp_start
+        response["size"] = size
+        response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
         return response
 
     def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):

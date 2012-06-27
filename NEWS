@@ -1,11 +1,17 @@
 s3cmd 1.1.0   -   ???
 ===========
+* MultiPart upload enabled for both [put] and [sync]. Default chunk
+  size is 15MB.
 * CloudFront invalidation via [sync --cf-invalidate] and [cfinvalinfo].
 * Increased socket_timeout from 10 secs to 5 mins.
 * Added "Static WebSite" support [ws-create / ws-delete / ws-info]
   (contributed by Jens Braeuer)
 * Force MIME type with --mime-type=abc/xyz, also --guess-mime-type 
-  is no longer on by default.
+  is now on by default, -M is no longer shorthand for --guess-mime-type
+* Allow parameters in MIME types, for example:
+  --mime-type="text/plain; charset=utf-8"
+* MIME type can be guessed by python-magic which is a lot better than
+  relying on the extension. Contributed by Karsten Sperling.
 * Support for environment variables as config values. For instance
   in ~/.s3cmd put "access_key=$S3_ACCESS_KEY". Contributed by Ori Bar.
 * Support for --configure checking access to a specific bucket instead

@@ -61,8 +61,10 @@ class Config(object):
     use_https = False
     bucket_location = "US"
     default_mime_type = "binary/octet-stream"
-    guess_mime_type = False
+    guess_mime_type = True
     mime_type = ""
+    enable_multipart = True
+    multipart_chunk_size_mb = 15    # MB
     # List of checks to be performed for 'sync'
     sync_checks = ['size', 'md5']   # 'weak-timestamp'
     # List of compiled REGEXPs
@@ -202,3 +204,4 @@ class ConfigDumper(object):
         for option in config.option_list():
             self.stream.write("%s = %s\n" % (option, getattr(config, option)))
 
+# vim:et:ts=4:sts=4:ai

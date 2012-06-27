@@ -553,7 +553,19 @@ class CloudFront(object):
             response = self.GetList()
             CloudFront.dist_list = {}
             for d in response['dist_list'].dist_summs:
-                CloudFront.dist_list[getBucketFromHostname(d.info['S3Origin']['DNSName'])[0]] = d.uri()
+                if d.info.has_key("S3Origin"):
+                    CloudFront.dist_list[getBucketFromHostname(d.info['S3Origin']['DNSName'])[0]] = d.uri()
+                elif d.info.has_key("CustomOrigin"):
+                    # Aral: This used to skip over distributions with CustomOrigin, however, we mustn't
+                    #       do this since S3 buckets that are set up as websites use custom origins.
+                    #       Thankfully, the custom origin URLs they use start with the URL of the 
+                    #       S3 bucket. Here, we make use this naming convention to support this use case.
+                    distListIndex = getBucketFromHostname(d.info['CustomOrigin']['DNSName'])[0];
+                    distListIndex = distListIndex[:len(uri.bucket())]
+                    CloudFront.dist_list[distListIndex] = d.uri()
+                else:
+                    # Aral: I'm not sure when this condition will be reached, but keeping it in there.
+                    continue
             debug("dist_list: %s" % CloudFront.dist_list)
         try:
             return CloudFront.dist_list[uri.bucket()]

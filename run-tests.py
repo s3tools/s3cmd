@@ -432,7 +432,7 @@ test_rmdir("Remove dst dir for get", "testsuite-out")
 ## ====== Get multiple files
 test_s3cmd("Get multiple files", ['get', '%s/xyz/etc2/Logo.PNG' % pbucket(1), '%s/xyz/etc/AtomicClockRadio.ttf' % pbucket(1), 'testsuite-out'],
     retcode = 1,
-    must_find = [ 'Destination must be a directory when downloading multiple sources.' ])
+    must_find = [ 'Destination must be a directory or stdout when downloading multiple sources.' ])
 
 
 ## ====== Make dst dir for get
