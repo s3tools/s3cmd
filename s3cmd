@@ -31,6 +31,7 @@ from distutils.spawn import find_executable
 
 def output(message):
     sys.stdout.write(message + "\n")
+    sys.stdout.flush()
 
 def check_args_type(args, type, verbose_type):
     for arg in args:
