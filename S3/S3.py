@@ -65,7 +65,7 @@ except ImportError, e:
         if (not magic_warned):
             warning(magic_message)
             magic_warned = True
-        return mimetypes.guess_type(file)[0]
+        return mimetypes.guess_type(file)
 
 __all__ = []
 class S3Request(object):
