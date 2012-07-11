@@ -81,8 +81,6 @@ def subcmd_bucket_usage(s3, uri):
 
         # objects in the current scope:
         for obj in response["list"]:
-            if len(response['list']) < 1:
-                break
             bucket_size += int(obj["Size"])
 
         # directories found in current scope:
