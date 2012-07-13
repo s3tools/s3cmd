@@ -826,6 +826,9 @@ class S3(object):
             while (current_position < size_total):
                 this_chunk = size_left > self.config.recv_chunk and self.config.recv_chunk or size_left
                 data = http_response.read(this_chunk)
+                if len(data) == 0: 
+                    raise S3Error("EOF from S3!")
+
                 stream.write(data)
                 if start_position == 0:
                     md5_hash.update(data)
