@@ -37,6 +37,7 @@ class HashCache(object):
                 for m in self.inodes[d][i].keys():
                     if 'purge' in self.inodes[d][i][m]:
                         del self.inodes[d][i]
+                        break
     
     def save(self, f):
         d = dict(inodes=self.inodes, version=1)
