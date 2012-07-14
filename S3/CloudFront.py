@@ -281,7 +281,7 @@ class InvalidationBatch(object):
         tree = ET.Element("InvalidationBatch")
 
         for path in self.paths:
-            if path[0] != "/":
+            if len(path) < 1 or path[0] != "/":
                 path = "/" + path
             appendXmlTextNode("Path", path, tree)
         appendXmlTextNode("CallerReference", self.reference, tree)
@@ -423,7 +423,23 @@ class CloudFront(object):
                                      body = request_body, headers = headers)
         return response
 
-    def InvalidateObjects(self, uri, paths):
+    def InvalidateObjects(self, uri, paths, default_index_file, invalidate_default_index_on_cf, invalidate_default_index_root_on_cf):
+        # joseprio: if the user doesn't want to invalidate the default index
+        # path, or if the user wants to invalidate the root of the default
+        # index, we need to process those paths
+        if default_index_file is not None and (not invalidate_default_index_on_cf or invalidate_default_index_root_on_cf):
+            new_paths = []
+            default_index_suffix = '/' + default_index_file
+            for path in paths:
+                if path.endswith(default_index_suffix) or path ==  default_index_file:
+                    if invalidate_default_index_on_cf:
+                        new_paths.append(path)
+                    if invalidate_default_index_root_on_cf:
+                        new_paths.append(path[:-len(default_index_file)])
+                else:
+                    new_paths.append(path)
+            paths = new_paths
+        
         # uri could be either cf:// or s3:// uri
         cfuri = self.get_dist_name_for_bucket(uri)
         if len(paths) > 999:
