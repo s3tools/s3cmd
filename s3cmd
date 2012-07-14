@@ -1205,6 +1205,18 @@ def cmd_setacl(args):
         uri = S3Uri(remote_list[key]['object_uri_str'])
         update_acl(s3, uri, seq_label)
 
+def cmd_setpolicy(args):
+    s3 = S3(cfg)
+    uri = args.pop(0)
+    bucket_uri = S3Uri(uri)
+    if bucket_uri.object():
+        raise ParameterError("Only bucket name is required for [setpolicy] command")
+    policy = args.pop()
+    info("Setting access policy for bucket %s to:\n\n%s" % (bucket_uri.uri(), policy))
+    response = s3.set_policy(bucket_uri, policy)
+    if response['status'] == 204:
+          output(u"%s: Policy updated" % uri)
+
 def cmd_accesslog(args):
     s3 = S3(cfg)
     bucket_uri = S3Uri(args.pop())
@@ -1546,6 +1558,7 @@ def get_commands_list():
     {"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
     {"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
     {"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
+    {"cmd":"setpolicy", "label":"Set an access policy for a bucket", "param":"s3://BUCKET POLICY_STRING", "func":cmd_setpolicy, "argc":2},
     {"cmd":"accesslog", "label":"Enable/disable bucket access logging", "param":"s3://BUCKET", "func":cmd_accesslog, "argc":1},
     {"cmd":"sign", "label":"Sign arbitrary string using the secret key", "param":"STRING-TO-SIGN", "func":cmd_sign, "argc":1},
     {"cmd":"fixbucket", "label":"Fix invalid file names in a bucket", "param":"s3://BUCKET[/PREFIX]", "func":cmd_fixbucket, "argc":1},
