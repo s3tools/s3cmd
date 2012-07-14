@@ -3,6 +3,7 @@
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
 
+import datetime
 import os
 import sys
 import time
@@ -15,6 +16,7 @@ import base64
 import errno
 
 from logging import debug, info, warning, error
+
 
 import Config
 import Exceptions
@@ -163,7 +165,14 @@ def formatSize(size, human_readable = False, floating_point = False):
 __all__.append("formatSize")
 
 def formatDateTime(s3timestamp):
-    return time.strftime("%Y-%m-%d %H:%M", dateS3toPython(s3timestamp))
+    try:
+        import pytz
+        timezone = pytz.timezone(os.environ.get('TZ', 'UTC'))
+        utc_dt = datetime.datetime(*dateS3toPython(s3timestamp)[0:6], tzinfo=pytz.timezone('UTC'))
+        dt_object = utc_dt.astimezone(timezone)
+    except ImportError:
+        dt_object = datetime.datetime(*dateS3toPython(s3timestamp)[0:6])
+    return dt_object.strftime("%Y-%m-%d %H:%M")
 __all__.append("formatDateTime")
 
 def convertTupleListToDict(list):
