@@ -42,32 +42,56 @@ class MultiPartUpload(object):
         if not self.upload_id:
             raise RuntimeError("Attempting to use a multipart upload that has not been initiated.")
 
-        size_left = file_size = os.stat(self.file.name)[ST_SIZE]
-        self.chunk_size = self.s3.config.multipart_chunk_size_mb * 1024 * 1024
-        nr_parts = file_size / self.chunk_size + (file_size % self.chunk_size and 1)
-        debug("MultiPart: Uploading %s in %d parts" % (self.file.name, nr_parts))
+        if self.file.name != "<stdin>":
+                size_left = file_size = os.stat(self.file.name)[ST_SIZE]
+                nr_parts = file_size / self.chunk_size + (file_size % self.chunk_size and 1)
+                debug("MultiPart: Uploading %s in %d parts" % (self.file.name, nr_parts))
+        else:
+            debug("MultiPart: Uploading from %s" % (self.file.name))
+
+	self.chunk_size = self.s3.config.multipart_chunk_size_mb * 1024 * 1024
 
         seq = 1
-        while size_left > 0:
-            offset = self.chunk_size * (seq - 1)
-            current_chunk_size = min(file_size - offset, self.chunk_size)
-            size_left -= current_chunk_size
-            labels = {
-                'source' : unicodise(self.file.name),
-                'destination' : unicodise(self.uri.uri()),
-                'extra' : "[part %d of %d, %s]" % (seq, nr_parts, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
-            }
-            try:
-                self.upload_part(seq, offset, current_chunk_size, labels)
-            except:
-                error(u"Upload of '%s' part %d failed. Aborting multipart upload." % (self.file.name, seq))
-                self.abort_upload()
-                raise
-            seq += 1
+	if self.file.name != "<stdin>":
+            while size_left > 0:
+                offset = self.chunk_size * (seq - 1)
+                current_chunk_size = min(file_size - offset, self.chunk_size)
+                size_left -= current_chunk_size
+                labels = {
+                    'source' : unicodise(self.file.name),
+                    'destination' : unicodise(self.uri.uri()),
+                    'extra' : "[part %d of %d, %s]" % (seq, nr_parts, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
+                }
+                try:
+                    self.upload_part(seq, offset, current_chunk_size, labels)
+                except:
+                    error(u"Upload of '%s' part %d failed. Aborting multipart upload." % (self.file.name, seq))
+                    self.abort_upload()
+                    raise
+                seq += 1
+        else:
+            while True:
+                buffer = self.file.read(self.chunk_size)
+                offset = self.chunk_size * (seq - 1)
+                current_chunk_size = len(buffer)
+                labels = {
+                    'source' : unicodise(self.file.name),
+                    'destination' : unicodise(self.uri.uri()),
+                    'extra' : "[part %d, %s]" % (seq, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
+                }
+                if len(buffer) == 0: # EOF
+                    break
+                try:
+                    self.upload_part(seq, offset, current_chunk_size, labels, buffer)
+                except:
+                    error(u"Upload of '%s' part %d failed. Aborting multipart upload." % (self.file.name, seq))
+                    self.abort_upload()
+                    raise
+                seq += 1
 
         debug("MultiPart: Upload finished: %d parts", seq - 1)
 
-    def upload_part(self, seq, offset, chunk_size, labels):
+    def upload_part(self, seq, offset, chunk_size, labels, buffer = ''):
         """
         Upload a file chunk
         http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadUploadPart.html
@@ -77,7 +101,7 @@ class MultiPartUpload(object):
         headers = { "content-length": chunk_size }
         query_string = "?partNumber=%i&uploadId=%s" % (seq, self.upload_id)
         request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
-        response = self.s3.send_file(request, self.file, labels, offset = offset, chunk_size = chunk_size)
+        response = self.s3.send_file(request, self.file, labels, buffer, offset = offset, chunk_size = chunk_size)
         self.parts[seq] = response["headers"]["etag"]
         return response
 

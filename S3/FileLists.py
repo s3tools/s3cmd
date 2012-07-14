@@ -140,6 +140,16 @@ def handle_exclude_include_walk(root, dirs, files):
 def fetch_local_list(args, recursive = None):
     def _get_filelist_local(loc_list, local_uri, cache):
         info(u"Compiling list of local files...")
+        
+        if deunicodise(local_uri.basename()) == "-":
+            loc_list = SortedDict(ignore_case = False)
+            loc_list["-"] = {
+                'full_name_unicode' : '-',
+                'full_name' : '-',
+                'size' : -1,
+                'mtime' : -1,
+            }
+            return loc_list, True
         if local_uri.isdir():
             local_base = deunicodise(local_uri.basename())
             local_path = deunicodise(local_uri.path())
