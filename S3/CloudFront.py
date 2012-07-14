@@ -133,7 +133,7 @@ class DistributionConfig(object):
     ##  </Logging>
     ## </DistributionConfig>
 
-    EMPTY_CONFIG = "<DistributionConfig><Origin/><CallerReference/><Enabled>true</Enabled></DistributionConfig>"
+    EMPTY_CONFIG = "<DistributionConfig><S3Origin><DNSName/></S3Origin><CallerReference/><Enabled>true</Enabled></DistributionConfig>"
     xmlns = "http://cloudfront.amazonaws.com/doc/%(api_ver)s/" % { 'api_ver' : cloudfront_api_version }
     def __init__(self, xml = None, tree = None):
         if xml is None:
@@ -174,7 +174,8 @@ class DistributionConfig(object):
         tree.attrib['xmlns'] = DistributionConfig.xmlns
 
         ## Retain the order of the following calls!
-        appendXmlTextNode("Origin", self.info['Origin'], tree)
+        s3org = appendXmlTextNode("S3Origin", '', tree)
+        appendXmlTextNode("DNSName", self.info['S3Origin']['DNSName'], s3org)
         appendXmlTextNode("CallerReference", self.info['CallerReference'], tree)
         for cname in self.info['CNAME']:
             appendXmlTextNode("CNAME", cname.lower(), tree)
@@ -322,7 +323,7 @@ class CloudFront(object):
     def CreateDistribution(self, uri, cnames_add = [], comment = None, logging = None, default_root_object = None):
         dist_config = DistributionConfig()
         dist_config.info['Enabled'] = True
-        dist_config.info['Origin'] = uri.host_name()
+        dist_config.info['S3Origin']['DNSName'] = uri.host_name()
         dist_config.info['CallerReference'] = str(uri)
         dist_config.info['DefaultRootObject'] = default_root_object
         if comment == None:
@@ -687,7 +688,7 @@ class Cmd(object):
             d = response['distribution']
             dc = d.info['DistributionConfig']
             output("Distribution created:")
-            pretty_output("Origin", S3UriS3.httpurl_to_s3uri(dc.info['Origin']))
+            pretty_output("Origin", S3UriS3.httpurl_to_s3uri(dc.info['S3Origin']['DNSName']))
             pretty_output("DistId", d.uri())
             pretty_output("DomainName", d.info['DomainName'])
             pretty_output("CNAMEs", ", ".join(dc.info['CNAME']))
@@ -729,7 +730,7 @@ class Cmd(object):
         response = cf.GetDistInfo(cfuri)
         d = response['distribution']
         dc = d.info['DistributionConfig']
-        pretty_output("Origin", S3UriS3.httpurl_to_s3uri(dc.info['Origin']))
+        pretty_output("Origin", S3UriS3.httpurl_to_s3uri(dc.info['S3Origin']['DNSName']))
         pretty_output("DistId", d.uri())
         pretty_output("DomainName", d.info['DomainName'])
         pretty_output("Status", d.info['Status'])
