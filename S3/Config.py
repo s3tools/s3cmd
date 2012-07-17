@@ -65,6 +65,9 @@ class Config(object):
     mime_type = ""
     enable_multipart = True
     multipart_chunk_size_mb = 15    # MB
+    #- minimum size to use multipart remote s3-to-s3 copy with byte range is 5gb
+    multipart_copy_size_gb = 5      # GB
+    multipart_copy_size = 5 * 1024 * 1024 * 1024
     # List of checks to be performed for 'sync'
     sync_checks = ['size', 'md5']   # 'weak-timestamp'
     # List of compiled REGEXPs
