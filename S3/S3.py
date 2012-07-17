@@ -403,8 +403,6 @@ class S3(object):
         response = self.send_request(request)
         return response
 
-# TODO: want to be able to do multi-part copy on remote s3 objects > 5gb
-# instead of Object-PUT  ... multipart upload with header -d
 
     def object_copy(self, src_uri, dst_uri, extra_headers = None):
         if src_uri.type != "s3":
@@ -413,7 +411,7 @@ class S3(object):
             raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
         headers = SortedDict(ignore_case = True)
 
-        # TODO: where do ACL headers go for copy?
+        # TODO: where do ACL headers go for copy?  Should we copy ACL from source?
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
         if self.config.reduced_redundancy:
@@ -421,7 +419,7 @@ class S3(object):
         # if extra_headers:
         #   headers.update(extra_headers)
 
-        ## Multipart decision - can only copy remote s3-to-s3 files over 5gb
+        ## Multipart decision - only do multipart copy for remote s3 files > 5gb
         multipart = False
         # TODO: does it need new config option for: enable_multipart_copy ?
         if self.config.enable_multipart:
