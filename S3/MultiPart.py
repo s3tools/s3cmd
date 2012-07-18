@@ -159,6 +159,7 @@ class MultiPartCopy(MultiPartUpload):
             try:
                 self.copy_part(seq, offset, current_chunk_size, labels)
             except:
+                # TODO: recover from some "retriable" errors?
                 error(u"Upload copy of '%s' part %d failed. Aborting multipart upload copy." % (self.src_uri, seq))
                 self.abort_copy()
                 raise
@@ -174,7 +175,8 @@ class MultiPartCopy(MultiPartUpload):
         """
         debug("Copying part %i of %r (%s bytes)" % (seq, self.upload_id, chunk_size))
 
-        # set up headers with copy-params
+        # set up headers with copy-params.
+        # Examples:
         #    x-amz-copy-source: /source_bucket/sourceObject
         #    x-amz-copy-source-range:bytes=first-last
         #    x-amz-copy-source-if-match: etag
@@ -185,7 +187,7 @@ class MultiPartCopy(MultiPartUpload):
 
         # include byte range header if already on next sequence or original file is > 5gb
         if (seq > 1) or (chunk_size >= self.s3.config.multipart_copy_size):
-            # FIXME: TODO: is this correct calculation to do proper byte-range headers!?
+            # a 10 byte file has bytes=0-9
             headers["x-amz-copy-source-range"] = "bytes=%d-%d" % (offset, (offset + chunk_size - 1))
 
         query_string = "?partNumber=%i&uploadId=%s" % (seq, self.upload_id)
@@ -193,8 +195,15 @@ class MultiPartCopy(MultiPartUpload):
         request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
         response = self.s3.send_request(request)
 
-        # etag in xml response
-        self.parts[seq] = getTextFromXml(response["data"], "ETag")
+        # NOTE: Amazon sends whitespace while upload progresses, which
+        # accumulates in response body and seems to confuse XML parser.
+        # Strip newlines to find ETag in XML response data
+        data = response["data"].replace("\n", '')
+        self.parts[seq] = getTextFromXml(data, "ETag")
+
+        # TODO: how to fail if no ETag found ... raise Exception?
+        #debug("Uploaded copy part %i of %r (%s bytes): etag=%s" % (seq, self.upload_id, chunk_size, self.parts[seq]))
+
         return response
 
 # vim:et:ts=4:sts=4:ai
