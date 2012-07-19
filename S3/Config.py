@@ -40,7 +40,7 @@ class Config(object):
     proxy_port = 3128
     encrypt = False
     dry_run = False
-    add_encoding_ext = []
+    add_encoding_exts = ""
     preserve_attrs = True
     preserve_attrs_list = [
         'uname',    # Verbose owner Name (e.g. 'root')

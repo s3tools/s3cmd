@@ -339,10 +339,17 @@ class S3(object):
 
         return response
 
-    def add_encoding(self, filename):
+    def add_encoding(self, filename, content_type):
+        if content_type.find("charset=") != -1:
+           return False
+        exts = self.config.add_encoding_exts.split(',')
+        if exts[0]=='':
+            return False
         parts = filename.rsplit('.',2)
+        if len(parts) < 2:
+            return False
         ext = parts[1]
-        if ext in self.config.add_encoding_ext:
+        if ext in exts:
             return True
         else:
             return False
@@ -367,13 +374,14 @@ class S3(object):
 
         ## MIME-type handling
         content_type = self.config.mime_type
+        print(content_type)
         if not content_type and self.config.guess_mime_type:
             content_type = mime_magic(filename)
         if not content_type:
             content_type = self.config.default_mime_type
-        
+        print(content_type)
         ## add charset to content type
-        if self.add_encoding(filename):
+        if self.add_encoding(filename, content_type):
             content_type = content_type + ";charset=" + self.config.encoding.upper()
        
         debug("Content-Type set to '%s'" % content_type)
