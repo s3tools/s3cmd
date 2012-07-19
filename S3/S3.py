@@ -374,15 +374,15 @@ class S3(object):
 
         ## MIME-type handling
         content_type = self.config.mime_type
-        print(content_type)
+
         if not content_type and self.config.guess_mime_type:
             content_type = mime_magic(filename)
         if not content_type:
             content_type = self.config.default_mime_type
-        print(content_type)
+    
         ## add charset to content type
         if self.add_encoding(filename, content_type):
-            content_type = content_type + ";charset=" + self.config.encoding.upper()
+            content_type = content_type + "; charset=" + self.config.encoding.upper()
        
         debug("Content-Type set to '%s'" % content_type)
         headers["content-type"] = content_type
