@@ -270,7 +270,8 @@ def cmd_object_put(args):
             for key in local_list:
                 if key == "-":
                     raise ParameterError("Cannot specify multiple local files if uploading from '-' (ie stdin)")
-        elif single_file_local and local_list.keys()[0] == "-" and destination_base.endswith("/"):
+        
+        if single_file_local and local_list.keys()[0] == "-" and destination_base.endswith("/"):
             raise ParameterError("Destination S3 URI must not end with '/' when uploading from stdin.")
         elif not destination_base.endswith("/"):
             if not single_file_local:
