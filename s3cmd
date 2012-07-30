@@ -936,6 +936,7 @@ def cmd_sync_local2remote(args):
                 raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
             destination_base = str(destination_base_uri)
             _child(destination_base, local_list)
+            return destination_base_uri
 
     def _parent():
         # Now that we've done all the disk I/O to look at the local file system and
@@ -959,7 +960,8 @@ def cmd_sync_local2remote(args):
         while len(child_pids):
             (pid, status) = os.wait()
             child_pids.remove(pid)
-        return
+
+        return destination_base_uri
 
     def _child(destination_base, local_list):
         def _set_remote_uri(local_list, destination_base, single_file_local):
@@ -1055,7 +1057,6 @@ def cmd_sync_local2remote(args):
         if cfg.delete_removed and not cfg.delete_after:
             _do_deletes(s3, remote_list)
 
-        uploaded_objects_list = []
         total_size = 0
         total_elapsed = 0.0
         timestamp_start = time.time()
@@ -1078,54 +1079,31 @@ def cmd_sync_local2remote(args):
 
         return
 
+    def _invalidate_on_cf(destination_base_uri):
+        cf = CloudFront(cfg)
+        default_index_file = None
+        if cfg.invalidate_default_index_on_cf or cfg.invalidate_default_index_root_on_cf:
+            info_response = s3.website_info(destination_base_uri, cfg.bucket_location)
+            if info_response:
+              default_index_file = info_response['index_document']
+              if len(default_index_file) < 1:
+                  default_index_file = None
+
+        result = cf.InvalidateObjects(destination_base_uri, uploaded_objects_list, default_index_file, cfg.invalidate_default_index_on_cf, cfg.invalidate_default_index_root_on_cf)
+        if result['status'] == 201:
+            output("Created invalidation request for %d paths" % len(uploaded_objects_list))
+            output("Check progress with: s3cmd cfinvalinfo cf://%s/%s" % (result['dist_id'], result['request_id']))
+
+
     # main execution
     s3 = S3(cfg)
+    uploaded_objects_list = []
 
     if cfg.encrypt:
         error(u"S3cmd 'sync' doesn't yet support GPG encryption, sorry.")
         error(u"Either use unconditional 's3cmd put --recursive'")
         error(u"or disable encryption with --no-encrypt parameter.")
         sys.exit(1)
-
-    uploaded_objects_list = []
-    total_size = 0
-    total_elapsed = 0.0
-    timestamp_start = time.time()
-    seq = 0
-    file_list = local_list.keys()
-    file_list.sort()
-    for file in file_list:
-        seq += 1
-        item = local_list[file]
-        src = item['full_name']
-        uri = S3Uri(item['remote_uri'])
-        seq_label = "[%d of %d]" % (seq, local_count)
-        extra_headers = copy(cfg.extra_headers)
-        try:
-            if cfg.preserve_attrs:
-                attr_header = _build_attr_header(src)
-                debug(u"attr_header: %s" % attr_header)
-                extra_headers.update(attr_header)
-            response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
-        except InvalidFileError, e:
-            warning(u"File can not be uploaded: %s" % e)
-            continue
-        except S3UploadError, e:
-            error(u"%s: upload failed too many times. Skipping that file." % item['full_name_unicode'])
-            continue
-        speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
-        if not cfg.progress_meter:
-            output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
-                (item['full_name_unicode'], uri, response["size"], response["elapsed"],
-                speed_fmt[0], speed_fmt[1], seq_label))
-        total_size += response["size"]
-        if cfg.acl_grants or cfg.acl_revokes:
-            try:
-                update_acl(s3, uri)
-            except Exception, e:
-                error(u"%s: Error while setting ACL: %s" % e)
-        uploaded_objects_list.append(uri.object())
-
 
     local_list, single_file_local = fetch_local_list(args[:-1], recursive = True)
 
@@ -1134,31 +1112,15 @@ def cmd_sync_local2remote(args):
         destinations = destinations + cfg.additional_destinations
 
     if 'fork' not in os.__all__ or len(destinations) < 2:
-        _single_process(local_list)
+        destination_base_uri = _single_process(local_list)
     else:
-        _parent()
+        destination_base_uri = _parent() # this only returns the last destination
 
     if cfg.invalidate_on_cf:
         if len(uploaded_objects_list) == 0:
             info("Nothing to invalidate in CloudFront")
         else:
-            # 'uri' from the last iteration is still valid at this point
-            cf = CloudFront(cfg)
-            # joseprio: obtain default index file if we need it for invalidating
-            # the files
-            default_index_file = None
-            if cfg.invalidate_default_index_on_cf or cfg.invalidate_default_index_root_on_cf:
-                info_response = s3.website_info(destination_base_uri, cfg.bucket_location)
-                if info_response:
-                  default_index_file = info_response['index_document']
-                  if len(default_index_file) < 1:
-                      default_index_file = None
-            # joseprio: pass configuration information for invalidating default
-            # index file
-            result = cf.InvalidateObjects(uri, uploaded_objects_list, default_index_file, cfg.invalidate_default_index_on_cf, cfg.invalidate_default_index_root_on_cf)
-            if result['status'] == 201:
-                output("Created invalidation request for %d paths" % len(uploaded_objects_list))
-                output("Check progress with: s3cmd cfinvalinfo cf://%s/%s" % (result['dist_id'], result['request_id']))
+            _invalidate_on_cf(destination_base_uri)
 
 def cmd_sync(args):
     if (len(args) < 2):
