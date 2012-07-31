@@ -371,6 +371,21 @@ class S3(object):
 
         return response
 
+    def add_encoding(self, filename, content_type):
+        if content_type.find("charset=") != -1:
+           return False
+        exts = self.config.add_encoding_exts.split(',')
+        if exts[0]=='':
+            return False
+        parts = filename.rsplit('.',2)
+        if len(parts) < 2:
+            return False
+        ext = parts[1]
+        if ext in exts:
+            return True
+        else:
+            return False
+           
     def object_put(self, filename, uri, extra_headers = None, extra_label = ""):
         # TODO TODO
         # Make it consistent with stream-oriented object_get()
@@ -395,12 +410,17 @@ class S3(object):
 
         ## MIME-type handling
         content_type = self.config.mime_type
-        content_encoding = None
         if filename != "-" and not content_type and self.config.guess_mime_type:
             (content_type, content_encoding) = mime_magic(filename)
         if not content_type:
             content_type = self.config.default_mime_type
-        debug("Content-Type set to '%s' (encoding %s)" % (content_type, content_encoding))
+        if not content_encoding:
+            content_encoding = self.config.encoding.upper()
+    
+        ## add charset to content type
+        if self.add_encoding(filename, content_type) and content_encoding is not None:
+            content_type = content_type + "; charset=" + content_encoding
+       
         headers["content-type"] = content_type
         if content_encoding is not None:
             headers["content-encoding"] = content_encoding
