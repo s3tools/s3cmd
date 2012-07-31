@@ -961,7 +961,7 @@ def cmd_sync_local2remote(args):
             (pid, status) = os.wait()
             child_pids.remove(pid)
 
-        return destination_base_uri
+        return
 
     def _child(destination_base, local_list):
         def _set_remote_uri(local_list, destination_base, single_file_local):
@@ -1113,14 +1113,15 @@ def cmd_sync_local2remote(args):
 
     if 'fork' not in os.__all__ or len(destinations) < 2:
         destination_base_uri = _single_process(local_list)
+        if cfg.invalidate_on_cf:
+            if len(uploaded_objects_list) == 0:
+                info("Nothing to invalidate in CloudFront")
+            else:
+                _invalidate_on_cf(destination_base_uri)
     else:
-        destination_base_uri = _parent() # this only returns the last destination
-
-    if cfg.invalidate_on_cf:
-        if len(uploaded_objects_list) == 0:
-            info("Nothing to invalidate in CloudFront")
-        else:
-            _invalidate_on_cf(destination_base_uri)
+        _parent()
+        if cfg.invalidate_on_cf:
+            error(u"You cannot use both --cf-invalidate and --add-destination.")
 
 def cmd_sync(args):
     if (len(args) < 2):
