@@ -23,6 +23,7 @@ import locale
 import subprocess
 import htmlentitydefs
 import socket
+import StringIO
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -1546,6 +1547,7 @@ def main():
     optparser.add_option(      "--cf-default-root-object", dest="cf_default_root_object", action="store", metavar="DEFAULT_ROOT_OBJECT", help="Set the default root object to return when no object is specified in the URL. Use a relative path, i.e. default/index.html instead of /default/index.html or s3://bucket/default/index.html (only for [cfcreate] and [cfmodify] commands)")
     optparser.add_option("-v", "--verbose", dest="verbosity", action="store_const", const=logging.INFO, help="Enable verbose output.")
     optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output.")
+    optparser.add_option("-q", "--quiet", dest="quiet", action="store_true", help="Disable output to stdout.")
     optparser.add_option(      "--version", dest="show_version", action="store_true", help="Show s3cmd version (%s) and exit." % (PkgInfo.version))
     optparser.add_option("-F", "--follow-symlinks", dest="follow_symlinks", action="store_true", default=False, help="Follow symbolic links as if they are regular files")
 
@@ -1565,6 +1567,8 @@ def main():
     logging.basicConfig(level=options.verbosity,
                         format='%(levelname)s: %(message)s',
                         stream = sys.stderr)
+    if options.quiet
+        sys.stdout = StringIO.StringIO()
 
     if options.show_version:
         output(u"s3cmd version %s" % PkgInfo.version)
