@@ -416,10 +416,17 @@ class S3(object):
             headers["x-amz-acl"] = "public-read"
         if self.config.reduced_redundancy:
             headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
-        # if extra_headers:
-        #   headers.update(extra_headers)
+        if extra_headers:
+          headers.update(extra_headers)
         request = self.create_request("OBJECT_PUT", uri = dst_uri, headers = headers)
-        response = self.send_request(request)
+        try:
+            response = self.send_request(request)
+        except Exception, e:
+            if e.status == 412:
+                # PreconditionFailed response - this is ok, just skip
+                return {"status": e.status}
+            else:
+                raise e
         return response
 
     def object_move(self, src_uri, dst_uri, extra_headers = None):
