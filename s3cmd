@@ -740,13 +740,13 @@ def cmd_sync_remote2local(args):
                 # create temporary files (of type .s3cmd.XXXX.tmp) in the same directory 
                 # for downloading and then rename once downloaded
                 chkptfd, chkptfname = tempfile.mkstemp(".tmp",".s3cmd.",os.path.dirname(dst_file))
-   				debug(u"created chkptfname=%s" % unicodise(chkptfname))
+                debug(u"created chkptfname=%s" % unicodise(chkptfname))
                 dst_stream = os.fdopen(chkptfd, "wb")  
                 response = s3.object_get(uri, dst_stream, extra_label = seq_label)
                 dst_stream.close()
                 # download completed, rename the file to destination
                 os.rename(chkptfname, dst_file)
-				debug(u"renamed chkptfname=%s to dst_file=%s" % (unicodise(chkptfname), unicodise(dst_file)))
+                debug(u"renamed chkptfname=%s to dst_file=%s" % (unicodise(chkptfname), unicodise(dst_file)))
                 if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
                     attrs = _parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
                     if attrs.has_key('mode'):
