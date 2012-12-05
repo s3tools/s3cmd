@@ -243,9 +243,10 @@ class S3(object):
         truncated = True
         list = []
         prefixes = []
+        conn = self.get_connection(bucket)
 
         while truncated:
-            response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params)
+            response = self.bucket_list_noparse(conn, bucket, prefix, recursive, uri_params)
             current_list = _get_contents(response["data"])
             current_prefixes = _get_common_prefixes(response["data"])
             truncated = _list_truncated(response["data"])
@@ -259,17 +260,19 @@ class S3(object):
             list += current_list
             prefixes += current_prefixes
 
+        conn.close()
+
         response['list'] = list
         response['common_prefixes'] = prefixes
         return response
 
-    def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = {}):
+    def bucket_list_noparse(self, connection, bucket, prefix = None, recursive = None, uri_params = {}):
         if prefix:
             uri_params['prefix'] = self.urlencode_string(prefix)
         if not self.config.recursive and not recursive:
             uri_params['delimiter'] = "/"
         request = self.create_request("BUCKET_LIST", bucket = bucket, **uri_params)
-        response = self.send_request(request)
+        response = self.send_request(request, conn = connection)
         #debug(response)
         return response
 
@@ -643,7 +646,7 @@ class S3(object):
         # Wait a few seconds. The more it fails the more we wait.
         return (self._max_retries - retries + 1) * 3
 
-    def send_request(self, request, body = None, retries = _max_retries):
+    def send_request(self, request, body = None, retries = _max_retries, conn = None):
         method_string, resource, headers = request.get_triplet()
         debug("Processing request, please wait...")
         if not headers.has_key('content-length'):
@@ -652,7 +655,13 @@ class S3(object):
             # "Stringify" all headers
             for header in headers.keys():
                 headers[header] = str(headers[header])
-            conn = self.get_connection(resource['bucket'])
+            if conn is None:
+                debug("Establishing connection")
+                conn = self.get_connection(resource['bucket'])
+                close_conn = True
+            else:
+                debug("Using existing connection")
+                close_conn = False
             uri = self.format_uri(resource)
             debug("Sending request method_string=%r, uri=%r, headers=%r, body=(%i bytes)" % (method_string, uri, headers, len(body or "")))
             conn.request(method_string, uri, body, headers)
@@ -663,7 +672,8 @@ class S3(object):
             response["headers"] = convertTupleListToDict(http_response.getheaders())
             response["data"] =  http_response.read()
             debug("Response: " + str(response))
-            conn.close()
+            if close_conn is True:
+                conn.close()
         except Exception, e:
             if retries:
                 warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
