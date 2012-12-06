@@ -53,6 +53,7 @@ class Config(object):
         #'acl',     # Full ACL (not yet supported)
     ]
     delete_removed = False
+    delete_after_fetch = False
     _doc['delete_removed'] = "[sync] Remove remote S3 objects when local file has been deleted"
     gpg_passphrase = ""
     gpg_command = ""
