@@ -24,6 +24,7 @@ import subprocess
 import htmlentitydefs
 import socket
 import shutil
+import tempfile
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -783,17 +784,17 @@ def cmd_sync_remote2local(args):
                     warning(u"%s: destination directory not writable: %s" % (file, dst_dir))
                     continue
                 try:
-                    open_flags = os.O_CREAT
-                    open_flags |= os.O_TRUNC
-                    # open_flags |= os.O_EXCL
-
                     debug(u"dst_file=%s" % unicodise(dst_file))
-                    # This will have failed should the file exist
-                    os.close(os.open(dst_file, open_flags))
-                    # Yeah I know there is a race condition here. Sadly I don't know how to open() in exclusive mode.
-                    dst_stream = open(dst_file, "wb")
+                    # create temporary files (of type .s3cmd.XXXX.tmp) in the same directory 
+                    # for downloading and then rename once downloaded
+                    chkptfd, chkptfname = tempfile.mkstemp(".tmp",".s3cmd.",os.path.dirname(dst_file))
+                    debug(u"created chkptfname=%s" % unicodise(chkptfname))
+                    dst_stream = os.fdopen(chkptfd, "wb")  
                     response = s3.object_get(uri, dst_stream, extra_label = seq_label)
                     dst_stream.close()
+                    # download completed, rename the file to destination
+                    os.rename(chkptfname, dst_file)
+                    debug(u"renamed chkptfname=%s to dst_file=%s" % (unicodise(chkptfname), unicodise(dst_file)))
                     if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
                         attrs = parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
                         if attrs.has_key('mode'):
