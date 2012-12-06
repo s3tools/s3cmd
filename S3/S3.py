@@ -416,8 +416,9 @@ class S3(object):
             headers["x-amz-acl"] = "public-read"
         if self.config.reduced_redundancy:
             headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
-        # if extra_headers:
-        #   headers.update(extra_headers)
+        if extra_headers:
+            headers['x-amz-metadata-directive'] = "REPLACE"
+            headers.update(extra_headers)
         request = self.create_request("OBJECT_PUT", uri = dst_uri, headers = headers)
         response = self.send_request(request)
         return response
