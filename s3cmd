@@ -25,6 +25,7 @@ import htmlentitydefs
 import socket
 import shutil
 import tempfile
+import S3.Exceptions
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -1224,6 +1225,15 @@ def cmd_sign(args):
     signature = Utils.sign_string(string_to_sign)
     output("Signature: %s" % signature)
 
+def cmd_signurl(args):
+	expiry = args.pop()
+	url_to_sign = S3Uri(args.pop())
+	if url_to_sign.type != 's3':
+		raise ParameterError("Must be S3Uri. Got: %s" % url_to_sign)
+	debug("url to sign: %r" % url_to_sign)
+	signed_url = Utils.sign_url(url_to_sign, expiry)
+	output(signed_url)
+
 def cmd_fixbucket(args):
     def _unescape(text):
         ##
@@ -1541,6 +1551,7 @@ def get_commands_list():
     {"cmd":"setpolicy", "label":"Set an access policy for a bucket", "param":"s3://BUCKET POLICY_STRING", "func":cmd_setpolicy, "argc":2},
     {"cmd":"accesslog", "label":"Enable/disable bucket access logging", "param":"s3://BUCKET", "func":cmd_accesslog, "argc":1},
     {"cmd":"sign", "label":"Sign arbitrary string using the secret key", "param":"STRING-TO-SIGN", "func":cmd_sign, "argc":1},
+    {"cmd":"signurl", "label":"Sign an S3 URL to provide limited public access with expiry", "param":"s3://BUCKET/OBJECT expiry_epoch", "func":cmd_signurl, "argc":2},
     {"cmd":"fixbucket", "label":"Fix invalid file names in a bucket", "param":"s3://BUCKET[/PREFIX]", "func":cmd_fixbucket, "argc":1},
 
     ## Website commands

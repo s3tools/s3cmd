@@ -14,6 +14,7 @@ import rfc822
 import hmac
 import base64
 import errno
+import urllib
 
 from logging import debug, info, warning, error
 
@@ -343,11 +344,72 @@ def replace_nonprintables(string):
 __all__.append("replace_nonprintables")
 
 def sign_string(string_to_sign):
-    #debug("string_to_sign: %s" % string_to_sign)
+    """Sign a string with the secret key, returning base64 encoded results.
+    By default the configured secret key is used, but may be overridden as
+    an argument.
+
+    Useful for REST authentication. See http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html
+    """
     signature = base64.encodestring(hmac.new(Config.Config().secret_key, string_to_sign, sha1).digest()).strip()
-    #debug("signature: %s" % signature)
     return signature
 __all__.append("sign_string")
+
+def sign_url(url_to_sign, expiry):
+    """Sign a URL in s3://bucket/object form with the given expiry
+    time. The object will be accessible via the signed URL until the
+    AWS key and secret are revoked or the expiry time is reached, even
+    if the object is otherwise private.
+
+    See: http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html
+    """
+    return sign_url_base(
+        bucket = url_to_sign.bucket(),
+        object = url_to_sign.object(),
+        expiry = expiry
+    )
+__all__.append("sign_url")
+
+def sign_url_base(**parms):
+    """Shared implementation of sign_url methods. Takes a hash of 'bucket', 'object' and 'expiry' as args."""
+    parms['expiry']=time_to_epoch(parms['expiry'])
+    parms['access_key']=Config.Config().access_key
+    debug("Expiry interpreted as epoch time %s", parms['expiry'])
+    signtext = 'GET\n\n\n%(expiry)d\n/%(bucket)s/%(object)s' % parms
+    debug("Signing plaintext: %r", signtext)
+    parms['sig'] = urllib.quote_plus(sign_string(signtext))
+    debug("Urlencoded signature: %s", parms['sig'])
+    return "http://%(bucket)s.s3.amazonaws.com/%(object)s?AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s" % parms
+
+def time_to_epoch(t):
+    """Convert time specified in a variety of forms into UNIX epoch time.
+    Accepts datetime.datetime, int, anything that has a strftime() method, and standard time 9-tuples
+    """
+    if isinstance(t, int):
+        # Already an int
+        return t
+    elif isinstance(t, tuple) or isinstance(t, time.struct_time):
+        # Assume it's a time 9-tuple
+        return int(time.mktime(t))
+    elif hasattr(t, 'timetuple'):
+        # Looks like a datetime object or compatible
+        return int(time.mktime(ex.timetuple()))
+    elif hasattr(t, 'strftime'):
+        # Looks like the object supports standard srftime()
+        return int(t.strftime('%s'))
+    elif isinstance(t, str) or isinstance(t, unicode):
+        # See if it's a string representation of an epoch
+        try:
+            return int(t)
+        except ValueError:
+            # Try to parse it as a timestamp string
+            try:
+                return time.strptime(t)
+            except ValueError as ex:
+                # Will fall through
+                debug("Failed to parse date with strptime: %s", ex)
+                pass
+    raise Exceptions.ParameterError('Unable to convert %r to an epoch time. Pass an epoch time. Try `date -d \'now + 1 year\' +%%s` (shell) or time.mktime (Python).' % t)
+
 
 def check_bucket_name(bucket, dns_strict = True):
     if dns_strict:
