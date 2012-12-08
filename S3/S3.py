@@ -462,7 +462,10 @@ class S3(object):
         print(response)
 
     def set_policy(self, uri, policy):
-        request = self.create_request("BUCKET_CREATE", uri = uri, extra = "?policy")
+        headers = {}
+        headers['Content-Type'] = 'application/json'
+        request = self.create_request("BUCKET_CREATE", uri = uri,
+                                      extra = "?policy", headers=headers)
         body = policy
         # debug(u"set_acl(%s): acl-xml: %s" % (uri, body))
         response = self.send_request(request, body)
