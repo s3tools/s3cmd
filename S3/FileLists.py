@@ -77,8 +77,7 @@ def filter_exclude_include(src_list):
             exclude_list[file] = src_list[file]
             del(src_list[file])
             continue
-        else:
-            debug(u"PASS: %s" % (file))
+
     return src_list, exclude_list
 
 def handle_exclude_include_walk(root, dirs, files):
@@ -90,7 +89,6 @@ def handle_exclude_include_walk(root, dirs, files):
     # this prevents us from recursing down trees we know we want to ignore
     for x in copydirs:
         d = os.path.join(root, x, '')
-        debug(u"CHECK: %s" % d)
         excluded = False
         for r in cfg.exclude:
             if r.search(d):
@@ -106,16 +104,12 @@ def handle_exclude_include_walk(root, dirs, files):
                     break
         if excluded:
             ## Still excluded - ok, action it
-            debug(u"EXCLUDE: %s" % d)
 	    dirs.remove(x)
             continue
-        else:
-            debug(u"PASS: %s" % (d))
 
     # exclude file matches in the current directory
     for x in copyfiles:
         file = os.path.join(root, x)
-        debug(u"CHECK: %s" % file)
         excluded = False
         for r in cfg.exclude:
             if r.search(file):
@@ -134,8 +128,6 @@ def handle_exclude_include_walk(root, dirs, files):
             debug(u"EXCLUDE: %s" % file)
             files.remove(x)
             continue
-        else:
-            debug(u"PASS: %s" % (file))
 
 def fetch_local_list(args, recursive = None):
     def _get_filelist_local(loc_list, local_uri, cache):
