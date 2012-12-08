@@ -61,6 +61,7 @@ class SortedDict(dict):
             return None
             
     def get_md5(self, relative_file):
+        """returns md5 if it can, or raises IOError if file is unreadable"""
         md5 = None
         if 'md5' in self[relative_file]:
             return self[relative_file]['md5']

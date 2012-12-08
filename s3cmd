@@ -918,7 +918,10 @@ def cmd_sync_local2remote(args):
                     val = local_list[src].get('gid')
                     warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (src, val))
             elif attr == 'md5':
-                val = local_list.get_md5(src)
+                try:
+                    val = local_list.get_md5(src)
+                except IOError:
+                    val = None
             else:
                 val = getattr(local_list[src]['sr'], 'st_' + attr)
             attrs[attr] = val

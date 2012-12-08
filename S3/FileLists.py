@@ -193,8 +193,11 @@ def fetch_local_list(args, recursive = None):
 		if 'md5' in cfg.sync_checks:
                     md5 = cache.md5(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size)
 		    if md5 is None:
-                        md5 = loc_list.get_md5(relative_file) # this does the file I/O
-			cache.add(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size, md5)
+			    try:
+                                md5 = loc_list.get_md5(relative_file) # this does the file I/O
+			    except IOError:
+                                continue
+			    cache.add(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size, md5)
 		    loc_list.record_hardlink(relative_file, sr.st_dev, sr.st_ino, md5)
         return loc_list, single_file
 
@@ -460,7 +463,10 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
 
 	    else:
                 # look for matching file in src
-		md5 = src_list.get_md5(relative_file)
+                try:
+                    md5 = src_list.get_md5(relative_file)
+		except IOError:
+                    md5 = None
 		if md5 is not None and dst_list.by_md5.has_key(md5):
                     # Found one, we want to copy
                     dst1 = list(dst_list.by_md5[md5])[0]
@@ -479,7 +485,10 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
 	else:
             # dst doesn't have this file
             # look for matching file elsewhere in dst
-	    md5 = src_list.get_md5(relative_file)
+            try:
+                md5 = src_list.get_md5(relative_file)
+            except IOError:
+               md5 = None
 	    dst1 = dst_list.find_md5_one(md5)
 	    if dst1 is not None:
                 # Found one, we want to copy
