@@ -521,15 +521,27 @@ class S3(object):
         response = self.send_request(request, body)
         return response
 
-    def set_policy(self, uri, policy):
-        if uri.has_object():
-            request = self.create_request("OBJECT_PUT", uri = uri, extra = "?policy")
-        else:
-            request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(), extra = "?policy")
+    def get_policy(self, uri):
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?policy")
+        response = self.send_request(request)
+        return response['data']
 
-        body = str(policy)
+    def set_policy(self, uri, policy):
+        headers = {}
+        # TODO check policy is proper json string
+        headers['content-type'] = 'application/json'
+        request = self.create_request("BUCKET_CREATE", uri = uri,
+                                      extra = "?policy", headers=headers)
+        body = policy
         debug(u"set_policy(%s): policy-json: %s" % (uri, body))
-        response = self.send_request(request, body)
+        request.sign()
+        response = self.send_request(request, body=body)
+        return response
+
+    def delete_policy(self, uri):
+        request = self.create_request("BUCKET_DELETE", uri = uri, extra = "?policy")
+        debug(u"delete_policy(%s)" % uri)
+        response = self.send_request(request)
         return response
 
     def get_accesslog(self, uri):
