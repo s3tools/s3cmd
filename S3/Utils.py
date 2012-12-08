@@ -220,21 +220,6 @@ def mktmpfile(prefix = "/tmp/tmpfile-", randchars = 20):
     return mktmpsomething(prefix, randchars, createfunc)
 __all__.append("mktmpfile")
 
-def hash_file(filename):
-    """Given filename, return dict with hash types as keys, hashes as values"""
-    import hashlib
-    md5 = hashlib.md5()
-    f = open(filename, "rb")
-    while True:
-        # Hash 32kB chunks
-        data = f.read(32*1024)
-        if not data:
-            break
-        md5.update(data)
-    f.close()
-    return dict(md5=md5.hexdigest(), sha1=sha1.hexdigest(), sha256=sha256.hexdigest())
-    
-
 def hash_file_md5(filename):
     h = md5()
     f = open(filename, "rb")
