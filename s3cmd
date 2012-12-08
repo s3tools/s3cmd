@@ -577,10 +577,18 @@ def cmd_info(args):
                 output(u"   Location:  %s" % info['bucket-location'])
             acl = s3.get_acl(uri)
             acl_grant_list = acl.getGrantList()
+
+            try:
+                policy = s3.get_policy(uri)
+                output(u"   policy: %s" % policy)
+            except:
+                output(u"   policy: none")
+            
             for grant in acl_grant_list:
                 output(u"   ACL:       %s: %s" % (grant['grantee'], grant['permission']))
             if acl.isAnonRead():
                 output(u"   URL:       %s" % uri.public_url())
+
         except S3Error, e:
             if S3.codes.has_key(e.info["Code"]):
                 error(S3.codes[e.info["Code"]] % uri.bucket())
@@ -1058,6 +1066,38 @@ def cmd_setacl(args):
         uri = S3Uri(remote_list[key]['object_uri_str'])
         _update_acl(uri, seq_label)
 
+def cmd_setpolicy(args):
+    s3 = S3(cfg)
+    print(args[1])
+    uri = S3Uri(args[1])
+    policy_file = args[0]
+    policy = open(policy_file, 'r').read()
+
+    print(policy)
+    retsponse = s3.set_policy(uri, policy)
+
+    if retsponse['status'] == 200:
+        output(u"%s: Policy set to %s  %s" % (uri, set_to_acl, seq_label))
+    else:
+        output(u"%s: Policy updated" % uri)
+
+#    if cfg.dry_run:
+#        for key in exclude_list:
+#            output(u"exclude: %s" % unicodise(key))
+#        for key in remote_list:
+#            output(u"setacl: %s" % remote_list[key]['object_uri_str'])
+
+#        warning(u"Exitting now because of --dry-run")
+#        return
+
+#    seq = 0
+#    for key in remote_list:
+#        seq += 1
+#        seq_label = "[%d of %d]" % (seq, remote_count)
+#        uri = S3Uri(remote_list[key]['object_uri_str'])
+#        _update_acl(uri, seq_label)
+
+
 def cmd_accesslog(args):
     s3 = S3(cfg)
     bucket_uri = S3Uri(args.pop())
@@ -1399,6 +1439,7 @@ def get_commands_list():
     {"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
     {"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
     {"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
+    {"cmd":"setpolicy", "label":"Modify Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_setpolicy, "argc":2},
     {"cmd":"accesslog", "label":"Enable/disable bucket access logging", "param":"s3://BUCKET", "func":cmd_accesslog, "argc":1},
     {"cmd":"sign", "label":"Sign arbitrary string using the secret key", "param":"STRING-TO-SIGN", "func":cmd_sign, "argc":1},
     {"cmd":"fixbucket", "label":"Fix invalid file names in a bucket", "param":"s3://BUCKET[/PREFIX]", "func":cmd_fixbucket, "argc":1},
