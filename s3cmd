@@ -1621,6 +1621,7 @@ def update_acl(s3, uri, seq_label=""):
     retsponse = s3.set_acl(uri, acl)
     if retsponse['status'] == 200:
         if cfg.acl_public in (True, False):
+            set_to_acl = cfg.acl_public and "Public" or "Private"
             output(u"%s: ACL set to %s  %s" % (uri, set_to_acl, seq_label))
         else:
             output(u"%s: ACL updated" % uri)
