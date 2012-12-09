@@ -459,7 +459,7 @@ class S3(object):
     def get_policy(self, uri):
         request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?policy")
         response = self.send_request(request)
-        print(response)
+        return response
 
     def set_policy(self, uri, policy):
         headers = {}
