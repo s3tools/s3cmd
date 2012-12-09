@@ -463,7 +463,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
                     # Found one, we want to copy
                     dst1 = list(dst_list.by_md5[md5])[0]
                     debug(u"REMOTE COPY src: %s -> %s" % (dst1, relative_file))
-		    copy_pairs.append((dst1, relative_file))
+		    copy_pairs.append((src_list[relative_file], dst1, relative_file))
 		    del(src_list[relative_file])
 		    del(dst_list[relative_file])
                 else:
@@ -485,7 +485,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
 	    if dst1 is not None:
                 # Found one, we want to copy
                 debug(u"REMOTE COPY dst: %s -> %s" % (dst1, relative_file))
-		copy_pairs.append((dst1, relative_file))
+		copy_pairs.append((src_list[relative_file], dst1, relative_file))
 		del(src_list[relative_file])
 	    else:
                 # we don't have this file, and we don't have a copy of this file elsewhere.  Get it.

@@ -857,8 +857,10 @@ def cmd_sync_remote2local(args):
     seq = 0
     seq, total_size = _download(remote_list, seq, remote_count + update_count, total_size, dir_cache)
     seq, total_size = _download(update_list, seq, remote_count + update_count, total_size, dir_cache)
-    failed_pairs = local_hardlink(copy_pairs, destination_base)
-    # fixme: do something about failed pairs - we couldn't hardlink or copy them, need to retrieve them
+
+    failed_hardlink_list = local_hardlink(copy_pairs, destination_base)
+    _set_local_filename(failed_hardlink_list, destination_base)
+    seq, total_size = _download(failed_hardlink_list, seq, len(failed_hardlink_list) + remote_count + update_count, total_size, dir_cache)
     
     total_elapsed = time.time() - timestamp_start
     speed_fmt = formatSize(total_size/total_elapsed, human_readable = True, floating_point = True)
@@ -875,23 +877,23 @@ def cmd_sync_remote2local(args):
         _do_deletes(local_list)
 
 def local_hardlink(copy_pairs, destination_base):
-    failed_pairs = []
-    for (dst1, dst2) in copy_pairs:
+    failed_hardlink_list = SortedDict()
+    for (src_obj, dst1, relative_file) in copy_pairs:
         try:
-            os.link(destination_base + dst1, destination_base + dst2)
-            debug(u"Hardlinking %s to %s" % (destination_base + dst1, destination_base + dst2))
+            os.link(destination_base + dst1, destination_base + relative_file)
+            debug(u"Hardlinking %s to %s" % (destination_base + dst1, destination_base + relative_file))
         except (IOError, OSError):
             try:
-                shutil.copy2(destination_base + dst1, destination_base + dst2)
-                debug(u"Hardlinking unavailable, copying %s to %s" % (destination_base + dst1, destination_base + dst2))
+                shutil.copy2(destination_base + dst1, destination_base + relative_file)
+                debug(u"Hardlinking unavailable, copying %s to %s" % (destination_base + dst1, destination_base + relative_file))
             except IOError, e:
-                error(u'Unable to hardlink or copy files %s -> %s: %s' % (destination_base+dst1, destination_base+dst2, e))
-                failed_pairs.append((dst1, dst2))
-    return failed_pairs
+                warning(u'Unable to hardlink or copy files %s -> %s: %s' % (destination_base + dst1, destination_base + relative_file, e))
+                failed_hardlink_list[relative_file] = src_obj
+    return failed_hardlink_list
 
 def remote_copy(s3, copy_pairs, destination_base):
     saved_bytes = 0
-    for (dst1, dst2) in copy_pairs:
+    for (src_obj, dst1, dst2) in copy_pairs:
         debug(u"Remote Copying from %s to %s" % (dst1, dst2))
         dst1_uri = S3Uri(destination_base + dst1)
         dst2_uri = S3Uri(destination_base + dst2)
@@ -1058,7 +1060,7 @@ def cmd_sync_local2remote(args):
                 output(u"upload: %s -> %s" % (local_list[key]['full_name_unicode'], local_list[key]['remote_uri']))
             for key in update_list:
                 output(u"upload: %s -> %s" % (update_list[key]['full_name_unicode'], update_list[key]['remote_uri']))
-            for (dst1, dst2) in copy_pairs:
+            for (src_obj, dst1, dst2) in copy_pairs:
                 output(u"remote copy: %s -> %s" % (dst1['object_key'], remote_list[dst2]['object_key']))
             if cfg.delete_removed:
                 for key in remote_list:
