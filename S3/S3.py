@@ -473,6 +473,12 @@ class S3(object):
         response = self.send_request(request, body=body)
         return response
 
+    def delete_policy(self, uri):
+        request = self.create_request("BUCKET_DELETE", uri = uri, extra = "?policy")
+        debug(u"delete_policy(%s)" % uri)
+        response = self.send_request(request)
+        return response
+
     def get_accesslog(self, uri):
         request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?logging")
         response = self.send_request(request)

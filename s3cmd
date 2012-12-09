@@ -1068,7 +1068,6 @@ def cmd_setacl(args):
 
 def cmd_setpolicy(args):
     s3 = S3(cfg)
-    print(args[1])
     uri = S3Uri(args[1])
     policy_file = args[0]
     policy = open(policy_file, 'r').read()
@@ -1080,6 +1079,17 @@ def cmd_setpolicy(args):
     #if retsponse['status'] == 200:
     debug(u"response - %s" % retsponse['status'])
     output(u"%s: Policy updated" % uri)
+
+def cmd_delpolicy(args):
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+    if cfg.dry_run: return
+
+    response = s3.delete_policy(uri)
+
+    #if retsponse['status'] == 200:
+    debug(u"response - %s" % retsponse['status'])
+    output(u"%s: Policy deleted" % uri)
 
 
 def cmd_accesslog(args):
@@ -1423,7 +1433,8 @@ def get_commands_list():
     {"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
     {"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
     {"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
-    {"cmd":"setpolicy", "label":"Modify Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_setpolicy, "argc":2},
+    {"cmd":"setpolicy", "label":"Update Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_setpolicy, "argc":2},
+    {"cmd":"delpolicy", "label":"Delete Bucket Policy", "param":"s3://BUCKET", "func":cmd_delpolicy, "argc":1},
     {"cmd":"accesslog", "label":"Enable/disable bucket access logging", "param":"s3://BUCKET", "func":cmd_accesslog, "argc":1},
     {"cmd":"sign", "label":"Sign arbitrary string using the secret key", "param":"STRING-TO-SIGN", "func":cmd_sign, "argc":1},
     {"cmd":"fixbucket", "label":"Fix invalid file names in a bucket", "param":"s3://BUCKET[/PREFIX]", "func":cmd_fixbucket, "argc":1},
