@@ -902,6 +902,7 @@ def remote_copy(s3, copy_pairs, destination_base):
             s3.object_copy(dst1_uri, dst2_uri, extra_headers)
             info = s3.object_info(dst2_uri)
             saved_bytes = saved_bytes + int(info['headers']['content-length'])
+            output(u"remote copy: %s -> %s" % (dst1, dst2))
         except:
             raise
     return (len(copy_pairs), saved_bytes)
