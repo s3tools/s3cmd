@@ -1074,10 +1074,10 @@ def cmd_setpolicy(args):
 
     if cfg.dry_run: return
 
-    retsponse = s3.set_policy(uri, policy)
+    response = s3.set_policy(uri, policy)
 
     #if retsponse['status'] == 200:
-    debug(u"response - %s" % retsponse['status'])
+    debug(u"response - %s" % response['status'])
     output(u"%s: Policy updated" % uri)
 
 def cmd_delpolicy(args):
@@ -1088,7 +1088,7 @@ def cmd_delpolicy(args):
     response = s3.delete_policy(uri)
 
     #if retsponse['status'] == 200:
-    debug(u"response - %s" % retsponse['status'])
+    debug(u"response - %s" % response['status'])
     output(u"%s: Policy deleted" % uri)
 
 
