@@ -383,7 +383,7 @@ def cmd_object_get(args):
             if destination_base[-1] != os.path.sep:
                 destination_base += os.path.sep
             for key in remote_list:
-                remote_list[key]['local_filename'] = destination_base + key
+                remote_list[key]['local_filename'] = destination_base + key.replace('/', os.path.sep)
         else:
             raise InternalError("WTF? Is it a dir or not? -- %s" % destination_base)
 
