@@ -440,7 +440,14 @@ def cmd_object_get(args):
             except IOError, e:
                 error(u"Skipping %s: %s" % (destination, e.strerror))
                 continue
-        response = s3.object_get(uri, dst_stream, start_position = start_position, extra_label = seq_label)
+        try:
+            response = s3.object_get(uri, dst_stream, start_position = start_position, extra_label = seq_label)
+        except S3Error, e:
+            if not file_exists: # Delete, only if file didn't exist before!
+                debug(u"object_get failed for '%s', deleting..." % (destination,))
+                os.unlink(destination)
+                raise
+
         if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
             gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
             response["size"] = os.stat(destination)[6]
