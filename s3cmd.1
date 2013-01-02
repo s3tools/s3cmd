@@ -63,6 +63,23 @@ Enable/disable bucket access logging
 s3cmd \fBsign\fR \fISTRING-TO-SIGN\fR
 Sign arbitrary string using the secret key
 .TP
+s3cmd \fBsignurl\fR \fIs3://BUCKET[/OBJECT]\fR \fIexpiry-in-epoch-seconds\fR
+Sign an S3 URL with the secret key, producing a URL that allows access to
+the named object using the credentials used to sign the URL until the date of
+expiry specified in epoch-seconds has passed. This is most useful for publishing
+time- or distribution-limited URLs to otherwise-private S3 objects.
+.br
+This is a purely offline operation. Your API key and secret are not sent on
+the wire, though your public API key is included in the generated URL. Because
+it's offline, no validation is done to ensure that the bucket and object actually
+exist, or that this API key has permission to access them.
+.br
+The URL generated is http:// but you can simply change to https:// if you want.
+.br
+See
+.B http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html
+for more information on signed URLs, and the examples section below.
+.TP
 s3cmd \fBfixbucket\fR \fIs3://BUCKET[/PREFIX]\fR
 Fix invalid file names in a bucket
 
@@ -185,6 +202,12 @@ Delete remote objects with no corresponding local file
 .TP
 \fB\-\-no\-delete\-removed\fR
 Don't delete remote objects.
+.TP
+\fB\-\-delete\-after\fR
+Perform deletes after new uploads [sync].
+.TP
+\fB\-\-delay\-updates\fR
+Put all updated files into place at end [sync]
 .TP
 \fB\-p\fR, \fB\-\-preserve\fR
 Preserve filesystem attributes (mode, ownership,
@@ -421,6 +444,12 @@ about matching file names against exclude and include rules.
 For example to exclude all files with ".jpg" extension except those beginning with a number use:
 .PP
 	\-\-exclude '*.jpg' \-\-rinclude '[0-9].*\.jpg'
+.PP
+To produce a signed HTTP URL that allows access to the normally private s3 object
+s3://mybucket/someobj (which you must have permission to access) to anybody
+with the URL for one week from today, use:
+.PP
+        s3cmd signurl s3://mybucket/someobj `date -d 'today + 1 week' +%s` 
 .SH SEE ALSO
 For the most up to date list of options run 
 .B s3cmd \-\-help
