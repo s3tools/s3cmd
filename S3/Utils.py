@@ -320,10 +320,9 @@ def replace_nonprintables(string):
     return new_string
 __all__.append("replace_nonprintables")
 
-def sign_string(string_to_sign, credentials = {}):
+def sign_string(string_to_sign):
     #debug("string_to_sign: %s" % string_to_sign)
-    secret_key = credentials.get("secret_key", Config.Config().secret_key)
-    signature = base64.encodestring(hmac.new(secret_key, string_to_sign, sha1).digest()).strip()
+    signature = base64.encodestring(hmac.new(Config.Config().secret_key, string_to_sign, sha1).digest()).strip()
     #debug("signature: %s" % signature)
     return signature
 __all__.append("sign_string")
@@ -387,7 +386,7 @@ __all__.append("getHostnameFromBucket")
 
 def get_iam_role_credentials():
     try:
-        conn = httplib.HTTPConnection("169.254.169.254", timeout=1)
+        conn = httplib.HTTPConnection("169.254.169.254", timeout=2)
         conn.request("GET", "/latest/meta-data/iam/security-credentials/")
         resp1 = conn.getresponse()
         if resp1.status != 200:
@@ -408,5 +407,22 @@ def get_iam_role_credentials():
     except:
         return {}
 __all__.append("get_iam_role_credentials")
+
+def get_iam_role_info():
+    try:
+        conn = httplib.HTTPConnection("169.254.169.254", timeout=2)
+        conn.request("GET", "/latest/meta-data/iam/info")
+        resp1 = conn.getresponse()
+        if resp1.status != 200:
+            return {}
+        json_info = resp1.read()
+        unicode_info = json.loads(json_info)
+        info = {}
+        for key in unicode_info.keys():
+            info[key] = unicode_info[key].encode('ascii', 'ignore')
+        return info
+    except:
+        return {}
+__all__.append("get_iam_role_info")
 
 # vim:et:ts=4:sts=4:ai

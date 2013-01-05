@@ -1585,8 +1585,11 @@ def main():
     try:
         cfg = Config(options.config)
     except IOError, e:
-        if options.run_configure or Utils.get_iam_role_credentials().get("Code", "") == "Success":
+        if options.run_configure:
             cfg = Config()
+        elif Utils.get_iam_role_info().get("Code", "") == "Success":
+            cfg = Config()
+            cfg.use_iam_role = True
         else:
             error(u"%s: %s"  % (options.config, e.strerror))
             error(u"Configuration file not available.")

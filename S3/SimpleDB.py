@@ -15,7 +15,7 @@ import sha
 import httplib
 from logging import debug, info, warning, error
 
-from Utils import convertTupleListToDict, get_iam_role_credentials
+from Utils import convertTupleListToDict
 from SortedDict import SortedDict
 from Exceptions import *
 
@@ -131,22 +131,17 @@ class SimpleDB(object):
     def create_request(self, Action, DomainName, parameters = None):
         if not parameters:
             parameters = SortedDict()
-        credentials = {}
-        credentials['access_key'] = self.config.access_key
-        credentials['secret_key'] = self.config.secret_key
-        if credentials['access_key'] == "":
-            iam = get_iam_role_credentials()
-            credentials['access_key'] = iam.get("AccessKeyId", "")
-            credentials['secret_key'] = iam.get("SecretAccessKey", "")
-            parameters['SecurityToken'] = iam.get("Token", "")
-        parameters['AWSAccessKeyId'] = credentials['access_key']
+        if self.config.use_iam_role:
+            self.config.refresh_credentials()
+            parameters['SecurityToken'] = self.config.iam_role_token
+        parameters['AWSAccessKeyId'] = self.config.access_key
         parameters['Version'] = self.Version
         parameters['SignatureVersion'] = self.SignatureVersion
         parameters['Action'] = Action
         parameters['Timestamp'] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         if DomainName:
             parameters['DomainName'] = DomainName
-        parameters['Signature'] = self.sign_request(parameters, credentials)
+        parameters['Signature'] = self.sign_request(parameters)
         parameters.keys_return_lowercase = False
         uri_params = urllib.urlencode(parameters)
         request = {}
@@ -154,14 +149,14 @@ class SimpleDB(object):
         request['parameters'] = parameters
         return request
 
-    def sign_request(self, parameters, credentials):
+    def sign_request(self, parameters):
         h = ""
         parameters.keys_sort_lowercase = True
         parameters.keys_return_lowercase = False
         for key in parameters:
             h += "%s%s" % (key, parameters[key])
         #debug("SignRequest: %s" % h)
-        return base64.encodestring(hmac.new(credentials['secret_key'], h, sha).digest()).strip()
+        return base64.encodestring(hmac.new(self.config.secret_key, h, sha).digest()).strip()
 
     def get_connection(self):
         if self.config.proxy_host != "":

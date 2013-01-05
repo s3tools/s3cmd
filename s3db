@@ -30,8 +30,9 @@ if __name__ == '__main__':
     try:
         cfg = Config(cfg_file)
     except IOError, e:
-        if Utils.get_iam_role_credentials().get("Code", "") == "Success":
+        if Utils.get_iam_role_info().get("Code", "") == "Success":
             cfg = Config()
+            cfg.use_iam_role = True
         else:
             error(u"%s: %s"  % (cfg_file, e.strerror))
             error(u"Configuration file not available.")
