@@ -13,6 +13,8 @@ import rfc822
 import hmac
 import base64
 import errno
+import httplib
+import json
 
 from logging import debug, info, warning, error
 
@@ -318,9 +320,10 @@ def replace_nonprintables(string):
     return new_string
 __all__.append("replace_nonprintables")
 
-def sign_string(string_to_sign):
+def sign_string(string_to_sign, credentials = {}):
     #debug("string_to_sign: %s" % string_to_sign)
-    signature = base64.encodestring(hmac.new(Config.Config().secret_key, string_to_sign, sha1).digest()).strip()
+    secret_key = credentials.get("secret_key", Config.Config().secret_key)
+    signature = base64.encodestring(hmac.new(secret_key, string_to_sign, sha1).digest()).strip()
     #debug("signature: %s" % signature)
     return signature
 __all__.append("sign_string")
@@ -381,5 +384,29 @@ __all__.append("getBucketFromHostname")
 def getHostnameFromBucket(bucket):
     return Config.Config().host_bucket % { 'bucket' : bucket }
 __all__.append("getHostnameFromBucket")
+
+def get_iam_role_credentials():
+    try:
+        conn = httplib.HTTPConnection("169.254.169.254", timeout=1)
+        conn.request("GET", "/latest/meta-data/iam/security-credentials/")
+        resp1 = conn.getresponse()
+        if resp1.status != 200:
+            return {}
+        role_name = resp1.read()
+        conn.request("GET", "/latest/meta-data/iam/security-credentials/" + role_name)
+        resp2 = conn.getresponse()
+        if resp2.status != 200:
+            return {}
+        json_credentials = resp2.read()
+        unicode_credentials = json.loads(json_credentials)
+        if unicode_credentials['Code'] != u'Success':
+            return {}
+        credentials = {}
+        for key in unicode_credentials.keys():
+            credentials[key] = unicode_credentials[key].encode('ascii', 'ignore')
+        return credentials
+    except:
+        return {}
+__all__.append("get_iam_role_credentials")
 
 # vim:et:ts=4:sts=4:ai

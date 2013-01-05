@@ -17,7 +17,7 @@ except ImportError:
 
 from Config import Config
 from Exceptions import *
-from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, sign_string, getBucketFromHostname, getHostnameFromBucket
+from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, sign_string, getBucketFromHostname, getHostnameFromBucket, get_iam_role_credentials
 from S3Uri import S3Uri, S3UriS3
 from FileLists import fetch_remote_list
 
@@ -509,6 +509,15 @@ class CloudFront(object):
         if not headers:
             headers = {}
 
+        credentials = {}
+        credentials['access_key'] = self.config.access_key
+        credentials['secret_key'] = self.config.secret_key
+        if credentials['access_key'] == "":
+            iam = get_iam_role_credentials()
+            credentials['access_key'] = iam.get("AccessKeyId", "")
+            credentials['secret_key'] = iam.get("SecretAccessKey", "")
+            headers['x-amz-security-token'] = iam.get("Token", "")
+
         if headers.has_key("date"):
             if not headers.has_key("x-amz-date"):
                 headers["x-amz-date"] = headers["date"]
@@ -517,8 +526,8 @@ class CloudFront(object):
         if not headers.has_key("x-amz-date"):
             headers["x-amz-date"] = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
 
-        signature = self.sign_request(headers)
-        headers["Authorization"] = "AWS "+self.config.access_key+":"+signature
+        signature = self.sign_request(headers, credentials)
+        headers["Authorization"] = "AWS "+credentials['access_key']+":"+signature
 
         request = {}
         request['resource'] = resource
@@ -527,9 +536,9 @@ class CloudFront(object):
 
         return request
 
-    def sign_request(self, headers):
+    def sign_request(self, headers, credentials):
         string_to_sign = headers['x-amz-date']
-        signature = sign_string(string_to_sign)
+        signature = sign_string(string_to_sign, credentials)
         debug(u"CloudFront.sign_request('%s') = %s" % (string_to_sign, signature))
         return signature
 

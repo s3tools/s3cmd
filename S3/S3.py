@@ -88,6 +88,14 @@ class S3Request(object):
         return param_str and "?" + param_str[1:]
 
     def sign(self):
+        credentials = {}
+        credentials['access_key'] = self.s3.config.access_key
+        credentials['secret_key'] = self.s3.config.secret_key
+        if credentials['access_key'] == "":
+            iam = get_iam_role_credentials()
+            credentials['access_key'] = iam.get("AccessKeyId", "")
+            credentials['secret_key'] = iam.get("SecretAccessKey", "")
+            self.headers['x-amz-security-token'] = iam.get("Token", "")
         h  = self.method_string + "\n"
         h += self.headers.get("content-md5", "")+"\n"
         h += self.headers.get("content-type", "")+"\n"
@@ -99,9 +107,9 @@ class S3Request(object):
             h += "/" + self.resource['bucket']
         h += self.resource['uri']
         debug("SignHeaders: " + repr(h))
-        signature = sign_string(h)
+        signature = sign_string(h, credentials)
 
-        self.headers["Authorization"] = "AWS "+self.s3.config.access_key+":"+signature
+        self.headers["Authorization"] = "AWS "+credentials['access_key']+":"+signature
 
     def get_triplet(self):
         self.update_timestamp()

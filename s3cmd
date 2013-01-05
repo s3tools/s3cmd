@@ -1585,7 +1585,7 @@ def main():
     try:
         cfg = Config(options.config)
     except IOError, e:
-        if options.run_configure:
+        if options.run_configure or Utils.get_iam_role_credentials().get("Code", "") == "Success":
             cfg = Config()
         else:
             error(u"%s: %s"  % (options.config, e.strerror))

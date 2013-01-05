@@ -25,7 +25,17 @@ if __name__ == '__main__':
     if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
         sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
         sys.exit(1)
-    cfg = Config(os.getenv("HOME")+"/.s3cfg")
+
+    cfg_file = os.getenv("HOME")+"/.s3cfg"
+    try:
+        cfg = Config(cfg_file)
+    except IOError, e:
+        if Utils.get_iam_role_credentials().get("Code", "") == "Success":
+            cfg = Config()
+        else:
+            error(u"%s: %s"  % (cfg_file, e.strerror))
+            error(u"Configuration file not available.")
+            sys.exit(1)
 
     logging.root.setLevel(logging.DEBUG)
     sdb = SimpleDB(cfg)
