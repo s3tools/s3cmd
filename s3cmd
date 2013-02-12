@@ -653,7 +653,7 @@ def cmd_sync_remote2remote(args):
         try:
             response = s3.object_copy(src_uri, dst_uri, extra_headers)
             output("File %(src)s copied to %(dst)s" % { "src" : src_uri, "dst" : dst_uri })
-        except S3Error, e:
+        except (S3Error, S3RequestError), e:
             error("File %(src)s could not be copied: %(e)s" % { "src" : src_uri, "e" : e })
     total_elapsed = time.time() - timestamp_start
     outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s" % (seq, total_elapsed, seq/total_elapsed)
