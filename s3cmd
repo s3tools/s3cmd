@@ -23,6 +23,7 @@ import locale
 import subprocess
 import htmlentitydefs
 import socket
+import json
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -31,6 +32,9 @@ from distutils.spawn import find_executable
 
 def output(message):
     sys.stdout.write(message + "\n")
+
+def output_json(message):
+  sys.stdout.write(json.dumps(message) + "\n")
 
 def check_args_type(args, type, verbose_type):
     for arg in args:
@@ -103,11 +107,14 @@ def cmd_buckets_list_all_all(args):
 
 def subcmd_buckets_list_all(s3):
     response = s3.list_all_buckets()
-    for bucket in response["list"]:
-        output(u"%s  s3://%s" % (
-            formatDateTime(bucket["CreationDate"]),
-            bucket["Name"],
-            ))
+    if cfg.json_output:
+      sys.stdout.write(json.dumps([{"CreationDate": formatDateTime(bucket["CreationDate"]), "name": bucket["Name"]} for bucket in response["list"]]))
+    else:
+    	for bucket in response["list"]:
+    	    output(u"%s  s3://%s" % (
+    	        formatDateTime(bucket["CreationDate"]),
+    	        bucket["Name"],
+    	        ))
 
 def subcmd_bucket_list(s3, uri):
     bucket = uri.bucket()
@@ -130,23 +137,43 @@ def subcmd_bucket_list(s3, uri):
     else:
         format_string = u"%(timestamp)16s %(size)9s%(coeff)1s  %(uri)s"
 
-    for prefix in response['common_prefixes']:
-        output(format_string % {
-            "timestamp": "",
-            "size": "DIR",
-            "coeff": "",
-            "md5": "",
-            "uri": uri.compose_uri(bucket, prefix["Prefix"])})
+    if cfg.json_output:
+      if response['common_prefixes']:
+        sys.stdout.write(json.dumps([{
+                "timestamp": "",
+                "size": "DIR",
+                "coeff": "",
+                "md5": "",
+                "uri": uri.compose_uri(bucket, prefix["Prefix"])}
+                for prefix in response['common_prefixes']]) + "\n")
+    else:
+      for prefix in response['common_prefixes']:
+          output(format_string % {
+              "timestamp": "",
+              "size": "DIR",
+              "coeff": "",
+              "md5": "",
+              "uri": uri.compose_uri(bucket, prefix["Prefix"])})
 
-    for object in response["list"]:
-        size, size_coeff = formatSize(object["Size"], Config().human_readable_sizes)
-        output(format_string % {
-            "timestamp": formatDateTime(object["LastModified"]),
-            "size" : str(size),
-            "coeff": size_coeff,
-            "md5" : object['ETag'].strip('"'),
-            "uri": uri.compose_uri(bucket, object["Key"]),
-            })
+
+    if cfg.json_output:
+      sys.stdout.write(json.dumps([{
+              "timestamp": formatDateTime(object["LastModified"]),
+              # "size" : str(size),
+              # "coeff": size_coeff,
+              "md5" : object['ETag'].strip('"'),
+              "uri": uri.compose_uri(bucket, object["Key"]),
+              } for object in response["list"]]) + "\n")
+    else:
+      for object in response["list"]:
+          size, size_coeff = formatSize(object["Size"], Config().human_readable_sizes)
+          output(format_string % {
+              "timestamp": formatDateTime(object["LastModified"]),
+              "size" : str(size),
+              "coeff": size_coeff,
+              "md5" : object['ETag'].strip('"'),
+              "uri": uri.compose_uri(bucket, object["Key"]),
+              })
 
 def cmd_bucket_create(args):
     s3 = S3(Config())
@@ -1555,6 +1582,7 @@ def main():
     optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output.")
     optparser.add_option(      "--version", dest="show_version", action="store_true", help="Show s3cmd version (%s) and exit." % (PkgInfo.version))
     optparser.add_option("-F", "--follow-symlinks", dest="follow_symlinks", action="store_true", default=False, help="Follow symbolic links as if they are regular files")
+    optparser.add_option("-j", "--json", dest="json_output", action="store_true", default=False, help="Emit JSON Formatted output.")
 
     optparser.set_usage(optparser.usage + " COMMAND [parameters]")
     optparser.set_description('S3cmd is a tool for managing objects in '+
