@@ -60,6 +60,8 @@ class S3Request(object):
     def __init__(self, s3, method_string, resource, headers, params = {}):
         self.s3 = s3
         self.headers = SortedDict(headers or {}, ignore_case = True)
+        if len(self.s3.config.access_token)>0:
+            self.headers['x-amz-security-token']=self.s3.config.access_token
         self.resource = resource
         self.method_string = method_string
         self.params = params
@@ -238,7 +240,7 @@ class S3(object):
             uri_params['delimiter'] = "/"
         request = self.create_request("BUCKET_LIST", bucket = bucket, **uri_params)
         response = self.send_request(request)
-        #debug(response)
+        debug(response)
         return response
 
     def bucket_create(self, bucket, bucket_location = None):
