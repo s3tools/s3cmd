@@ -125,6 +125,12 @@ class Config(object):
         except:
             raise
 
+    def role_refresh(self):
+        try:
+            self.role_config()
+        except:
+            warning("Could not refresh role")
+
     def env_config(self):
         cred_content = ""
         try:
