@@ -288,7 +288,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
                 key = os.path.basename(object['Key'])
                 object_uri_str = remote_uri_original.uri()
                 break_now = True
-                rem_list = {}   ## Remove whatever has already been put to rem_list
+                rem_list = SortedDict(ignore_case = False)   ## Remove whatever has already been put to rem_list
             else:
                 key = object['Key'][rem_base_len:]      ## Beware - this may be '' if object['Key']==rem_base !!
                 object_uri_str = remote_uri.uri() + key
