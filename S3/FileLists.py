@@ -21,15 +21,25 @@ def _fswalk_follow_symlinks(path):
         '''
         Walk filesystem, following symbolic links (but without recursion), on python2.4 and later
 
-        If a recursive directory link is detected, emit a warning and skip.
+        If a symlink directory loop is detected, emit a warning and skip.
+        E.g.
+        dir1/
+             dir2/
+                  sym-dir -> ../dir2
         '''
         assert os.path.isdir(path) # only designed for directory argument
-        walkdirs = [path]
+        walkdirs = set([path])
         for dirpath, dirnames, filenames in os.walk(path):
+                real_dirpath = os.path.realpath(dirpath)
                 for dirname in dirnames:
                         current = os.path.join(dirpath, dirname)
+                        real_current = os.path.realpath(current)
                         if os.path.islink(current):
-				walkdirs.append(current)
+                                if (real_dirpath == real_current or
+                                    real_dirpath.startswith(real_current + os.path.sep)):
+                                        warning("Skipping recursively symlinked directory %s" % dirname)
+                                else:
+                                        walkdirs.add(current)
         for walkdir in walkdirs:
                 for value in os.walk(walkdir):
                         yield value
