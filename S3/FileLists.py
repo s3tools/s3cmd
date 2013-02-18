@@ -504,7 +504,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
 	        dst_list.record_md5(relative_file, md5) 
 
     for f in dst_list.keys():
-        if not src_list.has_key(f) and not update_list.has_key(f):
+        if src_list.has_key(f) or update_list.has_key(f):
             # leave only those not on src_list + update_list
             del dst_list[f]
 
