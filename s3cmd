@@ -886,15 +886,17 @@ def cmd_sync_remote2local(args):
 def local_hardlink(copy_pairs, destination_base):
     failed_hardlink_list = SortedDict()
     for (src_obj, dst1, relative_file) in copy_pairs:
+        src_file = os.path.join(destination_base, dst1)
+        dst_file = os.path.join(destination_base, relative_file)
         try:
-            os.link(destination_base + dst1, destination_base + relative_file)
-            debug(u"Hardlinking %s to %s" % (destination_base + dst1, destination_base + relative_file))
+            os.link(src_file, dst_file)
+            debug(u"Hardlinking %s to %s" % (src_file, dst_file))
         except (IOError, OSError):
             try:
-                shutil.copy2(destination_base + dst1, destination_base + relative_file)
-                debug(u"Hardlinking unavailable, copying %s to %s" % (destination_base + dst1, destination_base + relative_file))
+                shutil.copy2(src_file, dst_file)
+                debug(u"Hardlinking unavailable, copying %s to %s" % (src_file, dst_file))
             except IOError, e:
-                warning(u'Unable to hardlink or copy files %s -> %s: %s' % (destination_base + dst1, destination_base + relative_file, e))
+                warning(u'Unable to hardlink or copy files %s -> %s: %s' % (src_file, dst_file, e))
                 failed_hardlink_list[relative_file] = src_obj
     return failed_hardlink_list
 
