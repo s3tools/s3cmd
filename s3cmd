@@ -753,7 +753,7 @@ def cmd_sync_remote2local(args):
 
     _set_local_filename(remote_list, destination_base)
     _set_local_filename(update_list, destination_base)
-    
+
     if cfg.dry_run:
         for key in exclude_list:
             output(u"exclude: %s" % unicodise(key))
@@ -794,11 +794,11 @@ def cmd_sync_remote2local(args):
                     continue
                 try:
                     debug(u"dst_file=%s" % unicodise(dst_file))
-                    # create temporary files (of type .s3cmd.XXXX.tmp) in the same directory 
+                    # create temporary files (of type .s3cmd.XXXX.tmp) in the same directory
                     # for downloading and then rename once downloaded
                     chkptfd, chkptfname = tempfile.mkstemp(".tmp",".s3cmd.",os.path.dirname(dst_file))
                     debug(u"created chkptfname=%s" % unicodise(chkptfname))
-                    dst_stream = os.fdopen(chkptfd, "wb")  
+                    dst_stream = os.fdopen(chkptfd, "wb")
                     response = s3.object_get(uri, dst_stream, extra_label = seq_label)
                     dst_stream.close()
                     # download completed, rename the file to destination
@@ -1249,13 +1249,13 @@ def cmd_sign(args):
     output("Signature: %s" % signature)
 
 def cmd_signurl(args):
-	expiry = args.pop()
-	url_to_sign = S3Uri(args.pop())
-	if url_to_sign.type != 's3':
-		raise ParameterError("Must be S3Uri. Got: %s" % url_to_sign)
-	debug("url to sign: %r" % url_to_sign)
-	signed_url = Utils.sign_url(url_to_sign, expiry)
-	output(signed_url)
+    expiry = args.pop()
+    url_to_sign = S3Uri(args.pop())
+    if url_to_sign.type != 's3':
+        raise ParameterError("Must be S3Uri. Got: %s" % url_to_sign)
+    debug("url to sign: %r" % url_to_sign)
+    signed_url = Utils.sign_url(url_to_sign, expiry)
+    output(signed_url)
 
 def cmd_fixbucket(args):
     def _unescape(text):

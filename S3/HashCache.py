@@ -3,7 +3,7 @@ import cPickle as pickle
 class HashCache(object):
     def __init__(self):
         self.inodes = dict()
-    
+
     def add(self, dev, inode, mtime, size, md5):
         if dev not in self.inodes:
             self.inodes[dev] = dict()
@@ -38,7 +38,7 @@ class HashCache(object):
                     if 'purge' in self.inodes[d][i][m]:
                         del self.inodes[d][i]
                         break
-    
+
     def save(self, f):
         d = dict(inodes=self.inodes, version=1)
         f = open(f, 'w')

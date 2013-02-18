@@ -59,7 +59,7 @@ class SortedDict(dict):
             return list(self.by_md5.get(md5, set()))[0]
         except:
             return None
-            
+
     def get_md5(self, relative_file):
         """returns md5 if it can, or raises IOError if file is unreadable"""
         md5 = None
@@ -70,7 +70,7 @@ class SortedDict(dict):
             md5 = Utils.hash_file_md5(self[relative_file]['full_name'])
         self.record_md5(relative_file, md5)
         self[relative_file]['md5'] = md5
-	return md5
+        return md5
 
     def record_hardlink(self, relative_file, dev, inode, md5):
         if dev not in self.hardlinks:

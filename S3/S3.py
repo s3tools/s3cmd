@@ -53,7 +53,7 @@ try:
                 return magic_.file(file)
             def mime_magic_buffer(buffer):
                 return magic_.buffer(buffer)
-            
+
     except AttributeError:
         ## Older python-magic versions
         magic_ = magic.open(magic.MAGIC_MIME)
@@ -62,7 +62,7 @@ try:
             return magic_.file(file)
         def mime_magic_buffer(buffer):
             return magic_.buffer(buffer)
-    
+
     def mime_magic(file):
         type = mime_magic_file(file)
         if type != "application/x-gzip; charset=binary":
@@ -388,7 +388,7 @@ class S3(object):
             return True
         else:
             return False
-           
+
     def object_put(self, filename, uri, extra_headers = None, extra_label = ""):
         # TODO TODO
         # Make it consistent with stream-oriented object_get()
@@ -419,11 +419,11 @@ class S3(object):
             content_type = self.config.default_mime_type
         if not content_encoding:
             content_encoding = self.config.encoding.upper()
-    
+
         ## add charset to content type
         if self.add_encoding(filename, content_type) and content_encoding is not None:
             content_type = content_type + "; charset=" + content_encoding
-       
+
         headers["content-type"] = content_type
         if content_encoding is not None:
             headers["content-encoding"] = content_encoding
@@ -912,7 +912,7 @@ class S3(object):
             while (current_position < size_total):
                 this_chunk = size_left > self.config.recv_chunk and self.config.recv_chunk or size_left
                 data = http_response.read(this_chunk)
-                if len(data) == 0: 
+                if len(data) == 0:
                     raise S3Error("EOF from S3!")
 
                 stream.write(data)

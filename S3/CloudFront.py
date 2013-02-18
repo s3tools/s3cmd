@@ -440,7 +440,7 @@ class CloudFront(object):
                 else:
                     new_paths.append(path)
             paths = new_paths
-        
+
         # uri could be either cf:// or s3:// uri
         cfuri = self.get_dist_name_for_bucket(uri)
         if len(paths) > 999:
@@ -575,7 +575,7 @@ class CloudFront(object):
                 elif d.info.has_key("CustomOrigin"):
                     # Aral: This used to skip over distributions with CustomOrigin, however, we mustn't
                     #       do this since S3 buckets that are set up as websites use custom origins.
-                    #       Thankfully, the custom origin URLs they use start with the URL of the 
+                    #       Thankfully, the custom origin URLs they use start with the URL of the
                     #       S3 bucket. Here, we make use this naming convention to support this use case.
                     distListIndex = getBucketFromHostname(d.info['CustomOrigin']['DNSName'])[0];
                     distListIndex = distListIndex[:len(uri.bucket())]

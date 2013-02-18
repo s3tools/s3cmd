@@ -42,7 +42,7 @@ class MultiPartUpload(object):
         if not self.upload_id:
             raise RuntimeError("Attempting to use a multipart upload that has not been initiated.")
 
-	self.chunk_size = self.s3.config.multipart_chunk_size_mb * 1024 * 1024
+        self.chunk_size = self.s3.config.multipart_chunk_size_mb * 1024 * 1024
 
         if self.file.name != "<stdin>":
                 size_left = file_size = os.stat(self.file.name)[ST_SIZE]
@@ -52,7 +52,7 @@ class MultiPartUpload(object):
             debug("MultiPart: Uploading from %s" % (self.file.name))
 
         seq = 1
-	if self.file.name != "<stdin>":
+        if self.file.name != "<stdin>":
             while size_left > 0:
                 offset = self.chunk_size * (seq - 1)
                 current_chunk_size = min(file_size - offset, self.chunk_size)

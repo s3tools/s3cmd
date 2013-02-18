@@ -20,43 +20,40 @@ import copy
 __all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists", "filter_exclude_include", "parse_attrs_header"]
 
 def _fswalk_follow_symlinks(path):
-        '''
-        Walk filesystem, following symbolic links (but without recursion), on python2.4 and later
+    '''
+    Walk filesystem, following symbolic links (but without recursion), on python2.4 and later
 
-        If a symlink directory loop is detected, emit a warning and skip.
-        E.g.
-        dir1/
-             dir2/
-                  sym-dir -> ../dir2
-        '''
-        assert os.path.isdir(path) # only designed for directory argument
-        walkdirs = set([path])
-        for dirpath, dirnames, filenames in os.walk(path):
-                handle_exclude_include_walk(dirpath, dirnames, [])
-                real_dirpath = os.path.realpath(dirpath)
-                for dirname in dirnames:
-                        current = os.path.join(dirpath, dirname)
-                        real_current = os.path.realpath(current)
-                        if os.path.islink(current):
-                                if (real_dirpath == real_current or
-                                    real_dirpath.startswith(real_current + os.path.sep)):
-                                        warning("Skipping recursively symlinked directory %s" % dirname)
-                                else:
-                                        walkdirs.add(current)
-        for walkdir in walkdirs:
-		for dirpath, dirnames, filenames in os.walk(walkdir):
-			handle_exclude_include_walk(dirpath, dirnames, [])
-                        yield (dirpath, dirnames, filenames)
+    If a symlink directory loop is detected, emit a warning and skip.
+    E.g.: dir1/dir2/sym-dir -> ../dir2
+    '''
+    assert os.path.isdir(path) # only designed for directory argument
+    walkdirs = set([path])
+    for dirpath, dirnames, filenames in os.walk(path):
+        handle_exclude_include_walk(dirpath, dirnames, [])
+        real_dirpath = os.path.realpath(dirpath)
+        for dirname in dirnames:
+            current = os.path.join(dirpath, dirname)
+            real_current = os.path.realpath(current)
+            if os.path.islink(current):
+                if (real_dirpath == real_current or
+                    real_dirpath.startswith(real_current + os.path.sep)):
+                    warning("Skipping recursively symlinked directory %s" % dirname)
+                else:
+                    walkdirs.add(current)
+    for walkdir in walkdirs:
+        for dirpath, dirnames, filenames in os.walk(walkdir):
+            handle_exclude_include_walk(dirpath, dirnames, [])
+            yield (dirpath, dirnames, filenames)
 
 def _fswalk_no_symlinks(path):
-        '''
-        Directory tree generator
+    '''
+    Directory tree generator
 
-        path (str) is the root of the directory tree to walk
-        '''
-	for dirpath, dirnames, filenames in os.walk(path):
-		handle_exclude_include_walk(dirpath, dirnames, filenames)
-		yield (dirpath, dirnames, filenames)
+    path (str) is the root of the directory tree to walk
+    '''
+    for dirpath, dirnames, filenames in os.walk(path):
+        handle_exclude_include_walk(dirpath, dirnames, filenames)
+        yield (dirpath, dirnames, filenames)
 
 def filter_exclude_include(src_list):
     info(u"Applying --exclude/--include")
@@ -110,7 +107,7 @@ def handle_exclude_include_walk(root, dirs, files):
                     break
         if excluded:
             ## Still excluded - ok, action it
-	    dirs.remove(x)
+            dirs.remove(x)
             continue
 
     # exclude file matches in the current directory
@@ -138,7 +135,7 @@ def handle_exclude_include_walk(root, dirs, files):
 def fetch_local_list(args, recursive = None):
     def _get_filelist_local(loc_list, local_uri, cache):
         info(u"Compiling list of local files...")
-        
+
         if deunicodise(local_uri.basename()) == "-":
             loc_list = SortedDict(ignore_case = False)
             loc_list["-"] = {
@@ -184,31 +181,31 @@ def fetch_local_list(args, recursive = None):
                     'full_name' : full_name,
                     'size' : sr.st_size,
                     'mtime' : sr.st_mtime,
-		    'dev'   : sr.st_dev,
-		    'inode' : sr.st_ino,
-		    'uid' : sr.st_uid,
-		    'gid' : sr.st_gid,
-		    'sr': sr # save it all, may need it in preserve_attrs_list
+                    'dev'   : sr.st_dev,
+                    'inode' : sr.st_ino,
+                    'uid' : sr.st_uid,
+                    'gid' : sr.st_gid,
+                    'sr': sr # save it all, may need it in preserve_attrs_list
                     ## TODO: Possibly more to save here...
                 }
-		if 'md5' in cfg.sync_checks:
+                if 'md5' in cfg.sync_checks:
                     md5 = cache.md5(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size)
-		    if md5 is None:
-			    try:
+                    if md5 is None:
+                            try:
                                 md5 = loc_list.get_md5(relative_file) # this does the file I/O
-			    except IOError:
+                            except IOError:
                                 continue
-			    cache.add(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size, md5)
-		    loc_list.record_hardlink(relative_file, sr.st_dev, sr.st_ino, md5)
+                            cache.add(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size, md5)
+                    loc_list.record_hardlink(relative_file, sr.st_dev, sr.st_ino, md5)
         return loc_list, single_file
 
     def _maintain_cache(cache, local_list):
         if cfg.cache_file:
             cache.mark_all_for_purge()
-	    for i in local_list.keys():
+            for i in local_list.keys():
                 cache.unmark_for_purge(local_list[i]['dev'], local_list[i]['inode'], local_list[i]['mtime'], local_list[i]['size'])
             cache.purge()
-	    cache.save(cfg.cache_file)
+            cache.save(cfg.cache_file)
 
     cfg = Config()
 
@@ -216,9 +213,9 @@ def fetch_local_list(args, recursive = None):
     if cfg.cache_file:
         try:
             cache.load(cfg.cache_file)
-	except IOError:
-	    info(u"No cache file found, creating it.")
-    
+        except IOError:
+            info(u"No cache file found, creating it.")
+
     local_uris = []
     local_list = SortedDict(ignore_case = False)
     single_file = False
@@ -299,11 +296,11 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
                 'object_key' : object['Key'],
                 'object_uri_str' : object_uri_str,
                 'base_uri' : remote_uri,
-		'dev' : None,
-		'inode' : None,
+                'dev' : None,
+                'inode' : None,
             }
-	    md5 = object['ETag'][1:-1]
-	    rem_list.record_md5(key, md5)
+            md5 = object['ETag'][1:-1]
+            rem_list.record_md5(key, md5)
             if break_now:
                 break
         return rem_list
@@ -329,7 +326,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
             objectlist = _get_filelist_remote(uri)
             for key in objectlist:
                 remote_list[key] = objectlist[key]
-		remote_list.record_md5(key, objectlist.get_md5(key))
+                remote_list.record_md5(key, objectlist.get_md5(key))
     else:
         for uri in remote_uris:
             uri_str = str(uri)
@@ -367,12 +364,12 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
                     'md5': response['headers']['etag'].strip('"\''),
                     'timestamp' : dateRFC822toUnix(response['headers']['date'])
                     })
-		    # get md5 from header if it's present.  We would have set that during upload
-		    if response['headers'].has_key('x-amz-meta-s3cmd-attrs'):
+                    # get md5 from header if it's present.  We would have set that during upload
+                    if response['headers'].has_key('x-amz-meta-s3cmd-attrs'):
                         attrs = parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
-			if attrs.has_key('md5'):
+                        if attrs.has_key('md5'):
                             remote_item.update({'md5': attrs['md5']})
-		    
+
                 remote_list[key] = remote_item
     return remote_list
 
@@ -380,7 +377,7 @@ def parse_attrs_header(attrs_header):
     attrs = {}
     for attr in attrs_header.split("/"):
         key, val = attr.split(":")
-	attrs[key] = val
+        attrs[key] = val
     return attrs
 
 
@@ -391,14 +388,14 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
     def _compare(src_list, dst_lst, src_remote, dst_remote, file):
         """Return True if src_list[file] matches dst_list[file], else False"""
         attribs_match = True
-	if not (src_list.has_key(file) and dst_list.has_key(file)):
+        if not (src_list.has_key(file) and dst_list.has_key(file)):
             info(u"%s: does not exist in one side or the other: src_list=%s, dst_list=%s" % (file, src_list.has_key(file), dst_list.has_key(file)))
             return False
 
         ## check size first
-	if 'size' in cfg.sync_checks and dst_list[file]['size'] != src_list[file]['size']:
+        if 'size' in cfg.sync_checks and dst_list[file]['size'] != src_list[file]['size']:
             debug(u"xfer: %s (size mismatch: src=%s dst=%s)" % (file, src_list[file]['size'], dst_list[file]['size']))
-	    attribs_match = False
+            attribs_match = False
 
         ## check md5
         compare_md5 = 'md5' in cfg.sync_checks
@@ -411,11 +408,11 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
             try:
                 src_md5 = src_list.get_md5(file)
                 dst_md5 = dst_list.get_md5(file)
-	    except (IOError,OSError), e:
+            except (IOError,OSError), e:
                 # md5 sum verification failed - ignore that file altogether
                 debug(u"IGNR: %s (disappeared)" % (file))
                 warning(u"%s: file disappeared, ignoring." % (file))
-		raise
+                raise
 
             if src_md5 != dst_md5:
                 ## checksums are different.
@@ -443,65 +440,65 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
 
         if dst_list.has_key(relative_file):
             ## Was --skip-existing requested?
-	    if cfg.skip_existing:
-	        debug(u"IGNR: %s (used --skip-existing)" % (relative_file))
-	        del(src_list[relative_file])
-	        del(dst_list[relative_file])
-	        continue
-
-	    try:
-                same_file = _compare(src_list, dst_list, src_remote, dst_remote, relative_file)
-	    except (IOError,OSError), e:
-                debug(u"IGNR: %s (disappeared)" % (relative_file))
-                warning(u"%s: file disappeared, ignoring." % (relative_file))
-	        del(src_list[relative_file])
-		del(dst_list[relative_file])
+            if cfg.skip_existing:
+                debug(u"IGNR: %s (used --skip-existing)" % (relative_file))
+                del(src_list[relative_file])
+                del(dst_list[relative_file])
                 continue
 
-	    if same_file:
-	        debug(u"IGNR: %s (transfer not needed)" % relative_file)
-	        del(src_list[relative_file])
-		del(dst_list[relative_file])
+            try:
+                same_file = _compare(src_list, dst_list, src_remote, dst_remote, relative_file)
+            except (IOError,OSError), e:
+                debug(u"IGNR: %s (disappeared)" % (relative_file))
+                warning(u"%s: file disappeared, ignoring." % (relative_file))
+                del(src_list[relative_file])
+                del(dst_list[relative_file])
+                continue
 
-	    else:
+            if same_file:
+                debug(u"IGNR: %s (transfer not needed)" % relative_file)
+                del(src_list[relative_file])
+                del(dst_list[relative_file])
+
+            else:
                 # look for matching file in src
                 try:
                     md5 = src_list.get_md5(relative_file)
-		except IOError:
+                except IOError:
                     md5 = None
-		if md5 is not None and dst_list.by_md5.has_key(md5):
+                if md5 is not None and dst_list.by_md5.has_key(md5):
                     # Found one, we want to copy
                     dst1 = list(dst_list.by_md5[md5])[0]
                     debug(u"DST COPY src: %s -> %s" % (dst1, relative_file))
-		    copy_pairs.append((src_list[relative_file], dst1, relative_file))
-		    del(src_list[relative_file])
-		    del(dst_list[relative_file])
+                    copy_pairs.append((src_list[relative_file], dst1, relative_file))
+                    del(src_list[relative_file])
+                    del(dst_list[relative_file])
                 else:
-		    # record that we will get this file transferred to us (before all the copies), so if we come across it later again,
-		    # we can copy from _this_ copy (e.g. we only upload it once, and copy thereafter).
-		    dst_list.record_md5(relative_file, md5) 
-		    update_list[relative_file] = src_list[relative_file]
-		    del src_list[relative_file]
-		    del dst_list[relative_file]
+                    # record that we will get this file transferred to us (before all the copies), so if we come across it later again,
+                    # we can copy from _this_ copy (e.g. we only upload it once, and copy thereafter).
+                    dst_list.record_md5(relative_file, md5)
+                    update_list[relative_file] = src_list[relative_file]
+                    del src_list[relative_file]
+                    del dst_list[relative_file]
 
-	else:
+        else:
             # dst doesn't have this file
             # look for matching file elsewhere in dst
             try:
                 md5 = src_list.get_md5(relative_file)
             except IOError:
                md5 = None
-	    dst1 = dst_list.find_md5_one(md5)
-	    if dst1 is not None:
+            dst1 = dst_list.find_md5_one(md5)
+            if dst1 is not None:
                 # Found one, we want to copy
                 debug(u"DST COPY dst: %s -> %s" % (dst1, relative_file))
-		copy_pairs.append((src_list[relative_file], dst1, relative_file))
-		del(src_list[relative_file])
-	    else:
+                copy_pairs.append((src_list[relative_file], dst1, relative_file))
+                del(src_list[relative_file])
+            else:
                 # we don't have this file, and we don't have a copy of this file elsewhere.  Get it.
-	        # record that we will get this file transferred to us (before all the copies), so if we come across it later again,
-	        # we can copy from _this_ copy (e.g. we only upload it once, and copy thereafter).
-	        dst_list.record_md5(relative_file, md5) 
+                # record that we will get this file transferred to us (before all the copies), so if we come across it later again,
+                # we can copy from _this_ copy (e.g. we only upload it once, and copy thereafter).
+                dst_list.record_md5(relative_file, md5)
 
     for f in dst_list.keys():
         if src_list.has_key(f) or update_list.has_key(f):
