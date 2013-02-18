@@ -393,7 +393,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
         """Return True if src_list[file] matches dst_list[file], else False"""
         attribs_match = True
 	if not (src_list.has_key(file) and dst_list.has_key(file)):
-            info(u"file does not exist in one side or the other: src_list=%s, dst_list=%s" % (src_list.has_key(file), dst_list.has_key(file)))
+            info(u"%s: does not exist in one side or the other: src_list=%s, dst_list=%s" % (file, src_list.has_key(file), dst_list.has_key(file)))
             return False
 
         ## check size first
@@ -437,7 +437,6 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
     ## Items left on dst_list will be deleted
     copy_pairs = []
 
-
     debug("Comparing filelists (direction: %s -> %s)" % (__direction_str(src_remote), __direction_str(dst_remote)))
 
     for relative_file in src_list.keys():
@@ -452,13 +451,15 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
 	        continue
 
 	    try:
-                compare_result = _compare(src_list, dst_list, src_remote, dst_remote, relative_file)
+                same_file = _compare(src_list, dst_list, src_remote, dst_remote, relative_file)
 	    except (IOError,OSError), e:
+                debug(u"IGNR: %s (disappeared)" % (relative_file))
+                warning(u"%s: file disappeared, ignoring." % (relative_file))
 	        del(src_list[relative_file])
 		del(dst_list[relative_file])
                 continue
 
-	    if compare_result:
+	    if same_file:
 	        debug(u"IGNR: %s (transfer not needed)" % relative_file)
 	        del(src_list[relative_file])
 		del(dst_list[relative_file])
@@ -472,7 +473,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
 		if md5 is not None and dst_list.by_md5.has_key(md5):
                     # Found one, we want to copy
                     dst1 = list(dst_list.by_md5[md5])[0]
-                    debug(u"REMOTE COPY src: %s -> %s" % (dst1, relative_file))
+                    debug(u"DST COPY src: %s -> %s" % (dst1, relative_file))
 		    copy_pairs.append((src_list[relative_file], dst1, relative_file))
 		    del(src_list[relative_file])
 		    del(dst_list[relative_file])
@@ -494,7 +495,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
 	    dst1 = dst_list.find_md5_one(md5)
 	    if dst1 is not None:
                 # Found one, we want to copy
-                debug(u"REMOTE COPY dst: %s -> %s" % (dst1, relative_file))
+                debug(u"DST COPY dst: %s -> %s" % (dst1, relative_file))
 		copy_pairs.append((src_list[relative_file], dst1, relative_file))
 		del(src_list[relative_file])
 	    else:

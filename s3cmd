@@ -763,7 +763,7 @@ def cmd_sync_remote2local(args):
             for key in local_list:
                 output(u"delete: %s" % local_list[key]['full_name_unicode'])
         for key in remote_list:
-            output(u"download: %s -> %s" % (remote_list[key]['object_uri_str'], remote_list[key]['local_filename']))
+            output(u"download: %s -> %s" % (unicodise(remote_list[key]['object_uri_str']), unicodise(remote_list[key]['local_filename'])))
         for key in update_list:
             output(u"download: %s -> %s" % (update_list[key]['object_uri_str'], update_list[key]['local_filename']))
 
