@@ -48,16 +48,12 @@ def _fswalk_follow_symlinks(path):
 			handle_exclude_include_walk(dirpath, dirnames, [])
                         yield (dirpath, dirnames, filenames)
 
-def _fswalk(path, follow_symlinks):
+def _fswalk_no_symlinks(path):
         '''
         Directory tree generator
 
         path (str) is the root of the directory tree to walk
-
-        follow_symlinks (bool) indicates whether to descend into symbolically linked directories
         '''
-        if follow_symlinks:
-                yield _fswalk_follow_symlinks(path)
 	for dirpath, dirnames, filenames in os.walk(path):
 		handle_exclude_include_walk(dirpath, dirnames, filenames)
 		yield (dirpath, dirnames, filenames)
@@ -155,7 +151,10 @@ def fetch_local_list(args, recursive = None):
         if local_uri.isdir():
             local_base = deunicodise(local_uri.basename())
             local_path = deunicodise(local_uri.path())
-            filelist = _fswalk(local_path, cfg.follow_symlinks)
+            if cfg.follow_symlinks:
+                filelist = _fswalk_follow_symlinks(local_path)
+            else:
+                filelist = _fswalk_no_symlinks(local_path)
             single_file = False
         else:
             local_base = ""
