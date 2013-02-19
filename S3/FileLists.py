@@ -140,6 +140,35 @@ def handle_exclude_include_walk(root, dirs, files):
         else:
             debug(u"PASS: %r" % (file))
 
+
+def _get_filelist_from_file(cfg, local_path):
+    def _append(d, key, value):
+        if key not in d:
+            d[key] = [value]
+        else:
+            d[key].append(value)
+
+    filelist = {}
+    for fname in cfg.files_from:
+        f = open(fname, 'r')
+        for line in f:
+            line = line.strip()
+            line = os.path.normpath(os.path.join(local_path, line))
+            dirname = os.path.dirname(line)
+            basename = os.path.basename(line)
+            _append(filelist, dirname, basename)
+        f.close()
+
+    # reformat to match os.walk()
+    result = []
+    keys = filelist.keys()
+    keys.sort()
+    for key in keys:
+        values = filelist[key]
+        values.sort()
+        result.append((key, [], values))
+    return result
+
 def fetch_local_list(args, recursive = None):
     def _get_filelist_local(loc_list, local_uri, cache):
         info(u"Compiling list of local files...")
@@ -156,11 +185,15 @@ def fetch_local_list(args, recursive = None):
         if local_uri.isdir():
             local_base = deunicodise(local_uri.basename())
             local_path = deunicodise(local_uri.path())
-            if cfg.follow_symlinks:
-                filelist = _fswalk_follow_symlinks(local_path)
+            if len(cfg.files_from):
+                filelist = _get_filelist_from_file(cfg, local_path)
+                single_file = False
             else:
-                filelist = _fswalk_no_symlinks(local_path)
-            single_file = False
+                if cfg.follow_symlinks:
+                    filelist = _fswalk_follow_symlinks(local_path)
+                else:
+                    filelist = _fswalk_no_symlinks(local_path)
+                single_file = False
         else:
             local_base = ""
             local_path = deunicodise(local_uri.dirname())
