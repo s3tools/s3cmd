@@ -1,4 +1,30 @@
-s3cmd 1.1.0   -   ???
+s3cmd 1.5.0   -   ???
+===========
+* Server-side copy for hardlinks/softlinks to improve performance
+  (Matt Domsch)
+* New [signurl] command (Craig Ringer)
+* Improved symlink-loop detection (Michal Ludvig)
+* Add --delete-after option for sync (Matt Domsch)
+* Handle empty return bodies when processing S3 errors.
+  (Kelly McLaughlin)
+* Upload from STDIN (Eric Connell)
+* Updated bucket locations (Stefhen Hovland)
+* Support custom HTTP headers (Brendan O'Connor, Karl Matthias)
+* Improved MIME support (Karsten Sperling, Christopher Noyes)
+* Added support for --acl-grant/--acl-revoke to 'sync' command
+  (Michael Tyson)
+* CloudFront: Support default index and default root invalidation
+  (Josep del Rio)
+* Command line options for access/secret keys (Matt Sweeney)
+* Support [setpolicy] for setting bucket policies (Joe Fiorini)
+* Respect the $TZ environment variable (James Brown)
+* Reduce memory consumption for [s3cmd du] (Charlie Schluting)
+* Rate limit progress updates (Steven Noonan)
+* Download from S3 to a temp file first (Sumit Kumar)
+* Reuse a single connection when doing a bucket list (Kelly McLaughlin)
+* Delete empty files if object_get() failed (Oren Held)
+
+s3cmd 1.1.0   -   (never released)
 ===========
 * MultiPart upload enabled for both [put] and [sync]. Default chunk
   size is 15MB.
