@@ -14,6 +14,7 @@ from HashCache import HashCache
 from logging import debug, info, warning, error
 
 import os
+import sys
 import glob
 import copy
 
@@ -150,14 +151,23 @@ def _get_filelist_from_file(cfg, local_path):
 
     filelist = {}
     for fname in cfg.files_from:
-        f = open(fname, 'r')
+        if fname == u'-':
+            f = sys.stdin
+        else:
+            try:
+                f = open(fname, 'r')
+            except IOError, e:
+                warning(u"--files-from input file %s could not be opened for reading (%s), skipping." % (fname, e.strerror))
+                continue
+                
         for line in f:
             line = line.strip()
             line = os.path.normpath(os.path.join(local_path, line))
             dirname = os.path.dirname(line)
             basename = os.path.basename(line)
             _append(filelist, dirname, basename)
-        f.close()
+        if f != sys.stdin:
+            f.close()
 
     # reformat to match os.walk()
     result = []
