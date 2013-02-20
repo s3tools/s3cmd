@@ -395,7 +395,7 @@ def time_to_epoch(t):
             # Try to parse it as a timestamp string
             try:
                 return time.strptime(t)
-            except ValueError as ex:
+            except ValueError, ex:
                 # Will fall through
                 debug("Failed to parse date with strptime: %s", ex)
                 pass
