@@ -145,7 +145,6 @@ def fetch_local_list(args, recursive = None):
         info(u"Compiling list of local files...")
 
         if deunicodise(local_uri.basename()) == "-":
-            loc_list = SortedDict(ignore_case = False)
             loc_list["-"] = {
                 'full_name_unicode' : '-',
                 'full_name' : '-',

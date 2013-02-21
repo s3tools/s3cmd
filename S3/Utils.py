@@ -169,7 +169,13 @@ def formatDateTime(s3timestamp):
     try:
         import pytz
         timezone = pytz.timezone(os.environ.get('TZ', 'UTC'))
-        utc_dt = datetime.datetime(*dateS3toPython(s3timestamp)[0:6], tzinfo=pytz.timezone('UTC'))
+        tz = pytz.timezone('UTC')
+        ## Can't unpack args and follow that with kwargs in python 2.5
+        ## So we pass them all as kwargs
+        params = zip(('year', 'month', 'day', 'hour', 'minute', 'second', 'tzinfo'),
+                     dateS3toPython(s3timestamp)[0:6] + (tz))
+        params = dict(params)
+        utc_dt = datetime.datetime(**params)
         dt_object = utc_dt.astimezone(timezone)
     except ImportError:
         dt_object = datetime.datetime(*dateS3toPython(s3timestamp)[0:6])
@@ -389,7 +395,7 @@ def time_to_epoch(t):
             # Try to parse it as a timestamp string
             try:
                 return time.strptime(t)
-            except ValueError as ex:
+            except ValueError, ex:
                 # Will fall through
                 debug("Failed to parse date with strptime: %s", ex)
                 pass
