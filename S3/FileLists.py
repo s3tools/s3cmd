@@ -179,7 +179,7 @@ def _get_filelist_from_file(cfg, local_path):
         result.append((key, [], values))
     return result
 
-def fetch_local_list(args, recursive = None):
+def fetch_local_list(args, is_src = False, recursive = None):
     def _get_filelist_local(loc_list, local_uri, cache):
         info(u"Compiling list of local files...")
 
@@ -195,7 +195,7 @@ def fetch_local_list(args, recursive = None):
         if local_uri.isdir():
             local_base = deunicodise(local_uri.basename())
             local_path = deunicodise(local_uri.path())
-            if len(cfg.files_from):
+            if is_src and len(cfg.files_from):
                 filelist = _get_filelist_from_file(cfg, local_path)
                 single_file = False
             else:
