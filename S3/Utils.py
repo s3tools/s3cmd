@@ -173,7 +173,7 @@ def formatDateTime(s3timestamp):
         ## Can't unpack args and follow that with kwargs in python 2.5
         ## So we pass them all as kwargs
         params = zip(('year', 'month', 'day', 'hour', 'minute', 'second', 'tzinfo'),
-                     dateS3toPython(s3timestamp)[0:6] + (tz))
+                     dateS3toPython(s3timestamp)[0:6] + (tz,))
         params = dict(params)
         utc_dt = datetime.datetime(**params)
         dt_object = utc_dt.astimezone(timezone)
