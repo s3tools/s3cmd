@@ -41,6 +41,7 @@ class Config(object):
     proxy_port = 3128
     encrypt = False
     dry_run = False
+    add_encoding_exts = ""
     preserve_attrs = True
     preserve_attrs_list = [
         'uname',    # Verbose owner Name (e.g. 'root')
@@ -51,10 +52,14 @@ class Config(object):
         'mtime',    # Modification timestamp
         'ctime',    # Creation timestamp
         'mode',     # File mode (e.g. rwxr-xr-x = 755)
+        'md5',      # File MD5 (if known)
         #'acl',     # Full ACL (not yet supported)
     ]
     delete_removed = False
+    delete_after = False
+    delete_after_fetch = False
     _doc['delete_removed'] = "[sync] Remove remote S3 objects when local file has been deleted"
+    delay_updates = False
     gpg_passphrase = ""
     gpg_command = ""
     gpg_encrypt = "%(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
@@ -81,6 +86,9 @@ class Config(object):
     follow_symlinks = False
     socket_timeout = 300
     invalidate_on_cf = False
+    # joseprio: new flags for default index invalidation
+    invalidate_default_index_on_cf = False
+    invalidate_default_index_root_on_cf = True
     website_index = "index.html"
     website_error = ""
     website_endpoint = "http://%(bucket)s.s3-website-%(location)s.amazonaws.com/"
@@ -90,6 +98,9 @@ class Config(object):
     iam_role_type = ""
     iam_role_token = ""
     iam_role_expiration = ""
+    additional_destinations = []
+    cache_file = ""
+    add_headers = ""
 
     ## Creating a singleton
     def __new__(self, configfile = None):
@@ -119,6 +130,12 @@ class Config(object):
         cp = ConfigParser(configfile)
         for option in self.option_list():
             self.update_option(option, cp.get(option))
+
+        if cp.get('add_headers'):
+            for option in cp.get('add_headers').split(","):
+                (key, value) = option.split(':')
+                self.extra_headers[key.replace('_', '-').strip()] = value.strip()
+
         self._parsed_files.append(configfile)
 
     def dump_config(self, stream):

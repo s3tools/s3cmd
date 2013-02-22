@@ -57,11 +57,17 @@ Move object
 s3cmd \fBsetacl\fR \fIs3://BUCKET[/OBJECT]\fR
 Modify Access control list for Bucket or Files
 .TP
+s3cmd \fBsetpolicy\fR \fIs3://BUCKET POLICY_STRING\fR
+Set an access policy for a bucket
+.TP
 s3cmd \fBaccesslog\fR \fIs3://BUCKET\fR
 Enable/disable bucket access logging
 .TP
 s3cmd \fBsign\fR \fISTRING-TO-SIGN\fR
 Sign arbitrary string using the secret key
+.TP
+s3cmd \fBsignurl\fR \fIs3://BUCKET/OBJECT expiry_epoch\fR
+Sign an S3 URL to provide limited public access with expiry
 .TP
 s3cmd \fBfixbucket\fR \fIs3://BUCKET[/PREFIX]\fR
 Fix invalid file names in a bucket
@@ -115,23 +121,22 @@ changes you like.
 show this help message and exit
 .TP
 \fB\-\-configure\fR
-Invoke interactive (re)configuration tool. Optionally
-use as '\fB--configure\fR s3://come-bucket' to test access
-to a specific bucket instead of attempting to list
-them all.
+Invoke interactive (re)configuration tool. Optionally use as '--configure s3://come-bucket' to test access to a specific bucket instead of attempting to list them all.
 .TP
 \fB\-c\fR FILE, \fB\-\-config\fR=FILE
 Config file name. Defaults to /home/mludvig/.s3cfg
 .TP
 \fB\-\-dump\-config\fR
-Dump current configuration after parsing config files
-and command line options and exit.
+Dump current configuration after parsing config files and command line options and exit.
+.TP
+\fB\-\-access_key\fR=ACCESS_KEY
+AWS Access Key
+.TP
+\fB\-\-secret_key\fR=SECRET_KEY
+AWS Secret Key
 .TP
 \fB\-n\fR, \fB\-\-dry\-run\fR
-Only show what should be uploaded or downloaded but
-don't actually do it. May still perform S3 requests to
-get bucket listings and other information though (only
-for file transfer commands)
+Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though (only for file transfer commands)
 .TP
 \fB\-e\fR, \fB\-\-encrypt\fR
 Encrypt files before uploading to S3.
@@ -143,152 +148,128 @@ Don't encrypt files.
 Force overwrite and other dangerous operations.
 .TP
 \fB\-\-continue\fR
-Continue getting a partially downloaded file (only for
-[get] command).
+Continue getting a partially downloaded file (only for [get] command).
 .TP
 \fB\-\-skip\-existing\fR
-Skip over files that exist at the destination (only
-for [get] and [sync] commands).
+Skip over files that exist at the destination (only for [get] and [sync] commands).
 .TP
 \fB\-r\fR, \fB\-\-recursive\fR
 Recursive upload, download or removal.
 .TP
 \fB\-\-check\-md5\fR
-Check MD5 sums when comparing files for [sync].
-(default)
+Check MD5 sums when comparing files for [sync]. (default)
 .TP
 \fB\-\-no\-check\-md5\fR
-Do not check MD5 sums when comparing files for [sync].
-Only size will be compared. May significantly speed up
-transfer but may also miss some changed files.
+Do not check MD5 sums when comparing files for [sync]. Only size will be compared. May significantly speed up transfer but may also miss some changed files.
 .TP
 \fB\-P\fR, \fB\-\-acl\-public\fR
 Store objects with ACL allowing read for anyone.
 .TP
 \fB\-\-acl\-private\fR
-Store objects with default ACL allowing access for you
-only.
+Store objects with default ACL allowing access for you only.
 .TP
 \fB\-\-acl\-grant\fR=PERMISSION:EMAIL or USER_CANONICAL_ID
-Grant stated permission to a given amazon user.
-Permission is one of: read, write, read_acp,
-write_acp, full_control, all
+Grant stated permission to a given amazon user. Permission is one of: read, write, read_acp, write_acp, full_control, all
 .TP
 \fB\-\-acl\-revoke\fR=PERMISSION:USER_CANONICAL_ID
-Revoke stated permission for a given amazon user.
-Permission is one of: read, write, read_acp, wr
-ite_acp, full_control, all
+Revoke stated permission for a given amazon user. Permission is one of: read, write, read_acp, wr     ite_acp, full_control, all
 .TP
 \fB\-\-delete\-removed\fR
-Delete remote objects with no corresponding local file
-[sync]
+Delete remote objects with no corresponding local file [sync]
 .TP
 \fB\-\-no\-delete\-removed\fR
 Don't delete remote objects.
 .TP
+\fB\-\-delete\-after\fR
+Perform deletes after new uploads [sync]
+.TP
+\fB\-\-delay\-updates\fR
+Put all updated files into place at end [sync]
+.TP
+\fB\-\-add\-destination\fR=ADDITIONAL_DESTINATIONS
+Additional destination for parallel uploads, in addition to last arg.  May be repeated.
+.TP
+\fB\-\-delete\-after\-fetch\fR
+Delete remote objects after fetching to local file (only for [get] and [sync] commands).
+.TP
 \fB\-p\fR, \fB\-\-preserve\fR
-Preserve filesystem attributes (mode, ownership,
-timestamps). Default for [sync] command.
+Preserve filesystem attributes (mode, ownership, timestamps). Default for [sync] command.
 .TP
 \fB\-\-no\-preserve\fR
 Don't store FS attributes
 .TP
 \fB\-\-exclude\fR=GLOB
-Filenames and paths matching GLOB will be excluded
-from sync
+Filenames and paths matching GLOB will be excluded from sync
 .TP
 \fB\-\-exclude\-from\fR=FILE
 Read --exclude GLOBs from FILE
 .TP
 \fB\-\-rexclude\fR=REGEXP
-Filenames and paths matching REGEXP (regular
-expression) will be excluded from sync
+Filenames and paths matching REGEXP (regular expression) will be excluded from sync
 .TP
 \fB\-\-rexclude\-from\fR=FILE
 Read --rexclude REGEXPs from FILE
 .TP
 \fB\-\-include\fR=GLOB
-Filenames and paths matching GLOB will be included
-even if previously excluded by one of
-\fB--(r)exclude(-from)\fR patterns
+Filenames and paths matching GLOB will be included even if previously excluded by one of --(r)exclude(-from) patterns
 .TP
 \fB\-\-include\-from\fR=FILE
 Read --include GLOBs from FILE
 .TP
 \fB\-\-rinclude\fR=REGEXP
-Same as --include but uses REGEXP (regular expression)
-instead of GLOB
+Same as --include but uses REGEXP (regular expression) instead of GLOB
 .TP
 \fB\-\-rinclude\-from\fR=FILE
 Read --rinclude REGEXPs from FILE
 .TP
 \fB\-\-bucket\-location\fR=BUCKET_LOCATION
-Datacentre to create bucket in. As of now the
-datacenters are: US (default), EU, us-west-1, and ap-
-southeast-1
+Datacentre to create bucket in. As of now the datacenters are: US (default), EU, ap-northeast-1, ap-southeast-1, sa-east-1, us-west-1 and us-west-2
 .TP
 \fB\-\-reduced\-redundancy\fR, \fB\-\-rr\fR
-Store object with 'Reduced redundancy'. Lower per-GB
-price. [put, cp, mv]
+Store object with 'Reduced redundancy'. Lower per-GB price. [put, cp, mv]
 .TP
 \fB\-\-access\-logging\-target\-prefix\fR=LOG_TARGET_PREFIX
-Target prefix for access logs (S3 URI) (for [cfmodify]
-and [accesslog] commands)
+Target prefix for access logs (S3 URI) (for [cfmodify] and [accesslog] commands)
 .TP
 \fB\-\-no\-access\-logging\fR
-Disable access logging (for [cfmodify] and [accesslog]
-commands)
+Disable access logging (for [cfmodify] and [accesslog] commands)
 .TP
 \fB\-\-default\-mime\-type\fR
-Default MIME-type for stored objects. Application
-default is binary/octet-stream.
+Default MIME-type for stored objects. Application default is binary/octet-stream.
 .TP
-\fB\-\-guess\-mime\-type\fR
-Guess MIME-type of files by their extension or mime
-magic. Fall back to default MIME-Type as specified by
-\fB--default-mime-type\fR option
+\fB\-M\fR, \fB\-\-guess\-mime\-type\fR
+Guess MIME-type of files by their extension or mime magic. Fall back to default MIME-Type as specified by \fB--default-mime-type\fR option
 .TP
 \fB\-\-no\-guess\-mime\-type\fR
-Don't guess MIME-type and use the default type
-instead.
+Don't guess MIME-type and use the default type instead.
 .TP
 \fB\-m\fR MIME/TYPE, \fB\-\-mime\-type\fR=MIME/TYPE
-Force MIME-type. Override both \fB--default-mime-type\fR and
-\fB--guess-mime-type\fR.
+Force MIME-type. Override both \fB--default-mime-type\fR and \fB--guess-mime-type\fR.
 .TP
 \fB\-\-add\-header\fR=NAME:VALUE
-Add a given HTTP header to the upload request. Can be
-used multiple times. For instance set 'Expires' or
-'Cache-Control' headers (or both) using this options
-if you like.
+Add a given HTTP header to the upload request. Can be used multiple times. For instance set 'Expires' or 'Cache-Control' headers (or both) using this options if you like.
 .TP
 \fB\-\-encoding\fR=ENCODING
-Override autodetected terminal and filesystem encoding
-(character set). Autodetected: UTF-8
+Override autodetected terminal and filesystem encoding (character set). Autodetected: UTF-8
+.TP
+\fB\-\-add\-encoding\-exts\fR=EXTENSIONs
+Add encoding to these comma delimited extensions i.e. (css,js,html) when uploading to S3 )
 .TP
 \fB\-\-verbatim\fR
-Use the S3 name as given on the command line. No pre-
-processing, encoding, etc. Use with caution!
+Use the S3 name as given on the command line. No pre-processing, encoding, etc. Use with caution!
 .TP
 \fB\-\-disable\-multipart\fR
-Disable multipart upload on files bigger than
-\fB--multipart-chunk-size-mb\fR
+Disable multipart upload on files bigger than --multipart-chunk-size-mb
 .TP
 \fB\-\-multipart\-chunk\-size\-mb\fR=SIZE
-Size of each chunk of a multipart upload. Files bigger
-than SIZE are automatically uploaded as multithreaded-
-multipart, smaller files are uploaded using the
-traditional method. SIZE is in Mega-Bytes, default
-chunk size is noneMB, minimum allowed chunk size is
-5MB, maximum is 5GB.
+Size of each chunk of a multipart upload. Files bigger than SIZE are automatically uploaded as multithreaded-multipart, smaller files are uploaded using the traditional method. SIZE is in Mega-Bytes,
+default chunk size is noneMB, minimum allowed chunk size is 5MB, maximum is 5GB.
 .TP
 \fB\-\-list\-md5\fR
-Include MD5 sums in bucket listings (only for 'ls'
-command).
+Include MD5 sums in bucket listings (only for 'ls' command).
 .TP
 \fB\-H\fR, \fB\-\-human\-readable\-sizes\fR
-Print sizes in human readable form (eg 1kB instead of
-1234).
+Print sizes in human readable form (eg 1kB instead of 1234).
 .TP
 \fB\-\-ws\-index\fR=WEBSITE_INDEX
 Name of error-document (only for [ws-create] command)
@@ -303,35 +284,32 @@ Display progress meter (default on TTY).
 Don't display progress meter (default on non-TTY).
 .TP
 \fB\-\-enable\fR
-Enable given CloudFront distribution (only for
-[cfmodify] command)
+Enable given CloudFront distribution (only for [cfmodify] command)
 .TP
 \fB\-\-disable\fR
-Enable given CloudFront distribution (only for
-[cfmodify] command)
+Enable given CloudFront distribution (only for [cfmodify] command)
 .TP
 \fB\-\-cf\-invalidate\fR
-Invalidate the uploaded filed in CloudFront. Also see
-[cfinval] command.
+Invalidate the uploaded filed in CloudFront. Also see [cfinval] command.
+.TP
+\fB\-\-cf\-invalidate\-default\-index\fR
+When using Custom Origin and S3 static website, invalidate the default index file.
+.TP
+\fB\-\-cf\-no\-invalidate\-default\-index\-root\fR
+When using Custom Origin and S3 static website, don't invalidate the path to the default index file.
 .TP
 \fB\-\-cf\-add\-cname\fR=CNAME
-Add given CNAME to a CloudFront distribution (only for
-[cfcreate] and [cfmodify] commands)
+Add given CNAME to a CloudFront distribution (only for [cfcreate] and [cfmodify] commands)
 .TP
 \fB\-\-cf\-remove\-cname\fR=CNAME
-Remove given CNAME from a CloudFront distribution
-(only for [cfmodify] command)
+Remove given CNAME from a CloudFront distribution (only for [cfmodify] command)
 .TP
 \fB\-\-cf\-comment\fR=COMMENT
-Set COMMENT for a given CloudFront distribution (only
-for [cfcreate] and [cfmodify] commands)
+Set COMMENT for a given CloudFront distribution (only for [cfcreate] and [cfmodify] commands)
 .TP
 \fB\-\-cf\-default\-root\-object\fR=DEFAULT_ROOT_OBJECT
-Set the default root object to return when no object
-is specified in the URL. Use a relative path, i.e.
-default/index.html instead of /default/index.html or
-s3://bucket/default/index.html (only for [cfcreate]
-and [cfmodify] commands)
+Set the default root object to return when no object is specified in the URL. Use a relative path, i.e. default/index.html instead of /default/index.html or s3://bucket/default/index.html (only for
+[cfcreate] and [cfmodify] commands)
 .TP
 \fB\-v\fR, \fB\-\-verbose\fR
 Enable verbose output.
@@ -340,10 +318,13 @@ Enable verbose output.
 Enable debug output.
 .TP
 \fB\-\-version\fR
-Show s3cmd version (1.1.0-beta3) and exit.
+Show s3cmd version (1.5.0-alpha1) and exit.
 .TP
 \fB\-F\fR, \fB\-\-follow\-symlinks\fR
 Follow symbolic links as if they are regular files
+.TP
+\fB\-\-cache\-file\fR=FILE
+Cache FILE containing local source MD5 values
 
 
 .SH EXAMPLES
