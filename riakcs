@@ -1,0 +1,732 @@
+#!/usr/bin/env python
+
+## Amazon S3 manager
+## Author: Michal Ludvig <michal@logix.cz>
+##         http://www.logix.cz/michal
+## License: GPL Version 2
+
+import sys
+
+if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
+    sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
+    sys.exit(1)
+
+import logging
+import time
+import os
+import re
+import errno
+import glob
+import traceback
+import codecs
+import locale
+import subprocess
+import htmlentitydefs
+import socket
+
+from copy import copy
+from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
+from logging import debug, info, warning, error
+from distutils.spawn import find_executable
+
+def output(message):
+    sys.stdout.write(message + "\n")
+
+def check_args_type(args, type, verbose_type):
+    for arg in args:
+        if S3Uri(arg).type != type:
+            raise ParameterError("Expecting %s instead of '%s'" % (verbose_type, arg))
+
+def cmd_du(args):
+    s3 = S3(Config())
+    if len(args) > 0:
+        uri = S3Uri(args[0])
+        if uri.type == "s3" and uri.has_bucket():
+            subcmd_bucket_usage(s3, uri)
+            return
+    subcmd_bucket_usage_all(s3)
+
+def subcmd_bucket_usage_all(s3):
+    response = s3.list_all_buckets()
+
+    buckets_size = 0
+    for bucket in response["list"]:
+        size = subcmd_bucket_usage(s3, S3Uri("s3://" + bucket["Name"]))
+        if size != None:
+            buckets_size += size
+    total_size, size_coeff = formatSize(buckets_size, Config().human_readable_sizes)
+    total_size_str = str(total_size) + size_coeff
+    output(u"".rjust(8, "-"))
+    output(u"%s Total" % (total_size_str.ljust(8)))
+
+def subcmd_bucket_usage(s3, uri):
+    bucket = uri.bucket()
+    object = uri.object()
+
+    if object.endswith('*'):
+        object = object[:-1]
+    try:
+        response = s3.bucket_list(bucket, prefix = object, recursive = True)
+    except S3Error, e:
+        if S3.codes.has_key(e.info["Code"]):
+            error(S3.codes[e.info["Code"]] % bucket)
+            return
+        else:
+            raise
+    bucket_size = 0
+    for object in response["list"]:
+        size, size_coeff = formatSize(object["Size"], False)
+        bucket_size += size
+    total_size, size_coeff = formatSize(bucket_size, Config().human_readable_sizes)
+    total_size_str = str(total_size) + size_coeff
+    output(u"%s %s" % (total_size_str.ljust(8), uri))
+    return bucket_size
+
+def cmd_ls(args):
+    s3 = S3(Config())
+    if len(args) > 0:
+        uri = S3Uri(args[0])
+        if uri.type == "s3" and uri.has_bucket():
+            subcmd_bucket_list(s3, uri)
+            return
+    subcmd_buckets_list_all(s3)
+
+def cmd_buckets_list_all_all(args):
+    s3 = S3(Config())
+
+    response = s3.list_all_buckets()
+
+    for bucket in response["list"]:
+        subcmd_bucket_list(s3, S3Uri("s3://" + bucket["Name"]))
+        output(u"")
+
+
+def subcmd_buckets_list_all(s3):
+    response = s3.list_all_buckets()
+    for bucket in response["list"]:
+        output(u"%s  s3://%s" % (
+            formatDateTime(bucket["CreationDate"]),
+            bucket["Name"],
+            ))
+
+def subcmd_bucket_list(s3, uri):
+    bucket = uri.bucket()
+    prefix = uri.object()
+
+    debug(u"Bucket 's3://%s':" % bucket)
+    if prefix.endswith('*'):
+        prefix = prefix[:-1]
+    try:
+        response = s3.bucket_list(bucket, prefix = prefix)
+    except S3Error, e:
+        if S3.codes.has_key(e.info["Code"]):
+            error(S3.codes[e.info["Code"]] % bucket)
+            return
+        else:
+            raise
+
+    if cfg.list_md5:
+        format_string = u"%(timestamp)16s %(size)9s%(coeff)1s  %(md5)32s  %(uri)s"
+    else:
+        format_string = u"%(timestamp)16s %(size)9s%(coeff)1s  %(uri)s"
+
+    for prefix in response['common_prefixes']:
+        output(format_string % {
+            "timestamp": "",
+            "size": "DIR",
+            "coeff": "",
+            "md5": "",
+            "uri": uri.compose_uri(bucket, prefix["Prefix"])})
+
+    for object in response["list"]:
+        size, size_coeff = formatSize(object["Size"], Config().human_readable_sizes)
+        output(format_string % {
+            "timestamp": formatDateTime(object["LastModified"]),
+            "size" : str(size),
+            "coeff": size_coeff,
+            "md5" : object['ETag'].strip('"'),
+            "uri": uri.compose_uri(bucket, object["Key"]),
+            })
+
+def cmd_bucket_create(args):
+    s3 = S3(Config())
+    for arg in args:
+        uri = S3Uri(arg)
+        if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
+            raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % arg)
+        try:
+            response = s3.bucket_create(uri.bucket(), cfg.bucket_location)
+            output(u"Bucket '%s' created" % uri.uri())
+        except S3Error, e:
+            if S3.codes.has_key(e.info["Code"]):
+                error(S3.codes[e.info["Code"]] % uri.bucket())
+                return
+            else:
+                raise
+
+def cmd_website_info(args):
+    s3 = S3(Config())
+    for arg in args:
+        uri = S3Uri(arg)
+        if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
+            raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % arg)
+        try:
+            response = s3.website_info(uri, cfg.bucket_location)
+            if response:
+                output(u"Bucket %s: Website configuration" % uri.uri())
+                output(u"Website endpoint: %s" % response['website_endpoint'])
+                output(u"Index document:   %s" % response['index_document'])
+                output(u"Error document:   %s" % response['error_document'])
+            else:
+                output(u"Bucket %s: Unable to receive website configuration." % (uri.uri()))
+        except S3Error, e:
+            if S3.codes.has_key(e.info["Code"]):
+                error(S3.codes[e.info["Code"]] % uri.bucket())
+                return
+            else:
+                raise
+
+def cmd_website_create(args):
+    s3 = S3(Config())
+    for arg in args:
+        uri = S3Uri(arg)
+        if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
+            raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % arg)
+        try:
+            response = s3.website_create(uri, cfg.bucket_location)
+            output(u"Bucket '%s': website configuration created." % (uri.uri()))
+        except S3Error, e:
+            if S3.codes.has_key(e.info["Code"]):
+                error(S3.codes[e.info["Code"]] % uri.bucket())
+                return
+            else:
+                raise
+
+def cmd_website_delete(args):
+    s3 = S3(Config())
+    for arg in args:
+        uri = S3Uri(arg)
+        if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
+            raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % arg)
+        try:
+            response = s3.website_delete(uri, cfg.bucket_location)
+            output(u"Bucket '%s': website configuration deleted." % (uri.uri()))
+        except S3Error, e:
+            if S3.codes.has_key(e.info["Code"]):
+                error(S3.codes[e.info["Code"]] % uri.bucket())
+                return
+            else:
+                raise
+
+def cmd_bucket_delete(args):
+    def _bucket_delete_one(uri):
+        try:
+            response = s3.bucket_delete(uri.bucket())
+        except S3Error, e:
+            if e.info['Code'] == 'BucketNotEmpty' and (cfg.force or cfg.recursive):
+                warning(u"Bucket is not empty. Removing all the objects from it first. This may take some time...")
+                subcmd_object_del_uri(uri.uri(), recursive = True)
+                return _bucket_delete_one(uri)
+            elif S3.codes.has_key(e.info["Code"]):
+                error(S3.codes[e.info["Code"]] % uri.bucket())
+                return
+            else:
+                raise
+
+    s3 = S3(Config())
+    for arg in args:
+        uri = S3Uri(arg)
+        if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
+            raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % arg)
+        _bucket_delete_one(uri)
+        output(u"Bucket '%s' removed" % uri.uri())
+
+def cmd_object_put(args):
+    cfg = Config()
+    s3 = S3(cfg)
+
+    if len(args) == 0:
+        raise ParameterError("Nothing to upload. Expecting a local file or directory and a S3 URI destination.")
+
+    ## Normalize URI to convert s3://bkt to s3://bkt/ (trailing slash)
+    destination_base_uri = S3Uri(args.pop())
+    if destination_base_uri.type != 's3':
+        raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
+    destination_base = str(destination_base_uri)
+
+    if len(args) == 0:
+        raise ParameterError("Nothing to upload. Expecting a local file or directory.")
+
+    local_list, single_file_local = fetch_local_list(args)
+
+    local_list, exclude_list = filter_exclude_include(local_list)
+
+    local_count = len(local_list)
+
+    info(u"Summary: %d local files to upload" % local_count)
+
+    if local_count > 0:
+        if not destination_base.endswith("/"):
+            if not single_file_local:
+                raise ParameterError("Destination S3 URI must end with '/' (ie must refer to a directory on the remote side).")
+            local_list[local_list.keys()[0]]['remote_uri'] = unicodise(destination_base)
+        else:
+            for key in local_list:
+                local_list[key]['remote_uri'] = unicodise(destination_base + key)
+
+    if cfg.dry_run:
+        for key in exclude_list:
+            output(u"exclude: %s" % unicodise(key))
+        for key in local_list:
+            output(u"upload: %s -> %s" % (local_list[key]['full_name_unicode'], local_list[key]['remote_uri']))
+
+        warning(u"Exitting now because of --dry-run")
+        return
+
+    seq = 0
+    for key in local_list:
+        seq += 1
+
+        uri_final = S3Uri(local_list[key]['remote_uri'])
+
+        extra_headers = copy(cfg.extra_headers)
+        full_name_orig = local_list[key]['full_name']
+        full_name = full_name_orig
+        seq_label = "[%d of %d]" % (seq, local_count)
+        if Config().encrypt:
+            exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
+        try:
+            response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label)
+        except S3UploadError, e:
+            error(u"Upload of '%s' failed too many times. Skipping that file." % full_name_orig)
+            continue
+        except InvalidFileError, e:
+            warning(u"File can not be uploaded: %s" % e)
+            continue
+        speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
+        if not Config().progress_meter:
+            output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+                (unicodise(full_name_orig), uri_final, response["size"], response["elapsed"],
+                speed_fmt[0], speed_fmt[1], seq_label))
+        if Config().acl_public:
+            output(u"Public URL of the object is: %s" %
+                (uri_final.public_url()))
+        if Config().encrypt and full_name != full_name_orig:
+            debug(u"Removing temporary encrypted file: %s" % unicodise(full_name))
+            os.remove(full_name)
+
+def cmd_object_get(args):
+    cfg = Config()
+    s3 = S3(cfg)
+
+    ## Check arguments:
+    ## if not --recursive:
+    ##   - first N arguments must be S3Uri
+    ##   - if the last one is S3 make current dir the destination_base
+    ##   - if the last one is a directory:
+    ##       - take all 'basenames' of the remote objects and
+    ##         make the destination name be 'destination_base'+'basename'
+    ##   - if the last one is a file or not existing:
+    ##       - if the number of sources (N, above) == 1 treat it
+    ##         as a filename and save the object there.
+    ##       - if there's more sources -> Error
+    ## if --recursive:
+    ##   - first N arguments must be S3Uri
+    ##       - for each Uri get a list of remote objects with that Uri as a prefix
+    ##       - apply exclude/include rules
+    ##       - each list item will have MD5sum, Timestamp and pointer to S3Uri
+    ##         used as a prefix.
+    ##   - the last arg may be '-' (stdout)
+    ##   - the last arg may be a local directory - destination_base
+    ##   - if the last one is S3 make current dir the destination_base
+    ##   - if the last one doesn't exist check remote list:
+    ##       - if there is only one item and its_prefix==its_name
+    ##         download that item to the name given in last arg.
+    ##       - if there are more remote items use the last arg as a destination_base
+    ##         and try to create the directory (incl. all parents).
+    ##
+    ## In both cases we end up with a list mapping remote object names (keys) to local file names.
+
+    ## Each item will be a dict with the following attributes
+    # {'remote_uri', 'local_filename'}
+    download_list = []
+
+    if len(args) == 0:
+        raise ParameterError("Nothing to download. Expecting S3 URI.")
+
+    if S3Uri(args[-1]).type == 'file':
+        destination_base = args.pop()
+    else:
+        destination_base = "."
+
+    if len(args) == 0:
+        raise ParameterError("Nothing to download. Expecting S3 URI.")
+
+    remote_list = fetch_remote_list(args, require_attribs = False)
+    remote_list, exclude_list = filter_exclude_include(remote_list)
+
+    remote_count = len(remote_list)
+
+    info(u"Summary: %d remote files to download" % remote_count)
+
+    if remote_count > 0:
+        if destination_base == "-":
+            ## stdout is ok for multiple remote files!
+            for key in remote_list:
+                remote_list[key]['local_filename'] = "-"
+        elif not os.path.isdir(destination_base):
+            ## We were either given a file name (existing or not)
+            if remote_count > 1:
+                raise ParameterError("Destination must be a directory or stdout when downloading multiple sources.")
+            remote_list[remote_list.keys()[0]]['local_filename'] = deunicodise(destination_base)
+        elif os.path.isdir(destination_base):
+            if destination_base[-1] != os.path.sep:
+                destination_base += os.path.sep
+            for key in remote_list:
+                remote_list[key]['local_filename'] = destination_base + key
+        else:
+            raise InternalError("WTF? Is it a dir or not? -- %s" % destination_base)
+
+    if cfg.dry_run:
+        for key in exclude_list:
+            output(u"exclude: %s" % unicodise(key))
+        for key in remote_list:
+            output(u"download: %s -> %s" % (remote_list[key]['object_uri_str'], remote_list[key]['local_filename']))
+
+        warning(u"Exitting now because of --dry-run")
+        return
+
+    seq = 0
+    for key in remote_list:
+        seq += 1
+        item = remote_list[key]
+        uri = S3Uri(item['object_uri_str'])
+        ## Encode / Decode destination with "replace" to make sure it's compatible with current encoding
+        destination = unicodise_safe(item['local_filename'])
+        seq_label = "[%d of %d]" % (seq, remote_count)
+
+        start_position = 0
+
+        if destination == "-":
+            ## stdout
+            dst_stream = sys.__stdout__
+        else:
+            ## File
+            try:
+                file_exists = os.path.exists(destination)
+                try:
+                    dst_stream = open(destination, "ab")
+                except IOError, e:
+                    if e.errno == errno.ENOENT:
+                        basename = destination[:destination.rindex(os.path.sep)]
+                        info(u"Creating directory: %s" % basename)
+                        os.makedirs(basename)
+                        dst_stream = open(destination, "ab")
+                    else:
+                        raise
+                if file_exists:
+                    if Config().get_continue:
+                        start_position = dst_stream.tell()
+                    elif Config().force:
+                        start_position = 0L
+                        dst_stream.seek(0L)
+                        dst_stream.truncate()
+                    elif Config().skip_existing:
+                        info(u"Skipping over existing file: %s" % (destination))
+                        continue
+                    else:
+                        dst_stream.close()
+                        raise ParameterError(u"File %s already exists. Use either of --force / --continue / --skip-existing or give it a new name." % destination)
+            except IOError, e:
+                error(u"Skipping %s: %s" % (destination, e.strerror))
+                continue
+        try:
+            response = s3.object_get(uri, dst_stream, start_position = start_position, extra_label = seq_label)
+        except S3Error, e:
+            if not file_exists: # Delete, only if file didn't exist before!
+                debug(u"object_get failed for '%s', deleting..." % (destination,))
+                os.unlink(destination)
+                raise
+
+        if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
+            gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
+            response["size"] = os.stat(destination)[6]
+        if not Config().progress_meter and destination != "-":
+            speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
+            output(u"File %s saved as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s)" %
+                (uri, destination, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1]))
+
+import json
+def cmd_usage(args):
+    s3 = S3(cfg)
+    access_key = s3.config.access_key
+    if len(args) > 0: access_key = args[0]
+
+    # uri = S3Uri('s3://usage/'+access_key)
+    request = s3.create_request('OBJECT_GET', bucket='usage', object=access_key)
+
+    request.resource = '/usage/'+access_key +"?a&b"
+
+    if len(args) > 1:
+        date = args[1]
+        s = request.resource
+        request.resource = s + '&s=' + date + 'T000000Z&e=' + date + 'T235959Z'
+
+    debug(request.resource)
+
+    conn = s3.get_connection('usage')
+    request.headers
+    debug(request.headers)
+    debug(request.resource)
+    conn.request('GET', request.resource, None, request.headers)
+    http_response = conn.getresponse()
+    #print(request.resource)
+    #response = s3.send_request(request)
+    res = { 'status':http_response.status,
+            'reason':http_response.reason,
+            'headers':http_response.getheaders(),
+            'data':http_response.read() }
+    conn.close()
+
+    if http_response.status is 200:
+        print(json.dumps(json.loads(res['data']), indent=2, sort_keys=True))
+    else:
+        print(res)
+
+def get_commands_list():
+    return [
+        {"cmd":"usage", "label":"usage", "param":"[access_key] [date]", "func":cmd_usage, "argc":0},
+    ]
+
+def format_commands(progname, commands_list):
+    help = "Commands:\n"
+    for cmd in commands_list:
+        help += "  %s\n      %s %s %s\n" % (cmd["label"], progname, cmd["cmd"], cmd["param"])
+    return help
+
+class OptionMimeType(Option):
+    def check_mimetype(option, opt, value):
+        if re.compile("^[a-z0-9]+/[a-z0-9+\.-]+(;.*)?$", re.IGNORECASE).match(value):
+            return value
+        raise OptionValueError("option %s: invalid MIME-Type format: %r" % (opt, value))
+
+class OptionS3ACL(Option):
+    def check_s3acl(option, opt, value):
+        permissions = ('read', 'write', 'read_acp', 'write_acp', 'full_control', 'all')
+        try:
+            permission, grantee = re.compile("^(\w+):(.+)$", re.IGNORECASE).match(value).groups()
+            if not permission or not grantee:
+                raise
+            if permission in permissions:
+                return { 'name' : grantee, 'permission' : permission.upper() }
+            else:
+                raise OptionValueError("option %s: invalid S3 ACL permission: %s (valid values: %s)" %
+                    (opt, permission, ", ".join(permissions)))
+        except:
+            raise OptionValueError("option %s: invalid S3 ACL format: %r" % (opt, value))
+
+class OptionAll(OptionMimeType, OptionS3ACL):
+    TYPE_CHECKER = copy(Option.TYPE_CHECKER)
+    TYPE_CHECKER["mimetype"] = OptionMimeType.check_mimetype
+    TYPE_CHECKER["s3acl"] = OptionS3ACL.check_s3acl
+    TYPES = Option.TYPES + ("mimetype", "s3acl")
+
+class MyHelpFormatter(IndentedHelpFormatter):
+    def format_epilog(self, epilog):
+        if epilog:
+            return "\n" + epilog + "\n"
+        else:
+            return ""
+
+def main():
+    global cfg
+
+    commands_list = get_commands_list()
+    commands = {}
+
+    ## Populate "commands" from "commands_list"
+    for cmd in commands_list:
+        if cmd.has_key("cmd"):
+            commands[cmd["cmd"]] = cmd
+
+    default_verbosity = Config().verbosity
+    optparser = OptionParser(option_class=OptionAll, formatter=MyHelpFormatter())
+    #optparser.disable_interspersed_args()
+
+    config_file = None
+    if os.getenv("HOME"):
+        config_file = os.path.join(os.getenv("HOME"), ".s3cfg")
+    elif os.name == "nt" and os.getenv("USERPROFILE"):
+        config_file = os.path.join(os.getenv("USERPROFILE").decode('mbcs'), "Application Data", "s3cmd.ini")
+
+    optparser.add_option("-d", "--debug", dest="verbosity", action="store_const", const=logging.DEBUG, help="Enable debug output.")
+    optparser.add_option(      "--version", dest="show_version", action="store_true", help="Show s3cmd version (%s) and exit." % (PkgInfo.version))
+
+    preferred_encoding = locale.getpreferredencoding() or "UTF-8"
+
+    optparser.set_defaults(encoding = preferred_encoding)
+    optparser.set_defaults(config = config_file)
+    optparser.set_defaults(verbosity = default_verbosity)
+
+    optparser.set_usage(optparser.usage + " COMMAND [parameters]")
+    optparser.set_description('S3cmd is a tool for managing objects in '+
+        'Amazon S3 storage. It allows for making and removing '+
+        '"buckets" and uploading, downloading and removing '+
+        '"objects" from these buckets.')
+    optparser.epilog = format_commands(optparser.get_prog_name(), commands_list)
+    optparser.epilog += ("\nFor more informations see the progect homepage:\n%s\n" % PkgInfo.url)
+    optparser.epilog += ("\nConsider a donation if you have found s3cmd useful:\n%s/donate\n" % PkgInfo.url)
+
+    (options, args) = optparser.parse_args()
+
+    ## Some mucking with logging levels to enable
+    ## debugging/verbose output for config file parser on request
+    logging.basicConfig(level=options.verbosity,
+                        format='%(levelname)s: %(message)s',
+                        stream = sys.stderr)
+
+    ## Now finally parse the config file
+    if not options.config:
+        error(u"Can't find a config file. Please use --config option.")
+        sys.exit(1)
+
+    try:
+        cfg = Config(options.config)
+    except IOError, e:
+        if options.run_configure:
+            cfg = Config()
+        else:
+            error(u"%s: %s"  % (options.config, e.strerror))
+            error(u"Configuration file not available.")
+            error(u"Consider using --configure parameter to create one.")
+            sys.exit(1)
+
+    ## And again some logging level adjustments
+    ## according to configfile and command line parameters
+    if options.verbosity != default_verbosity:
+        cfg.verbosity = options.verbosity
+    logging.root.setLevel(cfg.verbosity)
+
+    ## Default to --progress on TTY devices, --no-progress elsewhere
+    ## Can be overriden by actual --(no-)progress parameter
+    cfg.update_option('progress_meter', sys.stdout.isatty())
+
+    ## Unsupported features on Win32 platform
+    if os.name == "nt":
+        if cfg.preserve_attrs:
+            error(u"Option --preserve is not yet supported on MS Windows platform. Assuming --no-preserve.")
+            cfg.preserve_attrs = False
+        if cfg.progress_meter:
+            error(u"Option --progress is not yet supported on MS Windows platform. Assuming --no-progress.")
+            cfg.progress_meter = False
+
+
+    ## Set output and filesystem encoding for printing out filenames.
+    sys.stdout = codecs.getwriter(cfg.encoding)(sys.stdout, "replace")
+    sys.stderr = codecs.getwriter(cfg.encoding)(sys.stderr, "replace")
+
+    if len(args) < 1:
+        error(u"Missing command. Please run with --help for more information.")
+        sys.exit(1)
+
+    ## Unicodise all remaining arguments:
+    args = [unicodise(arg) for arg in args]
+
+    command = args.pop(0)
+    try:
+        debug(u"Command: %s" % commands[command]["cmd"])
+        ## We must do this lookup in extra step to
+        ## avoid catching all KeyError exceptions
+        ## from inner functions.
+        cmd_func = commands[command]["func"]
+    except KeyError, e:
+        error(u"Invalid command: %s" % e)
+        sys.exit(1)
+
+    if len(args) < commands[command]["argc"]:
+        error(u"Not enough paramters for command '%s'" % command)
+        sys.exit(1)
+
+    try:
+        cmd_func(args)
+    except S3Error, e:
+        error(u"S3 error: %s" % e)
+        sys.exit(1)
+
+def report_exception(e):
+        sys.stderr.write("""
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    An unexpected error has occurred.
+  Please report the following lines to:
+   s3tools-bugs@lists.sourceforge.net
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+""")
+        tb = traceback.format_exc(sys.exc_info())
+        e_class = str(e.__class__)
+        e_class = e_class[e_class.rfind(".")+1 : -2]
+        sys.stderr.write(u"Problem: %s: %s\n" % (e_class, e))
+        try:
+            sys.stderr.write("S3cmd:   %s\n" % PkgInfo.version)
+        except NameError:
+            sys.stderr.write("S3cmd:   unknown version. Module import problem?\n")
+        sys.stderr.write("\n")
+        sys.stderr.write(unicode(tb, errors="replace"))
+
+        if type(e) == ImportError:
+            sys.stderr.write("\n")
+            sys.stderr.write("Your sys.path contains these entries:\n")
+            for path in sys.path:
+                sys.stderr.write(u"\t%s\n" % path)
+            sys.stderr.write("Now the question is where have the s3cmd modules been installed?\n")
+
+        sys.stderr.write("""
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    An unexpected error has occurred.
+    Please report the above lines to:
+   s3tools-bugs@lists.sourceforge.net
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+""")
+
+if __name__ == '__main__':
+    try:
+        ## Our modules
+        ## Keep them in try/except block to
+        ## detect any syntax errors in there
+        from S3.Exceptions import *
+        from S3 import PkgInfo
+        from S3.S3 import S3
+        from S3.Config import Config
+        from S3.SortedDict import SortedDict
+        from S3.S3Uri import S3Uri
+        from S3 import Utils
+        from S3.Utils import *
+        from S3.Progress import Progress
+        from S3.CloudFront import Cmd as CfCmd
+        from S3.CloudFront import CloudFront
+        from S3.FileLists import *
+        from S3.MultiPart import MultiPartUpload
+
+        main()
+        sys.exit(0)
+
+    except ImportError, e:
+        report_exception(e)
+        sys.exit(1)
+
+    except ParameterError, e:
+        error(u"Parameter problem: %s" % e)
+        sys.exit(1)
+
+    except SystemExit, e:
+        sys.exit(e.code)
+
+    except KeyboardInterrupt:
+        sys.stderr.write("See ya!\n")
+        sys.exit(1)
+
+    except Exception, e:
+        report_exception(e)
+        sys.exit(1)
+
+# vim:et:ts=4:sts=4:ai

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 ## Amazon S3 manager
 ## Author: Michal Ludvig <michal@logix.cz>
@@ -602,10 +602,18 @@ def cmd_info(args):
                 output(u"   Location:  %s" % info['bucket-location'])
             acl = s3.get_acl(uri)
             acl_grant_list = acl.getGrantList()
+
+            try:
+                policy = s3.get_policy(uri)
+                output(u"   policy: %s" % policy)
+            except:
+                output(u"   policy: none")
+            
             for grant in acl_grant_list:
                 output(u"   ACL:       %s: %s" % (grant['grantee'], grant['permission']))
             if acl.isAnonRead():
                 output(u"   URL:       %s" % uri.public_url())
+
         except S3Error, e:
             if S3.codes.has_key(e.info["Code"]):
                 error(S3.codes[e.info["Code"]] % uri.bucket())
@@ -1221,6 +1229,32 @@ def cmd_setpolicy(args):
     if response['status'] == 204:
           output(u"%s: Policy updated" % uri)
 
+def cmd_setpolicy(args):
+    s3 = S3(cfg)
+    uri = S3Uri(args[1])
+    policy_file = args[0]
+    policy = open(policy_file, 'r').read()
+
+    if cfg.dry_run: return
+
+    response = s3.set_policy(uri, policy)
+
+    #if retsponse['status'] == 200:
+    debug(u"response - %s" % response['status'])
+    output(u"%s: Policy updated" % uri)
+
+def cmd_delpolicy(args):
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+    if cfg.dry_run: return
+
+    response = s3.delete_policy(uri)
+
+    #if retsponse['status'] == 200:
+    debug(u"response - %s" % response['status'])
+    output(u"%s: Policy deleted" % uri)
+
+
 def cmd_accesslog(args):
     s3 = S3(cfg)
     bucket_uri = S3Uri(args.pop())
@@ -1571,7 +1605,9 @@ def get_commands_list():
     {"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
     {"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
     {"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
-    {"cmd":"setpolicy", "label":"Set an access policy for a bucket", "param":"s3://BUCKET POLICY_STRING", "func":cmd_setpolicy, "argc":2},
+    {"cmd":"setpolicy", "label":"Update Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_setpolicy, "argc":2},
+    {"cmd":"delpolicy", "label":"Delete Bucket Policy", "param":"s3://BUCKET", "func":cmd_delpolicy, "argc":1},
+
     {"cmd":"accesslog", "label":"Enable/disable bucket access logging", "param":"s3://BUCKET", "func":cmd_accesslog, "argc":1},
     {"cmd":"sign", "label":"Sign arbitrary string using the secret key", "param":"STRING-TO-SIGN", "func":cmd_sign, "argc":1},
     {"cmd":"signurl", "label":"Sign an S3 URL to provide limited public access with expiry", "param":"s3://BUCKET/OBJECT expiry_epoch", "func":cmd_signurl, "argc":2},
