@@ -302,7 +302,7 @@ def cmd_object_put(args):
                 nicekey = "<stdin>"
             output(u"upload: %s -> %s" % (nicekey, local_list[key]['remote_uri']))
 
-        warning(u"Exitting now because of --dry-run")
+        warning(u"Exiting now because of --dry-run")
         return
 
     seq = 0
@@ -415,7 +415,7 @@ def cmd_object_get(args):
         for key in remote_list:
             output(u"download: %s -> %s" % (remote_list[key]['object_uri_str'], remote_list[key]['local_filename']))
 
-        warning(u"Exitting now because of --dry-run")
+        warning(u"Exiting now because of --dry-run")
         return
 
     seq = 0
@@ -512,7 +512,7 @@ def subcmd_object_del_uri(uri_str, recursive = None):
         for key in remote_list:
             output(u"delete: %s" % remote_list[key]['object_uri_str'])
 
-        warning(u"Exitting now because of --dry-run")
+        warning(u"Exiting now because of --dry-run")
         return
 
     for key in remote_list:
@@ -553,7 +553,7 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
         for key in remote_list:
             output(u"%s: %s -> %s" % (action_str, remote_list[key]['object_uri_str'], remote_list[key]['dest_name']))
 
-        warning(u"Exitting now because of --dry-run")
+        warning(u"Exiting now because of --dry-run")
         return
 
     seq = 0
@@ -661,7 +661,7 @@ def cmd_sync_remote2remote(args):
                 output(u"delete: %s" % dst_list[key]['object_uri_str'])
         for key in src_list:
             output(u"Sync: %s -> %s" % (src_list[key]['object_uri_str'], src_list[key]['target_uri']))
-        warning(u"Exitting now because of --dry-run")
+        warning(u"Exiting now because of --dry-run")
         return
 
     # if there are copy pairs, we can't do delete_before, on the chance
@@ -765,7 +765,7 @@ def cmd_sync_remote2local(args):
         for key in update_list:
             output(u"download: %s -> %s" % (update_list[key]['object_uri_str'], update_list[key]['local_filename']))
 
-        warning(u"Exitting now because of --dry-run")
+        warning(u"Exiting now because of --dry-run")
         return
 
     # if there are copy pairs, we can't do delete_before, on the chance
@@ -1077,7 +1077,7 @@ def cmd_sync_local2remote(args):
                 for key in remote_list:
                     output(u"delete: %s" % remote_list[key]['object_uri_str'])
 
-            warning(u"Exitting now because of --dry-run")
+            warning(u"Exiting now because of --dry-run")
             return
 
         # if there are copy pairs, we can't do delete_before, on the chance
@@ -1199,7 +1199,7 @@ def cmd_setacl(args):
         for key in remote_list:
             output(u"setacl: %s" % remote_list[key]['object_uri_str'])
 
-        warning(u"Exitting now because of --dry-run")
+        warning(u"Exiting now because of --dry-run")
         return
 
     seq = 0
