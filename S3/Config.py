@@ -179,7 +179,7 @@ class Config(object):
             self.access_key = credentials.get("AccessKeyId", "")
             self.secret_key = credentials.get("SecretAccessKey", "")
             self.iam_role_token = credentials.get("Token", "")
-            self.iam_role_expiratin = credentials.get("Expiration", "")
+            self.iam_role_expiration = credentials.get("Expiration", "")
 
 class ConfigParser(object):
     def __init__(self, file, sections = []):
