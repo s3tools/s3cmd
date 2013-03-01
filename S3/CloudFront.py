@@ -526,6 +526,10 @@ class CloudFront(object):
         if not headers:
             headers = {}
 
+        if self.config.use_iam_role:
+            self.config.refresh_credentials()
+            headers['x-amz-security-token'] = self.config.iam_role_token
+
         if headers.has_key("date"):
             if not headers.has_key("x-amz-date"):
                 headers["x-amz-date"] = headers["date"]

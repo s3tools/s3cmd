@@ -3,7 +3,8 @@
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
 
-from Utils import getTreeFromXml, unicodise, deunicodise
+#from Utils import getTreeFromXml, unicodise, deunicodise
+import Utils
 from logging import debug, info, warning, error
 
 try:

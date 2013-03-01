@@ -14,6 +14,8 @@ import rfc822
 import hmac
 import base64
 import errno
+import httplib
+import json
 import urllib
 
 from logging import debug, info, warning, error
@@ -458,5 +460,46 @@ __all__.append("getBucketFromHostname")
 def getHostnameFromBucket(bucket):
     return Config.Config().host_bucket % { 'bucket' : bucket }
 __all__.append("getHostnameFromBucket")
+
+def get_iam_role_credentials():
+    try:
+        conn = httplib.HTTPConnection("169.254.169.254", timeout=2)
+        conn.request("GET", "/latest/meta-data/iam/security-credentials/")
+        resp1 = conn.getresponse()
+        if resp1.status != 200:
+            return {}
+        role_name = resp1.read()
+        conn.request("GET", "/latest/meta-data/iam/security-credentials/" + role_name)
+        resp2 = conn.getresponse()
+        if resp2.status != 200:
+            return {}
+        json_credentials = resp2.read()
+        unicode_credentials = json.loads(json_credentials)
+        if unicode_credentials['Code'] != u'Success':
+            return {}
+        credentials = {}
+        for key in unicode_credentials.keys():
+            credentials[key] = unicode_credentials[key].encode('ascii', 'ignore')
+        return credentials
+    except:
+        return {}
+__all__.append("get_iam_role_credentials")
+
+def get_iam_role_info():
+    try:
+        conn = httplib.HTTPConnection("169.254.169.254", timeout=2)
+        conn.request("GET", "/latest/meta-data/iam/info")
+        resp1 = conn.getresponse()
+        if resp1.status != 200:
+            return {}
+        json_info = resp1.read()
+        unicode_info = json.loads(json_info)
+        info = {}
+        for key in unicode_info.keys():
+            info[key] = unicode_info[key].encode('ascii', 'ignore')
+        return info
+    except:
+        return {}
+__all__.append("get_iam_role_info")
 
 # vim:et:ts=4:sts=4:ai

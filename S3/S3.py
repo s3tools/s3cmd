@@ -120,6 +120,9 @@ class S3Request(object):
         return param_str and "?" + param_str[1:]
 
     def sign(self):
+        if self.s3.config.use_iam_role:
+            self.s3.config.refresh_credentials()
+            self.headers['x-amz-security-token'] = self.s3.config.iam_role_token
         h  = self.method_string + "\n"
         h += self.headers.get("content-md5", "")+"\n"
         h += self.headers.get("content-type", "")+"\n"

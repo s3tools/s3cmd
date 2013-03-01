@@ -131,6 +131,9 @@ class SimpleDB(object):
     def create_request(self, Action, DomainName, parameters = None):
         if not parameters:
             parameters = SortedDict()
+        if self.config.use_iam_role:
+            self.config.refresh_credentials()
+            parameters['SecurityToken'] = self.config.iam_role_token
         parameters['AWSAccessKeyId'] = self.config.access_key
         parameters['Version'] = self.Version
         parameters['SignatureVersion'] = self.SignatureVersion

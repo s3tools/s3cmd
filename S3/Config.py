@@ -9,6 +9,7 @@ import re
 import os
 import Progress
 from SortedDict import SortedDict
+import Utils
 
 class Config(object):
     _instance = None
@@ -91,6 +92,12 @@ class Config(object):
     website_index = "index.html"
     website_error = ""
     website_endpoint = "http://%(bucket)s.s3-website-%(location)s.amazonaws.com/"
+    use_iam_role = False
+    iam_role_code = ""
+    iam_role_last_updated = ""
+    iam_role_type = ""
+    iam_role_token = ""
+    iam_role_expiration = ""
     additional_destinations = []
     cache_file = ""
     add_headers = ""
@@ -162,6 +169,17 @@ class Config(object):
                 error("Config: value of option '%s' must be an integer, not '%s'" % (option, value))
         else:                           # string
             setattr(Config, option, value)
+
+    def refresh_credentials(self):
+        if self.use_iam_role:
+            credentials = Utils.get_iam_role_credentials()
+            self.iam_role_code = credentials.get("Code", "")
+            self.iam_role_last_updated = credentials.get("LastUpdated", "")
+            self.iam_role_type = credentials.get("Type", "")
+            self.access_key = credentials.get("AccessKeyId", "")
+            self.secret_key = credentials.get("SecretAccessKey", "")
+            self.iam_role_token = credentials.get("Token", "")
+            self.iam_role_expiration = credentials.get("Expiration", "")
 
 class ConfigParser(object):
     def __init__(self, file, sections = []):
