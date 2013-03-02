@@ -275,13 +275,8 @@ class S3(object):
         if not self.config.recursive and not recursive:
             uri_params['delimiter'] = "/"
         request = self.create_request("BUCKET_LIST", bucket = bucket, **uri_params)
-<<<<<<< HEAD
-        response = self.send_request(request)
-        debug(response)
-=======
         response = self.send_request(request, conn = connection)
         #debug(response)
->>>>>>> 701cde0a2c8314c3afd08ac56348b13301aaf6bf
         return response
 
     def bucket_create(self, bucket, bucket_location = None):
