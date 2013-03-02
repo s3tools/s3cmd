@@ -29,18 +29,47 @@ from MultiPart import MultiPartUpload
 from S3Uri import S3Uri
 
 try:
-    import magic
+    import magic, gzip
     try:
         ## https://github.com/ahupp/python-magic
         magic_ = magic.Magic(mime=True)
-        def mime_magic(file):
+        def mime_magic_file(file):
             return magic_.from_file(file)
-    except (TypeError, AttributeError):
+        def mime_magic_buffer(buffer):
+            return magic_.from_buffer(buffer)
+    except TypeError:
+        ## http://pypi.python.org/pypi/filemagic
+        try:
+            magic_ = magic.Magic(flags=magic.MAGIC_MIME)
+            def mime_magic_file(file):
+                return magic_.id_filename(file)
+            def mime_magic_buffer(buffer):
+                return magic_.id_buffer(buffer)
+        except TypeError:
+            ## file-5.11 built-in python bindings
+            magic_ = magic.open(magic.MAGIC_MIME)
+            magic_.load()
+            def mime_magic_file(file):
+                return magic_.file(file)
+            def mime_magic_buffer(buffer):
+                return magic_.buffer(buffer)
+
+    except AttributeError:
         ## Older python-magic versions
         magic_ = magic.open(magic.MAGIC_MIME)
         magic_.load()
-        def mime_magic(file):
+        def mime_magic_file(file):
             return magic_.file(file)
+        def mime_magic_buffer(buffer):
+            return magic_.buffer(buffer)
+
+    def mime_magic(file):
+        type = mime_magic_file(file)
+        if type != "application/x-gzip; charset=binary":
+            return (type, None)
+        else:
+            return (mime_magic_buffer(gzip.open(file).read(8192)), 'gzip')
+
 except ImportError, e:
     if str(e).find("magic") >= 0:
         magic_message = "Module python-magic is not available."
@@ -53,7 +82,7 @@ except ImportError, e:
         if (not magic_warned):
             warning(magic_message)
             magic_warned = True
-        return mimetypes.guess_type(file)[0]
+        return mimetypes.guess_type(file)
 
 __all__ = []
 class S3Request(object):
@@ -63,6 +92,9 @@ class S3Request(object):
         if len(self.s3.config.access_token)>0:
             self.s3.config.role_refresh()
             self.headers['x-amz-security-token']=self.s3.config.access_token
+        # Add in any extra headers from s3 config object
+        if self.s3.config.extra_headers:
+            self.headers.update(self.s3.config.extra_headers)
         self.resource = resource
         self.method_string = method_string
         self.params = params
@@ -214,9 +246,10 @@ class S3(object):
         truncated = True
         list = []
         prefixes = []
+        conn = self.get_connection(bucket)
 
         while truncated:
-            response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params)
+            response = self.bucket_list_noparse(conn, bucket, prefix, recursive, uri_params)
             current_list = _get_contents(response["data"])
             current_prefixes = _get_common_prefixes(response["data"])
             truncated = _list_truncated(response["data"])
@@ -230,18 +263,25 @@ class S3(object):
             list += current_list
             prefixes += current_prefixes
 
+        conn.close()
+
         response['list'] = list
         response['common_prefixes'] = prefixes
         return response
 
-    def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = {}):
+    def bucket_list_noparse(self, connection, bucket, prefix = None, recursive = None, uri_params = {}):
         if prefix:
             uri_params['prefix'] = self.urlencode_string(prefix)
         if not self.config.recursive and not recursive:
             uri_params['delimiter'] = "/"
         request = self.create_request("BUCKET_LIST", bucket = bucket, **uri_params)
+<<<<<<< HEAD
         response = self.send_request(request)
         debug(response)
+=======
+        response = self.send_request(request, conn = connection)
+        #debug(response)
+>>>>>>> 701cde0a2c8314c3afd08ac56348b13301aaf6bf
         return response
 
     def bucket_create(self, bucket, bucket_location = None):
@@ -342,17 +382,36 @@ class S3(object):
 
         return response
 
+    def add_encoding(self, filename, content_type):
+        if content_type.find("charset=") != -1:
+           return False
+        exts = self.config.add_encoding_exts.split(',')
+        if exts[0]=='':
+            return False
+        parts = filename.rsplit('.',2)
+        if len(parts) < 2:
+            return False
+        ext = parts[1]
+        if ext in exts:
+            return True
+        else:
+            return False
+
     def object_put(self, filename, uri, extra_headers = None, extra_label = ""):
         # TODO TODO
         # Make it consistent with stream-oriented object_get()
         if uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 
-        if not os.path.isfile(filename):
+        if filename != "-" and not os.path.isfile(filename):
             raise InvalidFileError(u"%s is not a regular file" % unicodise(filename))
         try:
-            file = open(filename, "rb")
-            size = os.stat(filename)[ST_SIZE]
+            if filename == "-":
+                file = sys.stdin
+                size = 0
+            else:
+                file = open(filename, "rb")
+                size = os.stat(filename)[ST_SIZE]
         except (IOError, OSError), e:
             raise InvalidFileError(u"%s: %s" % (unicodise(filename), e.strerror))
 
@@ -362,12 +421,21 @@ class S3(object):
 
         ## MIME-type handling
         content_type = self.config.mime_type
-        if not content_type and self.config.guess_mime_type:
-            content_type = mime_magic(filename)
+        content_encoding = None
+        if filename != "-" and not content_type and self.config.guess_mime_type:
+            (content_type, content_encoding) = mime_magic(filename)
         if not content_type:
             content_type = self.config.default_mime_type
-        debug("Content-Type set to '%s'" % content_type)
+        if not content_encoding:
+            content_encoding = self.config.encoding.upper()
+
+        ## add charset to content type
+        if self.add_encoding(filename, content_type) and content_encoding is not None:
+            content_type = content_type + "; charset=" + content_encoding
+
         headers["content-type"] = content_type
+        if content_encoding is not None:
+            headers["content-encoding"] = content_encoding
 
         ## Other Amazon S3 attributes
         if self.config.acl_public:
@@ -377,8 +445,10 @@ class S3(object):
 
         ## Multipart decision
         multipart = False
+        if not self.config.enable_multipart and filename == "-":
+            raise ParameterError("Multi-part upload is required to upload from stdin")
         if self.config.enable_multipart:
-            if size > self.config.multipart_chunk_size_mb * 1024 * 1024:
+            if size > self.config.multipart_chunk_size_mb * 1024 * 1024 or filename == "-":
                 multipart = True
         if multipart:
             # Multipart requests are quite different... drop here
@@ -457,6 +527,29 @@ class S3(object):
         body = str(acl)
         debug(u"set_acl(%s): acl-xml: %s" % (uri, body))
         response = self.send_request(request, body)
+        return response
+
+    def get_policy(self, uri):
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?policy")
+        response = self.send_request(request)
+        return response['data']
+
+    def set_policy(self, uri, policy):
+        headers = {}
+        # TODO check policy is proper json string
+        headers['content-type'] = 'application/json'
+        request = self.create_request("BUCKET_CREATE", uri = uri,
+                                      extra = "?policy", headers=headers)
+        body = policy
+        debug(u"set_policy(%s): policy-json: %s" % (uri, body))
+        request.sign()
+        response = self.send_request(request, body=body)
+        return response
+
+    def delete_policy(self, uri):
+        request = self.create_request("BUCKET_DELETE", uri = uri, extra = "?policy")
+        debug(u"delete_policy(%s)" % uri)
+        response = self.send_request(request)
         return response
 
     def get_accesslog(self, uri):
@@ -574,7 +667,7 @@ class S3(object):
         # Wait a few seconds. The more it fails the more we wait.
         return (self._max_retries - retries + 1) * 3
 
-    def send_request(self, request, body = None, retries = _max_retries):
+    def send_request(self, request, body = None, retries = _max_retries, conn = None):
         method_string, resource, headers = request.get_triplet()
         debug("Processing request, please wait...")
         if not headers.has_key('content-length'):
@@ -583,7 +676,13 @@ class S3(object):
             # "Stringify" all headers
             for header in headers.keys():
                 headers[header] = str(headers[header])
-            conn = self.get_connection(resource['bucket'])
+            if conn is None:
+                debug("Establishing connection")
+                conn = self.get_connection(resource['bucket'])
+                close_conn = True
+            else:
+                debug("Using existing connection")
+                close_conn = False
             uri = self.format_uri(resource)
             debug("Sending request method_string=%r, uri=%r, headers=%r, body=(%i bytes)" % (method_string, uri, headers, len(body or "")))
             conn.request(method_string, uri, body, headers)
@@ -594,7 +693,8 @@ class S3(object):
             response["headers"] = convertTupleListToDict(http_response.getheaders())
             response["data"] =  http_response.read()
             debug("Response: " + str(response))
-            conn.close()
+            if close_conn is True:
+                conn.close()
         except Exception, e:
             if retries:
                 warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
@@ -628,7 +728,7 @@ class S3(object):
 
         return response
 
-    def send_file(self, request, file, labels, throttle = 0, retries = _max_retries, offset = 0, chunk_size = -1):
+    def send_file(self, request, file, labels, buffer = '', throttle = 0, retries = _max_retries, offset = 0, chunk_size = -1):
         method_string, resource, headers = request.get_triplet()
         size_left = size_total = headers.get("content-length")
         if self.config.progress_meter:
@@ -651,15 +751,19 @@ class S3(object):
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 # Connection error -> same throttle value
-                return self.send_file(request, file, labels, throttle, retries - 1, offset, chunk_size)
+                return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
             else:
                 raise S3UploadError("Upload failed for: %s" % resource['uri'])
-        file.seek(offset)
+        if buffer == '':
+            file.seek(offset)
         md5_hash = md5()
         try:
             while (size_left > 0):
-                #debug("SendFile: Reading up to %d bytes from '%s'" % (self.config.send_chunk, file.name))
-                data = file.read(min(self.config.send_chunk, size_left))
+                #debug("SendFile: Reading up to %d bytes from '%s' - remaining bytes: %s" % (self.config.send_chunk, file.name, size_left))
+                if buffer == '':
+                    data = file.read(min(self.config.send_chunk, size_left))
+                else:
+                    data = buffer
                 md5_hash.update(data)
                 conn.send(data)
                 if self.config.progress_meter:
@@ -688,7 +792,7 @@ class S3(object):
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 # Connection error -> same throttle value
-                return self.send_file(request, file, labels, throttle, retries - 1, offset, chunk_size)
+                return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
             else:
                 debug("Giving up on '%s' %s" % (file.name, e))
                 raise S3UploadError("Upload failed for: %s" % resource['uri'])
@@ -710,7 +814,7 @@ class S3(object):
             redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
             self.set_hostname(redir_bucket, redir_hostname)
             warning("Redirected to: %s" % (redir_hostname))
-            return self.send_file(request, file, labels, offset = offset, chunk_size = chunk_size)
+            return self.send_file(request, file, labels, buffer, offset = offset, chunk_size = chunk_size)
 
         # S3 from time to time doesn't send ETag back in a response :-(
         # Force re-upload here.
@@ -733,7 +837,7 @@ class S3(object):
                     warning("Upload failed: %s (%s)" % (resource['uri'], S3Error(response)))
                     warning("Waiting %d sec..." % self._fail_wait(retries))
                     time.sleep(self._fail_wait(retries))
-                    return self.send_file(request, file, labels, throttle, retries - 1, offset, chunk_size)
+                    return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
                 else:
                     warning("Too many failures. Giving up on '%s'" % (file.name))
                     raise S3UploadError
@@ -746,7 +850,7 @@ class S3(object):
             warning("MD5 Sums don't match!")
             if retries:
                 warning("Retrying upload of %s" % (file.name))
-                return self.send_file(request, file, labels, throttle, retries - 1, offset, chunk_size)
+                return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
             else:
                 warning("Too many failures. Giving up on '%s'" % (file.name))
                 raise S3UploadError
@@ -829,6 +933,9 @@ class S3(object):
             while (current_position < size_total):
                 this_chunk = size_left > self.config.recv_chunk and self.config.recv_chunk or size_left
                 data = http_response.read(this_chunk)
+                if len(data) == 0:
+                    raise S3Error("EOF from S3!")
+
                 stream.write(data)
                 if start_position == 0:
                     md5_hash.update(data)

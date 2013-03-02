@@ -5,10 +5,12 @@
 
 import sys
 import datetime
+import time
 import Utils
 
 class Progress(object):
     _stdout = sys.stdout
+    _last_display = 0
 
     def __init__(self, labels, total_size):
         self._stdout = sys.stdout
@@ -47,6 +49,13 @@ class Progress(object):
     def output_labels(self):
         self._stdout.write(u"%(source)s -> %(destination)s  %(extra)s\n" % self.labels)
         self._stdout.flush()
+
+    def _display_needed(self):
+        # We only need to update the display every so often.
+        if time.time() - self._last_display > 1:
+            self._last_display = time.time()
+            return True
+        return False
 
     def display(self, new_file = False, done_message = None):
         """
@@ -98,6 +107,10 @@ class ProgressANSI(Progress):
             self._stdout.flush()
             return
 
+        # Only display progress every so often
+        if not (new_file or done_message) and not self._display_needed():
+            return
+
         timedelta = self.time_current - self.time_start
         sec_elapsed = timedelta.days * 86400 + timedelta.seconds + float(timedelta.microseconds)/1000000.0
         if (sec_elapsed > 0):
@@ -130,6 +143,10 @@ class ProgressCR(Progress):
         """
         if new_file:
             self.output_labels()
+            return
+
+        # Only display progress every so often
+        if not (new_file or done_message) and not self._display_needed():
             return
 
         timedelta = self.time_current - self.time_start

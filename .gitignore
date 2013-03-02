@@ -3,3 +3,4 @@
 testsuite
 /MANIFEST
 /dist
+build/*

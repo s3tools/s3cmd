@@ -471,7 +471,7 @@ test_s3cmd("Rename within S3", ['mv', '%s/copy/etc2/Logo.PNG' % pbucket(2), '%s/
 ## ====== Sync between buckets
 test_s3cmd("Sync remote2remote", ['sync', '%s/xyz/' % pbucket(1), '%s/copy/' % pbucket(2), '--delete-removed', '--exclude', 'non-printables*'],
     must_find = [ "File %s/xyz/demo/dir1/file1-1.txt copied to %s/copy/demo/dir1/file1-1.txt" % (pbucket(1), pbucket(2)),
-                  "File %s/xyz/etc2/Logo.PNG copied to %s/copy/etc2/Logo.PNG" % (pbucket(1), pbucket(2)),
+                  "remote copy: etc/logo.png -> etc2/Logo.PNG",
                   "deleted: '%s/copy/etc/logo.png'" % pbucket(2) ],
     must_not_find = [ "blah.txt" ])
 
@@ -485,7 +485,7 @@ test_s3cmd("Put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/x
 
 ## ====== Sync symbolic links
 test_s3cmd("Sync symbolic links", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--follow-symlinks' ],
-    must_find = ["File 'testsuite/etc/linked.png' stored as '%s/xyz/etc/linked.png'" % pbucket(1)],
+    must_find = ["remote copy: etc2/Logo.PNG -> etc/linked.png"],
            # Don't want to recursively copy linked directories!
            must_not_find_re = ["etc/more/linked-dir/more/give-me-more.txt",
                                "etc/brokenlink.png"],
