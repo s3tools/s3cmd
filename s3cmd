@@ -1080,7 +1080,7 @@ def cmd_sync_local2remote(args):
             for key in update_list:
                 output(u"upload: %s -> %s" % (update_list[key]['full_name_unicode'], update_list[key]['remote_uri']))
             for (src_obj, dst1, dst2) in copy_pairs:
-                output(u"remote copy: %s -> %s" % (dst1['object_key'], remote_list[dst2]['object_key']))
+                output(u"remote copy: %s -> %s" % (dst1, dst2))
             if cfg.delete_removed:
                 for key in remote_list:
                     output(u"delete: %s" % remote_list[key]['object_uri_str'])
