@@ -1058,7 +1058,8 @@ def cmd_sync_local2remote(args):
             ## Make remote_key same as local_key for comparison if we're dealing with only one file
             remote_list_entry = remote_list[remote_list.keys()[0]]
             # Flush remote_list, by the way
-            remote_list = { local_list.keys()[0] : remote_list_entry }
+            remote_list = SortedDict()
+            remote_list[local_list.keys()[0]] =  remote_list_entry
 
         local_list, remote_list, update_list, copy_pairs = compare_filelists(local_list, remote_list, src_remote = False, dst_remote = True, delay_updates = cfg.delay_updates)
 
