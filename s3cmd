@@ -656,10 +656,11 @@ def cmd_sync_remote2remote(args):
 
     print(u"Summary: %d source files to copy, %d files at destination to delete" % (src_count, dst_count))
 
-    if src_count > 0:
-        ### Populate 'remote_uri' only if we've got something to sync from src to dst
-        for key in src_list:
-            src_list[key]['target_uri'] = destination_base + key
+    ### Populate 'target_uri' only if we've got something to sync from src to dst
+    for key in src_list:
+        src_list[key]['target_uri'] = destination_base + key
+    for key in update_list:
+        update_list[key]['target_uri'] = destination_base + key
 
     if cfg.dry_run:
         for key in exclude_list:
