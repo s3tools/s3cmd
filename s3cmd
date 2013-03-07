@@ -465,6 +465,7 @@ def cmd_object_get(args):
         try:
             response = s3.object_get(uri, dst_stream, start_position = start_position, extra_label = seq_label)
         except S3Error, e:
+            response = {'headers': {}}
             if not file_exists: # Delete, only if file didn't exist before!
                 debug(u"object_get failed for '%s', deleting..." % (destination,))
                 os.unlink(destination)
