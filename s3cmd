@@ -827,7 +827,9 @@ def cmd_sync_remote2local(args):
                             os.utime(dst_file, (atime, mtime))
                         ## FIXME: uid/gid / uname/gname handling comes here! TODO
                 except OSError, e:
-                    try: dst_stream.close()
+                    try: 
+                        dst_stream.close() 
+                        os.remove(temp_file)
                     except: pass
                     if e.errno == errno.EEXIST:
                         warning(u"%s exists - not overwriting" % (dst_file))
@@ -840,19 +842,25 @@ def cmd_sync_remote2local(args):
                         continue
                     raise e
                 except KeyboardInterrupt:
-                    try: dst_stream.close()
+                    try: 
+                        dst_stream.close()
+                        os.remove(temp_file)
                     except: pass
                     warning(u"Exiting after keyboard interrupt")
                     return
                 except Exception, e:
-                    try: dst_stream.close()
+                    try: 
+                        dst_stream.close()
+                        os.remove(temp_file)
                     except: pass
                     error(u"%s: %s" % (file, e))
                     continue
                 # We have to keep repeating this call because
                 # Python 2.4 doesn't support try/except/finally
                 # construction :-(
-                try: dst_stream.close()
+                try: 
+                    dst_stream.close()
+                    os.remove(temp_file)
                 except: pass
             except S3DownloadError, e:
                 error(u"%s: download failed too many times. Skipping that file." % file)
