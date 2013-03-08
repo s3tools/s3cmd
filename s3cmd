@@ -6,7 +6,6 @@
 ## License: GPL Version 2
 
 import sys
-import binascii
 
 if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
     sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
@@ -25,7 +24,7 @@ import subprocess
 import htmlentitydefs
 import socket
 import shutil
-import binascii
+import tempfile
 import S3.Exceptions
 
 from copy import copy
@@ -805,18 +804,15 @@ def cmd_sync_remote2local(args):
                 try:
                     debug(u"dst_file=%s" % unicodise(dst_file))
                     # create temporary files (of type .s3cmd.XXXX.tmp) in the same directory
-                    # for downloading and then rename once downloaded                   
-                    
-                    temp_file_name = str(u".s3cmd.%s.tmp" % binascii.hexlify(os.urandom(10)))
-                    temp_file = os.path.join(os.path.dirname(dst_file), temp_file_name)
-                    debug(u"created temp_file=%s" % unicodise(temp_file))
-                    
-                    dst_stream = open(temp_file, "wb")
+                    # for downloading and then rename once downloaded
+                    chkptfd, chkptfname = tempfile.mkstemp(".tmp",".s3cmd.",os.path.dirname(dst_file))
+                    debug(u"created chkptfname=%s" % unicodise(chkptfname))
+                    dst_stream = os.fdopen(chkptfd, "wb")
                     response = s3.object_get(uri, dst_stream, extra_label = seq_label)
                     dst_stream.close()
                     # download completed, rename the file to destination
-                    os.rename(temp_file, dst_file)
-                    debug(u"renamed temp_file_name=%s to dst_file=%s" % (unicodise(temp_file_name), unicodise(dst_file)))
+                    os.rename(chkptfname, dst_file)
+                    debug(u"renamed chkptfname=%s to dst_file=%s" % (unicodise(chkptfname), unicodise(dst_file)))
                     if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
                         attrs = parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
                         if attrs.has_key('mode'):
