@@ -834,7 +834,7 @@ def cmd_sync_remote2local(args):
                 except OSError, e:
                     try: 
                         dst_stream.close() 
-                        os.remove(temp_file)
+                        os.remove(chkptfname)
                     except: pass
                     if e.errno == errno.EEXIST:
                         warning(u"%s exists - not overwriting" % (dst_file))
@@ -849,14 +849,14 @@ def cmd_sync_remote2local(args):
                 except KeyboardInterrupt:
                     try: 
                         dst_stream.close()
-                        os.remove(temp_file)
+                        os.remove(chkptfname)
                     except: pass
                     warning(u"Exiting after keyboard interrupt")
                     return
                 except Exception, e:
                     try: 
                         dst_stream.close()
-                        os.remove(temp_file)
+                        os.remove(chkptfname)
                     except: pass
                     error(u"%s: %s" % (file, e))
                     continue
@@ -865,7 +865,7 @@ def cmd_sync_remote2local(args):
                 # construction :-(
                 try: 
                     dst_stream.close()
-                    os.remove(temp_file)
+                    os.remove(chkptfname)
                 except: pass
             except S3DownloadError, e:
                 error(u"%s: download failed too many times. Skipping that file." % file)
