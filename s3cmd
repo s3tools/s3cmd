@@ -6,7 +6,6 @@
 ## License: GPL Version 2
 
 import sys
-import binascii
 
 if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
     sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
@@ -807,7 +806,7 @@ def cmd_sync_remote2local(args):
                     # create temporary files (of type .s3cmd.XXXX.tmp) in the same directory
                     # for downloading and then rename once downloaded                   
                     
-                    temp_file_name = str(u".s3cmd.%s.tmp" % binascii.hexlify(os.urandom(10)))
+                    temp_file_name = ".s3cmd.%s.tmp" % binascii.hexlify(os.urandom(10))
                     temp_file = os.path.join(os.path.dirname(dst_file), temp_file_name)
                     debug(u"created temp_file=%s" % unicodise(temp_file))
                     
