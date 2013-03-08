@@ -1832,8 +1832,12 @@ def main():
         sys.exit(0)
 
     if options.quiet:
-        sys.stdout.close()
-        sys.stdout = open("/dev/null", "w")
+        try:
+            f = open("/dev/null", "w")
+            sys.stdout.close()
+            sys.stdout = f
+        except IOError:
+            warning(u"--quiet disabled.")
 
     ## Now finally parse the config file
     if not options.config:
