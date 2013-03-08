@@ -812,6 +812,15 @@ def cmd_sync_remote2local(args):
                     dst_stream.close()
                     # download completed, rename the file to destination
                     os.rename(chkptfname, dst_file)
+
+                    # set permissions on destination file
+                    original_umask = os.umask(0);
+                    os.umask(original_umask);
+                    mode = 0777 - original_umask;
+                    debug(u"mode=%s" % oct(mode))
+                    
+                    os.chmod(dst_file, mode);
+                    
                     debug(u"renamed chkptfname=%s to dst_file=%s" % (unicodise(chkptfname), unicodise(dst_file)))
                     if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
                         attrs = parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
