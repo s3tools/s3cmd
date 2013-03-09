@@ -1856,7 +1856,7 @@ def main():
             sys.stdout.close()
             sys.stdout = f
         except IOError:
-            warning(u"--quiet disabled.")
+            warning(u"Unable to open /dev/null: --quiet disabled.")
 
     ## Now finally parse the config file
     if not options.config:
