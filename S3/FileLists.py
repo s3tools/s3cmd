@@ -6,7 +6,7 @@
 from S3 import S3
 from Config import Config
 from S3Uri import S3Uri
-from SortedDict import SortedDict
+from FileDict import FileDict
 from Utils import *
 from Exceptions import ParameterError
 from HashCache import HashCache
@@ -58,7 +58,7 @@ def _fswalk_no_symlinks(path):
 def filter_exclude_include(src_list):
     info(u"Applying --exclude/--include")
     cfg = Config()
-    exclude_list = SortedDict(ignore_case = False)
+    exclude_list = FileDict(ignore_case = False)
     for file in src_list.keys():
         debug(u"CHECK: %s" % file)
         excluded = False
@@ -224,7 +224,7 @@ def fetch_local_list(args, recursive = None):
             info(u"No cache file found, creating it.")
 
     local_uris = []
-    local_list = SortedDict(ignore_case = False)
+    local_list = FileDict(ignore_case = False)
     single_file = False
 
     if type(args) not in (list, tuple):
@@ -284,7 +284,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
             rem_base = rem_base[:rem_base.rfind('/')+1]
             remote_uri = S3Uri("s3://%s/%s" % (remote_uri.bucket(), rem_base))
         rem_base_len = len(rem_base)
-        rem_list = SortedDict(ignore_case = False)
+        rem_list = FileDict(ignore_case = False)
         break_now = False
         for object in response['list']:
             if object['Key'] == rem_base_original and object['Key'][-1] != os.path.sep:
@@ -292,7 +292,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
                 key = os.path.basename(object['Key'])
                 object_uri_str = remote_uri_original.uri()
                 break_now = True
-                rem_list = SortedDict(ignore_case = False)   ## Remove whatever has already been put to rem_list
+                rem_list = FileDict(ignore_case = False)   ## Remove whatever has already been put to rem_list
             else:
                 key = object['Key'][rem_base_len:]      ## Beware - this may be '' if object['Key']==rem_base !!
                 object_uri_str = remote_uri.uri() + key
@@ -314,7 +314,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
 
     cfg = Config()
     remote_uris = []
-    remote_list = SortedDict(ignore_case = False)
+    remote_list = FileDict(ignore_case = False)
 
     if type(args) not in (list, tuple):
         args = [args]
@@ -436,7 +436,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
     ## Items left on src_list will be transferred
     ## Items left on update_list will be transferred after src_list
     ## Items left on copy_pairs will be copied from dst1 to dst2
-    update_list = SortedDict(ignore_case = False)
+    update_list = FileDict(ignore_case = False)
     ## Items left on dst_list will be deleted
     copy_pairs = []
 
