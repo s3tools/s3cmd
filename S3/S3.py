@@ -191,15 +191,6 @@ class S3(object):
     def __init__(self, config):
         self.config = config
 
-    def get_connection(self, bucket):
-        if self.config.proxy_host != "":
-            return httplib.HTTPConnection(self.config.proxy_host, self.config.proxy_port)
-        else:
-            if self.config.use_https:
-                return httplib.HTTPSConnection(self.get_hostname(bucket))
-            else:
-                return httplib.HTTPConnection(self.get_hostname(bucket))
-
     def get_hostname(self, bucket):
         if bucket and check_bucket_name_dns_conformity(bucket):
             if self.redir_map.has_key(bucket):
@@ -681,6 +672,8 @@ class S3(object):
             response["data"] =  http_response.read()
             debug("Response: " + str(response))
             ConnMan.put(conn)
+        except ParameterError, e:
+            raise
         except Exception, e:
             if retries:
                 warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
@@ -728,6 +721,8 @@ class S3(object):
             for header in headers.keys():
                 conn.c.putheader(header, str(headers[header]))
             conn.c.endheaders()
+        except ParameterError, e:
+            raise
         except Exception, e:
             if self.config.progress_meter:
                 progress.done("failed")
@@ -766,6 +761,8 @@ class S3(object):
             response["size"] = size_total
             ConnMan.put(conn)
             debug(u"Response: %s" % response)
+        except ParameterError, e:
+            raise
         except Exception, e:
             if self.config.progress_meter:
                 progress.done("failed")
@@ -876,6 +873,8 @@ class S3(object):
             response["reason"] = http_response.reason
             response["headers"] = convertTupleListToDict(http_response.getheaders())
             debug("Response: %s" % response)
+        except ParameterError, e:
+            raise
         except Exception, e:
             if self.config.progress_meter:
                 progress.done("failed")

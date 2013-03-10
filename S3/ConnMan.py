@@ -4,16 +4,19 @@ from threading import Semaphore
 from logging import debug, info, warning, error
 
 from Config import Config
+from Exceptions import ParameterError
 
 __all__ = [ "ConnMan" ]
 
 class http_connection(object):
-    def __init__(self, id, hostname, ssl):
+    def __init__(self, id, hostname, ssl, cfg):
         self.hostname = hostname
         self.ssl = ssl
         self.id = id
         self.counter = 0
-        if not ssl:
+        if cfg.proxy_host != "":
+            self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
+        elif not ssl:
             self.c = httplib.HTTPConnection(hostname)
         else:
             self.c = httplib.HTTPSConnection(hostname)
@@ -25,10 +28,16 @@ class ConnMan(object):
 
     @staticmethod
     def get(hostname, ssl = None):
+        cfg = Config()
         if ssl == None:
-            ssl = Config().use_https
+            ssl = cfg.use_https
         conn = None
-        conn_id = "http%s://%s" % (ssl and "s" or "", hostname)
+        if cfg.proxy_host != "":
+            if ssl:
+                raise ParameterError("use_ssl=True can't be used with proxy")
+            conn_id = "proxy://%s:%s" % (cfg.proxy_host, cfg.proxy_port)
+        else:
+            conn_id = "http%s://%s" % (ssl and "s" or "", hostname)
         ConnMan.conn_pool_sem.acquire()
         if not ConnMan.conn_pool.has_key(conn_id):
             ConnMan.conn_pool[conn_id] = []
@@ -38,13 +47,18 @@ class ConnMan(object):
         ConnMan.conn_pool_sem.release()
         if not conn:
             debug("ConnMan.get(): creating new connection: %s" % conn_id)
-            conn = http_connection(conn_id, hostname, ssl)
+            conn = http_connection(conn_id, hostname, ssl, cfg)
             conn.c.connect()
         conn.counter += 1
         return conn
 
     @staticmethod
     def put(conn):
+        if conn.id.startswith("proxy://"):
+            conn.c.close()
+            debug("ConnMan.put(): closing proxy connection (keep-alive not yet supported)")
+            return
+
         if conn.counter >= ConnMan.conn_max_counter:
             conn.c.close()
             debug("ConnMan.put(): closing over-used connection")
