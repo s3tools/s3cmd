@@ -911,7 +911,7 @@ def local_copy(copy_pairs, destination_base):
     # Do NOT hardlink local files by default, that'd be silly
     # For instance all empty files would become hardlinked together!
 
-    failed_copy_list = SortedDict()
+    failed_copy_list = FileDict()
     for (src_obj, dst1, relative_file) in copy_pairs:
         src_file = os.path.join(destination_base, dst1)
         dst_file = os.path.join(destination_base, relative_file)
@@ -1076,7 +1076,7 @@ def cmd_sync_local2remote(args):
             ## Make remote_key same as local_key for comparison if we're dealing with only one file
             remote_list_entry = remote_list[remote_list.keys()[0]]
             # Flush remote_list, by the way
-            remote_list = SortedDict()
+            remote_list = FileDict()
             remote_list[local_list.keys()[0]] =  remote_list_entry
 
         local_list, remote_list, update_list, copy_pairs = compare_filelists(local_list, remote_list, src_remote = False, dst_remote = True, delay_updates = cfg.delay_updates)
@@ -2079,6 +2079,7 @@ if __name__ == '__main__':
         from S3.S3 import S3
         from S3.Config import Config
         from S3.SortedDict import SortedDict
+        from S3.FileDict import FileDict
         from S3.S3Uri import S3Uri
         from S3 import Utils
         from S3.Utils import *
