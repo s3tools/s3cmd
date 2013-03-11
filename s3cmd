@@ -1265,6 +1265,34 @@ def cmd_delpolicy(args):
     output(u"%s: Policy deleted" % uri)
 
 
+def cmd_multipart(args):
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+    
+    #id = ''
+    #if(len(args) > 1): id = args[1]
+
+    response = s3.get_multipart(uri)
+    debug(u"response - %s" % response['status'])
+    output(u"%s" % uri)
+    tree = getTreeFromXml(response['data'])
+    debug(parseNodes(tree))
+    output(u"Initiated\tId\tPath")
+    for mpupload in parseNodes(tree):
+        try:
+            output("%s\t%s\t%s" % (mpupload['Initiated'], mpupload['UploadId'], mpupload['Key']))
+        except:
+            pass
+
+def cmd_abort_multipart(args):
+    '''{"cmd":"abortmp",   "label":"abort a multipart upload", "param":"s3://BUCKET Id", "func":cmd_abort_multipart, "argc":2},'''
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+    id = args[1]
+    response = s3.abort_multipart(uri, id)
+    debug(u"response - %s" % response['status'])
+    output(u"%s" % uri)
+
 def cmd_accesslog(args):
     s3 = S3(cfg)
     bucket_uri = S3Uri(args.pop())
@@ -1618,6 +1646,9 @@ def get_commands_list():
 
     {"cmd":"setpolicy", "label":"Modify Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_setpolicy, "argc":2},
     {"cmd":"delpolicy", "label":"Delete Bucket Policy", "param":"s3://BUCKET", "func":cmd_delpolicy, "argc":1},
+
+    {"cmd":"multipart", "label":"show multipart uploads", "param":"s3://BUCKET [Id]", "func":cmd_multipart, "argc":1},
+    {"cmd":"abortmp",   "label":"abort a multipart upload", "param":"s3://BUCKET/OBJECT Id", "func":cmd_abort_multipart, "argc":2},
 
     {"cmd":"accesslog", "label":"Enable/disable bucket access logging", "param":"s3://BUCKET", "func":cmd_accesslog, "argc":1},
     {"cmd":"sign", "label":"Sign arbitrary string using the secret key", "param":"STRING-TO-SIGN", "func":cmd_sign, "argc":1},

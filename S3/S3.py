@@ -536,6 +536,17 @@ class S3(object):
         response = self.send_request(request)
         return response
 
+    def get_multipart(self, uri):
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?uploads")
+        response = self.send_request(request)
+        return response
+
+    def abort_multipart(self, uri, id):
+        request = self.create_request("OBJECT_DELETE", uri=uri,
+                                      extra = ("?uploadId=%s" % id))
+        response = self.send_request(request)
+        return response
+
     def get_accesslog(self, uri):
         request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?logging")
         response = self.send_request(request)
