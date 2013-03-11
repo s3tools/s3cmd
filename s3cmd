@@ -746,6 +746,8 @@ def cmd_sync_remote2local(args):
     info(u"Summary: %d remote files to download, %d local files to delete, %d local files to hardlink" % (remote_count + update_count, local_count, copy_pairs_count))
 
     def _set_local_filename(remote_list, destination_base):
+        if len(remote_list) == 0:
+            return
         if not os.path.isdir(destination_base):
             ## We were either given a file name (existing or not) or want STDOUT
             if len(remote_list) > 1:
