@@ -6,6 +6,7 @@
 import sys
 import os, os.path
 import time
+import errno
 import httplib
 import logging
 import mimetypes
