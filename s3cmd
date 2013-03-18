@@ -1272,6 +1272,22 @@ def cmd_abort_multipart(args):
     debug(u"response - %s" % response['status'])
     output(u"%s" % uri)
 
+def cmd_list_multipart(args):
+    '''{"cmd":"abortmp",   "label":"list a multipart upload", "param":"s3://BUCKET Id", "func":cmd_list_multipart, "argc":2},'''
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+    id = args[1]
+    output(u"hogehoghoe")
+    response = s3.list_multipart(uri, id)
+    debug(u"response - %s" % response['status'])
+    tree = getTreeFromXml(response['data'])
+    output(u"LastModified\t\t\tPartNumber\tETag\tSize")
+    for mpupload in parseNodes(tree):
+        try:
+            output("%s\t%s\t%s\t%s" % (mpupload['LastModified'], mpupload['PartNumber'], mpupload['ETag'], mpupload['Size']))
+        except:
+            pass
+
 def cmd_accesslog(args):
     s3 = S3(cfg)
     bucket_uri = S3Uri(args.pop())
@@ -1628,6 +1644,7 @@ def get_commands_list():
 
     {"cmd":"multipart", "label":"show multipart uploads", "param":"s3://BUCKET [Id]", "func":cmd_multipart, "argc":1},
     {"cmd":"abortmp",   "label":"abort a multipart upload", "param":"s3://BUCKET/OBJECT Id", "func":cmd_abort_multipart, "argc":2},
+    {"cmd":"listmp",    "label":"list parts of a multipart upload", "param":"s3://BUCKET/OBJECT Id", "func":cmd_list_multipart, "argc":2},
 
     {"cmd":"accesslog", "label":"Enable/disable bucket access logging", "param":"s3://BUCKET", "func":cmd_accesslog, "argc":1},
     {"cmd":"sign", "label":"Sign arbitrary string using the secret key", "param":"STRING-TO-SIGN", "func":cmd_sign, "argc":1},

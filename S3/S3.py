@@ -558,6 +558,12 @@ class S3(object):
         response = self.send_request(request)
         return response
 
+    def list_multipart(self, uri, id):
+        request = self.create_request("OBJECT_GET", uri=uri,
+                                      extra = ("?uploadId=%s" % id))
+        response = self.send_request(request)
+        return response
+
     def get_accesslog(self, uri):
         request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?logging")
         response = self.send_request(request)
