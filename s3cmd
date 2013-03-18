@@ -656,10 +656,11 @@ def cmd_sync_remote2remote(args):
 
     print(u"Summary: %d source files to copy, %d files at destination to delete" % (src_count, dst_count))
 
-    if src_count > 0:
-        ### Populate 'remote_uri' only if we've got something to sync from src to dst
-        for key in src_list:
-            src_list[key]['target_uri'] = destination_base + key
+    ### Populate 'target_uri' only if we've got something to sync from src to dst
+    for key in src_list:
+        src_list[key]['target_uri'] = destination_base + key
+    for key in update_list:
+        update_list[key]['target_uri'] = destination_base + key
 
     if cfg.dry_run:
         for key in exclude_list:
@@ -745,6 +746,8 @@ def cmd_sync_remote2local(args):
     info(u"Summary: %d remote files to download, %d local files to delete, %d local files to hardlink" % (remote_count + update_count, local_count, copy_pairs_count))
 
     def _set_local_filename(remote_list, destination_base):
+        if len(remote_list) == 0:
+            return
         if not os.path.isdir(destination_base):
             ## We were either given a file name (existing or not) or want STDOUT
             if len(remote_list) > 1:
@@ -811,6 +814,15 @@ def cmd_sync_remote2local(args):
                     dst_stream.close()
                     # download completed, rename the file to destination
                     os.rename(chkptfname, dst_file)
+
+                    # set permissions on destination file
+                    original_umask = os.umask(0);
+                    os.umask(original_umask);
+                    mode = 0777 - original_umask;
+                    debug(u"mode=%s" % oct(mode))
+                    
+                    os.chmod(dst_file, mode);
+                    
                     debug(u"renamed chkptfname=%s to dst_file=%s" % (unicodise(chkptfname), unicodise(dst_file)))
                     if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
                         attrs = parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
@@ -822,7 +834,9 @@ def cmd_sync_remote2local(args):
                             os.utime(dst_file, (atime, mtime))
                         ## FIXME: uid/gid / uname/gname handling comes here! TODO
                 except OSError, e:
-                    try: dst_stream.close()
+                    try: 
+                        dst_stream.close() 
+                        os.remove(chkptfname)
                     except: pass
                     if e.errno == errno.EEXIST:
                         warning(u"%s exists - not overwriting" % (dst_file))
@@ -835,19 +849,25 @@ def cmd_sync_remote2local(args):
                         continue
                     raise e
                 except KeyboardInterrupt:
-                    try: dst_stream.close()
+                    try: 
+                        dst_stream.close()
+                        os.remove(chkptfname)
                     except: pass
                     warning(u"Exiting after keyboard interrupt")
                     return
                 except Exception, e:
-                    try: dst_stream.close()
+                    try: 
+                        dst_stream.close()
+                        os.remove(chkptfname)
                     except: pass
                     error(u"%s: %s" % (file, e))
                     continue
                 # We have to keep repeating this call because
                 # Python 2.4 doesn't support try/except/finally
                 # construction :-(
-                try: dst_stream.close()
+                try: 
+                    dst_stream.close()
+                    os.remove(chkptfname)
                 except: pass
             except S3DownloadError, e:
                 error(u"%s: download failed too many times. Skipping that file." % file)
@@ -893,7 +913,7 @@ def local_copy(copy_pairs, destination_base):
     # Do NOT hardlink local files by default, that'd be silly
     # For instance all empty files would become hardlinked together!
 
-    failed_copy_list = SortedDict()
+    failed_copy_list = FileDict()
     for (src_obj, dst1, relative_file) in copy_pairs:
         src_file = os.path.join(destination_base, dst1)
         dst_file = os.path.join(destination_base, relative_file)
@@ -1058,7 +1078,8 @@ def cmd_sync_local2remote(args):
             ## Make remote_key same as local_key for comparison if we're dealing with only one file
             remote_list_entry = remote_list[remote_list.keys()[0]]
             # Flush remote_list, by the way
-            remote_list = { local_list.keys()[0] : remote_list_entry }
+            remote_list = FileDict()
+            remote_list[local_list.keys()[0]] =  remote_list_entry
 
         local_list, remote_list, update_list, copy_pairs = compare_filelists(local_list, remote_list, src_remote = False, dst_remote = True, delay_updates = cfg.delay_updates)
 
@@ -1644,6 +1665,7 @@ def get_commands_list():
 
     {"cmd":"multipart", "label":"show multipart uploads", "param":"s3://BUCKET [Id]", "func":cmd_multipart, "argc":1},
     {"cmd":"abortmp",   "label":"abort a multipart upload", "param":"s3://BUCKET/OBJECT Id", "func":cmd_abort_multipart, "argc":2},
+
     {"cmd":"listmp",    "label":"list parts of a multipart upload", "param":"s3://BUCKET/OBJECT Id", "func":cmd_list_multipart, "argc":2},
 
     {"cmd":"accesslog", "label":"Enable/disable bucket access logging", "param":"s3://BUCKET", "func":cmd_accesslog, "argc":1},
@@ -1856,6 +1878,7 @@ def main():
     optparser.add_option(      "--version", dest="show_version", action="store_true", help="Show s3cmd version (%s) and exit." % (PkgInfo.version))
     optparser.add_option("-F", "--follow-symlinks", dest="follow_symlinks", action="store_true", default=False, help="Follow symbolic links as if they are regular files")
     optparser.add_option(      "--cache-file", dest="cache_file", action="store", default="",  metavar="FILE", help="Cache FILE containing local source MD5 values")
+    optparser.add_option("-q", "--quiet", dest="quiet", action="store_true", default=False, help="Silence output on stdout")
 
     optparser.set_usage(optparser.usage + " COMMAND [parameters]")
     optparser.set_description('S3cmd is a tool for managing objects in '+
@@ -1877,6 +1900,14 @@ def main():
     if options.show_version:
         output(u"s3cmd version %s" % PkgInfo.version)
         sys.exit(0)
+
+    if options.quiet:
+        try:
+            f = open("/dev/null", "w")
+            sys.stdout.close()
+            sys.stdout = f
+        except IOError:
+            warning(u"Unable to open /dev/null: --quiet disabled.")
 
     ## Now finally parse the config file
     if not options.config:
@@ -2099,6 +2130,7 @@ if __name__ == '__main__':
         from S3.S3 import S3
         from S3.Config import Config
         from S3.SortedDict import SortedDict
+        from S3.FileDict import FileDict
         from S3.S3Uri import S3Uri
         from S3 import Utils
         from S3.Utils import *

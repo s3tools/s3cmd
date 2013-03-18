@@ -1,5 +1,18 @@
-s3cmd 1.5.0   -   ???
-===========
+s3cmd 1.5.0-alpha3   -   2013-03-11
+==================
+* Persistent HTTP/HTTPS connections for massive speedup (Michal Ludvig)
+* New switch --quiet for suppressing all output (Siddarth Prakash)
+* Honour "umask" on file downloads (Jason Dalton)
+* Various bugfixes from many contributors
+
+s3cmd 1.5.0-alpha2   -   2013-03-04
+==================
+* IAM roles support (David Kohen, Eric Dowd)
+* Manage bucket policies (Kota Uenishi)
+* Various bugfixes from many contributors
+
+s3cmd 1.5.0-alpha1   -   2013-02-19
+==================
 * Server-side copy for hardlinks/softlinks to improve performance
   (Matt Domsch)
 * New [signurl] command (Craig Ringer)

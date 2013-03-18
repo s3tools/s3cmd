@@ -27,6 +27,7 @@ from Config import Config
 from Exceptions import *
 from MultiPart import MultiPartUpload
 from S3Uri import S3Uri
+from ConnMan import ConnMan
 
 try:
     import magic, gzip
@@ -190,15 +191,6 @@ class S3(object):
     def __init__(self, config):
         self.config = config
 
-    def get_connection(self, bucket):
-        if self.config.proxy_host != "":
-            return httplib.HTTPConnection(self.config.proxy_host, self.config.proxy_port)
-        else:
-            if self.config.use_https:
-                return httplib.HTTPSConnection(self.get_hostname(bucket))
-            else:
-                return httplib.HTTPConnection(self.get_hostname(bucket))
-
     def get_hostname(self, bucket):
         if bucket and check_bucket_name_dns_conformity(bucket):
             if self.redir_map.has_key(bucket):
@@ -246,10 +238,9 @@ class S3(object):
         truncated = True
         list = []
         prefixes = []
-        conn = self.get_connection(bucket)
 
         while truncated:
-            response = self.bucket_list_noparse(conn, bucket, prefix, recursive, uri_params)
+            response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params)
             current_list = _get_contents(response["data"])
             current_prefixes = _get_common_prefixes(response["data"])
             truncated = _list_truncated(response["data"])
@@ -263,19 +254,17 @@ class S3(object):
             list += current_list
             prefixes += current_prefixes
 
-        conn.close()
-
         response['list'] = list
         response['common_prefixes'] = prefixes
         return response
 
-    def bucket_list_noparse(self, connection, bucket, prefix = None, recursive = None, uri_params = {}):
+    def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = {}):
         if prefix:
             uri_params['prefix'] = self.urlencode_string(prefix)
         if not self.config.recursive and not recursive:
             uri_params['delimiter'] = "/"
         request = self.create_request("BUCKET_LIST", bucket = bucket, **uri_params)
-        response = self.send_request(request, conn = connection)
+        response = self.send_request(request)
         #debug(response)
         return response
 
@@ -679,7 +668,7 @@ class S3(object):
         # Wait a few seconds. The more it fails the more we wait.
         return (self._max_retries - retries + 1) * 3
 
-    def send_request(self, request, body = None, retries = _max_retries, conn = None):
+    def send_request(self, request, body = None, retries = _max_retries):
         method_string, resource, headers = request.get_triplet()
         debug("Processing request, please wait...")
         if not headers.has_key('content-length'):
@@ -688,25 +677,20 @@ class S3(object):
             # "Stringify" all headers
             for header in headers.keys():
                 headers[header] = str(headers[header])
-            if conn is None:
-                debug("Establishing connection")
-                conn = self.get_connection(resource['bucket'])
-                close_conn = True
-            else:
-                debug("Using existing connection")
-                close_conn = False
+            conn = ConnMan.get(self.get_hostname(resource['bucket']))
             uri = self.format_uri(resource)
             debug("Sending request method_string=%r, uri=%r, headers=%r, body=(%i bytes)" % (method_string, uri, headers, len(body or "")))
-            conn.request(method_string, uri, body, headers)
+            conn.c.request(method_string, uri, body, headers)
             response = {}
-            http_response = conn.getresponse()
+            http_response = conn.c.getresponse()
             response["status"] = http_response.status
             response["reason"] = http_response.reason
             response["headers"] = convertTupleListToDict(http_response.getheaders())
             response["data"] =  http_response.read()
             debug("Response: " + str(response))
-            if close_conn is True:
-                conn.close()
+            ConnMan.put(conn)
+        except ParameterError, e:
+            raise
         except Exception, e:
             if retries:
                 warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
@@ -749,12 +733,13 @@ class S3(object):
             info("Sending file '%s', please wait..." % file.name)
         timestamp_start = time.time()
         try:
-            conn = self.get_connection(resource['bucket'])
-            conn.connect()
-            conn.putrequest(method_string, self.format_uri(resource))
+            conn = ConnMan.get(self.get_hostname(resource['bucket']))
+            conn.c.putrequest(method_string, self.format_uri(resource))
             for header in headers.keys():
-                conn.putheader(header, str(headers[header]))
-            conn.endheaders()
+                conn.c.putheader(header, str(headers[header]))
+            conn.c.endheaders()
+        except ParameterError, e:
+            raise
         except Exception, e:
             if self.config.progress_meter:
                 progress.done("failed")
@@ -777,7 +762,7 @@ class S3(object):
                 else:
                     data = buffer
                 md5_hash.update(data)
-                conn.send(data)
+                conn.c.send(data)
                 if self.config.progress_meter:
                     progress.update(delta_position = len(data))
                 size_left -= len(data)
@@ -785,14 +770,16 @@ class S3(object):
                     time.sleep(throttle)
             md5_computed = md5_hash.hexdigest()
             response = {}
-            http_response = conn.getresponse()
+            http_response = conn.c.getresponse()
             response["status"] = http_response.status
             response["reason"] = http_response.reason
             response["headers"] = convertTupleListToDict(http_response.getheaders())
             response["data"] = http_response.read()
             response["size"] = size_total
-            conn.close()
+            ConnMan.put(conn)
             debug(u"Response: %s" % response)
+        except ParameterError, e:
+            raise
         except Exception, e:
             if self.config.progress_meter:
                 progress.done("failed")
@@ -814,7 +801,7 @@ class S3(object):
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
 
         if self.config.progress_meter:
-            ## The above conn.close() takes some time -> update() progress meter
+            ## Finalising the upload takes some time -> update() progress meter
             ## to correct the average speed. Otherwise people will complain that
             ## 'progress' and response["speed"] are inconsistent ;-)
             progress.update()
@@ -889,21 +876,22 @@ class S3(object):
             info("Receiving file '%s', please wait..." % stream.name)
         timestamp_start = time.time()
         try:
-            conn = self.get_connection(resource['bucket'])
-            conn.connect()
-            conn.putrequest(method_string, self.format_uri(resource))
+            conn = ConnMan.get(self.get_hostname(resource['bucket']))
+            conn.c.putrequest(method_string, self.format_uri(resource))
             for header in headers.keys():
-                conn.putheader(header, str(headers[header]))
+                conn.c.putheader(header, str(headers[header]))
             if start_position > 0:
                 debug("Requesting Range: %d .. end" % start_position)
-                conn.putheader("Range", "bytes=%d-" % start_position)
-            conn.endheaders()
+                conn.c.putheader("Range", "bytes=%d-" % start_position)
+            conn.c.endheaders()
             response = {}
-            http_response = conn.getresponse()
+            http_response = conn.c.getresponse()
             response["status"] = http_response.status
             response["reason"] = http_response.reason
             response["headers"] = convertTupleListToDict(http_response.getheaders())
             debug("Response: %s" % response)
+        except ParameterError, e:
+            raise
         except Exception, e:
             if self.config.progress_meter:
                 progress.done("failed")
@@ -955,7 +943,7 @@ class S3(object):
                 ## Call progress meter from here...
                 if self.config.progress_meter:
                     progress.update(delta_position = len(data))
-            conn.close()
+            ConnMan.put(conn)
         except Exception, e:
             if self.config.progress_meter:
                 progress.done("failed")

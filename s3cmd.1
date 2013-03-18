@@ -57,8 +57,11 @@ Move object
 s3cmd \fBsetacl\fR \fIs3://BUCKET[/OBJECT]\fR
 Modify Access control list for Bucket or Files
 .TP
-s3cmd \fBsetpolicy\fR \fIs3://BUCKET POLICY_STRING\fR
-Set an access policy for a bucket
+s3cmd \fBsetpolicy\fR \fIFILE s3://BUCKET\fR
+Modify Bucket Policy
+.TP
+s3cmd \fBdelpolicy\fR \fIs3://BUCKET\fR
+Delete Bucket Policy
 .TP
 s3cmd \fBaccesslog\fR \fIs3://BUCKET\fR
 Enable/disable bucket access logging
@@ -318,13 +321,16 @@ Enable verbose output.
 Enable debug output.
 .TP
 \fB\-\-version\fR
-Show s3cmd version (1.5.0-alpha1) and exit.
+Show s3cmd version (1.5.0-alpha3) and exit.
 .TP
 \fB\-F\fR, \fB\-\-follow\-symlinks\fR
 Follow symbolic links as if they are regular files
 .TP
 \fB\-\-cache\-file\fR=FILE
 Cache FILE containing local source MD5 values
+.TP
+\fB\-q\fR, \fB\-\-quiet\fR
+Silence output on stdout
 
 
 .SH EXAMPLES
