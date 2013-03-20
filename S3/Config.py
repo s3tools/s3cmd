@@ -98,6 +98,7 @@ class Config(object):
     additional_destinations = []
     cache_file = ""
     add_headers = ""
+    ignore_failed_copy = False
 
     ## Creating a singleton
     def __new__(self, configfile = None):
