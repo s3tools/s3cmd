@@ -132,7 +132,7 @@ class SimpleDB(object):
         if not parameters:
             parameters = SortedDict()
         if len(self.config.access_token) > 0:
-            self.config.refresh_role()
+            self.config.role_refresh()
             parameters['Signature']=self.config.access_token
         parameters['AWSAccessKeyId'] = self.config.access_key
         parameters['Version'] = self.Version
