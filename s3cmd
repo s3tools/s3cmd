@@ -621,6 +621,14 @@ def cmd_info(args):
             else:
                 raise
 
+def filedicts_to_keys(*args):
+    keys = set()
+    for a in args:
+        keys.update(a.keys())
+    keys = list(keys)
+    keys.sort()
+    return keys
+
 def cmd_sync_remote2remote(args):
     def _do_deletes(s3, dst_list):
         # Delete items in destination that are not in source
@@ -646,7 +654,8 @@ def cmd_sync_remote2remote(args):
 
     info(u"Found %d source files, %d destination files" % (src_count, dst_count))
 
-    src_list, exclude_list = filter_exclude_include(src_list)
+    src_list, src_exclude_list = filter_exclude_include(src_list)
+    dst_list, dst_exclude_list = filter_exclude_include(dst_list)
 
     src_list, dst_list, update_list, copy_pairs = compare_filelists(src_list, dst_list, src_remote = True, dst_remote = True, delay_updates = cfg.delay_updates)
 
@@ -663,7 +672,8 @@ def cmd_sync_remote2remote(args):
         update_list[key]['target_uri'] = destination_base + key
 
     if cfg.dry_run:
-        for key in exclude_list:
+        keys = filedicts_to_keys(src_exclude_list, dst_exclude_list)
+        for key in keys:
             output(u"exclude: %s" % unicodise(key))
         if cfg.delete_removed:
             for key in dst_list:
@@ -734,7 +744,8 @@ def cmd_sync_remote2local(args):
 
     info(u"Found %d remote files, %d local files" % (remote_count, local_count))
 
-    remote_list, exclude_list = filter_exclude_include(remote_list)
+    remote_list, src_exclude_list = filter_exclude_include(remote_list)
+    local_list, dst_exclude_list = filter_exclude_include(local_list)
 
     remote_list, local_list, update_list, copy_pairs = compare_filelists(remote_list, local_list, src_remote = True, dst_remote = False, delay_updates = cfg.delay_updates)
 
@@ -766,7 +777,8 @@ def cmd_sync_remote2local(args):
     _set_local_filename(update_list, destination_base)
 
     if cfg.dry_run:
-        for key in exclude_list:
+        keys = filedicts_to_keys(src_exclude_list, dst_exclude_list)
+        for key in keys:
             output(u"exclude: %s" % unicodise(key))
         if cfg.delete_removed:
             for key in local_list:
@@ -1072,7 +1084,8 @@ def cmd_sync_local2remote(args):
 
         info(u"Found %d local files, %d remote files" % (local_count, remote_count))
 
-        local_list, exclude_list = filter_exclude_include(local_list)
+        local_list, src_exclude_list = filter_exclude_include(local_list)
+        remote_list, dst_exclude_list = filter_exclude_include(remote_list)
 
         if single_file_local and len(local_list) == 1 and len(remote_list) == 1:
             ## Make remote_key same as local_key for comparison if we're dealing with only one file
@@ -1094,7 +1107,8 @@ def cmd_sync_local2remote(args):
         _set_remote_uri(update_list, destination_base, single_file_local)
 
         if cfg.dry_run:
-            for key in exclude_list:
+            keys = filedicts_to_keys(src_exclude_list, dst_exclude_list)
+            for key in keys:
                 output(u"exclude: %s" % unicodise(key))
             for key in local_list:
                 output(u"upload: %s -> %s" % (local_list[key]['full_name_unicode'], local_list[key]['remote_uri']))
