@@ -195,6 +195,9 @@ Additional destination for parallel uploads, in addition to last arg.  May be re
 \fB\-\-delete\-after\-fetch\fR
 Delete remote objects after fetching to local file (only for [get] and [sync] commands).
 .TP
+\fB\-\-max\-delete\fR=NUM 
+Do not delete more than NUM files.  If that limit would be exceeded, a warning is output and none are deleted. [del] and [sync]
+.TP
 \fB\-p\fR, \fB\-\-preserve\fR
 Preserve filesystem attributes (mode, ownership, timestamps). Default for [sync] command.
 .TP

@@ -513,6 +513,10 @@ test_s3cmd("Simple delete", ['del', '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
     must_find = [ "File %s/xyz/etc2/Logo.PNG deleted" % pbucket(1) ])
 
 
+## ====== Recursive delete maximum exceeed
+test_s3cmd("Recursive delete maximum exceeded", ['del', '--recursive', '--max-delete=1', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],
+    must_not_find = [ "File %s/xyz/etc/TypeRa.ttf deleted" % pbucket(1) ])
+
 ## ====== Recursive delete
 test_s3cmd("Recursive delete", ['del', '--recursive', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],
     must_find = [ "File %s/xyz/etc/TypeRa.ttf deleted" % pbucket(1) ],
