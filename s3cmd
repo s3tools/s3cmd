@@ -684,6 +684,10 @@ def cmd_sync_remote2remote(args):
     if len(copy_pairs) > 0:
         cfg.delete_after = True
 
+    if cfg.delete_removed and src_count + len(copy_pairs) == 0 and not cfg.force:
+        warning(u"delete: cowardly refusing to delete because no source files were found.  Use --force to override.")
+        cfg.delete_removed = False
+
     # Delete items in destination that are not in source
     if cfg.delete_removed and not cfg.delete_after:
         _do_deletes(s3, dst_list)
@@ -792,6 +796,10 @@ def cmd_sync_remote2local(args):
     # we need one of the to-be-deleted files as a copy source.
     if len(copy_pairs) > 0:
         cfg.delete_after = True
+
+    if cfg.delete_removed and remote_count + len(copy_pairs) == 0 and not cfg.force:
+        warning(u"delete: cowardly refusing to delete because no source files were found.  Use --force to override.")
+        cfg.delete_removed = False
 
     if cfg.delete_removed and not cfg.delete_after:
         _do_deletes(local_list)
@@ -1125,6 +1133,10 @@ def cmd_sync_local2remote(args):
         # we need one of the to-be-deleted files as a copy source.
         if len(copy_pairs) > 0:
             cfg.delete_after = True
+
+        if cfg.delete_removed and local_count + update_count + copy_count == 0 and not cfg.force:
+            warning(u"delete: cowardly refusing to delete because no source files were found.  Use --force to override.")
+            cfg.delete_removed = False
 
         if cfg.delete_removed and not cfg.delete_after:
             _do_deletes(s3, remote_list)
