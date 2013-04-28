@@ -287,7 +287,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
         rem_list = FileDict(ignore_case = False)
         break_now = False
         for object in response['list']:
-            if object['Key'] == rem_base_original and object['Key'][-1] != os.path.sep:
+            if object['Key'] == rem_base_original and object['Key'][-1] != "/":
                 ## We asked for one file and we got that file :-)
                 key = os.path.basename(object['Key'])
                 object_uri_str = remote_uri_original.uri()
