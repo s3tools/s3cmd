@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 ## Amazon S3 manager
 ## Author: Michal Ludvig <michal@logix.cz>
