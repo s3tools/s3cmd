@@ -116,7 +116,7 @@ class Config(object):
                 self.role_config()  
 
     def role_config(self):
-        conn = httplib.HTTPConnection(host='169.254.169.254',timeout=0.1)
+        conn = httplib.HTTPConnection(host='169.254.169.254',timeout=2)
         try:
             conn.request('GET', "/latest/meta-data/iam/security-credentials/")
             resp = conn.getresponse()
