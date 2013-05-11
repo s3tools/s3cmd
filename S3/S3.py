@@ -411,12 +411,10 @@ class S3(object):
             (content_type, content_encoding) = mime_magic(filename)
         if not content_type:
             content_type = self.config.default_mime_type
-        if not content_encoding:
-            content_encoding = self.config.encoding.upper()
 
         ## add charset to content type
-        if self.add_encoding(filename, content_type) and content_encoding is not None:
-            content_type = content_type + "; charset=" + content_encoding
+        if self.add_encoding(filename, content_type):
+            content_type = content_type + "; charset=" + self.config.encoding.upper()
 
         headers["content-type"] = content_type
         if content_encoding is not None:
