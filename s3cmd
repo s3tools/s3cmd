@@ -2101,7 +2101,7 @@ def report_exception(e):
 
 """)
         s = ' '.join(sys.argv)
-        sys.stderr.write("""Invoked as: %s""") % s
+        sys.stderr.write("""Invoked as: %s""" % s)
 
         tb = traceback.format_exc(sys.exc_info())
         e_class = str(e.__class__)
