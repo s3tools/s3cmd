@@ -83,7 +83,7 @@ class S3UriS3(S3Uri):
         if self.is_dns_compatible():
             return "http://%s.%s/%s" % (self._bucket, Config.Config().host_base, self._object)
         else:
-            return "http://%s/%s/%s" % (self._bucket, Config.Config().host_base, self._object)
+            return "http://%s/%s/%s" % (Config.Config().host_base, self._bucket, self._object)
 
     def host_name(self):
         if self.is_dns_compatible():
