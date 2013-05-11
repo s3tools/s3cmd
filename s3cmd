@@ -566,10 +566,16 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
         dst_uri = S3Uri(item['dest_name'])
 
         extra_headers = copy(cfg.extra_headers)
-        response = process_fce(src_uri, dst_uri, extra_headers)
-        output(message % { "src" : src_uri, "dst" : dst_uri })
-        if Config().acl_public:
-            info(u"Public URL is: %s" % dst_uri.public_url())
+        try:
+            response = process_fce(src_uri, dst_uri, extra_headers)
+            output(message % { "src" : src_uri, "dst" : dst_uri })
+            if Config().acl_public:
+                info(u"Public URL is: %s" % dst_uri.public_url())
+        except S3Error, e:
+            if cfg.ignore_failed_copy and e.code == "NoSuchKey":
+                warning(u"Key not found %s" % item['object_uri_str'])
+            else:
+                raise
 
 def cmd_cp(args):
     s3 = S3(Config())
@@ -1784,6 +1790,7 @@ def main():
     optparser.add_option(      "--include-from", dest="include_from", action="append", metavar="FILE", help="Read --include GLOBs from FILE")
     optparser.add_option(      "--rinclude", dest="rinclude", action="append", metavar="REGEXP", help="Same as --include but uses REGEXP (regular expression) instead of GLOB")
     optparser.add_option(      "--rinclude-from", dest="rinclude_from", action="append", metavar="FILE", help="Read --rinclude REGEXPs from FILE")
+    optparser.add_option(      "--ignore-failed-copy", dest="ignore_failed_copy", action="store_true", help="Don't exit unsuccessfully because of missing keys")
 
     optparser.add_option(      "--files-from", dest="files_from", action="append", metavar="FILE", help="Read list of source-file names from FILE. Use - to read from stdin.")
     optparser.add_option(      "--bucket-location", dest="bucket_location", help="Datacentre to create bucket in. As of now the datacenters are: US (default), EU, ap-northeast-1, ap-southeast-1, sa-east-1, us-west-1 and us-west-2")
