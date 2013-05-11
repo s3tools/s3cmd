@@ -510,7 +510,7 @@ class CloudFront(object):
                 warning(unicode(e))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
-                return self.send_request(op_name, dist_id, body, retries - 1)
+                return self.send_request(op_name, dist_id, body, retries = retries - 1)
             else:
                 raise e
 
