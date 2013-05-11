@@ -271,7 +271,7 @@ def cmd_object_put(args):
     if len(args) == 0:
         raise ParameterError("Nothing to upload. Expecting a local file or directory.")
 
-    local_list, single_file_local = fetch_local_list(args)
+    local_list, single_file_local = fetch_local_list(args, is_src = True)
 
     local_list, exclude_list = filter_exclude_include(local_list)
 
@@ -726,7 +726,7 @@ def cmd_sync_remote2local(args):
     s3 = S3(Config())
 
     destination_base = args[-1]
-    local_list, single_file_local = fetch_local_list(destination_base, recursive = True)
+    local_list, single_file_local = fetch_local_list(destination_base, is_src = False, recursive = True)
     remote_list = fetch_remote_list(args[:-1], recursive = True, require_attribs = True)
 
     local_count = len(local_list)
@@ -1165,7 +1165,7 @@ def cmd_sync_local2remote(args):
         error(u"or disable encryption with --no-encrypt parameter.")
         sys.exit(1)
 
-    local_list, single_file_local = fetch_local_list(args[:-1], recursive = True)
+    local_list, single_file_local = fetch_local_list(args[:-1], is_src = True, recursive = True)
 
     destinations = [args[-1]]
     if cfg.additional_destinations:
@@ -1785,6 +1785,7 @@ def main():
     optparser.add_option(      "--rinclude", dest="rinclude", action="append", metavar="REGEXP", help="Same as --include but uses REGEXP (regular expression) instead of GLOB")
     optparser.add_option(      "--rinclude-from", dest="rinclude_from", action="append", metavar="FILE", help="Read --rinclude REGEXPs from FILE")
 
+    optparser.add_option(      "--files-from", dest="files_from", action="append", metavar="FILE", help="Read list of source-file names from FILE. Use - to read from stdin.")
     optparser.add_option(      "--bucket-location", dest="bucket_location", help="Datacentre to create bucket in. As of now the datacenters are: US (default), EU, ap-northeast-1, ap-southeast-1, sa-east-1, us-west-1 and us-west-2")
     optparser.add_option(      "--reduced-redundancy", "--rr", dest="reduced_redundancy", action="store_true", help="Store object with 'Reduced redundancy'. Lower per-GB price. [put, cp, mv]")
 
@@ -1966,6 +1967,8 @@ def main():
 
     if options.additional_destinations:
         cfg.additional_destinations = options.additional_destinations
+    if options.files_from:
+        cfg.files_from = options.files_from
 
     ## Set output and filesystem encoding for printing out filenames.
     sys.stdout = codecs.getwriter(cfg.encoding)(sys.stdout, "replace")

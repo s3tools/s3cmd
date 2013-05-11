@@ -96,6 +96,7 @@ class Config(object):
     website_error = ""
     website_endpoint = "http://%(bucket)s.s3-website-%(location)s.amazonaws.com/"
     additional_destinations = []
+    files_from = []
     cache_file = ""
     add_headers = ""
 
