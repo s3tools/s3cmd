@@ -416,6 +416,9 @@ test_s3cmd("Rename (NoSuchKey)", ['mv', '%s/xyz/etc/logo.png' % pbucket(1), '%s/
     must_find_re = [ 'ERROR:.*NoSuchKey' ],
     must_not_find = [ 'File %s/xyz/etc/logo.png moved to %s/xyz/etc2/Logo.PNG' % (pbucket(1), pbucket(1)) ])
 
+## ====== Sync more from S3 (invalid src)
+test_s3cmd("Sync more from S3 (invalid src)", ['sync', '--delete-removed', '%s/xyz/DOESNOTEXIST' % pbucket(1), 'testsuite-out'],
+    must_not_find = [ "deleted: testsuite-out/logo.png" ])
 
 ## ====== Sync more from S3
 test_s3cmd("Sync more from S3", ['sync', '--delete-removed', '%s/xyz' % pbucket(1), 'testsuite-out'],
@@ -512,6 +515,10 @@ test_s3cmd("Verify move", ['ls', '-r', pbucket(2)],
 test_s3cmd("Simple delete", ['del', '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
     must_find = [ "File %s/xyz/etc2/Logo.PNG deleted" % pbucket(1) ])
 
+
+## ====== Recursive delete maximum exceeed
+test_s3cmd("Recursive delete maximum exceeded", ['del', '--recursive', '--max-delete=1', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],
+    must_not_find = [ "File %s/xyz/etc/TypeRa.ttf deleted" % pbucket(1) ])
 
 ## ====== Recursive delete
 test_s3cmd("Recursive delete", ['del', '--recursive', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],

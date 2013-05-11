@@ -505,6 +505,9 @@ def subcmd_object_del_uri(uri_str, recursive = None):
     remote_count = len(remote_list)
 
     info(u"Summary: %d remote files to delete" % remote_count)
+    if cfg.max_delete > 0 and remote_count > cfg.max_delete:
+        warning(u"delete: maximum requested number of deletes would be exceeded, none performed.")
+        return
 
     if cfg.dry_run:
         for key in exclude_list:
@@ -637,6 +640,9 @@ def filedicts_to_keys(*args):
 
 def cmd_sync_remote2remote(args):
     def _do_deletes(s3, dst_list):
+        if cfg.max_delete > 0 and len(dst_list) > cfg.max_delete:
+            warning(u"delete: maximum requested number of deletes would be exceeded, none performed.")
+            return
         # Delete items in destination that are not in source
         if cfg.dry_run:
             for key in dst_list:
@@ -694,6 +700,10 @@ def cmd_sync_remote2remote(args):
     if len(copy_pairs) > 0:
         cfg.delete_after = True
 
+    if cfg.delete_removed and src_count + len(copy_pairs) == 0 and not cfg.force:
+        warning(u"delete: cowardly refusing to delete because no source files were found.  Use --force to override.")
+        cfg.delete_removed = False
+
     # Delete items in destination that are not in source
     if cfg.delete_removed and not cfg.delete_after:
         _do_deletes(s3, dst_list)
@@ -735,6 +745,9 @@ def cmd_sync_remote2remote(args):
 
 def cmd_sync_remote2local(args):
     def _do_deletes(local_list):
+        if cfg.max_delete > 0 and len(local_list) > cfg.max_delete:
+            warning(u"delete: maximum requested number of deletes would be exceeded, none performed.")
+            return
         for key in local_list:
             os.unlink(local_list[key]['full_name'])
             output(u"deleted: %s" % local_list[key]['full_name_unicode'])
@@ -801,6 +814,10 @@ def cmd_sync_remote2local(args):
     # we need one of the to-be-deleted files as a copy source.
     if len(copy_pairs) > 0:
         cfg.delete_after = True
+
+    if cfg.delete_removed and remote_count + len(copy_pairs) == 0 and not cfg.force:
+        warning(u"delete: cowardly refusing to delete because no source files were found.  Use --force to override.")
+        cfg.delete_removed = False
 
     if cfg.delete_removed and not cfg.delete_after:
         _do_deletes(local_list)
@@ -1000,6 +1017,9 @@ def cmd_sync_local2remote(args):
         return { 'x-amz-meta-s3cmd-attrs' : result[:-1] }
 
     def _do_deletes(s3, remote_list):
+        if cfg.max_delete > 0 and len(remote_list) > cfg.max_delete:
+            warning(u"delete: maximum requested number of deletes would be exceeded, none performed.")
+            return
         for key in remote_list:
             uri = S3Uri(remote_list[key]['object_uri_str'])
             s3.object_delete(uri)
@@ -1133,6 +1153,10 @@ def cmd_sync_local2remote(args):
         # we need one of the to-be-deleted files as a copy source.
         if len(copy_pairs) > 0:
             cfg.delete_after = True
+
+        if cfg.delete_removed and local_count + update_count + copy_count == 0 and not cfg.force:
+            warning(u"delete: cowardly refusing to delete because no source files were found.  Use --force to override.")
+            cfg.delete_removed = False
 
         if cfg.delete_removed and not cfg.delete_after:
             _do_deletes(s3, remote_list)
@@ -1792,6 +1816,7 @@ def main():
     optparser.add_option(      "--no-delete-removed", dest="delete_removed", action="store_false", help="Don't delete remote objects.")
     optparser.add_option(      "--delete-after", dest="delete_after", action="store_true", help="Perform deletes after new uploads [sync]")
     optparser.add_option(      "--delay-updates", dest="delay_updates", action="store_true", help="Put all updated files into place at end [sync]")
+    optparser.add_option(      "--max-delete", dest="max_delete", action="store", help="Do not delete more than NUM files. [del] and [sync]", metavar="NUM")
     optparser.add_option(      "--add-destination", dest="additional_destinations", action="append", help="Additional destination for parallel uploads, in addition to last arg.  May be repeated.")
     optparser.add_option(      "--delete-after-fetch", dest="delete_after_fetch", action="store_true", help="Delete remote objects after fetching to local file (only for [get] and [sync] commands).")
     optparser.add_option("-p", "--preserve", dest="preserve_attrs", action="store_true", help="Preserve filesystem attributes (mode, ownership, timestamps). Default for [sync] command.")
