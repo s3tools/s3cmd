@@ -12,7 +12,8 @@ import re
 from subprocess import Popen, PIPE, STDOUT
 import locale
 import pwd
-import xattr
+try: import xattr
+except: pass
 
 count_pass = 0
 count_fail = 0
