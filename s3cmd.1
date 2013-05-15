@@ -165,6 +165,9 @@ Check MD5 sums when comparing files for [sync]. (default)
 \fB\-\-no\-check\-md5\fR
 Do not check MD5 sums when comparing files for [sync]. Only size will be compared. May significantly speed up transfer but may also miss some changed files.
 .TP
+\fB-\-xattr\fR=ATTR
+If possible, use extended file attribute ATTR from the user namespace containing the md5sum for the file, instead of calculating it [sync].
+.TP
 \fB\-P\fR, \fB\-\-acl\-public\fR
 Store objects with ACL allowing read for anyone.
 .TP
