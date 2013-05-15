@@ -12,6 +12,7 @@ import re
 from subprocess import Popen, PIPE, STDOUT
 import locale
 import pwd
+import xattr
 
 count_pass = 0
 count_fail = 0
@@ -25,8 +26,10 @@ verbose = False
 
 if os.name == "posix":
     have_wget = True
+    have_md5sum = True
 elif os.name == "nt":
     have_wget = False
+    have_md5sum = False
 else:
     print "Unknown platform: %s" % os.name
     sys.exit(1)
@@ -403,6 +406,15 @@ test_s3cmd("Don't check MD5", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1),
 ## ====== Check MD5 sum on Sync
 test_s3cmd("Check MD5", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--check-md5'],
     must_find = [ "cksum1.txt" ])
+
+## ====== Check MD5 sum on Sync with Extended Attributes
+if 'xattr' in sys.modules.keys() and have_md5sum:
+    os.system("echo 1234566789012 > testsuite/checksum/cksum4.txt")
+    test_s3cmd("Overwrite cksum1.txt", ['put', 'testsuite/checksum/cksum4.txt', 's3://%s/xyz/checksum/cksum1.txt' % bucket(1), '--no-encrypt' ])
+    os.system("rm testsuite/checksum/cksum4.txt")
+    os.system("attr -s md5sum -V $(md5sum testsuite/checksum/cksum1.txt | awk '{print $1}') testsuite/checksum/cksum1.txt > /dev/null")
+    test_s3cmd("Check MD5 with xattr", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--check-md5', '--xattr=md5sum'],
+               must_find = [ "cksum1.txt" ])
 
 
 ## ====== Rename within S3
