@@ -44,6 +44,7 @@ class Config(object):
     proxy_port = 3128
     encrypt = False
     dry_run = False
+    strict = False
     add_encoding_exts = ""
     preserve_attrs = True
     preserve_attrs_list = [
