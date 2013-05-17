@@ -1992,7 +1992,8 @@ def main():
     ## Special handling for tri-state options (True, False, None)
     cfg.update_option("enable", options.enable)
     cfg.update_option("acl_public", options.acl_public)
-    cfg.update_option("md5_xattr", options.md5_xattr)
+    if 'xattr' in sys.modules.keys():
+        cfg.update_option("md5_xattr", options.md5_xattr)
 
     ## Check multipart chunk constraints
     if cfg.multipart_chunk_size_mb < MultiPartUpload.MIN_CHUNK_SIZE_MB:
