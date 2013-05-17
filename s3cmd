@@ -1298,7 +1298,7 @@ def cmd_list_multipart(args):
     s3 = S3(cfg)
     uri = S3Uri(args[0])
     id = args[1]
-    output(u"hogehoghoe")
+
     response = s3.list_multipart(uri, id)
     debug(u"response - %s" % response['status'])
     tree = getTreeFromXml(response['data'])
