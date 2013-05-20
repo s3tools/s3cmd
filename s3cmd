@@ -648,6 +648,7 @@ def cmd_sync_remote2remote(args):
     dst_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
 
     src_count = len(src_list)
+    orig_src_count = src_count
     dst_count = len(dst_list)
 
     info(u"Found %d source files, %d destination files" % (src_count, dst_count))
@@ -684,7 +685,7 @@ def cmd_sync_remote2remote(args):
     if len(copy_pairs) > 0:
         cfg.delete_after = True
 
-    if cfg.delete_removed and src_count + len(copy_pairs) == 0 and not cfg.force:
+    if cfg.delete_removed and orig_src_count == 0 and len(dst_list) and not cfg.force:
         warning(u"delete: cowardly refusing to delete because no source files were found.  Use --force to override.")
         cfg.delete_removed = False
 
@@ -744,6 +745,7 @@ def cmd_sync_remote2local(args):
 
     local_count = len(local_list)
     remote_count = len(remote_list)
+    orig_remote_count = remote_count
 
     info(u"Found %d remote files, %d local files" % (remote_count, local_count))
 
@@ -797,7 +799,7 @@ def cmd_sync_remote2local(args):
     if len(copy_pairs) > 0:
         cfg.delete_after = True
 
-    if cfg.delete_removed and remote_count + len(copy_pairs) == 0 and not cfg.force:
+    if cfg.delete_removed and orig_remote_count == 0 and len(local_list) and not cfg.force:
         warning(u"delete: cowardly refusing to delete because no source files were found.  Use --force to override.")
         cfg.delete_removed = False
 
@@ -1088,6 +1090,7 @@ def cmd_sync_local2remote(args):
         remote_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
 
         local_count = len(local_list)
+        orig_local_count = local_count
         remote_count = len(remote_list)
 
         info(u"Found %d local files, %d remote files" % (local_count, remote_count))
@@ -1134,7 +1137,7 @@ def cmd_sync_local2remote(args):
         if len(copy_pairs) > 0:
             cfg.delete_after = True
 
-        if cfg.delete_removed and local_count + update_count + copy_count == 0 and not cfg.force:
+        if cfg.delete_removed and orig_local_count == 0 and len(remote_list) and not cfg.force:
             warning(u"delete: cowardly refusing to delete because no source files were found.  Use --force to override.")
             cfg.delete_removed = False
 
