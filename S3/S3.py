@@ -669,6 +669,9 @@ class S3(object):
             response["reason"] = http_response.reason
             response["headers"] = convertTupleListToDict(http_response.getheaders())
             response["data"] =  http_response.read()
+            if response["headers"].has_key("x-amz-meta-s3cmd-attrs"):
+                attrs = parse_attrs_header(response["headers"]["x-amz-meta-s3cmd-attrs"])
+                response["s3cmd-attrs"] = attrs
             debug("Response: " + str(response))
             ConnMan.put(conn)
         except ParameterError, e:
@@ -975,4 +978,10 @@ class S3(object):
         return response
 __all__.append("S3")
 
+def parse_attrs_header(attrs_header):
+    attrs = {}
+    for attr in attrs_header.split("/"):
+        key, val = attr.split(":")
+        attrs[key] = val
+    return attrs
 # vim:et:ts=4:sts=4:ai
