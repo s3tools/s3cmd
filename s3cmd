@@ -153,12 +153,22 @@ def subcmd_bucket_list(s3, uri):
             "uri": uri.compose_uri(bucket, prefix["Prefix"])})
 
     for object in response["list"]:
+        md5 = object['ETag'].strip('"')
+        if cfg.list_md5:
+            if md5.find('-') >= 0: # need to get md5 from the object
+                object_uri = uri.compose_uri(bucket, object["Key"])
+                info_response = s3.object_info(S3Uri(object_uri))
+                try:
+                    md5 = info_response['s3cmd-attrs']['md5']
+                except KeyError:
+                    pass
+
         size, size_coeff = formatSize(object["Size"], Config().human_readable_sizes)
         output(format_string % {
             "timestamp": formatDateTime(object["LastModified"]),
             "size" : str(size),
             "coeff": size_coeff,
-            "md5" : object['ETag'].strip('"'),
+            "md5" : md5,
             "uri": uri.compose_uri(bucket, object["Key"]),
             })
 
@@ -317,6 +327,10 @@ def cmd_object_put(args):
         seq_label = "[%d of %d]" % (seq, local_count)
         if Config().encrypt:
             exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
+        if cfg.preserve_attrs or local_list[key]['size'] > (cfg.multipart_chunk_size_mb * 1024 * 1024):
+            attr_header = _build_attr_header(local_list, key)
+            debug(u"attr_header: %s" % attr_header)
+            extra_headers.update(attr_header)
         try:
             response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label)
         except S3UploadError, e:
@@ -595,7 +609,12 @@ def cmd_info(args):
                 output(u"   File size: %s" % info['headers']['content-length'])
                 output(u"   Last mod:  %s" % info['headers']['last-modified'])
                 output(u"   MIME type: %s" % info['headers']['content-type'])
-                output(u"   MD5 sum:   %s" % info['headers']['etag'].strip('"'))
+                md5 = info['headers']['etag'].strip('"')
+                try:
+                    md5 = info['s3cmd-attrs']['md5']
+                except KeyError:
+                    pass
+                output(u"   MD5 sum:   %s" % md5)
             else:
                 info = s3.bucket_info(uri)
                 output(u"%s (bucket):" % uri.uri())
@@ -824,8 +843,8 @@ def cmd_sync_remote2local(args):
                     os.chmod(dst_file, mode);
                     
                     debug(u"renamed chkptfname=%s to dst_file=%s" % (unicodise(chkptfname), unicodise(dst_file)))
-                    if response['headers'].has_key('x-amz-meta-s3cmd-attrs') and cfg.preserve_attrs:
-                        attrs = parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
+                    if response.has_key('s3cmd-attrs') and cfg.preserve_attrs:
+                        attrs = response['s3cmd-attrs']
                         if attrs.has_key('mode'):
                             os.chmod(dst_file, int(attrs['mode']))
                         if attrs.has_key('mtime') or attrs.has_key('atime'):
@@ -945,41 +964,42 @@ def remote_copy(s3, copy_pairs, destination_base):
             raise
     return (len(copy_pairs), saved_bytes)
 
+def _build_attr_header(local_list, src):
+    import pwd, grp
+    attrs = {}
+    for attr in cfg.preserve_attrs_list:
+        if attr == 'uname':
+            try:
+                val = pwd.getpwuid(local_list[src]['uid']).pw_name
+            except KeyError:
+                attr = "uid"
+                val = local_list[src].get('uid')
+                warning(u"%s: Owner username not known. Storing UID=%d instead." % (src, val))
+        elif attr == 'gname':
+            try:
+                val = grp.getgrgid(local_list[src].get('gid')).gr_name
+            except KeyError:
+                attr = "gid"
+                val = local_list[src].get('gid')
+                warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (src, val))
+        elif attr == 'md5':
+            try:
+                val = local_list.get_md5(src)
+            except IOError:
+                val = None
+        else:
+            val = getattr(local_list[src]['sr'], 'st_' + attr)
+        attrs[attr] = val
+
+    if 'md5' in attrs and attrs['md5'] is None:
+        del attrs['md5']
+
+    result = ""
+    for k in attrs: result += "%s:%s/" % (k, attrs[k])
+    return { 'x-amz-meta-s3cmd-attrs' : result[:-1] }
+
 
 def cmd_sync_local2remote(args):
-    def _build_attr_header(local_list, src):
-        import pwd, grp
-        attrs = {}
-        for attr in cfg.preserve_attrs_list:
-            if attr == 'uname':
-                try:
-                    val = pwd.getpwuid(local_list[src]['uid']).pw_name
-                except KeyError:
-                    attr = "uid"
-                    val = local_list[src].get('uid')
-                    warning(u"%s: Owner username not known. Storing UID=%d instead." % (src, val))
-            elif attr == 'gname':
-                try:
-                    val = grp.getgrgid(local_list[src].get('gid')).gr_name
-                except KeyError:
-                    attr = "gid"
-                    val = local_list[src].get('gid')
-                    warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (src, val))
-            elif attr == 'md5':
-                try:
-                    val = local_list.get_md5(src)
-                except IOError:
-                    val = None
-            else:
-                val = getattr(local_list[src]['sr'], 'st_' + attr)
-            attrs[attr] = val
-
-        if 'md5' in attrs and attrs['md5'] is None:
-            del attrs['md5']
-
-        result = ""
-        for k in attrs: result += "%s:%s/" % (k, attrs[k])
-        return { 'x-amz-meta-s3cmd-attrs' : result[:-1] }
 
     def _do_deletes(s3, remote_list):
         for key in remote_list:
