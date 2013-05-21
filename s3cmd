@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 ## Amazon S3 manager
 ## Author: Michal Ludvig <michal@logix.cz>
@@ -2054,11 +2054,20 @@ def report_exception(e):
         sys.stderr.write("""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     An unexpected error has occurred.
-  Please report the following lines to:
+  Please try reproducing the error using
+  the latest s3cmd code from the git master
+  branch found at:
+    https://github.com/s3tools/s3cmd
+  If the error persists, please report the
+  following lines (removing any private
+  info as necessary) to:
    s3tools-bugs@lists.sourceforge.net
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 """)
+        s = ' '.join(sys.argv)
+        sys.stderr.write("""Invoked as: %s""") % s
+
         tb = traceback.format_exc(sys.exc_info())
         e_class = str(e.__class__)
         e_class = e_class[e_class.rfind(".")+1 : -2]
@@ -2080,7 +2089,13 @@ def report_exception(e):
         sys.stderr.write("""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     An unexpected error has occurred.
-    Please report the above lines to:
+  Please try reproducing the error using
+  the latest s3cmd code from the git master
+  branch found at:
+    https://github.com/s3tools/s3cmd
+  If the error persists, please report the
+  above lines (removing any private
+  info as necessary) to:
    s3tools-bugs@lists.sourceforge.net
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 """)
