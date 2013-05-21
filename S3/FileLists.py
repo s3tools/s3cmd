@@ -17,7 +17,7 @@ import os
 import glob
 import copy
 
-__all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists", "filter_exclude_include", "parse_attrs_header"]
+__all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists", "filter_exclude_include"]
 
 def _fswalk_follow_symlinks(path):
     '''
@@ -257,6 +257,20 @@ def fetch_local_list(args, recursive = None):
     return local_list, single_file
 
 def fetch_remote_list(args, require_attribs = False, recursive = None):
+    def _get_remote_attribs(uri, remote_item):
+        response = S3(cfg).object_info(uri)
+        remote_item.update({
+        'size': int(response['headers']['content-length']),
+        'md5': response['headers']['etag'].strip('"\''),
+        'timestamp' : dateRFC822toUnix(response['headers']['date'])
+        })
+        try:
+            md5 = response['s3cmd-attrs']['md5']
+            remote_item.update({'md5': md5})
+            debug(u"retreived md5=%s from headers" % md5)
+        except KeyError:
+            pass
+
     def _get_filelist_remote(remote_uri, recursive = True):
         ## If remote_uri ends with '/' then all remote files will have
         ## the remote_uri prefix removed in the relative path.
@@ -306,7 +320,9 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
                 'dev' : None,
                 'inode' : None,
             }
-            md5 = object['ETag'][1:-1]
+            if rem_list[key]['md5'].find("-"): # always get it for multipart uploads
+                _get_remote_attribs(S3Uri(object_uri_str), rem_list[key])
+            md5 = rem_list[key]['md5']
             rem_list.record_md5(key, md5)
             if break_now:
                 break
@@ -365,27 +381,13 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
                     'object_key': uri.object()
                 }
                 if require_attribs:
-                    response = S3(cfg).object_info(uri)
-                    remote_item.update({
-                    'size': int(response['headers']['content-length']),
-                    'md5': response['headers']['etag'].strip('"\''),
-                    'timestamp' : dateRFC822toUnix(response['headers']['date'])
-                    })
-                    # get md5 from header if it's present.  We would have set that during upload
-                    if response['headers'].has_key('x-amz-meta-s3cmd-attrs'):
-                        attrs = parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
-                        if attrs.has_key('md5'):
-                            remote_item.update({'md5': attrs['md5']})
+                    _get_remote_attribs(uri, remote_item)
 
                 remote_list[key] = remote_item
+                md5 = remote_item.get('md5')
+                if md5:
+                    remote_list.record_md5(key, md5)
     return remote_list
-
-def parse_attrs_header(attrs_header):
-    attrs = {}
-    for attr in attrs_header.split("/"):
-        key, val = attr.split(":")
-        attrs[key] = val
-    return attrs
 
 
 def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates = False):
