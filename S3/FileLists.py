@@ -17,7 +17,7 @@ import os
 import glob
 import copy
 
-__all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists", "filter_exclude_include", "parse_attrs_header"]
+__all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists", "filter_exclude_include"]
 
 def _fswalk_follow_symlinks(path):
     '''
@@ -264,12 +264,12 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
         'md5': response['headers']['etag'].strip('"\''),
         'timestamp' : dateRFC822toUnix(response['headers']['date'])
         })
-        # get md5 from header if it's present.  We would have set that during upload
-        if response['headers'].has_key('x-amz-meta-s3cmd-attrs'):
-            attrs = parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
-            if attrs.has_key('md5'):
-                remote_item.update({'md5': attrs['md5']})
-                debug(u"retreived md5=%s from headers" % (attrs['md5']))
+        try:
+            md5 = response['s3cmd-attrs']['md5']
+            remote_item.update({'md5': md5})
+            debug(u"retreived md5=%s from headers" % md5)
+        except KeyError:
+            pass
 
     def _get_filelist_remote(remote_uri, recursive = True):
         ## If remote_uri ends with '/' then all remote files will have
@@ -388,13 +388,6 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
                 if md5:
                     remote_list.record_md5(key, md5)
     return remote_list
-
-def parse_attrs_header(attrs_header):
-    attrs = {}
-    for attr in attrs_header.split("/"):
-        key, val = attr.split(":")
-        attrs[key] = val
-    return attrs
 
 
 def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates = False):
