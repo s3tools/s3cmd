@@ -876,6 +876,9 @@ class S3(object):
             response["status"] = http_response.status
             response["reason"] = http_response.reason
             response["headers"] = convertTupleListToDict(http_response.getheaders())
+            if response["headers"].has_key("x-amz-meta-s3cmd-attrs"):
+                attrs = parse_attrs_header(response["headers"]["x-amz-meta-s3cmd-attrs"])
+                response["s3cmd-attrs"] = attrs
             debug("Response: %s" % response)
         except ParameterError, e:
             raise
@@ -966,7 +969,13 @@ class S3(object):
                 warning("Unable to verify MD5. Assume it matches.")
                 response["md5"] = response["headers"]["etag"]
 
-        response["md5match"] = response["headers"]["etag"].find(response["md5"]) >= 0
+        md5_hash = response["headers"]["etag"]
+        try:
+            md5_hash = response["s3cmd-attrs"]["md5"]
+        except KeyError:
+            pass
+
+        response["md5match"] = md5_hash.find(response["md5"]) >= 0
         response["elapsed"] = timestamp_end - timestamp_start
         response["size"] = current_position
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
@@ -976,7 +985,7 @@ class S3(object):
         debug("ReceiveFile: Computed MD5 = %s" % response["md5"])
         if not response["md5match"]:
             warning("MD5 signatures do not match: computed=%s, received=%s" % (
-                response["md5"], response["headers"]["etag"]))
+                response["md5"], md5_hash))
         return response
 __all__.append("S3")
 
