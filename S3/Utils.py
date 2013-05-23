@@ -16,12 +16,6 @@ import base64
 import errno
 import urllib
 
-try:
-    import xattr
-    have_xattr = True
-except:
-    have_xattr = False
-
 from logging import debug, info, warning, error
 
 
@@ -233,18 +227,6 @@ def mktmpfile(prefix = "/tmp/tmpfile-", randchars = 20):
 __all__.append("mktmpfile")
 
 def hash_file_md5(filename):
-    md5_xattr = Config.Config().md5_xattr
-    if have_xattr and md5_xattr is not None:
-        try:
-            md5sum = xattr.get(filename, md5_xattr, namespace=xattr.NS_USER)
-            debug("xattr.get(%s, %s) returned %s" % (filename, md5_xattr, md5sum))
-            return md5sum
-        except:
-            pass
-    return hash_file_md5_io(filename)
-__all__.append("hash_file_md5")
-
-def hash_file_md5_io(filename):
     h = md5()
     f = open(filename, "rb")
     while True:
@@ -255,6 +237,7 @@ def hash_file_md5_io(filename):
         h.update(data)
     f.close()
     return h.hexdigest()
+__all__.append("hash_file_md5")
 
 def mkdir_with_parents(dir_name):
     """
