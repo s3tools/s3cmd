@@ -26,8 +26,6 @@ import socket
 import shutil
 import tempfile
 import S3.Exceptions
-try: import xattr
-except: pass
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -1831,8 +1829,6 @@ def main():
     optparser.add_option(      "--skip-existing", dest="skip_existing", action="store_true", help="Skip over files that exist at the destination (only for [get] and [sync] commands).")
     optparser.add_option("-r", "--recursive", dest="recursive", action="store_true", help="Recursive upload, download or removal.")
     optparser.add_option(      "--check-md5", dest="check_md5", action="store_true", help="Check MD5 sums when comparing files for [sync]. (default)")
-    if 'xattr' in sys.modules.keys():
-        optparser.add_option  ("--xattr", dest="md5_xattr", metavar="ATTR", action="store", default=None, help="If possible, use extended file attribute ATTR from the user namespace containing the md5sum for the file, instead of calculating it [sync].")
     optparser.add_option(      "--no-check-md5", dest="check_md5", action="store_false", help="Do not check MD5 sums when comparing files for [sync]. Only size will be compared. May significantly speed up transfer but may also miss some changed files.")
     optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read for anyone.")
     optparser.add_option(      "--acl-private", dest="acl_public", action="store_false", help="Store objects with default ACL allowing access for you only.")
@@ -2015,7 +2011,6 @@ def main():
     ## Special handling for tri-state options (True, False, None)
     cfg.update_option("enable", options.enable)
     cfg.update_option("acl_public", options.acl_public)
-    cfg.update_option("md5_xattr", options.md5_xattr)
 
     ## Check multipart chunk constraints
     if cfg.multipart_chunk_size_mb < MultiPartUpload.MIN_CHUNK_SIZE_MB:
