@@ -540,9 +540,15 @@ def subcmd_object_del_uri(uri_str, recursive = None):
         output(u"File %s deleted" % item['object_uri_str'])
 
 def subcmd_cp_mv(args, process_fce, action_str, message):
-    if len(args) < 2:
+    if action_str != 'modify' and len(args) < 2:
         raise ParameterError("Expecting two or more S3 URIs for " + action_str)
-    dst_base_uri = S3Uri(args.pop())
+    if action_str == 'modify' and len(args) < 1:
+        raise ParameterError("Expecting one or more S3 URIs for " + action_str)
+    if action_str != 'modify':
+        dst_base_uri = S3Uri(args.pop())
+    else:
+        dst_base_uri = S3Uri(args[-1])
+
     if dst_base_uri.type != "s3":
         raise ParameterError("Destination must be S3 URI. To download a file use 'get' or 'sync'.")
     destination_base = dst_base_uri.uri()
@@ -599,6 +605,10 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
 def cmd_cp(args):
     s3 = S3(Config())
     subcmd_cp_mv(args, s3.object_copy, "copy", "File %(src)s copied to %(dst)s")
+
+def cmd_modify(args):
+    s3 = S3(Config())
+    subcmd_cp_mv(args, s3.object_copy, "modify", "File %(src)s modified")
 
 def cmd_mv(args):
     s3 = S3(Config())
@@ -1682,6 +1692,7 @@ def get_commands_list():
     {"cmd":"du", "label":"Disk usage by buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_du, "argc":0},
     {"cmd":"info", "label":"Get various information about Buckets or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_info, "argc":1},
     {"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
+    {"cmd":"modify", "label":"Modify object metadata", "param":"s3://BUCKET1/OBJECT", "func":cmd_modify, "argc":1},
     {"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
     {"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
 
