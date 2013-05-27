@@ -567,7 +567,7 @@ class CloudFront(object):
         if (uri.type == "cf"):
             return uri
         if (uri.type != "s3"):
-            raise ParameterError("CloudFront or S3 URI required instead of: %s" % arg)
+            raise ParameterError("CloudFront or S3 URI required instead of: %s" % uri)
 
         debug("_get_dist_name_for_bucket(%r)" % uri)
         if CloudFront.dist_list is None:
@@ -592,7 +592,7 @@ class CloudFront(object):
             return CloudFront.dist_list[uri.bucket()]
         except Exception, e:
             debug(e)
-            raise ParameterError("Unable to translate S3 URI to CloudFront distribution name: %s" % arg)
+            raise ParameterError("Unable to translate S3 URI to CloudFront distribution name: %s" % uri)
 
 class Cmd(object):
     """
@@ -675,7 +675,7 @@ class Cmd(object):
         for arg in args:
             uri = S3Uri(arg)
             if uri.type != "s3":
-                raise ParameterError("Bucket can only be created from a s3:// URI instead of: %s" % arg)
+                raise ParameterError("Distribution can only be created from a s3:// URI instead of: %s" % arg)
             if uri.object():
                 raise ParameterError("Use s3:// URI with a bucket name only instead of: %s" % arg)
             if not uri.is_dns_compatible():
