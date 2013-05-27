@@ -636,7 +636,7 @@ def cmd_info(args):
                 output(u"   policy: %s" % policy)
             except:
                 output(u"   policy: none")
-            
+
             for grant in acl_grant_list:
                 output(u"   ACL:       %s: %s" % (grant['grantee'], grant['permission']))
             if acl.isAnonRead():
@@ -876,9 +876,7 @@ def cmd_sync_remote2local(args):
                     os.umask(original_umask);
                     mode = 0777 - original_umask;
                     debug(u"mode=%s" % oct(mode))
-                    
                     os.chmod(dst_file, mode);
-                    
                     debug(u"renamed chkptfname=%s to dst_file=%s" % (unicodise(chkptfname), unicodise(dst_file)))
                     if response.has_key('s3cmd-attrs') and cfg.preserve_attrs:
                         attrs = response['s3cmd-attrs']
@@ -890,8 +888,8 @@ def cmd_sync_remote2local(args):
                             os.utime(dst_file, (atime, mtime))
                         ## FIXME: uid/gid / uname/gname handling comes here! TODO
                 except OSError, e:
-                    try: 
-                        dst_stream.close() 
+                    try:
+                        dst_stream.close()
                         os.remove(chkptfname)
                     except: pass
                     if e.errno == errno.EEXIST:
@@ -905,14 +903,14 @@ def cmd_sync_remote2local(args):
                         continue
                     raise e
                 except KeyboardInterrupt:
-                    try: 
+                    try:
                         dst_stream.close()
                         os.remove(chkptfname)
                     except: pass
                     warning(u"Exiting after keyboard interrupt")
                     return
                 except Exception, e:
-                    try: 
+                    try:
                         dst_stream.close()
                         os.remove(chkptfname)
                     except: pass
@@ -921,7 +919,7 @@ def cmd_sync_remote2local(args):
                 # We have to keep repeating this call because
                 # Python 2.4 doesn't support try/except/finally
                 # construction :-(
-                try: 
+                try:
                     dst_stream.close()
                     os.remove(chkptfname)
                 except: pass

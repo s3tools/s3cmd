@@ -159,7 +159,7 @@ def _get_filelist_from_file(cfg, local_path):
             except IOError, e:
                 warning(u"--files-from input file %s could not be opened for reading (%s), skipping." % (fname, e.strerror))
                 continue
-                
+
         for line in f:
             line = line.strip()
             line = os.path.normpath(os.path.join(local_path, line))

@@ -116,7 +116,7 @@ class Config(object):
                 if 'AWS_CREDENTIAL_FILE' in os.environ:
                     self.env_config()
             if len(self.access_key)==0:
-                self.role_config()  
+                self.role_config()
 
     def role_config(self):
         conn = httplib.HTTPConnection(host='169.254.169.254',timeout=2)
@@ -124,7 +124,7 @@ class Config(object):
             conn.request('GET', "/latest/meta-data/iam/security-credentials/")
             resp = conn.getresponse()
             files = resp.read()
-            if resp.status == 200 and len(files)>1:               
+            if resp.status == 200 and len(files)>1:
                 conn.request('GET', "/latest/meta-data/iam/security-credentials/%s"%files)
                 resp=conn.getresponse()
                 if resp.status == 200:
@@ -167,7 +167,7 @@ class Config(object):
                     elif data["orig_key"]=="AWSSecretKey":
                         data["key"] = "secret_key"
                     else:
-                        del data["key"]                    
+                        del data["key"]
                     if "key" in data:
                         Config().update_option(data["key"], data["value"])
                         if data["key"] in ("access_key", "secret_key", "gpg_passphrase"):
@@ -175,8 +175,6 @@ class Config(object):
                         else:
                             print_value = data["value"]
                         debug("env_Config: %s->%s" % (data["key"], print_value))
-                
-        
 
     def option_list(self):
         retval = []
