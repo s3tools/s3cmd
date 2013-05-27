@@ -334,9 +334,15 @@ def cmd_object_put(args):
         try:
             response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label)
         except S3UploadError, e:
+            if cfg.strict:
+                error(u"Upload of '%s' failed too many times." % full_name_orig)
+                sys.exit(1)
             error(u"Upload of '%s' failed too many times. Skipping that file." % full_name_orig)
             continue
         except InvalidFileError, e:
+            if cfg.strict:
+                error(u"File can not be uploaded: %s" % e)
+                sys.exit(1)
             warning(u"File can not be uploaded: %s" % e)
             continue
         speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
@@ -475,6 +481,9 @@ def cmd_object_get(args):
                         dst_stream.close()
                         raise ParameterError(u"File %s already exists. Use either of --force / --continue / --skip-existing or give it a new name." % destination)
             except IOError, e:
+                if cfg.strict:
+                    error(u"Problem uploading %s: %s" % (destination, e.strerror))
+                    sys.exit(1)
                 error(u"Skipping %s: %s" % (destination, e.strerror))
                 continue
         try:
@@ -1113,8 +1122,13 @@ def cmd_sync_local2remote(args):
                     response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
                 except InvalidFileError, e:
                     warning(u"File can not be uploaded: %s" % e)
+                    if cfg.strict:
+                        sys.exit(1)
                     continue
                 except S3UploadError, e:
+                    if cfg.strict:
+                        error(u"%s: upload failed too many times." % item['full_name_unicode'])
+                        sys.exit(1)
                     error(u"%s: upload failed too many times. Skipping that file." % item['full_name_unicode'])
                     continue
                 speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
@@ -1901,6 +1915,7 @@ def main():
     optparser.add_option("-F", "--follow-symlinks", dest="follow_symlinks", action="store_true", default=False, help="Follow symbolic links as if they are regular files")
     optparser.add_option(      "--cache-file", dest="cache_file", action="store", default="",  metavar="FILE", help="Cache FILE containing local source MD5 values")
     optparser.add_option("-q", "--quiet", dest="quiet", action="store_true", default=False, help="Silence output on stdout")
+    optparser.add_option(      "--strict", dest="strict", action="store_true", default=False, help="Exit with a nonzero return code for any error that causes the operation not to be completed.")
 
     optparser.set_usage(optparser.usage + " COMMAND [parameters]")
     optparser.set_description('S3cmd is a tool for managing objects in '+
@@ -2084,6 +2099,9 @@ def main():
     if len(args) < 1:
         error(u"Missing command. Please run with --help for more information.")
         sys.exit(1)
+
+    ## Enable strict error checking
+    cfg.update_option('strict', options.strict)
 
     ## Unicodise all remaining arguments:
     args = [unicodise(arg) for arg in args]
