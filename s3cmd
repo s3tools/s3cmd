@@ -446,6 +446,7 @@ def cmd_object_get(args):
         if destination == "-":
             ## stdout
             dst_stream = sys.__stdout__
+            file_exists = True
         else:
             ## File
             try:
