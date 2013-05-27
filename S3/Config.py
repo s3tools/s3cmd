@@ -11,7 +11,10 @@ import sys
 import Progress
 from SortedDict import SortedDict
 import httplib
-import json
+try:
+    import json
+except ImportError, e:
+    pass
 
 class Config(object):
     _instance = None
@@ -119,8 +122,14 @@ class Config(object):
                 self.role_config()
 
     def role_config(self):
-        conn = httplib.HTTPConnection(host='169.254.169.254',timeout=2)
+        if sys.version_info[0] * 10 + sys.version_info[1] < 26:
+            error("IAM authentication requires Python 2.6 or newer")
+            raise
+        if not 'json' in sys.modules:
+            error("IAM authentication not available -- missing module json")
+            raise
         try:
+            conn = httplib.HTTPConnection(host='169.254.169.254', timeout = 2)
             conn.request('GET', "/latest/meta-data/iam/security-credentials/")
             resp = conn.getresponse()
             files = resp.read()
