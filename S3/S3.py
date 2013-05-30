@@ -677,6 +677,8 @@ class S3(object):
         except ParameterError, e:
             raise
         except Exception, e:
+            if isinstance(e, IOError):
+                raise
             if retries:
                 warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
@@ -728,6 +730,8 @@ class S3(object):
         except Exception, e:
             if self.config.progress_meter:
                 progress.done("failed")
+            if isinstance(e, IOError):
+                raise
             if retries:
                 warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
@@ -883,6 +887,8 @@ class S3(object):
         except Exception, e:
             if self.config.progress_meter:
                 progress.done("failed")
+            if isinstance(e, IOError):
+                raise
             if retries:
                 warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
@@ -935,6 +941,8 @@ class S3(object):
         except Exception, e:
             if self.config.progress_meter:
                 progress.done("failed")
+            if isinstance(e, IOError):
+                raise
             if retries:
                 warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
                 warning("Waiting %d sec..." % self._fail_wait(retries))

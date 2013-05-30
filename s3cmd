@@ -2195,6 +2195,11 @@ if __name__ == '__main__':
         sys.stderr.write("See ya!\n")
         sys.exit(1)
 
+    except IOError, e:
+        if e.errno != errno.EPIPE:
+            error(e)
+        sys.exit(1)
+
     except Exception, e:
         report_exception(e)
         sys.exit(1)
