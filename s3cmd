@@ -1877,8 +1877,8 @@ def main():
     optparser.add_option(      "--list-md5", dest="list_md5", action="store_true", help="Include MD5 sums in bucket listings (only for 'ls' command).")
     optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form (eg 1kB instead of 1234).")
 
-    optparser.add_option(      "--ws-index", dest="website_index", action="store", help="Name of error-document (only for [ws-create] command)")
-    optparser.add_option(      "--ws-error", dest="website_error", action="store", help="Name of index-document (only for [ws-create] command)")
+    optparser.add_option(      "--ws-index", dest="website_index", action="store", help="Name of index-document (only for [ws-create] command)")
+    optparser.add_option(      "--ws-error", dest="website_error", action="store", help="Name of error-document (only for [ws-create] command)")
 
     optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default on TTY).")
     optparser.add_option(      "--no-progress", dest="progress_meter", action="store_false", help="Don't display progress meter (default on non-TTY).")
