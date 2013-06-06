@@ -902,6 +902,10 @@ def cmd_sync_remote2local(args):
                     if e.errno == errno.EISDIR:
                         warning(u"%s is a directory - skipping over" % dst_file)
                         continue
+                    if e.errno == errno.ENOTDIR:
+                        Utils.mkdir_with_parents(dst_file)
+                        continue
+                        
                     raise e
                 except KeyboardInterrupt:
                     try:
