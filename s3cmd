@@ -598,9 +598,9 @@ def cmd_info(args):
                 output(u"   MD5 sum:   %s" % info['headers']['etag'].strip('"'))
 
                 if 'x-amz-server-side-encryption' in info['headers']:
-		 	output(u"   SSE:       %s" % info['headers']['x-amz-server-side-encryption'])
-		else:
-			output(u"   SSE:       NONE")		
+                    output(u"   SSE:       %s" % info['headers']['x-amz-server-side-encryption'])
+                else:
+                    output(u"   SSE:       NONE")		
 
             else:
                 info = s3.bucket_info(uri)
