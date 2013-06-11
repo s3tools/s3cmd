@@ -596,6 +596,12 @@ def cmd_info(args):
                 output(u"   Last mod:  %s" % info['headers']['last-modified'])
                 output(u"   MIME type: %s" % info['headers']['content-type'])
                 output(u"   MD5 sum:   %s" % info['headers']['etag'].strip('"'))
+
+                if 'x-amz-server-side-encryption' in info['headers']:
+		 	output(u"   SSE:       %s" % info['headers']['x-amz-server-side-encryption'])
+		else:
+			output(u"   SSE:       NONE")		
+
             else:
                 info = s3.bucket_info(uri)
                 output(u"%s (bucket):" % uri.uri())
