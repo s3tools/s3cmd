@@ -29,6 +29,7 @@ class Config(object):
     human_readable_sizes = False
     extra_headers = SortedDict(ignore_case = True)
     force = False
+    server_side_encryption = False
     enable = None
     get_continue = False
     skip_existing = False
