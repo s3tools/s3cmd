@@ -383,7 +383,7 @@ def time_to_epoch(t):
         return int(time.mktime(t))
     elif hasattr(t, 'timetuple'):
         # Looks like a datetime object or compatible
-        return int(time.mktime(ex.timetuple()))
+        return int(time.mktime(t.timetuple()))
     elif hasattr(t, 'strftime'):
         # Looks like the object supports standard srftime()
         return int(t.strftime('%s'))
