@@ -14,7 +14,7 @@ RPMBUILD_ARGS := \
 .PHONY: all release rpm 
 
 all:
-	@echo "Usage: make rpm"
+	@echo "Usage: make rpm|release"
 	
 release:
 	python setup.py register sdist upload
