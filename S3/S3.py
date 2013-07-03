@@ -132,8 +132,6 @@ class S3Request(object):
         for header in self.headers.keys():
             if header.startswith("x-amz-"):
                 h += header+":"+str(self.headers[header])+"\n"
-        if self.resource['bucket']:
-            h += "/" + self.resource['bucket']
         h += self.resource['uri']
         debug("SignHeaders: " + repr(h))
         signature = sign_string(h)
@@ -633,11 +631,14 @@ class S3(object):
             object = uri.has_object() and uri.object() or None
 
         if bucket:
-            resource['bucket'] = str(bucket)
+            resource['uri'] = "/" + self.urlencode_string(bucket)
             if object:
-                resource['uri'] = "/" + self.urlencode_string(object)
+                 resource['uri'] = resource['uri'] + "/" + self.urlencode_string(object)
         if extra:
             resource['uri'] += extra
+        
+        if self.config.service_path:
+            resource['uri'] = self.config.service_path + resource['uri']
 
         method_string = S3.http_methods.getkey(S3.operations[operation] & S3.http_methods["MASK"])
 
