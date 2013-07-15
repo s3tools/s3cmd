@@ -2005,7 +2005,7 @@ def main():
         cfg.upload_id = options.upload_id
         cfg.put_continue = True
 
-    if cfg.put_continue and not cfg.multipart_chunk_size_mb:
+    if cfg.upload_id and not cfg.multipart_chunk_size_mb:
         raise ParameterError("Must have --multipart-chunk-size-mb if using --put-continue or --upload-id")
 
     ## CloudFront's cf_enable and Config's enable share the same --enable switch
