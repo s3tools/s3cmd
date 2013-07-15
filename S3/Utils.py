@@ -459,4 +459,22 @@ def getHostnameFromBucket(bucket):
     return Config.Config().host_bucket % { 'bucket' : bucket }
 __all__.append("getHostnameFromBucket")
 
+
+def calculateChecksum(buffer, mfile, offset, chunk_size, send_chunk):
+    md5_hash = md5()
+    size_left = chunk_size
+    if buffer == '':
+        mfile.seek(offset)
+        while size_left > 0:
+            data = mfile.read(min(send_chunk, size_left))
+            md5_hash.update(data)
+            size_left -= len(data)
+    else:
+        md5_hash.update(buffer)
+
+    return md5_hash.hexdigest()
+
+
+__all__.append("calculateChecksum")
+
 # vim:et:ts=4:sts=4:ai

@@ -439,6 +439,31 @@ class S3(object):
             return self.send_file_multipart(file, headers, uri, size)
 
         ## Not multipart...
+        if self.config.put_continue:
+            # Note, if input was stdin, we would be performing multipart upload.
+            # So this will always work as long as the file already uploaded was
+            # not uploaded via MultiUpload, in which case its ETag will not be
+            # an md5.
+            try:
+                info = self.object_info(uri)
+            except:
+                info = None
+
+            if info is not None:
+                remote_size = int(info['headers']['content-length'])
+                remote_checksum = info['headers']['etag'].strip('"')
+                if size == remote_size:
+                    checksum = calculateChecksum('', file, 0, size, self.config.send_chunk)
+                    if remote_checksum == checksum:
+                        warning("Put: size and md5sum match for %s, skipping." % uri)
+                        return
+                    else:
+                        warning("MultiPart: checksum (%s vs %s) does not match for %s, reuploading."
+                                % (remote_checksum, checksum, uri))
+                else:
+                    warning("MultiPart: size (%d vs %d) does not match for %s, reuploading."
+                            % (remote_size, size, uri))
+
         headers["content-length"] = size
         request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
         labels = { 'source' : unicodise(filename), 'destination' : unicodise(uri.uri()), 'extra' : extra_label }
@@ -754,6 +779,7 @@ class S3(object):
         if buffer == '':
             file.seek(offset)
         md5_hash = md5()
+
         try:
             while (size_left > 0):
                 #debug("SendFile: Reading up to %d bytes from '%s' - remaining bytes: %s" % (self.config.send_chunk, file.name, size_left))
@@ -761,6 +787,7 @@ class S3(object):
                     data = file.read(min(self.config.send_chunk, size_left))
                 else:
                     data = buffer
+
                 md5_hash.update(data)
                 conn.c.send(data)
                 if self.config.progress_meter:
@@ -769,6 +796,7 @@ class S3(object):
                 if throttle:
                     time.sleep(throttle)
             md5_computed = md5_hash.hexdigest()
+
             response = {}
             http_response = conn.c.getresponse()
             response["status"] = http_response.status

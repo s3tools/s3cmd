@@ -325,14 +325,15 @@ def cmd_object_put(args):
         except InvalidFileError, e:
             warning(u"File can not be uploaded: %s" % e)
             continue
-        speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
-        if not Config().progress_meter:
-            output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
-                (unicodise(full_name_orig), uri_final, response["size"], response["elapsed"],
-                speed_fmt[0], speed_fmt[1], seq_label))
+        if response is not None:
+            speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
+            if not Config().progress_meter:
+                output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+                       (unicodise(full_name_orig), uri_final, response["size"], response["elapsed"],
+                        speed_fmt[0], speed_fmt[1], seq_label))
         if Config().acl_public:
             output(u"Public URL of the object is: %s" %
-                (uri_final.public_url()))
+                   (uri_final.public_url()))
         if Config().encrypt and full_name != full_name_orig:
             debug(u"Removing temporary encrypted file: %s" % unicodise(full_name))
             os.remove(full_name)
@@ -1268,7 +1269,7 @@ def cmd_delpolicy(args):
 def cmd_multipart(args):
     s3 = S3(cfg)
     uri = S3Uri(args[0])
-    
+
     #id = ''
     #if(len(args) > 1): id = args[1]
 
@@ -1277,11 +1278,11 @@ def cmd_multipart(args):
     output(u"%s" % uri)
     tree = getTreeFromXml(response['data'])
     debug(parseNodes(tree))
-    output(u"Initiated\tId\tPath")
+    output(u"Initiated\tPath\tId")
     for mpupload in parseNodes(tree):
         try:
-            output("%s\t%s\t%s" % (mpupload['Initiated'], mpupload['UploadId'], mpupload['Key']))
-        except:
+            output("%s\t%s\t%s" % (mpupload['Initiated'], "s3://" + uri.bucket() + "/" + mpupload['Key'], mpupload['UploadId']))
+        except KeyError:
             pass
 
 def cmd_abort_multipart(args):
@@ -1808,6 +1809,8 @@ def main():
     optparser.add_option(      "--no-encrypt", dest="encrypt", action="store_false", help="Don't encrypt files.")
     optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations.")
     optparser.add_option(      "--continue", dest="get_continue", action="store_true", help="Continue getting a partially downloaded file (only for [get] command).")
+    optparser.add_option(      "--continue-put", dest="put_continue", action="store_true", help="Continue uploading partially uploaded files or multipart upload parts.  Restarts/parts files that don't have matching size and md5.  Skips files/parts that do.  Note: md5sum checks are not always sufficient to check (part) file equality.  Enable this at your own risk.")
+    optparser.add_option(      "--upload-id", dest="upload_id", help="UploadId for Multipart Upload, in case you want continue an existing upload (equivalent to --continue-put) and there are multiple partial uploads.  Use s3cmd multipart [URI] to see what UploadIds are associated with the given URI.")
     optparser.add_option(      "--skip-existing", dest="skip_existing", action="store_true", help="Skip over files that exist at the destination (only for [get] and [sync] commands).")
     optparser.add_option("-r", "--recursive", dest="recursive", action="store_true", help="Recursive upload, download or removal.")
     optparser.add_option(      "--check-md5", dest="check_md5", action="store_true", help="Check MD5 sums when comparing files for [sync]. (default)")
@@ -1996,6 +1999,14 @@ def main():
         raise ParameterError("Chunk size %d MB is too small, must be >= %d MB. Please adjust --multipart-chunk-size-mb" % (cfg.multipart_chunk_size_mb, MultiPartUpload.MIN_CHUNK_SIZE_MB))
     if cfg.multipart_chunk_size_mb > MultiPartUpload.MAX_CHUNK_SIZE_MB:
         raise ParameterError("Chunk size %d MB is too large, must be <= %d MB. Please adjust --multipart-chunk-size-mb" % (cfg.multipart_chunk_size_mb, MultiPartUpload.MAX_CHUNK_SIZE_MB))
+
+    ## If an UploadId was provided, set put_continue True
+    if options.upload_id is not None:
+        cfg.upload_id = options.upload_id
+        cfg.put_continue = True
+
+    if cfg.put_continue and not cfg.multipart_chunk_size_mb:
+        raise ParameterError("Must have --multipart-chunk-size-mb if using --put-continue or --upload-id")
 
     ## CloudFront's cf_enable and Config's enable share the same --enable switch
     options.cf_enable = options.enable
