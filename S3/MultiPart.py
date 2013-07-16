@@ -151,6 +151,7 @@ class MultiPartUpload(object):
                 remote_checksum = remote_status['checksum'].strip('"')
                 if remote_checksum == checksum:
                     warning("MultiPart: size and md5sum match for %s part %d, skipping." % (self.uri, seq))
+                    self.parts[seq] = remote_status['checksum']
                     return
                 else:
                     warning("MultiPart: checksum (%s vs %s) does not match for %s part %d, reuploading."
