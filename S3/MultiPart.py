@@ -93,7 +93,7 @@ class MultiPartUpload(object):
         else:
             debug("MultiPart: Uploading from %s" % (self.file.name))
 
-        remote_statuses = None
+        remote_statuses = defaultdict(lambda: None)
         if self.s3.config.put_continue:
             remote_statuses = self.get_parts_information(self.uri, self.upload_id)
 
