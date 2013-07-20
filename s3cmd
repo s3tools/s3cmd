@@ -339,14 +339,15 @@ def cmd_object_put(args):
         except InvalidFileError, e:
             warning(u"File can not be uploaded: %s" % e)
             continue
-        speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
-        if not Config().progress_meter:
-            output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
-                (unicodise(full_name_orig), uri_final, response["size"], response["elapsed"],
-                speed_fmt[0], speed_fmt[1], seq_label))
+        if response is not None:
+            speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
+            if not Config().progress_meter:
+                output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+                       (unicodise(full_name_orig), uri_final, response["size"], response["elapsed"],
+                        speed_fmt[0], speed_fmt[1], seq_label))
         if Config().acl_public:
             output(u"Public URL of the object is: %s" %
-                (uri_final.public_url()))
+                   (uri_final.public_url()))
         if Config().encrypt and full_name != full_name_orig:
             debug(u"Removing temporary encrypted file: %s" % unicodise(full_name))
             os.remove(full_name)
@@ -1331,6 +1332,50 @@ def cmd_delpolicy(args):
     output(u"%s: Policy deleted" % uri)
 
 
+def cmd_multipart(args):
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+
+    #id = ''
+    #if(len(args) > 1): id = args[1]
+
+    response = s3.get_multipart(uri)
+    debug(u"response - %s" % response['status'])
+    output(u"%s" % uri)
+    tree = getTreeFromXml(response['data'])
+    debug(parseNodes(tree))
+    output(u"Initiated\tPath\tId")
+    for mpupload in parseNodes(tree):
+        try:
+            output("%s\t%s\t%s" % (mpupload['Initiated'], "s3://" + uri.bucket() + "/" + mpupload['Key'], mpupload['UploadId']))
+        except KeyError:
+            pass
+
+def cmd_abort_multipart(args):
+    '''{"cmd":"abortmp",   "label":"abort a multipart upload", "param":"s3://BUCKET Id", "func":cmd_abort_multipart, "argc":2},'''
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+    id = args[1]
+    response = s3.abort_multipart(uri, id)
+    debug(u"response - %s" % response['status'])
+    output(u"%s" % uri)
+
+def cmd_list_multipart(args):
+    '''{"cmd":"abortmp",   "label":"list a multipart upload", "param":"s3://BUCKET Id", "func":cmd_list_multipart, "argc":2},'''
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+    id = args[1]
+
+    response = s3.list_multipart(uri, id)
+    debug(u"response - %s" % response['status'])
+    tree = getTreeFromXml(response['data'])
+    output(u"LastModified\t\t\tPartNumber\tETag\tSize")
+    for mpupload in parseNodes(tree):
+        try:
+            output("%s\t%s\t%s\t%s" % (mpupload['LastModified'], mpupload['PartNumber'], mpupload['ETag'], mpupload['Size']))
+        except:
+            pass
+
 def cmd_accesslog(args):
     s3 = S3(cfg)
     bucket_uri = S3Uri(args.pop())
@@ -1685,6 +1730,11 @@ def get_commands_list():
     {"cmd":"setpolicy", "label":"Modify Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_setpolicy, "argc":2},
     {"cmd":"delpolicy", "label":"Delete Bucket Policy", "param":"s3://BUCKET", "func":cmd_delpolicy, "argc":1},
 
+    {"cmd":"multipart", "label":"show multipart uploads", "param":"s3://BUCKET [Id]", "func":cmd_multipart, "argc":1},
+    {"cmd":"abortmp",   "label":"abort a multipart upload", "param":"s3://BUCKET/OBJECT Id", "func":cmd_abort_multipart, "argc":2},
+
+    {"cmd":"listmp",    "label":"list parts of a multipart upload", "param":"s3://BUCKET/OBJECT Id", "func":cmd_list_multipart, "argc":2},
+
     {"cmd":"accesslog", "label":"Enable/disable bucket access logging", "param":"s3://BUCKET", "func":cmd_accesslog, "argc":1},
     {"cmd":"sign", "label":"Sign arbitrary string using the secret key", "param":"STRING-TO-SIGN", "func":cmd_sign, "argc":1},
     {"cmd":"signurl", "label":"Sign an S3 URL to provide limited public access with expiry", "param":"s3://BUCKET/OBJECT expiry_epoch", "func":cmd_signurl, "argc":2},
@@ -1825,6 +1875,8 @@ def main():
     optparser.add_option(      "--no-encrypt", dest="encrypt", action="store_false", help="Don't encrypt files.")
     optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations.")
     optparser.add_option(      "--continue", dest="get_continue", action="store_true", help="Continue getting a partially downloaded file (only for [get] command).")
+    optparser.add_option(      "--continue-put", dest="put_continue", action="store_true", help="Continue uploading partially uploaded files or multipart upload parts.  Restarts/parts files that don't have matching size and md5.  Skips files/parts that do.  Note: md5sum checks are not always sufficient to check (part) file equality.  Enable this at your own risk.")
+    optparser.add_option(      "--upload-id", dest="upload_id", help="UploadId for Multipart Upload, in case you want continue an existing upload (equivalent to --continue-put) and there are multiple partial uploads.  Use s3cmd multipart [URI] to see what UploadIds are associated with the given URI.")
     optparser.add_option(      "--skip-existing", dest="skip_existing", action="store_true", help="Skip over files that exist at the destination (only for [get] and [sync] commands).")
     optparser.add_option("-r", "--recursive", dest="recursive", action="store_true", help="Recursive upload, download or removal.")
     optparser.add_option(      "--check-md5", dest="check_md5", action="store_true", help="Check MD5 sums when comparing files for [sync]. (default)")
@@ -2016,6 +2068,14 @@ def main():
         raise ParameterError("Chunk size %d MB is too small, must be >= %d MB. Please adjust --multipart-chunk-size-mb" % (cfg.multipart_chunk_size_mb, MultiPartUpload.MIN_CHUNK_SIZE_MB))
     if cfg.multipart_chunk_size_mb > MultiPartUpload.MAX_CHUNK_SIZE_MB:
         raise ParameterError("Chunk size %d MB is too large, must be <= %d MB. Please adjust --multipart-chunk-size-mb" % (cfg.multipart_chunk_size_mb, MultiPartUpload.MAX_CHUNK_SIZE_MB))
+
+    ## If an UploadId was provided, set put_continue True
+    if options.upload_id is not None:
+        cfg.upload_id = options.upload_id
+        cfg.put_continue = True
+
+    if cfg.upload_id and not cfg.multipart_chunk_size_mb:
+        raise ParameterError("Must have --multipart-chunk-size-mb if using --put-continue or --upload-id")
 
     ## CloudFront's cf_enable and Config's enable share the same --enable switch
     options.cf_enable = options.enable

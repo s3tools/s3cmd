@@ -38,6 +38,8 @@ class Config(object):
     force = False
     enable = None
     get_continue = False
+    put_continue = False
+    upload_id = None
     skip_existing = False
     recursive = False
     acl_public = None
