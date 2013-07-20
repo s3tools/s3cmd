@@ -93,7 +93,7 @@ class MultiPartUpload(object):
         else:
             debug("MultiPart: Uploading from %s" % (self.file.name))
 
-        remote_statuses = None
+        remote_statuses = defaultdict(lambda: None)
         if self.s3.config.put_continue:
             remote_statuses = self.get_parts_information(self.uri, self.upload_id)
 
@@ -151,6 +151,7 @@ class MultiPartUpload(object):
                 remote_checksum = remote_status['checksum'].strip('"')
                 if remote_checksum == checksum:
                     warning("MultiPart: size and md5sum match for %s part %d, skipping." % (self.uri, seq))
+                    self.parts[seq] = remote_status['checksum']
                     return
                 else:
                     warning("MultiPart: checksum (%s vs %s) does not match for %s part %d, reuploading."
