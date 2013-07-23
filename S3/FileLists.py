@@ -363,7 +363,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
                 'dev' : None,
                 'inode' : None,
             }
-            if rem_list[key]['md5'].find("-"): # always get it for multipart uploads
+            if rem_list[key]['md5'].find("-") != -1: # always get it for multipart uploads
                 _get_remote_attribs(S3Uri(object_uri_str), rem_list[key])
             md5 = rem_list[key]['md5']
             rem_list.record_md5(key, md5)
