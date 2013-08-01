@@ -104,6 +104,7 @@ class Config(object):
     cache_file = ""
     add_headers = ""
     ignore_failed_copy = False
+    check_transfers = True
 
     ## Creating a singleton
     def __new__(self, configfile = None):

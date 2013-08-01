@@ -829,15 +829,16 @@ class S3(object):
             ## Non-recoverable error
             raise S3Error(response)
 
-        debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
-        if response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
-            warning("MD5 Sums don't match!")
-            if retries:
-                warning("Retrying upload of %s" % (file.name))
-                return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
-            else:
-                warning("Too many failures. Giving up on '%s'" % (file.name))
-                raise S3UploadError
+        if self.config.check_transfers:
+            debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
+            if response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
+                warning("MD5 Sums don't match!")
+                if retries:
+                    warning("Retrying upload of %s" % (file.name))
+                    return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
+                else:
+                    warning("Too many failures. Giving up on '%s'" % (file.name))
+                    raise S3UploadError
 
         return response
 
@@ -973,7 +974,7 @@ class S3(object):
         except KeyError:
             pass
 
-        response["md5match"] = md5_hash.find(response["md5"]) >= 0
+        response["md5match"] = md5_hash.find(response["md5"]) >= 0 or not self.config.check_transfers
         response["elapsed"] = timestamp_end - timestamp_start
         response["size"] = current_position
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)

@@ -1829,6 +1829,7 @@ def main():
     optparser.add_option("-r", "--recursive", dest="recursive", action="store_true", help="Recursive upload, download or removal.")
     optparser.add_option(      "--check-md5", dest="check_md5", action="store_true", help="Check MD5 sums when comparing files for [sync]. (default)")
     optparser.add_option(      "--no-check-md5", dest="check_md5", action="store_false", help="Do not check MD5 sums when comparing files for [sync]. Only size will be compared. May significantly speed up transfer but may also miss some changed files.")
+    optparser.add_option(      "--no-check-transfers", dest="no_check_transfers", action="store_true", help="Do not check MD5 sums of downloaded/uploaded files after transfering them. Can result in corrupted uploads/downloads.")
     optparser.add_option("-P", "--acl-public", dest="acl_public", action="store_true", help="Store objects with ACL allowing read for anyone.")
     optparser.add_option(      "--acl-private", dest="acl_public", action="store_false", help="Store objects with default ACL allowing access for you only.")
     optparser.add_option(      "--acl-grant", dest="acl_grants", type="s3acl", action="append", metavar="PERMISSION:EMAIL or USER_CANONICAL_ID", help="Grant stated permission to a given amazon user. Permission is one of: read, write, read_acp, write_acp, full_control, all")
@@ -1996,6 +1997,10 @@ def main():
             pass
     if options.check_md5 == True and cfg.sync_checks.count("md5") == 0:
         cfg.sync_checks.append("md5")
+
+    ## Process --no-check-transfers
+    if options.no_check_transfers:
+        cfg.check_transfers = False
 
     ## Update Config with other parameters
     for option in cfg.option_list():
