@@ -415,8 +415,13 @@ about matching file names against exclude and include rules.
 For example to exclude all files with ".jpg" extension except those beginning with a number use:
 .PP
 	\-\-exclude '*.jpg' \-\-rinclude '[0-9].*\.jpg'
+
+.SH ENVIRONMENT
+.TP
+.B TMP
+Directory used to write temp files (/tmp by default)
 .SH SEE ALSO
-For the most up to date list of options run 
+For the most up to date list of options run
 .B s3cmd \-\-help
 .br
 For more info about usage, examples and other related info visit project homepage at
