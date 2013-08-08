@@ -40,6 +40,7 @@ class Config(object):
     get_continue = False
     skip_existing = False
     recursive = False
+    truncate_response = False
     acl_public = None
     acl_grants = []
     acl_revokes = []
