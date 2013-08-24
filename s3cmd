@@ -327,7 +327,7 @@ def cmd_object_put(args):
         seq_label = "[%d of %d]" % (seq, local_count)
         if Config().encrypt:
             exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
-        if cfg.preserve_attrs or local_list[key]['size'] > (cfg.multipart_chunk_size_mb * 1024 * 1024):
+        if cfg.preserve_attrs or ( os.name != "nt" and local_list[key]['size'] > (cfg.multipart_chunk_size_mb * 1024 * 1024) ):
             attr_header = _build_attr_header(local_list, key)
             debug(u"attr_header: %s" % attr_header)
             extra_headers.update(attr_header)
