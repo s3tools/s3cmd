@@ -408,7 +408,7 @@ class S3(object):
         content_type = self.config.mime_type
         content_encoding = None
         if filename != "-" and not content_type and self.config.guess_mime_type:
-            (content_type, content_encoding) = mime_magic(filename)
+            (content_type, content_encoding) = mime_magic(filename) if self.config.use_mime_magic else mimetypes.guess_type(filename)
         if not content_type:
             content_type = self.config.default_mime_type
 
