@@ -103,6 +103,7 @@ class Config(object):
     files_from = []
     cache_file = ""
     add_headers = ""
+    regex_headers = {}
     ignore_failed_copy = False
 
     ## Creating a singleton
