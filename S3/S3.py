@@ -416,7 +416,8 @@ class S3(object):
         if self.add_encoding(filename, content_type):
             content_type = content_type + "; charset=" + self.config.encoding.upper()
 
-        headers["content-type"] = content_type
+        if "Content-Type" not in headers and "content-type" not in headers:
+            headers["content-type"] = content_type
         if content_encoding is not None:
             headers["content-encoding"] = content_encoding
 
