@@ -26,6 +26,7 @@ import socket
 import shutil
 import tempfile
 import S3.Exceptions
+import yaml
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -1103,6 +1104,10 @@ def cmd_sync_local2remote(args):
                 uri = S3Uri(item['remote_uri'])
                 seq_label = "[%d of %d]" % (seq, total)
                 extra_headers = copy(cfg.extra_headers)
+                # added regex match for specific extra headers
+                for filename_pattern in cfg.regex_headers.iterkeys():
+                    if re.search(filename_pattern, src) is not None:
+                        extra_headers.update(process_headers(cfg.regex_headers[filename_pattern]))
                 try:
                     if cfg.preserve_attrs:
                         attr_header = _build_attr_header(local_list, file)
@@ -1665,6 +1670,23 @@ def process_patterns(patterns_list, patterns_from, is_glob, option_txt = ""):
 
     return patterns_compiled, patterns_textual
 
+def process_headers(headers):
+    extra_headers = {}
+    for hdr in headers:
+        try:
+            key, val = hdr.split(":", 1)
+        except ValueError:
+            raise ParameterError("Invalid header format: %s" % hdr)
+        key_inval = re.sub("[a-zA-Z0-9-.]", "", key)
+        if key_inval:
+            key_inval = key_inval.replace(" ", "<space>")
+            key_inval = key_inval.replace("\t", "<tab>")
+            raise ParameterError("Invalid character(s) in header name '%s': \"%s\"" % (key, key_inval))
+        debug(u"Updating Config.Config extra_headers[%s] -> %s" % (key.strip(), val.strip()))
+        extra_headers[key.strip()] = val.strip()
+
+    return extra_headers
+
 def get_commands_list():
     return [
     {"cmd":"mb", "label":"Make bucket", "param":"s3://BUCKET", "func":cmd_bucket_create, "argc":1},
@@ -1866,6 +1888,7 @@ def main():
     optparser.add_option("-m", "--mime-type", dest="mime_type", type="mimetype", metavar="MIME/TYPE", help="Force MIME-type. Override both --default-mime-type and --guess-mime-type.")
 
     optparser.add_option(      "--add-header", dest="add_header", action="append", metavar="NAME:VALUE", help="Add a given HTTP header to the upload request. Can be used multiple times. For instance set 'Expires' or 'Cache-Control' headers (or both) using this options if you like.")
+    optparser.add_option(      "--add-headers-from", dest="add_headers_from", action="append", metavar="FILE", help="Read custom headers from an yaml format file ( keys are regex matching file names; values have HEADER:VALUE format).")
 
     optparser.add_option(      "--encoding", dest="encoding", metavar="ENCODING", help="Override autodetected terminal and filesystem encoding (character set). Autodetected: %s" % preferred_encoding)
     optparser.add_option(      "--add-encoding-exts", dest="add_encoding_exts", metavar="EXTENSIONs", help="Add encoding to these comma delimited extensions i.e. (css,js,html) when uploading to S3 )")
@@ -1966,18 +1989,11 @@ def main():
 
     ## Pre-process --add-header's and put them to Config.extra_headers SortedDict()
     if options.add_header:
-        for hdr in options.add_header:
-            try:
-                key, val = hdr.split(":", 1)
-            except ValueError:
-                raise ParameterError("Invalid header format: %s" % hdr)
-            key_inval = re.sub("[a-zA-Z0-9-.]", "", key)
-            if key_inval:
-                key_inval = key_inval.replace(" ", "<space>")
-                key_inval = key_inval.replace("\t", "<tab>")
-                raise ParameterError("Invalid character(s) in header name '%s': \"%s\"" % (key, key_inval))
-            debug(u"Updating Config.Config extra_headers[%s] -> %s" % (key.strip(), val.strip()))
-            cfg.extra_headers[key.strip()] = val.strip()
+        cfg.extra_headers = process_headers(options.add_header)
+    
+    if options.add_headers_from:
+        regex_headers = yaml.load(open(options.add_headers_from[0]))
+        cfg.regex_headers.update(regex_headers)
 
     ## --acl-grant/--acl-revoke arguments are pre-parsed by OptionS3ACL()
     if options.acl_grants:
