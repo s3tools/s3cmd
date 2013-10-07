@@ -180,7 +180,7 @@ class Config(object):
                     if "key" in data:
                         Config().update_option(data["key"], data["value"])
                         if data["key"] in ("access_key", "secret_key", "gpg_passphrase"):
-                            print_value = (data["value"][:2]+"...%d_chars..."+data["value"][-1:]) % (len(data["value"]) - 3)
+                            print_value = ("%s...%d_chars...%s") % (data["value"][:2], len(data["value"]) - 3, data["value"][-1:])
                         else:
                             print_value = data["value"]
                         debug("env_Config: %s->%s" % (data["key"], print_value))
@@ -274,7 +274,7 @@ class ConfigParser(object):
                     data["value"] = data["value"][1:-1]
                 self.__setitem__(data["key"], data["value"])
                 if data["key"] in ("access_key", "secret_key", "gpg_passphrase"):
-                    print_value = (data["value"][:2]+"...%d_chars..."+data["value"][-1:]) % (len(data["value"]) - 3)
+                    print_value = ("%s...%d_chars...%s") % (data["value"][:2], len(data["value"]) - 3, data["value"][-1:])
                 else:
                     print_value = data["value"]
                 debug("ConfigParser: %s->%s" % (data["key"], print_value))
