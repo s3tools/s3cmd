@@ -887,7 +887,10 @@ def cmd_sync_remote2local(args):
                             mtime = attrs.has_key('mtime') and int(attrs['mtime']) or int(time.time())
                             atime = attrs.has_key('atime') and int(attrs['atime']) or int(time.time())
                             os.utime(dst_file, (atime, mtime))
-                        ## FIXME: uid/gid / uname/gname handling comes here! TODO
+                        if attrs.has_key('uid') and attrs.has_key('gid'):
+                            uid = int(attrs['uid'])
+                            gid = int(attrs['gid'])
+                            os.lchown(dst_file,uid,gid)				
                 except OSError, e:
                     try:
                         dst_stream.close()
