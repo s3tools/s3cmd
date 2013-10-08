@@ -87,6 +87,7 @@ class Config(object):
     debug_exclude = {}
     debug_include = {}
     encoding = "utf-8"
+    add_content_encoding = True
     urlencoding_mode = "normal"
     log_target_prefix = ""
     reduced_redundancy = False
