@@ -4,3 +4,6 @@ testsuite
 /MANIFEST
 /dist
 build/*
+.pydevproject
+.gitignore
+
