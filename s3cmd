@@ -1587,6 +1587,8 @@ def run_configure(config_file, args):
 
                 except Exception, e:
                     error(u"Test failed: %s" % (e))
+                    if e.find('403') != -1:
+                        error(u"Are you sure your keys have ListAllMyBuckets permissions?")
                     val = raw_input("\nRetry configuration? [Y/n] ")
                     if val.lower().startswith("y") or val == "":
                         continue
