@@ -334,8 +334,12 @@ def cmd_object_put(args):
         try:
             response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label)
         except S3UploadError, e:
-            error(u"Upload of '%s' failed too many times. Skipping that file." % full_name_orig)
-            continue
+            if cfg.ignore_failed_copy:   
+                error(u"Upload of '%s' failed too many times. Skipping that file." % full_name_orig)
+                continue
+            else: 
+                error(u"Upload of '%s' failed too many times. Exiting." % full_name_orig)
+                return -1
         except InvalidFileError, e:
             warning(u"File can not be uploaded: %s" % e)
             continue
@@ -744,6 +748,9 @@ def cmd_sync_remote2remote(args):
                 output("File %(src)s copied to %(dst)s" % { "src" : src_uri, "dst" : dst_uri })
             except S3Error, e:
                 error("File %(src)s could not be copied: %(e)s" % { "src" : src_uri, "e" : e })
+                if not cfg.ignore_failed_copy:
+                    error("Exiting. If you want to continue sync when there are errors, set ignore_failed_copy=True in .s3cfg")
+                    return -1
         return seq
 
     # Perform the synchronization of files
@@ -858,7 +865,10 @@ def cmd_sync_remote2local(args):
                 if not dir_cache.has_key(dst_dir):
                     dir_cache[dst_dir] = Utils.mkdir_with_parents(dst_dir)
                 if dir_cache[dst_dir] == False:
-                    warning(u"%s: destination directory not writable: %s" % (file, dst_dir))
+                    error(u"%s: destination directory not writable: %s" % (file, dst_dir))
+                    if not cfg.ignore_failed_copy:
+                        error("Exiting. If you want to continue sync when there are errors, set ignore_failed_copy=True in .s3cfg")
+                        return -1
                     continue
                 try:
                     debug(u"dst_file=%s" % unicodise(dst_file))
@@ -894,10 +904,13 @@ def cmd_sync_remote2local(args):
                         os.remove(chkptfname)
                     except: pass
                     if e.errno == errno.EEXIST:
-                        warning(u"%s exists - not overwriting" % (dst_file))
+                        error(u"%s exists - not overwriting" % (dst_file))
                         continue
                     if e.errno in (errno.EPERM, errno.EACCES):
                         warning(u"%s not writable: %s" % (dst_file, e.strerror))
+                        if not cfg.ignore_failed_copy:
+                            error("Exiting. If you want to continue sync when there are errors, set ignore_failed_copy=True in .s3cfg")
+                            return -1
                         continue
                     if e.errno == errno.EISDIR:
                         warning(u"%s is a directory - skipping over" % dst_file)
@@ -916,6 +929,9 @@ def cmd_sync_remote2local(args):
                         os.remove(chkptfname)
                     except: pass
                     error(u"%s: %s" % (file, e))
+                    if not cfg.ignore_failed_copy:
+                        error("Exiting. If you want to continue sync when there are errors, set ignore_failed_copy=True in .s3cfg")
+                        return -1
                     continue
                 # We have to keep repeating this call because
                 # Python 2.4 doesn't support try/except/finally
@@ -925,8 +941,14 @@ def cmd_sync_remote2local(args):
                     os.remove(chkptfname)
                 except: pass
             except S3DownloadError, e:
-                error(u"%s: download failed too many times. Skipping that file." % file)
-                continue
+                if cfg.ignore_failed_copy:
+                    error(u"%s: download failed too many times. Skipping that file." % file)
+                    continue
+                else:
+                    error(u"%s: download failed too many times. Exiting." % file)
+                    error("If you want to continue sync when there are errors, set ignore_failed_copy=True in .s3cfg")
+                    return -1
+                    
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
             if not Config().progress_meter:
                 output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
@@ -1111,9 +1133,15 @@ def cmd_sync_local2remote(args):
                     response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
                 except InvalidFileError, e:
                     warning(u"File can not be uploaded: %s" % e)
+                    if not cfg.ignore_failed_copy:
+                        error("Exiting. If you want to continue sync when there are errors, set ignore_failed_copy=True in .s3cfg")
+                        return -1
                     continue
                 except S3UploadError, e:
                     error(u"%s: upload failed too many times. Skipping that file." % item['full_name_unicode'])
+                    if not cfg.ignore_failed_copy:
+                        error("Exiting. If you want to continue sync when there are errors, set ignore_failed_copy=True in .s3cfg")
+                        return -1
                     continue
                 speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
                 if not cfg.progress_meter:
