@@ -56,7 +56,8 @@ class ConnMan(object):
             debug("ConnMan.get(): creating new connection: %s" % conn_id)
             conn = http_connection(conn_id, hostname, ssl, cfg)
             conn.c.connect()
-            debug("ConnMan.get(): bound to interface: %s:%d" % conn.c.source_address)
+            if conn.c.source_address:
+                debug("ConnMan.get(): bound to interface: %s:%d" % conn.c.source_address)
         conn.counter += 1
         return conn
 
