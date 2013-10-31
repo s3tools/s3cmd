@@ -4,3 +4,5 @@ testsuite
 /MANIFEST
 /dist
 build/*
+*.cfg
+test_*.sh

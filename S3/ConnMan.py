@@ -8,6 +8,45 @@ from Exceptions import ParameterError
 
 __all__ = [ "ConnMan" ]
 
+import httplib
+import socket
+from pprint import pprint
+from inspect import getmembers
+ 
+ 
+class HTTPBoundConnection(httplib.HTTPConnection):
+    """This class allows communication via a bound interface for 
+       multi network interface machines."""
+ 
+    def __init__(self, host, port=None, strict=None, bindip=None):
+        httplib.HTTPConnection.__init__(self, host, port, strict)
+        self.bindip = bindip
+ 
+ 
+    def connect(self):
+        """Connect to the host and port specified in __init__."""
+        msg = "getaddrinfo returns an empty list"
+        for res in socket.getaddrinfo(self.host, self.port, 0,
+                                      socket.SOCK_STREAM):
+            af, socktype, proto, canonname, sa = res
+            try:
+                self.sock = socket.socket(af, socktype, proto)
+                if self.debuglevel > 0:
+                    print "connect: (%s, %s)" % (self.host, self.port)
+                if self.bindip != None :
+                    self.sock.bind ((self.bindip, 0))
+                self.sock.connect(sa)
+            except socket.error, msg:
+                if self.debuglevel > 0:
+                    print 'connect fail:', (self.host, self.port)
+                if self.sock:
+                    self.sock.close()
+                self.sock = None
+                continue
+            break
+        if not self.sock:
+            raise socket.error, msg
+ 
 class http_connection(object):
     def __init__(self, id, hostname, ssl, cfg):
         self.hostname = hostname
@@ -16,15 +55,19 @@ class http_connection(object):
         self.counter = 0
         if cfg.proxy_host != "":
             self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
-        elif not ssl:
-            self.c = httplib.HTTPConnection(hostname)
-        else:
+        elif ssl:
             self.c = httplib.HTTPSConnection(hostname)
+        elif cfg.interface:
+            self.c = httplib.HTTPConnection(hostname,source_address=(cfg.interface,0))
+            # inspired by http://stackoverflow.com/questions/1150332/source-interface-with-python-and-urllib2
+        else:
+            self.c = httplib.HTTPConnection(hostname)
 
 class ConnMan(object):
     conn_pool_sem = Semaphore()
     conn_pool = {}
     conn_max_counter = 800    ## AWS closes connection after some ~90 requests
+
 
     @staticmethod
     def get(hostname, ssl = None):
@@ -46,9 +89,10 @@ class ConnMan(object):
             debug("ConnMan.get(): re-using connection: %s#%d" % (conn.id, conn.counter))
         ConnMan.conn_pool_sem.release()
         if not conn:
-            debug("ConnMan.get(): creating new connection: %s" % conn_id)
+            debug("ConnMan.get(): creating new connection: %s" % (conn_id))
             conn = http_connection(conn_id, hostname, ssl, cfg)
             conn.c.connect()
+            debug("ConnMan.get(): bound to interface: %s:%d" % conn.c.source_address)
         conn.counter += 1
         return conn
 
