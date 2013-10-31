@@ -10,8 +10,6 @@ __all__ = [ "ConnMan" ]
 
 import httplib
 import socket
-from pprint import pprint
-from inspect import getmembers
  
 class http_connection(object):
     def __init__(self, id, hostname, ssl, cfg):
@@ -55,7 +53,7 @@ class ConnMan(object):
             debug("ConnMan.get(): re-using connection: %s#%d" % (conn.id, conn.counter))
         ConnMan.conn_pool_sem.release()
         if not conn:
-            debug("ConnMan.get(): creating new connection: %s" % (conn_id))
+            debug("ConnMan.get(): creating new connection: %s" % conn_id)
             conn = http_connection(conn_id, hostname, ssl, cfg)
             conn.c.connect()
             debug("ConnMan.get(): bound to interface: %s:%d" % conn.c.source_address)
