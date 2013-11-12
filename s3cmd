@@ -2198,7 +2198,9 @@ if __name__ == '__main__':
     except IOError, e:
         if e.errno == errno.EPIPE: # sys.stdout was closed prematurely
             sys.exit(0)
-        else: raise
+        else:
+            report_exception(e)
+            sys.exit(1)
 
     except Exception, e:
         report_exception(e)
