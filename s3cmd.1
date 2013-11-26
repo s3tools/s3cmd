@@ -1,4 +1,3 @@
-
 .TH s3cmd 1
 .SH NAME
 s3cmd \- tool for managing Amazon S3 storage space and Amazon CloudFront content delivery network
@@ -279,7 +278,7 @@ Disable multipart upload on files bigger than \-\-multipart\-chunk\-size\-mb
 .TP
 \fB\-\-multipart\-chunk\-size\-mb\fR=SIZE
 Size of each chunk of a multipart upload. Files bigger than SIZE are automatically uploaded as multithreaded-multipart, smaller files are uploaded using the traditional method. SIZE is in Mega-Bytes,
-default chunk size is noneMB, minimum allowed chunk size is 5MB, maximum is 5GB.
+default chunk size is 15MB, minimum allowed chunk size is 5MB, maximum is 5GB.
 .TP
 \fB\-\-list\-md5\fR
 Include MD5 sums in bucket listings (only for 'ls' command).
