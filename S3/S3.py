@@ -403,7 +403,11 @@ class S3(object):
         headers = SortedDict(ignore_case = True)
         if extra_headers:
             headers.update(extra_headers)
-
+        
+        ## Set server side encryption
+        if self.config.server_side_encryption:
+            headers["x-amz-server-side-encryption"] = "AES256"
+    
         ## MIME-type handling
         content_type = self.config.mime_type
         content_encoding = None
@@ -499,6 +503,11 @@ class S3(object):
             headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
         # if extra_headers:
         #   headers.update(extra_headers)
+        
+        ## Set server side encryption
+        if self.config.server_side_encryption:
+            headers["x-amz-server-side-encryption"] = "AES256" 
+        
         request = self.create_request("OBJECT_PUT", uri = dst_uri, headers = headers)
         response = self.send_request(request)
         return response
