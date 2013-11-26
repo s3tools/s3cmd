@@ -250,7 +250,11 @@ def fetch_local_list(args, is_src = False, recursive = None):
         return loc_list, single_file
 
     def _maintain_cache(cache, local_list):
-        if cfg.cache_file:
+        # if getting the file list from files_from, it is going to be
+        # a subset of the actual tree.  We should not purge content
+        # outside of that subset as we don't know if it's valid or
+        # not.  Leave it to a non-files_from run to purge.
+        if cfg.cache_file and len(cfg.files_from) == 0:
             cache.mark_all_for_purge()
             for i in local_list.keys():
                 cache.unmark_for_purge(local_list[i]['dev'], local_list[i]['inode'], local_list[i]['mtime'], local_list[i]['size'])
