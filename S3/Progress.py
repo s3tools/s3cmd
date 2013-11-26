@@ -79,7 +79,7 @@ class Progress(object):
             self._stdout.flush()
             return
 
-        rel_position = selfself.current_position * 100 / self.total_size
+        rel_position = self.current_position * 100 / self.total_size
         if rel_position >= self.last_milestone:
             self.last_milestone = (int(rel_position) / 5) * 5
             self._stdout.write("%d%% ", self.last_milestone)
