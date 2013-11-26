@@ -262,6 +262,9 @@ Add a given HTTP header to the upload request. Can be used multiple times. For i
 \fB\-\-encoding\fR=ENCODING
 Override autodetected terminal and filesystem encoding (character set). Autodetected: UTF-8
 .TP
+\fB\-\-disable\-content\-encoding\fR
+Don't include a Content-encoding header to the the uploaded objects. Default: Off
+.TP
 \fB\-\-add\-encoding\-exts\fR=EXTENSIONs
 Add encoding to these comma delimited extensions i.e. (css,js,html) when uploading to S3 )
 .TP
@@ -415,8 +418,13 @@ about matching file names against exclude and include rules.
 For example to exclude all files with ".jpg" extension except those beginning with a number use:
 .PP
 	\-\-exclude '*.jpg' \-\-rinclude '[0-9].*\.jpg'
+
+.SH ENVIRONMENT
+.TP
+.B TMP
+Directory used to write temp files (/tmp by default)
 .SH SEE ALSO
-For the most up to date list of options run 
+For the most up to date list of options run
 .B s3cmd \-\-help
 .br
 For more info about usage, examples and other related info visit project homepage at

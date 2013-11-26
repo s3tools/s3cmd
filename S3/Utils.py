@@ -217,11 +217,11 @@ def mktmpsomething(prefix, randchars, createfunc):
     return dirname
 __all__.append("mktmpsomething")
 
-def mktmpdir(prefix = "/tmp/tmpdir-", randchars = 10):
+def mktmpdir(prefix = os.getenv('TMP','/tmp') + "/tmpdir-", randchars = 10):
     return mktmpsomething(prefix, randchars, os.mkdir)
 __all__.append("mktmpdir")
 
-def mktmpfile(prefix = "/tmp/tmpfile-", randchars = 20):
+def mktmpfile(prefix = os.getenv('TMP','/tmp') + "/tmpfile-", randchars = 20):
     createfunc = lambda filename : os.close(os.open(filename, os.O_CREAT | os.O_EXCL))
     return mktmpsomething(prefix, randchars, createfunc)
 __all__.append("mktmpfile")
