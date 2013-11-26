@@ -5,6 +5,7 @@ class HashCache(object):
         self.inodes = dict()
 
     def add(self, dev, inode, mtime, size, md5):
+        if dev == 0 or inode == 0: return # Windows
         if dev not in self.inodes:
             self.inodes[dev] = dict()
         if inode not in self.inodes[dev]:
