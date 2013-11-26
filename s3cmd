@@ -1020,10 +1020,8 @@ def remote_copy(s3, copy_pairs, destination_base):
             saved_bytes = saved_bytes + int(info['headers']['content-length'])
             output(u"remote copy: %s -> %s" % (dst1, dst2))
         except:
-            #raise
-            ## don't raise error but add file that can not be copied into array for further process
             warning(u'Unable to remote copy files %s -> %s' % (dst1_uri, dst2_uri))
-            failed_copy_list[dst2_uri] = src_obj    
+            failed_copy_list[dst2] = src_obj    
     return (len(copy_pairs), saved_bytes, failed_copy_list)
 
 def _build_attr_header(local_list, src):
