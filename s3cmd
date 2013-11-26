@@ -757,7 +757,14 @@ def cmd_sync_remote2remote(args):
     seq = 0
     seq = _upload(src_list, seq, src_count + update_count)
     seq = _upload(update_list, seq, src_count + update_count)
-    n_copied, bytes_saved = remote_copy(s3, copy_pairs, destination_base)
+    n_copied, bytes_saved, failed_copy_files = remote_copy(s3, copy_pairs, destination_base)
+
+    #process files not copied
+    output("Process files that was not remote copied")
+    failed_copy_count = len (failed_copy_files) 
+    for key in failed_copy_files:
+        failed_copy_files[key]['target_uri'] = destination_base + key
+    seq = _upload(failed_copy_files, seq, failed_copy_count)
 
     total_elapsed = time.time() - timestamp_start
     outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s" % (seq, total_elapsed, seq/total_elapsed)
@@ -1001,6 +1008,7 @@ def local_copy(copy_pairs, destination_base):
 
 def remote_copy(s3, copy_pairs, destination_base):
     saved_bytes = 0
+    failed_copy_list = FileDict()
     for (src_obj, dst1, dst2) in copy_pairs:
         debug(u"Remote Copying from %s to %s" % (dst1, dst2))
         dst1_uri = S3Uri(destination_base + dst1)
@@ -1012,8 +1020,11 @@ def remote_copy(s3, copy_pairs, destination_base):
             saved_bytes = saved_bytes + int(info['headers']['content-length'])
             output(u"remote copy: %s -> %s" % (dst1, dst2))
         except:
-            raise
-    return (len(copy_pairs), saved_bytes)
+            #raise
+            ## don't raise error but add file that can not be copied into array for further process
+            warning(u'Unable to remote copy files %s -> %s' % (dst1_uri, dst2_uri))
+            failed_copy_list[dst2_uri] = src_obj    
+    return (len(copy_pairs), saved_bytes, failed_copy_list)
 
 def _build_attr_header(local_list, src):
     import pwd, grp
@@ -1203,7 +1214,14 @@ def cmd_sync_local2remote(args):
         timestamp_start = time.time()
         n, total_size = _upload(local_list, 0, local_count, total_size)
         n, total_size = _upload(update_list, n, local_count, total_size)
-        n_copies, saved_bytes = remote_copy(s3, copy_pairs, destination_base)
+        n_copies, saved_bytes, failed_copy_files  = remote_copy(s3, copy_pairs, destination_base)
+
+        #upload file that could not be copied
+        output("Process files that was not remote copied")
+        failed_copy_count = len(failed_copy_files)
+        _set_remote_uri(failed_copy_files, destination_base, single_file_local)
+        n, total_size = _upload(failed_copy_files, n, failed_copy_count, total_size)
+
         if cfg.delete_removed and cfg.delete_after:
             _do_deletes(s3, remote_list)
         total_elapsed = time.time() - timestamp_start
