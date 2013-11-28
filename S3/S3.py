@@ -415,7 +415,7 @@ class S3(object):
             content_charset = self.config.encoding.upper()
 
         ## add charset to content type
-        if self.add_encoding(filename, content_type):
+        if self.add_encoding(filename, content_type) and content_charset is not None:
             content_type = content_type + "; charset=" + content_charset
 
         headers["content-type"] = content_type
