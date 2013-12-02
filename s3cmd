@@ -2229,6 +2229,7 @@ def report_exception(e):
             sys.stderr.write("S3cmd:   %s\n" % PkgInfo.version)
         except NameError:
             sys.stderr.write("S3cmd:   unknown version. Module import problem?\n")
+        sys.stderr.write("python:   %s\n" % sys.version)
         sys.stderr.write("\n")
         sys.stderr.write(unicode(tb, errors="replace"))
 
