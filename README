@@ -179,7 +179,7 @@ Simple s3cmd HowTo
    account page. Be careful when copying them! They are 
    case sensitive and must be entered accurately or you'll 
    keep getting errors about invalid signatures or similar.
-   
+
    Remember to add ListAllMyBuckets permissions to the keys
    or you will get an AccessDenied error while testing access.
 

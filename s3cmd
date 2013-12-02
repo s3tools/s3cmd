@@ -629,7 +629,7 @@ def cmd_info(args):
                 if 'x-amz-server-side-encryption' in info['headers']:
                     output(u"   SSE:       %s" % info['headers']['x-amz-server-side-encryption'])
                 else:
-                    output(u"   SSE:       NONE")		
+                    output(u"   SSE:       NONE")
 
             else:
                 info = s3.bucket_info(uri)
@@ -761,7 +761,7 @@ def cmd_sync_remote2remote(args):
 
     #process files not copied
     output("Process files that was not remote copied")
-    failed_copy_count = len (failed_copy_files) 
+    failed_copy_count = len (failed_copy_files)
     for key in failed_copy_files:
         failed_copy_files[key]['target_uri'] = destination_base + key
     seq = _upload(failed_copy_files, seq, failed_copy_count)
@@ -909,7 +909,7 @@ def cmd_sync_remote2local(args):
                         if attrs.has_key('uid') and attrs.has_key('gid'):
                             uid = int(attrs['uid'])
                             gid = int(attrs['gid'])
-                            os.lchown(dst_file,uid,gid)				
+                            os.lchown(dst_file,uid,gid)
                 except OSError, e:
                     try:
                         dst_stream.close()
@@ -1021,7 +1021,7 @@ def remote_copy(s3, copy_pairs, destination_base):
             output(u"remote copy: %s -> %s" % (dst1, dst2))
         except:
             warning(u'Unable to remote copy files %s -> %s' % (dst1_uri, dst2_uri))
-            failed_copy_list[dst2] = src_obj    
+            failed_copy_list[dst2] = src_obj
     return (len(copy_pairs), saved_bytes, failed_copy_list)
 
 def _build_attr_header(local_list, src):
