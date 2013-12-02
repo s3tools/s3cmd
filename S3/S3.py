@@ -225,8 +225,12 @@ class S3(object):
 
     def bucket_list(self, bucket, prefix = None, recursive = None):
         def _list_truncated(data):
-            ## <IsTruncated> can either be "true" or "false" or be missing completely
-            is_truncated = getTextFromXml(data, ".//IsTruncated") or "false"
+            if self.config.truncate_response:
+                # Truncate bucket list response by first 1000 entries
+                is_truncated = "false"
+            else:
+                ## <IsTruncated> can either be "true" or "false" or be missing completely
+                is_truncated = getTextFromXml(data, ".//IsTruncated") or "false"
             return is_truncated.lower() != "false"
 
         def _get_contents(data):

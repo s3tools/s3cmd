@@ -43,6 +43,7 @@ class Config(object):
     upload_id = None
     skip_existing = False
     recursive = False
+    truncate_response = False
     acl_public = None
     acl_grants = []
     acl_revokes = []
