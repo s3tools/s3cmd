@@ -55,6 +55,10 @@ while (<>) {
 	}
 }
 print "
+.\\\" !!! IMPORTANT: This file is generated from s3cmd --help output using format-manpage.pl
+.\\\" !!!            Do your changes either in s3cmd file or in 'format-manpage.pl' otherwise
+.\\\" !!!            they will be overwritten!
+
 .TH s3cmd 1
 .SH NAME
 s3cmd \\- tool for managing Amazon S3 storage space and Amazon CloudFront content delivery network
@@ -182,7 +186,7 @@ Please consider a donation if you have found s3cmd useful:
 .SH AUTHOR
 Written by Michal Ludvig <mludvig\@logix.net.nz> and 15+ contributors
 .SH CONTACT, SUPPORT
-Prefered way to get support is our mailing list:
+Preferred way to get support is our mailing list:
 .I s3tools\\-general\@lists.sourceforge.net
 .SH REPORTING BUGS
 Report bugs to 
