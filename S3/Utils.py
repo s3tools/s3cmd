@@ -217,11 +217,11 @@ def mktmpsomething(prefix, randchars, createfunc):
     return dirname
 __all__.append("mktmpsomething")
 
-def mktmpdir(prefix = "/tmp/tmpdir-", randchars = 10):
+def mktmpdir(prefix = os.getenv('TMP','/tmp') + "/tmpdir-", randchars = 10):
     return mktmpsomething(prefix, randchars, os.mkdir)
 __all__.append("mktmpdir")
 
-def mktmpfile(prefix = "/tmp/tmpfile-", randchars = 20):
+def mktmpfile(prefix = os.getenv('TMP','/tmp') + "/tmpfile-", randchars = 20):
     createfunc = lambda filename : os.close(os.open(filename, os.O_CREAT | os.O_EXCL))
     return mktmpsomething(prefix, randchars, createfunc)
 __all__.append("mktmpfile")
@@ -383,7 +383,7 @@ def time_to_epoch(t):
         return int(time.mktime(t))
     elif hasattr(t, 'timetuple'):
         # Looks like a datetime object or compatible
-        return int(time.mktime(ex.timetuple()))
+        return int(time.mktime(t.timetuple()))
     elif hasattr(t, 'strftime'):
         # Looks like the object supports standard srftime()
         return int(t.strftime('%s'))
@@ -458,5 +458,23 @@ __all__.append("getBucketFromHostname")
 def getHostnameFromBucket(bucket):
     return Config.Config().host_bucket % { 'bucket' : bucket }
 __all__.append("getHostnameFromBucket")
+
+
+def calculateChecksum(buffer, mfile, offset, chunk_size, send_chunk):
+    md5_hash = md5()
+    size_left = chunk_size
+    if buffer == '':
+        mfile.seek(offset)
+        while size_left > 0:
+            data = mfile.read(min(send_chunk, size_left))
+            md5_hash.update(data)
+            size_left -= len(data)
+    else:
+        md5_hash.update(buffer)
+
+    return md5_hash.hexdigest()
+
+
+__all__.append("calculateChecksum")
 
 # vim:et:ts=4:sts=4:ai

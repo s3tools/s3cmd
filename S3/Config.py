@@ -36,8 +36,11 @@ class Config(object):
     human_readable_sizes = False
     extra_headers = SortedDict(ignore_case = True)
     force = False
+    server_side_encryption = False
     enable = None
     get_continue = False
+    put_continue = False
+    upload_id = None
     skip_existing = False
     recursive = False
     acl_public = None
@@ -75,6 +78,7 @@ class Config(object):
     bucket_location = "US"
     default_mime_type = "binary/octet-stream"
     guess_mime_type = True
+    use_mime_magic = True
     mime_type = ""
     enable_multipart = True
     multipart_chunk_size_mb = 15    # MB
@@ -87,6 +91,7 @@ class Config(object):
     debug_exclude = {}
     debug_include = {}
     encoding = "utf-8"
+    add_content_encoding = True
     urlencoding_mode = "normal"
     log_target_prefix = ""
     reduced_redundancy = False
@@ -180,7 +185,7 @@ class Config(object):
                     if "key" in data:
                         Config().update_option(data["key"], data["value"])
                         if data["key"] in ("access_key", "secret_key", "gpg_passphrase"):
-                            print_value = (data["value"][:2]+"...%d_chars..."+data["value"][-1:]) % (len(data["value"]) - 3)
+                            print_value = ("%s...%d_chars...%s") % (data["value"][:2], len(data["value"]) - 3, data["value"][-1:])
                         else:
                             print_value = data["value"]
                         debug("env_Config: %s->%s" % (data["key"], print_value))
@@ -274,7 +279,7 @@ class ConfigParser(object):
                     data["value"] = data["value"][1:-1]
                 self.__setitem__(data["key"], data["value"])
                 if data["key"] in ("access_key", "secret_key", "gpg_passphrase"):
-                    print_value = (data["value"][:2]+"...%d_chars..."+data["value"][-1:]) % (len(data["value"]) - 3)
+                    print_value = ("%s...%d_chars...%s") % (data["value"][:2], len(data["value"]) - 3, data["value"][-1:])
                 else:
                     print_value = data["value"]
                 debug("ConfigParser: %s->%s" % (data["key"], print_value))

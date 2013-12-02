@@ -1,4 +1,3 @@
-
 .TH s3cmd 1
 .SH NAME
 s3cmd \- tool for managing Amazon S3 storage space and Amazon CloudFront content delivery network
@@ -66,7 +65,7 @@ Delete Bucket Policy
 s3cmd \fBaccesslog\fR \fIs3://BUCKET\fR
 Enable/disable bucket access logging
 .TP
-s3cmd \fBsign\fR \fISTRING-TO-SIGN\fR
+s3cmd \fBsign\fR \fISTRING\-TO\-SIGN\fR
 Sign arbitrary string using the secret key
 .TP
 s3cmd \fBsignurl\fR \fIs3://BUCKET/OBJECT expiry_epoch\fR
@@ -79,13 +78,13 @@ Fix invalid file names in a bucket
 .PP
 Commands for static WebSites configuration
 .TP
-s3cmd \fBws-create\fR \fIs3://BUCKET\fR
+s3cmd \fBws\-create\fR \fIs3://BUCKET\fR
 Create Website from bucket
 .TP
-s3cmd \fBws-delete\fR \fIs3://BUCKET\fR
+s3cmd \fBws\-delete\fR \fIs3://BUCKET\fR
 Delete Website
 .TP
-s3cmd \fBws-info\fR \fIs3://BUCKET\fR
+s3cmd \fBws\-info\fR \fIs3://BUCKET\fR
 Info about Website
 
 
@@ -124,7 +123,7 @@ changes you like.
 show this help message and exit
 .TP
 \fB\-\-configure\fR
-Invoke interactive (re)configuration tool. Optionally use as '--configure s3://come-bucket' to test access to a specific bucket instead of attempting to list them all.
+Invoke interactive (re)configuration tool. Optionally use as '\-\-configure s3://come\-bucket' to test access to a specific bucket instead of attempting to list them all.
 .TP
 \fB\-c\fR FILE, \fB\-\-config\fR=FILE
 Config file name. Defaults to /home/mludvig/.s3cfg
@@ -208,32 +207,32 @@ Don't store FS attributes
 Filenames and paths matching GLOB will be excluded from sync
 .TP
 \fB\-\-exclude\-from\fR=FILE
-Read --exclude GLOBs from FILE
+Read \-\-exclude GLOBs from FILE
 .TP
 \fB\-\-rexclude\fR=REGEXP
 Filenames and paths matching REGEXP (regular expression) will be excluded from sync
 .TP
 \fB\-\-rexclude\-from\fR=FILE
-Read --rexclude REGEXPs from FILE
+Read \-\-rexclude REGEXPs from FILE
 .TP
 \fB\-\-include\fR=GLOB
-Filenames and paths matching GLOB will be included even if previously excluded by one of --(r)exclude(-from) patterns
+Filenames and paths matching GLOB will be included even if previously excluded by one of \-\-(r)exclude(\-from) patterns
 .TP
 \fB\-\-include\-from\fR=FILE
-Read --include GLOBs from FILE
+Read \-\-include GLOBs from FILE
 .TP
 \fB\-\-rinclude\fR=REGEXP
-Same as --include but uses REGEXP (regular expression) instead of GLOB
+Same as \-\-include but uses REGEXP (regular expression) instead of GLOB
 .TP
 \fB\-\-rinclude\-from\fR=FILE
-Read --rinclude REGEXPs from FILE
+Read \-\-rinclude REGEXPs from FILE
 .TP
 \fB\-\-files\-from\fR=FILE
-Read list of source-file names from FILE. Use - to read from stdin.
+Read list of source-file names from FILE. Use \- to read from stdin.
 May be repeated.
 .TP
 \fB\-\-bucket\-location\fR=BUCKET_LOCATION
-Datacentre to create bucket in. As of now the datacenters are: US (default), EU, ap-northeast-1, ap-southeast-1, sa-east-1, us-west-1 and us-west-2
+Datacentre to create bucket in. As of now the datacenters are: US (default), EU, ap\-northeast\-1, ap\-southeast\-1, sa\-east\-1, us\-west\-1 and us\-west\-2
 .TP
 \fB\-\-reduced\-redundancy\fR, \fB\-\-rr\fR
 Store object with 'Reduced redundancy'. Lower per-GB price. [put, cp, mv]
@@ -245,22 +244,28 @@ Target prefix for access logs (S3 URI) (for [cfmodify] and [accesslog] commands)
 Disable access logging (for [cfmodify] and [accesslog] commands)
 .TP
 \fB\-\-default\-mime\-type\fR
-Default MIME-type for stored objects. Application default is binary/octet-stream.
+Default MIME-type for stored objects. Application default is binary/octet\-stream.
 .TP
 \fB\-M\fR, \fB\-\-guess\-mime\-type\fR
-Guess MIME-type of files by their extension or mime magic. Fall back to default MIME-Type as specified by \fB--default-mime-type\fR option
+Guess MIME-type of files by their extension or mime magic. Fall back to default MIME-type as specified by \fB\-\-default\-mime\-type\fR option
 .TP
 \fB\-\-no\-guess\-mime\-type\fR
 Don't guess MIME-type and use the default type instead.
 .TP
+\fB\-\-no\-mime\-magic\fR
+Don't use mime magic when guessing MIME-type.
+.TP
 \fB\-m\fR MIME/TYPE, \fB\-\-mime\-type\fR=MIME/TYPE
-Force MIME-type. Override both \fB--default-mime-type\fR and \fB--guess-mime-type\fR.
+Force MIME-type. Override both \fB\-\-default\-mime\-type\fR and \fB\-\-guess\-mime\-type\fR.
 .TP
 \fB\-\-add\-header\fR=NAME:VALUE
-Add a given HTTP header to the upload request. Can be used multiple times. For instance set 'Expires' or 'Cache-Control' headers (or both) using this options if you like.
+Add a given HTTP header to the upload request. Can be used multiple times. For instance set 'Expires' or 'Cache\-Control' headers (or both) using this options if you like.
 .TP
 \fB\-\-encoding\fR=ENCODING
-Override autodetected terminal and filesystem encoding (character set). Autodetected: UTF-8
+Override autodetected terminal and filesystem encoding (character set). Autodetected: UTF\-8
+.TP
+\fB\-\-disable\-content\-encoding\fR
+Don't include a Content-encoding header to the the uploaded objects. Default: Off
 .TP
 \fB\-\-add\-encoding\-exts\fR=EXTENSIONs
 Add encoding to these comma delimited extensions i.e. (css,js,html) when uploading to S3 )
@@ -269,11 +274,11 @@ Add encoding to these comma delimited extensions i.e. (css,js,html) when uploadi
 Use the S3 name as given on the command line. No pre-processing, encoding, etc. Use with caution!
 .TP
 \fB\-\-disable\-multipart\fR
-Disable multipart upload on files bigger than --multipart-chunk-size-mb
+Disable multipart upload on files bigger than \-\-multipart\-chunk\-size\-mb
 .TP
 \fB\-\-multipart\-chunk\-size\-mb\fR=SIZE
 Size of each chunk of a multipart upload. Files bigger than SIZE are automatically uploaded as multithreaded-multipart, smaller files are uploaded using the traditional method. SIZE is in Mega-Bytes,
-default chunk size is noneMB, minimum allowed chunk size is 5MB, maximum is 5GB.
+default chunk size is 15MB, minimum allowed chunk size is 5MB, maximum is 5GB.
 .TP
 \fB\-\-list\-md5\fR
 Include MD5 sums in bucket listings (only for 'ls' command).
@@ -282,10 +287,10 @@ Include MD5 sums in bucket listings (only for 'ls' command).
 Print sizes in human readable form (eg 1kB instead of 1234).
 .TP
 \fB\-\-ws\-index\fR=WEBSITE_INDEX
-Name of index-document (only for [ws-create] command)
+Name of index-document (only for [ws\-create] command)
 .TP
 \fB\-\-ws\-error\fR=WEBSITE_ERROR
-Name of error-document (only for [ws-create] command)
+Name of error-document (only for [ws\-create] command)
 .TP
 \fB\-\-progress\fR
 Display progress meter (default on TTY).
@@ -347,11 +352,11 @@ synchronising complete directory trees to or from remote S3 storage. To some ext
 .PP
 Basic usage common in backup scenarios is as simple as:
 .nf
-	s3cmd sync /local/path/ s3://test-bucket/backup/
+	s3cmd sync /local/path/ s3://test\-bucket/backup/
 .fi
 .PP
 This command will find all files under /local/path directory and copy them 
-to corresponding paths under s3://test-bucket/backup on the remote side.
+to corresponding paths under s3://test\-bucket/backup on the remote side.
 For example:
 .nf
 	/local/path/\fBfile1.ext\fR         \->  s3://bucket/backup/\fBfile1.ext\fR
@@ -361,7 +366,7 @@ For example:
 However if the local path doesn't end with a slash the last directory's name
 is used on the remote side as well. Compare these with the previous example:
 .nf
-	s3cmd sync /local/path s3://test-bucket/backup/
+	s3cmd sync /local/path s3://test\-bucket/backup/
 .fi
 will sync:
 .nf
@@ -371,7 +376,7 @@ will sync:
 .PP
 To retrieve the files back from S3 use inverted syntax:
 .nf
-	s3cmd sync s3://test-bucket/backup/ /tmp/restore/
+	s3cmd sync s3://test\-bucket/backup/ /tmp/restore/
 .fi
 that will download files:
 .nf
@@ -382,7 +387,7 @@ that will download files:
 Without the trailing slash on source the behaviour is similar to 
 what has been demonstrated with upload:
 .nf
-	s3cmd sync s3://test-bucket/backup /tmp/restore/
+	s3cmd sync s3://test\-bucket/backup /tmp/restore/
 .fi
 will download the files as:
 .nf
@@ -414,9 +419,14 @@ about matching file names against exclude and include rules.
 .PP
 For example to exclude all files with ".jpg" extension except those beginning with a number use:
 .PP
-	\-\-exclude '*.jpg' \-\-rinclude '[0-9].*\.jpg'
+	\-\-exclude '*.jpg' \-\-rinclude '[0\-9].*\.jpg'
+
+.SH ENVIRONMENT
+.TP
+.B TMP
+Directory used to write temp files (/tmp by default)
 .SH SEE ALSO
-For the most up to date list of options run 
+For the most up to date list of options run
 .B s3cmd \-\-help
 .br
 For more info about usage, examples and other related info visit project homepage at
@@ -429,7 +439,7 @@ Please consider a donation if you have found s3cmd useful:
 .SH AUTHOR
 Written by Michal Ludvig <mludvig@logix.net.nz> and 15+ contributors
 .SH CONTACT, SUPPORT
-Prefered way to get support is our mailing list:
+Preferred way to get support is our mailing list:
 .I s3tools\-general@lists.sourceforge.net
 .SH REPORTING BUGS
 Report bugs to 

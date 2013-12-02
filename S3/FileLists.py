@@ -17,6 +17,7 @@ import os
 import sys
 import glob
 import copy
+import re
 
 __all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists", "filter_exclude_include"]
 
@@ -250,7 +251,11 @@ def fetch_local_list(args, is_src = False, recursive = None):
         return loc_list, single_file
 
     def _maintain_cache(cache, local_list):
-        if cfg.cache_file:
+        # if getting the file list from files_from, it is going to be
+        # a subset of the actual tree.  We should not purge content
+        # outside of that subset as we don't know if it's valid or
+        # not.  Leave it to a non-files_from run to purge.
+        if cfg.cache_file and len(cfg.files_from) == 0:
             cache.mark_all_for_purge()
             for i in local_list.keys():
                 cache.unmark_for_purge(local_list[i]['dev'], local_list[i]['inode'], local_list[i]['mtime'], local_list[i]['size'])
@@ -363,7 +368,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
                 'dev' : None,
                 'inode' : None,
             }
-            if rem_list[key]['md5'].find("-"): # always get it for multipart uploads
+            if rem_list[key]['md5'].find("-") > 0: # always get it for multipart uploads
                 _get_remote_attribs(S3Uri(object_uri_str), rem_list[key])
             md5 = rem_list[key]['md5']
             rem_list.record_md5(key, md5)
@@ -398,16 +403,12 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
             uri_str = str(uri)
             ## Wildcards used in remote URI?
             ## If yes we'll need a bucket listing...
-            if uri_str.find('*') > -1 or uri_str.find('?') > -1:
-                first_wildcard = uri_str.find('*')
-                first_questionmark = uri_str.find('?')
-                if first_questionmark > -1 and first_questionmark < first_wildcard:
-                    first_wildcard = first_questionmark
-                prefix = uri_str[:first_wildcard]
-                rest = uri_str[first_wildcard+1:]
+            wildcard_split_result = re.split("\*|\?", uri_str, maxsplit=1)
+            if len(wildcard_split_result) == 2: # wildcards found
+                prefix, rest = wildcard_split_result
                 ## Only request recursive listing if the 'rest' of the URI,
                 ## i.e. the part after first wildcard, contains '/'
-                need_recursion = rest.find('/') > -1
+                need_recursion = '/' in rest
                 objectlist = _get_filelist_remote(S3Uri(prefix), recursive = need_recursion)
                 for key in objectlist:
                     ## Check whether the 'key' matches the requested wildcards

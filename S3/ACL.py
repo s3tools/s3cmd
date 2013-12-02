@@ -146,7 +146,6 @@ class ACL(object):
         if self.hasGrant(name, permission):
             return
 
-        name = name.lower()
         permission = permission.upper()
 
         if "ALL" == permission:
@@ -159,12 +158,17 @@ class ACL(object):
         grantee.name = name
         grantee.permission = permission
 
-        if  name.find('@') <= -1: # ultra lame attempt to differenciate emails id from canonical ids
-            grantee.xsi_type = "CanonicalUser"
-            grantee.tag = "ID"
-        else:
+        if  name.find('@') > -1:
+            grantee.name = grantee.name.lower
             grantee.xsi_type = "AmazonCustomerByEmail"
             grantee.tag = "EmailAddress"
+        elif name.find('http://acs.amazonaws.com/groups/') > -1:
+            grantee.xsi_type = "Group"
+            grantee.tag = "URI"
+        else:
+            grantee.name = grantee.name.lower
+            grantee.xsi_type = "CanonicalUser"
+            grantee.tag = "ID"
 
         self.appendGrantee(grantee)
 

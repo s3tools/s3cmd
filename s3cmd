@@ -339,14 +339,15 @@ def cmd_object_put(args):
         except InvalidFileError, e:
             warning(u"File can not be uploaded: %s" % e)
             continue
-        speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
-        if not Config().progress_meter:
-            output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
-                (unicodise(full_name_orig), uri_final, response["size"], response["elapsed"],
-                speed_fmt[0], speed_fmt[1], seq_label))
+        if response is not None:
+            speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
+            if not Config().progress_meter:
+                output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+                       (unicodise(full_name_orig), uri_final, response["size"], response["elapsed"],
+                        speed_fmt[0], speed_fmt[1], seq_label))
         if Config().acl_public:
             output(u"Public URL of the object is: %s" %
-                (uri_final.public_url()))
+                   (uri_final.public_url()))
         if Config().encrypt and full_name != full_name_orig:
             debug(u"Removing temporary encrypted file: %s" % unicodise(full_name))
             os.remove(full_name)
@@ -625,6 +626,11 @@ def cmd_info(args):
                 except KeyError:
                     pass
                 output(u"   MD5 sum:   %s" % md5)
+                if 'x-amz-server-side-encryption' in info['headers']:
+                    output(u"   SSE:       %s" % info['headers']['x-amz-server-side-encryption'])
+                else:
+                    output(u"   SSE:       NONE")		
+
             else:
                 info = s3.bucket_info(uri)
                 output(u"%s (bucket):" % uri.uri())
@@ -751,7 +757,14 @@ def cmd_sync_remote2remote(args):
     seq = 0
     seq = _upload(src_list, seq, src_count + update_count)
     seq = _upload(update_list, seq, src_count + update_count)
-    n_copied, bytes_saved = remote_copy(s3, copy_pairs, destination_base)
+    n_copied, bytes_saved, failed_copy_files = remote_copy(s3, copy_pairs, destination_base)
+
+    #process files not copied
+    output("Process files that was not remote copied")
+    failed_copy_count = len (failed_copy_files) 
+    for key in failed_copy_files:
+        failed_copy_files[key]['target_uri'] = destination_base + key
+    seq = _upload(failed_copy_files, seq, failed_copy_count)
 
     total_elapsed = time.time() - timestamp_start
     outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s" % (seq, total_elapsed, seq/total_elapsed)
@@ -797,6 +810,7 @@ def cmd_sync_remote2local(args):
 
     info(u"Summary: %d remote files to download, %d local files to delete, %d local files to hardlink" % (remote_count + update_count, local_count, copy_pairs_count))
 
+    empty_fname_re = re.compile(r'\A\s*\Z')
     def _set_local_filename(remote_list, destination_base):
         if len(remote_list) == 0:
             return
@@ -809,7 +823,12 @@ def cmd_sync_remote2local(args):
             if destination_base[-1] != os.path.sep:
                 destination_base += os.path.sep
             for key in remote_list:
-                local_filename = destination_base + key
+                local_basename = key
+                if empty_fname_re.match(key):
+                    # Objects may exist on S3 with empty names (''), which don't map so well to common filesystems.
+                    local_basename = '__AWS-EMPTY-OBJECT-NAME__'
+                    warning(u"Empty object name on S3 found, saving locally as %s" % (local_basename))
+                local_filename = destination_base + local_basename
                 if os.path.sep != "/":
                     local_filename = os.path.sep.join(local_filename.split("/"))
                 remote_list[key]['local_filename'] = deunicodise(local_filename)
@@ -887,7 +906,10 @@ def cmd_sync_remote2local(args):
                             mtime = attrs.has_key('mtime') and int(attrs['mtime']) or int(time.time())
                             atime = attrs.has_key('atime') and int(attrs['atime']) or int(time.time())
                             os.utime(dst_file, (atime, mtime))
-                        ## FIXME: uid/gid / uname/gname handling comes here! TODO
+                        if attrs.has_key('uid') and attrs.has_key('gid'):
+                            uid = int(attrs['uid'])
+                            gid = int(attrs['gid'])
+                            os.lchown(dst_file,uid,gid)				
                 except OSError, e:
                     try:
                         dst_stream.close()
@@ -986,6 +1008,7 @@ def local_copy(copy_pairs, destination_base):
 
 def remote_copy(s3, copy_pairs, destination_base):
     saved_bytes = 0
+    failed_copy_list = FileDict()
     for (src_obj, dst1, dst2) in copy_pairs:
         debug(u"Remote Copying from %s to %s" % (dst1, dst2))
         dst1_uri = S3Uri(destination_base + dst1)
@@ -997,8 +1020,9 @@ def remote_copy(s3, copy_pairs, destination_base):
             saved_bytes = saved_bytes + int(info['headers']['content-length'])
             output(u"remote copy: %s -> %s" % (dst1, dst2))
         except:
-            raise
-    return (len(copy_pairs), saved_bytes)
+            warning(u'Unable to remote copy files %s -> %s' % (dst1_uri, dst2_uri))
+            failed_copy_list[dst2] = src_obj    
+    return (len(copy_pairs), saved_bytes, failed_copy_list)
 
 def _build_attr_header(local_list, src):
     import pwd, grp
@@ -1188,7 +1212,14 @@ def cmd_sync_local2remote(args):
         timestamp_start = time.time()
         n, total_size = _upload(local_list, 0, local_count, total_size)
         n, total_size = _upload(update_list, n, local_count, total_size)
-        n_copies, saved_bytes = remote_copy(s3, copy_pairs, destination_base)
+        n_copies, saved_bytes, failed_copy_files  = remote_copy(s3, copy_pairs, destination_base)
+
+        #upload file that could not be copied
+        output("Process files that was not remote copied")
+        failed_copy_count = len(failed_copy_files)
+        _set_remote_uri(failed_copy_files, destination_base, single_file_local)
+        n, total_size = _upload(failed_copy_files, n, failed_copy_count, total_size)
+
         if cfg.delete_removed and cfg.delete_after:
             _do_deletes(s3, remote_list)
         total_elapsed = time.time() - timestamp_start
@@ -1330,6 +1361,50 @@ def cmd_delpolicy(args):
     debug(u"response - %s" % response['status'])
     output(u"%s: Policy deleted" % uri)
 
+
+def cmd_multipart(args):
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+
+    #id = ''
+    #if(len(args) > 1): id = args[1]
+
+    response = s3.get_multipart(uri)
+    debug(u"response - %s" % response['status'])
+    output(u"%s" % uri)
+    tree = getTreeFromXml(response['data'])
+    debug(parseNodes(tree))
+    output(u"Initiated\tPath\tId")
+    for mpupload in parseNodes(tree):
+        try:
+            output("%s\t%s\t%s" % (mpupload['Initiated'], "s3://" + uri.bucket() + "/" + mpupload['Key'], mpupload['UploadId']))
+        except KeyError:
+            pass
+
+def cmd_abort_multipart(args):
+    '''{"cmd":"abortmp",   "label":"abort a multipart upload", "param":"s3://BUCKET Id", "func":cmd_abort_multipart, "argc":2},'''
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+    id = args[1]
+    response = s3.abort_multipart(uri, id)
+    debug(u"response - %s" % response['status'])
+    output(u"%s" % uri)
+
+def cmd_list_multipart(args):
+    '''{"cmd":"abortmp",   "label":"list a multipart upload", "param":"s3://BUCKET Id", "func":cmd_list_multipart, "argc":2},'''
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+    id = args[1]
+
+    response = s3.list_multipart(uri, id)
+    debug(u"response - %s" % response['status'])
+    tree = getTreeFromXml(response['data'])
+    output(u"LastModified\t\t\tPartNumber\tETag\tSize")
+    for mpupload in parseNodes(tree):
+        try:
+            output("%s\t%s\t%s\t%s" % (mpupload['LastModified'], mpupload['PartNumber'], mpupload['ETag'], mpupload['Size']))
+        except:
+            pass
 
 def cmd_accesslog(args):
     s3 = S3(cfg)
@@ -1587,6 +1662,8 @@ def run_configure(config_file, args):
 
                 except Exception, e:
                     error(u"Test failed: %s" % (e))
+                    if e.find('403') != -1:
+                        error(u"Are you sure your keys have ListAllMyBuckets permissions?")
                     val = raw_input("\nRetry configuration? [Y/n] ")
                     if val.lower().startswith("y") or val == "":
                         continue
@@ -1684,6 +1761,11 @@ def get_commands_list():
 
     {"cmd":"setpolicy", "label":"Modify Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_setpolicy, "argc":2},
     {"cmd":"delpolicy", "label":"Delete Bucket Policy", "param":"s3://BUCKET", "func":cmd_delpolicy, "argc":1},
+
+    {"cmd":"multipart", "label":"show multipart uploads", "param":"s3://BUCKET [Id]", "func":cmd_multipart, "argc":1},
+    {"cmd":"abortmp",   "label":"abort a multipart upload", "param":"s3://BUCKET/OBJECT Id", "func":cmd_abort_multipart, "argc":2},
+
+    {"cmd":"listmp",    "label":"list parts of a multipart upload", "param":"s3://BUCKET/OBJECT Id", "func":cmd_list_multipart, "argc":2},
 
     {"cmd":"accesslog", "label":"Enable/disable bucket access logging", "param":"s3://BUCKET", "func":cmd_accesslog, "argc":1},
     {"cmd":"sign", "label":"Sign arbitrary string using the secret key", "param":"STRING-TO-SIGN", "func":cmd_sign, "argc":1},
@@ -1813,7 +1895,7 @@ def main():
     optparser.set_defaults(config = config_file)
     optparser.set_defaults(verbosity = default_verbosity)
 
-    optparser.add_option(      "--configure", dest="run_configure", action="store_true", help="Invoke interactive (re)configuration tool. Optionally use as '--configure s3://come-bucket' to test access to a specific bucket instead of attempting to list them all.")
+    optparser.add_option(      "--configure", dest="run_configure", action="store_true", help="Invoke interactive (re)configuration tool. Optionally use as '--configure s3://some-bucket' to test access to a specific bucket instead of attempting to list them all.")
     optparser.add_option("-c", "--config", dest="config", metavar="FILE", help="Config file name. Defaults to %default")
     optparser.add_option(      "--dump-config", dest="dump_config", action="store_true", help="Dump current configuration after parsing config files and command line options and exit.")
     optparser.add_option(      "--access_key", dest="access_key", help="AWS Access Key")
@@ -1825,6 +1907,8 @@ def main():
     optparser.add_option(      "--no-encrypt", dest="encrypt", action="store_false", help="Don't encrypt files.")
     optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations.")
     optparser.add_option(      "--continue", dest="get_continue", action="store_true", help="Continue getting a partially downloaded file (only for [get] command).")
+    optparser.add_option(      "--continue-put", dest="put_continue", action="store_true", help="Continue uploading partially uploaded files or multipart upload parts.  Restarts/parts files that don't have matching size and md5.  Skips files/parts that do.  Note: md5sum checks are not always sufficient to check (part) file equality.  Enable this at your own risk.")
+    optparser.add_option(      "--upload-id", dest="upload_id", help="UploadId for Multipart Upload, in case you want continue an existing upload (equivalent to --continue-put) and there are multiple partial uploads.  Use s3cmd multipart [URI] to see what UploadIds are associated with the given URI.")
     optparser.add_option(      "--skip-existing", dest="skip_existing", action="store_true", help="Skip over files that exist at the destination (only for [get] and [sync] commands).")
     optparser.add_option("-r", "--recursive", dest="recursive", action="store_true", help="Recursive upload, download or removal.")
     optparser.add_option(      "--check-md5", dest="check_md5", action="store_true", help="Check MD5 sums when comparing files for [sync]. (default)")
@@ -1860,14 +1944,18 @@ def main():
     optparser.add_option(      "--access-logging-target-prefix", dest="log_target_prefix", help="Target prefix for access logs (S3 URI) (for [cfmodify] and [accesslog] commands)")
     optparser.add_option(      "--no-access-logging", dest="log_target_prefix", action="store_false", help="Disable access logging (for [cfmodify] and [accesslog] commands)")
 
-    optparser.add_option(      "--default-mime-type", dest="default_mime_type", action="store_true", help="Default MIME-type for stored objects. Application default is binary/octet-stream.")
+    optparser.add_option(      "--default-mime-type", dest="default_mime_type", type="mimetype", action="store", help="Default MIME-type for stored objects. Application default is binary/octet-stream.")
     optparser.add_option("-M", "--guess-mime-type", dest="guess_mime_type", action="store_true", help="Guess MIME-type of files by their extension or mime magic. Fall back to default MIME-Type as specified by --default-mime-type option")
     optparser.add_option(      "--no-guess-mime-type", dest="guess_mime_type", action="store_false", help="Don't guess MIME-type and use the default type instead.")
+    optparser.add_option(      "--no-mime-magic", dest="use_mime_magic", action="store_false", help="Don't use mime magic when guessing MIME-type.")
     optparser.add_option("-m", "--mime-type", dest="mime_type", type="mimetype", metavar="MIME/TYPE", help="Force MIME-type. Override both --default-mime-type and --guess-mime-type.")
 
     optparser.add_option(      "--add-header", dest="add_header", action="append", metavar="NAME:VALUE", help="Add a given HTTP header to the upload request. Can be used multiple times. For instance set 'Expires' or 'Cache-Control' headers (or both) using this options if you like.")
 
+    optparser.add_option(      "--server-side-encryption", dest="server_side_encryption", action="store_true", help="Specifies that server-side encryption will be used when putting objects.")
+
     optparser.add_option(      "--encoding", dest="encoding", metavar="ENCODING", help="Override autodetected terminal and filesystem encoding (character set). Autodetected: %s" % preferred_encoding)
+    optparser.add_option(      "--disable-content-encoding", dest="add_content_encoding", action="store_false", help="Don't include a Content-encoding header to the the uploaded objects")
     optparser.add_option(      "--add-encoding-exts", dest="add_encoding_exts", metavar="EXTENSIONs", help="Add encoding to these comma delimited extensions i.e. (css,js,html) when uploading to S3 )")
     optparser.add_option(      "--verbatim", dest="urlencoding_mode", action="store_const", const="verbatim", help="Use the S3 name as given on the command line. No pre-processing, encoding, etc. Use with caution!")
 
@@ -1906,7 +1994,7 @@ def main():
         '"buckets" and uploading, downloading and removing '+
         '"objects" from these buckets.')
     optparser.epilog = format_commands(optparser.get_prog_name(), commands_list)
-    optparser.epilog += ("\nFor more informations see the progect homepage:\n%s\n" % PkgInfo.url)
+    optparser.epilog += ("\nFor more information see the project homepage:\n%s\n" % PkgInfo.url)
     optparser.epilog += ("\nConsider a donation if you have found s3cmd useful:\n%s/donate\n" % PkgInfo.url)
 
     (options, args) = optparser.parse_args()
@@ -2016,6 +2104,14 @@ def main():
         raise ParameterError("Chunk size %d MB is too small, must be >= %d MB. Please adjust --multipart-chunk-size-mb" % (cfg.multipart_chunk_size_mb, MultiPartUpload.MIN_CHUNK_SIZE_MB))
     if cfg.multipart_chunk_size_mb > MultiPartUpload.MAX_CHUNK_SIZE_MB:
         raise ParameterError("Chunk size %d MB is too large, must be <= %d MB. Please adjust --multipart-chunk-size-mb" % (cfg.multipart_chunk_size_mb, MultiPartUpload.MAX_CHUNK_SIZE_MB))
+
+    ## If an UploadId was provided, set put_continue True
+    if options.upload_id is not None:
+        cfg.upload_id = options.upload_id
+        cfg.put_continue = True
+
+    if cfg.upload_id and not cfg.multipart_chunk_size_mb:
+        raise ParameterError("Must have --multipart-chunk-size-mb if using --put-continue or --upload-id")
 
     ## CloudFront's cf_enable and Config's enable share the same --enable switch
     options.cf_enable = options.enable
