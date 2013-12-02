@@ -1,3 +1,13 @@
+s3cmd 1.5.0-beta1    -   2013-12-02
+=================
+* Brougt to you by Matt Domsch and contributors, thanks guys! :)
+* Multipart upload improvements (Eugene Brevdo, UENISHI Kota)
+* Allow --acl-grant on AWS groups (Dale Lovelace)
+* Added Server-Side Encryption support (Kevin Daub)
+* Improved MIME types detections and content encoding (radomir,
+  Eric Drechsel, George Melika)
+* Various smaller changes and bugfixes from many contributors
+
 s3cmd 1.5.0-alpha3   -   2013-03-11
 ==================
 * Persistent HTTP/HTTPS connections for massive speedup (Michal Ludvig)
