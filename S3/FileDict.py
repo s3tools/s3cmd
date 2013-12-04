@@ -35,7 +35,8 @@ class FileDict(SortedDict):
         self[relative_file]['md5'] = md5
         return md5
 
-    def record_hardlink(self, relative_file, dev, inode, md5):
+    def record_hardlink(self, relative_file, dev, inode, md5, size):
+        if size == 0: return # don't record 0-length files
         if dev == 0 or inode == 0: return # Windows
         if dev not in self.hardlinks:
             self.hardlinks[dev] = dict()

@@ -247,7 +247,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
                             except IOError:
                                 continue
                             cache.add(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size, md5)
-                    loc_list.record_hardlink(relative_file, sr.st_dev, sr.st_ino, md5)
+                    loc_list.record_hardlink(relative_file, sr.st_dev, sr.st_ino, md5, sr.st_size)
         return loc_list, single_file
 
     def _maintain_cache(cache, local_list):
