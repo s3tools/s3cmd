@@ -989,7 +989,7 @@ def cmd_sync_remote2local(args):
 def local_copy(copy_pairs, destination_base):
     # Do NOT hardlink local files by default, that'd be silly
     # For instance all empty files would become hardlinked together!
-
+    encoding = sys.getfilesystemencoding()
     failed_copy_list = FileDict()
     for (src_obj, dst1, relative_file) in copy_pairs:
         src_file = os.path.join(destination_base, dst1)
@@ -1000,7 +1000,6 @@ def local_copy(copy_pairs, destination_base):
                 debug("MKDIR %s" % dst_dir)
                 os.makedirs(dst_dir)
             debug(u"Copying %s to %s" % (src_file, dst_file))
-            encoding = sys.getfilesystemencoding()
             shutil.copy2(src_file.encode(encoding), dst_file.encode(encoding))
         except (IOError, OSError), e:
             warning(u'Unable to hardlink or copy files %s -> %s: %s' % (src_file, dst_file, e))
