@@ -1000,7 +1000,8 @@ def local_copy(copy_pairs, destination_base):
                 debug("MKDIR %s" % dst_dir)
                 os.makedirs(dst_dir)
             debug(u"Copying %s to %s" % (src_file, dst_file))
-            shutil.copy2(src_file, dst_file)
+            encoding = sys.getfilesystemencoding()
+            shutil.copy2(src_file.encode(encoding), dst_file.encode(encoding))
         except (IOError, OSError), e:
             warning(u'Unable to hardlink or copy files %s -> %s: %s' % (src_file, dst_file, e))
             failed_copy_list[relative_file] = src_obj
