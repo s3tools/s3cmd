@@ -2292,6 +2292,17 @@ if __name__ == '__main__':
         sys.stderr.write("See ya!\n")
         sys.exit(1)
 
+    except MemoryError:
+        msg = """
+MemoryError!  You have exceeded the amount of memory available for this process.
+This usually occurs when syncing >750,000 files on a 32-bit python instance.
+The solutions to this are:
+1) sync several smaller subtrees; or
+2) use a 64-bit python on a 64-bit OS with >8GB RAM
+        """
+        sys.stderr.write(msg)
+        sys.exit(1)
+
     except Exception, e:
         report_exception(e)
         sys.exit(1)
