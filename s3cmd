@@ -566,9 +566,8 @@ def cmd_object_restore(args):
         
         uri = S3Uri(item['object_uri_str'])
         if not item['object_uri_str'].endswith("/"):
-            output(u"Restoring obj: %s" % item['object_uri_str'])
             response = s3.object_restore(S3Uri(item['object_uri_str']))
-            output(u"File %s restored" % item['object_uri_str'])
+            output(u"File %s restoration started" % item['object_uri_str'])
         else:
             debug(u"Skipping directory since only files may be restored")
         
