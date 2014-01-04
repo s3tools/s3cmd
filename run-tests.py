@@ -11,7 +11,7 @@ import os
 import re
 from subprocess import Popen, PIPE, STDOUT
 import locale
-import pwd
+import getpass
 
 count_pass = 0
 count_fail = 0
@@ -206,11 +206,7 @@ def test_copy(label, src_file, dst_file):
     cmd.append(dst_file)
     return test(label, cmd)
 
-try:
-    pwd = pwd.getpwuid(os.getuid())
-    bucket_prefix = "%s.%s-" % (pwd.pw_name, pwd.pw_uid)
-except:
-    bucket_prefix = ''
+bucket_prefix = u"%s-" % getpass.getuser()
 print "Using bucket prefix: '%s'" % bucket_prefix
 
 argv = sys.argv[1:]
