@@ -538,6 +538,39 @@ def subcmd_object_del_uri(uri_str, recursive = None):
         item = remote_list[key]
         response = s3.object_delete(S3Uri(item['object_uri_str']))
         output(u"File %s deleted" % item['object_uri_str'])
+        
+def cmd_object_restore(args):
+    s3 = S3(cfg)
+    
+    if cfg.restore_days < 1:
+        raise ParameterError("You must restore a file for 1 or more days")
+
+    remote_list = fetch_remote_list(args, require_attribs = False, recursive = cfg.recursive)
+    remote_list, exclude_list = filter_exclude_include(remote_list)
+
+    remote_count = len(remote_list)
+
+    info(u"Summary: Restoring %d remote files for %d days" % (remote_count, cfg.restore_days))
+
+    if cfg.dry_run:
+        for key in exclude_list:
+            output(u"exclude: %s" % unicodise(key))
+        for key in remote_list:
+            output(u"restore: %s" % remote_list[key]['object_uri_str'])
+
+        warning(u"Exiting now because of --dry-run")
+        return
+
+    for key in remote_list:
+        item = remote_list[key]
+        
+        uri = S3Uri(item['object_uri_str'])
+        if not item['object_uri_str'].endswith("/"):
+            response = s3.object_restore(S3Uri(item['object_uri_str']))
+            output(u"File %s restoration started" % item['object_uri_str'])
+        else:
+            debug(u"Skipping directory since only files may be restored")
+        
 
 def subcmd_cp_mv(args, process_fce, action_str, message):
     if len(args) < 2:
@@ -1754,6 +1787,7 @@ def get_commands_list():
     {"cmd":"get", "label":"Get file from bucket", "param":"s3://BUCKET/OBJECT LOCAL_FILE", "func":cmd_object_get, "argc":1},
     {"cmd":"del", "label":"Delete file from bucket", "param":"s3://BUCKET/OBJECT", "func":cmd_object_del, "argc":1},
     #{"cmd":"mkdir", "label":"Make a virtual S3 directory", "param":"s3://BUCKET/path/to/dir", "func":cmd_mkdir, "argc":1},
+    {"cmd":"restore", "label":"Restore file from Glacier storage", "param":"s3://BUCKET/OBJECT", "func":cmd_object_restore, "argc":1},
     {"cmd":"sync", "label":"Synchronize a directory tree to S3", "param":"LOCAL_DIR s3://BUCKET[/PREFIX] or s3://BUCKET[/PREFIX] LOCAL_DIR", "func":cmd_sync, "argc":2},
     {"cmd":"du", "label":"Disk usage by buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_du, "argc":0},
     {"cmd":"info", "label":"Get various information about Buckets or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_info, "argc":1},
@@ -1919,6 +1953,8 @@ def main():
     optparser.add_option(      "--acl-private", dest="acl_public", action="store_false", help="Store objects with default ACL allowing access for you only.")
     optparser.add_option(      "--acl-grant", dest="acl_grants", type="s3acl", action="append", metavar="PERMISSION:EMAIL or USER_CANONICAL_ID", help="Grant stated permission to a given amazon user. Permission is one of: read, write, read_acp, write_acp, full_control, all")
     optparser.add_option(      "--acl-revoke", dest="acl_revokes", type="s3acl", action="append", metavar="PERMISSION:USER_CANONICAL_ID", help="Revoke stated permission for a given amazon user. Permission is one of: read, write, read_acp, wr     ite_acp, full_control, all")
+
+    optparser.add_option("-D",  "--restore-days", dest="restore_days", action="store", help="Number of days to keep restored file available (only for 'restore' command).", metavar="NUM")
 
     optparser.add_option(      "--delete-removed", dest="delete_removed", action="store_true", help="Delete remote objects with no corresponding local file [sync]")
     optparser.add_option(      "--no-delete-removed", dest="delete_removed", action="store_false", help="Don't delete remote objects.")

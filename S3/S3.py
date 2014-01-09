@@ -490,6 +490,18 @@ class S3(object):
         request = self.create_request("OBJECT_DELETE", uri = uri)
         response = self.send_request(request)
         return response
+    
+    def object_restore(self, uri):
+        if uri.type != "s3":
+            raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
+        body = '<RestoreRequest xmlns="http://s3.amazonaws.com/doc/2006-3-01">'
+        body += ('  <Days>%s</Days>' % self.config.restore_days)
+        body += '</RestoreRequest>'
+        request = self.create_request("OBJECT_POST", uri = uri, extra = "?restore")
+        debug("About to send request '%s' with body '%s'" % (request, body))
+        response = self.send_request(request, body)
+        debug("Received response '%s'" % (response))
+        return response
 
     def object_copy(self, src_uri, dst_uri, extra_headers = None):
         if src_uri.type != "s3":
