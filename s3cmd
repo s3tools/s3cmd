@@ -1025,19 +1025,27 @@ def remote_copy(s3, copy_pairs, destination_base):
     return (len(copy_pairs), saved_bytes, failed_copy_list)
 
 def _build_attr_header(local_list, src):
-    import pwd, grp
+    if os.name != 'nt':
+        import pwd, grp
+
     attrs = {}
     for attr in cfg.preserve_attrs_list:
         if attr == 'uname':
             try:
-                val = pwd.getpwuid(local_list[src]['uid']).pw_name
+                if os.name != 'nt':
+                    val = pwd.getpwuid(local_list[src]['uid']).pw_name
+                else:
+                    val = 'Windows'
             except KeyError:
                 attr = "uid"
                 val = local_list[src].get('uid')
                 warning(u"%s: Owner username not known. Storing UID=%d instead." % (src, val))
         elif attr == 'gname':
             try:
-                val = grp.getgrgid(local_list[src].get('gid')).gr_name
+                if os.name != 'nt':
+                    val = grp.getgrgid(local_list[src].get('gid')).gr_name
+                else:
+                    val = 'Windows'
             except KeyError:
                 attr = "gid"
                 val = local_list[src].get('gid')
