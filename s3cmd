@@ -767,6 +767,8 @@ def cmd_sync_remote2remote(args):
     seq = _upload(failed_copy_files, seq, failed_copy_count)
 
     total_elapsed = time.time() - timestamp_start
+    if total_elapsed == 0.0:
+        total_elapsed = 1.0
     outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s" % (seq, total_elapsed, seq/total_elapsed)
     if seq > 0:
         output(outstr)
