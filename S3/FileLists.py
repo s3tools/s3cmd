@@ -18,6 +18,7 @@ import sys
 import glob
 import copy
 import re
+import errno
 
 __all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists", "filter_exclude_include"]
 
@@ -226,7 +227,14 @@ def fetch_local_list(args, is_src = False, recursive = None):
                     relative_file = replace_nonprintables(relative_file)
                 if relative_file.startswith('./'):
                     relative_file = relative_file[2:]
-                sr = os.stat_result(os.lstat(full_name))
+                try:
+                    sr = os.stat_result(os.lstat(full_name))
+                except OSError, e:
+                    if e.errno == errno.ENOENT:
+                        # file was removed async to us getting the list
+                        continue
+                    else:
+                        raise
                 loc_list[relative_file] = {
                     'full_name_unicode' : unicodise(full_name),
                     'full_name' : full_name,
