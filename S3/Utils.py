@@ -477,4 +477,30 @@ def calculateChecksum(buffer, mfile, offset, chunk_size, send_chunk):
 
 __all__.append("calculateChecksum")
 
+
+# Deal with the fact that pwd and grp modules don't exist for Windos
+try:
+    import pwd
+    def getpwuid_username(uid):
+        """returns a username from the password databse for the given uid"""
+        return pwd.getpwuid(uid).pw_name
+except ImportError:
+    def getpwuid_username(uid):
+        return getpass.getuser()
+__all__.append("getpwuid_username")
+
+try:
+    import grp
+    def getgrgid_grpname(gid):
+        """returns a groupname from the group databse for the given gid"""
+        return  grp.getgrgid(gid).gr_name
+except ImportError:
+    def getgrgid_grpname(gid):
+        return "nobody"
+
+__all__.append("getgrgid_grpname")
+
+
+
 # vim:et:ts=4:sts=4:ai
+
