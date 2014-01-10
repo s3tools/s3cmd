@@ -2118,10 +2118,14 @@ def main():
     if options.check_md5 == False:
         try:
             cfg.sync_checks.remove("md5")
+            cfg.preserve_attrs_list.remove("md5")
         except Exception:
             pass
-    if options.check_md5 == True and cfg.sync_checks.count("md5") == 0:
-        cfg.sync_checks.append("md5")
+    if options.check_md5 == True:
+        if cfg.sync_checks.count("md5") == 0:
+            cfg.sync_checks.append("md5")
+        if cfg.preserve_attrs_list.count("md5") == 0:
+            cfg.preserve_attrs_list.append("md5")
 
     ## Update Config with other parameters
     for option in cfg.option_list():
