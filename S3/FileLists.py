@@ -191,6 +191,10 @@ def fetch_local_list(args, is_src = False, recursive = None):
                 'full_name' : '-',
                 'size' : -1,
                 'mtime' : -1,
+                'uid' : os.geteuid(),
+                'gid' : os.getegid(),
+                'dev' : 0,
+                'inode': 0,
             }
             return loc_list, True
         if local_uri.isdir():
