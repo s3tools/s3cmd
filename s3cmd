@@ -1048,8 +1048,12 @@ def _build_attr_header(local_list, src):
             except IOError:
                 val = None
         else:
-            val = getattr(local_list[src]['sr'], 'st_' + attr)
-        attrs[attr] = val
+            try:
+                val = getattr(local_list[src]['sr'], 'st_' + attr)
+            except:
+                val = None
+        if val is not None:
+            attrs[attr] = val
 
     if 'md5' in attrs and attrs['md5'] is None:
         del attrs['md5']

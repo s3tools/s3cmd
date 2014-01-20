@@ -185,11 +185,21 @@ def fetch_local_list(args, is_src = False, recursive = None):
         info(u"Compiling list of local files...")
 
         if deunicodise(local_uri.basename()) == "-":
+            try:
+                uid = os.geteuid()
+                gid = os.getegid()
+            except:
+                uid = 0
+                gid = 0
             loc_list["-"] = {
                 'full_name_unicode' : '-',
                 'full_name' : '-',
                 'size' : -1,
                 'mtime' : -1,
+                'uid' : uid,
+                'gid' : gid,
+                'dev' : 0,
+                'inode': 0,
             }
             return loc_list, True
         if local_uri.isdir():
