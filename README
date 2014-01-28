@@ -238,7 +238,7 @@ Simple s3cmd HowTo
 
    Use --recursive (or -r) to list all the remote files:
 
-   ~$ s3cmd ls s3://public.s3tools.org
+   ~$ s3cmd ls --recursive s3://public.s3tools.org
    2009-02-10 05:10    123456   s3://public.s3tools.org/somefile.xml
    2009-02-10 05:13        18   s3://public.s3tools.org/somewhere/dir1/file1-1.txt
    2009-02-10 05:13         8   s3://public.s3tools.org/somewhere/dir1/file1-2.txt
