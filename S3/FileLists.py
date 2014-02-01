@@ -238,7 +238,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
                 if relative_file.startswith('./'):
                     relative_file = relative_file[2:]
                 try:
-                    sr = os.stat_result(os.lstat(full_name))
+                    sr = os.stat_result(os.stat(full_name))
                 except OSError, e:
                     if e.errno == errno.ENOENT:
                         # file was removed async to us getting the list
