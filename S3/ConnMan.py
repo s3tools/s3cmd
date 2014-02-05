@@ -8,6 +8,9 @@ from Exceptions import ParameterError
 
 __all__ = [ "ConnMan" ]
 
+import httplib
+import socket
+ 
 class http_connection(object):
     def __init__(self, id, hostname, ssl, cfg):
         self.hostname = hostname
@@ -16,15 +19,19 @@ class http_connection(object):
         self.counter = 0
         if cfg.proxy_host != "":
             self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
-        elif not ssl:
-            self.c = httplib.HTTPConnection(hostname)
-        else:
+        elif ssl:
             self.c = httplib.HTTPSConnection(hostname)
+        elif cfg.interface:
+            self.c = httplib.HTTPConnection(hostname,source_address=(cfg.interface,0))
+            # inspired by http://stackoverflow.com/questions/1150332/source-interface-with-python-and-urllib2
+        else:
+            self.c = httplib.HTTPConnection(hostname)
 
 class ConnMan(object):
     conn_pool_sem = Semaphore()
     conn_pool = {}
     conn_max_counter = 800    ## AWS closes connection after some ~90 requests
+
 
     @staticmethod
     def get(hostname, ssl = None):
@@ -49,6 +56,8 @@ class ConnMan(object):
             debug("ConnMan.get(): creating new connection: %s" % conn_id)
             conn = http_connection(conn_id, hostname, ssl, cfg)
             conn.c.connect()
+            if conn.c.source_address:
+                debug("ConnMan.get(): bound to interface: %s:%d" % conn.c.source_address)
         conn.counter += 1
         return conn
 
