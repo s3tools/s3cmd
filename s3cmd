@@ -792,7 +792,7 @@ def cmd_sync_remote2remote(args):
     n_copied, bytes_saved, failed_copy_files = remote_copy(s3, copy_pairs, destination_base)
 
     #process files not copied
-    output("Process files that was not remote copied")
+    debug("Process files that was not remote copied")
     failed_copy_count = len (failed_copy_files)
     for key in failed_copy_files:
         failed_copy_files[key]['target_uri'] = destination_base + key
@@ -1253,7 +1253,7 @@ def cmd_sync_local2remote(args):
         n_copies, saved_bytes, failed_copy_files  = remote_copy(s3, copy_pairs, destination_base)
 
         #upload file that could not be copied
-        output("Process files that was not remote copied")
+        debug("Process files that was not remote copied")
         failed_copy_count = len(failed_copy_files)
         _set_remote_uri(failed_copy_files, destination_base, single_file_local)
         n, total_size = _upload(failed_copy_files, n, failed_copy_count, total_size)
