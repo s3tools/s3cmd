@@ -25,7 +25,6 @@ import htmlentitydefs
 import socket
 import shutil
 import tempfile
-import S3.Exceptions
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
