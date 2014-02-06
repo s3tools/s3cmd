@@ -48,11 +48,12 @@ if not os.getenv("S3CMD_PACKAGING"):
     doc_path = os.getenv("S3CMD_INSTPATH_DOC") or "share/doc/packages"
     data_files = [
         (doc_path+"/s3cmd", [ "README", "INSTALL", "NEWS" ]),
-        (man_path+"/man1", [ "s3cmd.1" ] ),
+        (man_path+"/man1", [ "s3cmd.1.gz" ] ),
     ]
 else:
     data_files = None
 
+os.system("gzip -c s3cmd.1 > s3cmd.1.gz")
 ## Main distutils info
 setup(
     ## Content description
