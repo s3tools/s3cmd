@@ -904,7 +904,7 @@ def cmd_sync_remote2local(args):
             seq += 1
             item = remote_list[file]
             uri = S3Uri(item['object_uri_str'])
-            dst_file = item['local_filename']
+            dst_file = item['local_filename'].decode('utf-8')
             seq_label = "[%d of %d]" % (seq, total)
             try:
                 dst_dir = os.path.dirname(dst_file)
