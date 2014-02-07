@@ -2248,7 +2248,7 @@ def main():
         error(u"S3 error: %s" % e)
         sys.exit(1)
 
-def report_exception(e):
+def report_exception(e, msg=''):
         sys.stderr.write("""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     An unexpected error has occurred.
@@ -2260,9 +2260,10 @@ def report_exception(e):
   following lines (removing any private
   info as necessary) to:
    s3tools-bugs@lists.sourceforge.net
+%s
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-""")
+""" % msg)
         s = ' '.join(sys.argv)
         sys.stderr.write("""Invoked as: %s""" % s)
 
@@ -2346,6 +2347,17 @@ The solutions to this are:
 2) use a 64-bit python on a 64-bit OS with >8GB RAM
         """
         sys.stderr.write(msg)
+        sys.exit(1)
+
+    except UnicodeEncodeError, e:
+        lang = os.getenv("LANG")
+        msg = """
+You have encountered a UnicodeEncodeError.  Your environment
+variable LANG=%s may not specify a Unicode encoding (e.g. UTF-8).
+Please set LANG=en_US.UTF-8 or similar in your environment before
+invoking s3cmd.
+        """ % lang
+        report_exception(e, msg)
         sys.exit(1)
 
     except Exception, e:
