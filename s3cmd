@@ -898,6 +898,8 @@ def cmd_sync_remote2local(args):
         _do_deletes(local_list)
 
     def _download(remote_list, seq, total, total_size, dir_cache):
+        original_umask = os.umask(0);
+        os.umask(original_umask);
         file_list = remote_list.keys()
         file_list.sort()
         for file in file_list:
@@ -905,6 +907,7 @@ def cmd_sync_remote2local(args):
             item = remote_list[file]
             uri = S3Uri(item['object_uri_str'])
             dst_file = item['local_filename']
+            is_empty_directory = dst_file.endswith('/')
             seq_label = "[%d of %d]" % (seq, total)
             try:
                 dst_dir = os.path.dirname(dst_file)
@@ -913,25 +916,45 @@ def cmd_sync_remote2local(args):
                 if dir_cache[dst_dir] == False:
                     warning(u"%s: destination directory not writable: %s" % (file, dst_dir))
                     continue
-                try:
-                    debug(u"dst_file=%s" % unicodise(dst_file))
-                    # create temporary files (of type .s3cmd.XXXX.tmp) in the same directory
-                    # for downloading and then rename once downloaded
-                    chkptfd, chkptfname = tempfile.mkstemp(".tmp",".s3cmd.",os.path.dirname(dst_file))
-                    debug(u"created chkptfname=%s" % unicodise(chkptfname))
-                    dst_stream = os.fdopen(chkptfd, "wb")
-                    response = s3.object_get(uri, dst_stream, extra_label = seq_label)
-                    dst_stream.close()
-                    # download completed, rename the file to destination
-                    os.rename(chkptfname, dst_file)
 
-                    # set permissions on destination file
-                    original_umask = os.umask(0);
-                    os.umask(original_umask);
-                    mode = 0777 - original_umask;
-                    debug(u"mode=%s" % oct(mode))
-                    os.chmod(dst_file, mode);
-                    debug(u"renamed chkptfname=%s to dst_file=%s" % (unicodise(chkptfname), unicodise(dst_file)))
+                try:
+                    if not is_empty_directory: # ignore empty directory at S3:
+                        debug(u"dst_file=%s" % unicodise(dst_file))
+                        # create temporary files (of type .s3cmd.XXXX.tmp) in the same directory
+                        # for downloading and then rename once downloaded
+                        chkptfd, chkptfname = tempfile.mkstemp(".tmp",".s3cmd.",os.path.dirname(dst_file))
+                        debug(u"created chkptfname=%s" % unicodise(chkptfname))
+                        dst_stream = os.fdopen(chkptfd, "wb")
+                        response = s3.object_get(uri, dst_stream, extra_label = seq_label)
+                        dst_stream.close()
+                        # download completed, rename the file to destination
+                        os.rename(chkptfname, dst_file)
+                        debug(u"renamed chkptfname=%s to dst_file=%s" % (unicodise(chkptfname), unicodise(dst_file)))
+                except Exception, e:
+                    if e.errno == errno.EISDIR:
+                        warning(u"%s is a directory - skipping over" % dst_file)
+                        continue
+                    else:
+                        raise
+
+                try:
+                        # set permissions on destination file
+                        if not is_empty_directory: # a normal file
+                            mode = 0777 - original_umask;
+                        else: # an empty directory, make them readable/executable
+                            mode = 0o775
+                        debug(u"mode=%s" % oct(mode))
+                        os.chmod(dst_file, mode);
+                except:
+                    raise
+
+                # because we don't upload empty directories,
+                # we can continue the loop here, we won't be setting stat info.
+                # if we do start to upload empty directories, we'll have to reconsider this.
+                if is_empty_directory:
+                    continue
+
+                try:
                     if response.has_key('s3cmd-attrs') and cfg.preserve_attrs:
                         attrs = response['s3cmd-attrs']
                         if attrs.has_key('mode'):
@@ -954,9 +977,6 @@ def cmd_sync_remote2local(args):
                         continue
                     if e.errno in (errno.EPERM, errno.EACCES):
                         warning(u"%s not writable: %s" % (dst_file, e.strerror))
-                        continue
-                    if e.errno == errno.EISDIR:
-                        warning(u"%s is a directory - skipping over" % dst_file)
                         continue
                     raise e
                 except KeyboardInterrupt:
