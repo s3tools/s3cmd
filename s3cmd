@@ -936,6 +936,9 @@ def cmd_sync_remote2local(args):
                         continue
                     else:
                         raise
+                except S3Error, e:
+                    warning(u"Remote file %s S3Error: %s" % (e.resource, e))
+                    continue
 
                 try:
                         # set permissions on destination file
