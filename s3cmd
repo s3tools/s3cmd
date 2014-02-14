@@ -930,7 +930,7 @@ def cmd_sync_remote2local(args):
                         # download completed, rename the file to destination
                         os.rename(chkptfname, dst_file)
                         debug(u"renamed chkptfname=%s to dst_file=%s" % (unicodise(chkptfname), unicodise(dst_file)))
-                except Exception, e:
+                except OSError, e:
                     if e.errno == errno.EISDIR:
                         warning(u"%s is a directory - skipping over" % dst_file)
                         continue
