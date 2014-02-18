@@ -489,7 +489,6 @@ class S3(object):
 
     def object_batch_delete(self, uri, batch):
         def compose_batch_del_xml(key_list):
-#            print '%s\n%s' % (key_list[0], key_list[1])
             body = "<Delete>"
             for key in key_list:
                 uri = S3Uri(key)
