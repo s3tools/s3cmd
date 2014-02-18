@@ -533,6 +533,14 @@ def subcmd_object_del_uri(uri_str, recursive = None, batch_mode = False):
         warning(u"Exiting now because of --dry-run")
         return
 
+    if batch_mode:
+        batch = [remote_list[item]['object_uri_str'] for item in remote_list]
+        response = s3.object_batch_delete(S3Uri(uri_str), batch)
+        output(u"Number of deleted keys: %d" % len(batch))
+        output(u"From: \t%s" % batch[0] or "None")
+        output(u"To: \t%s" % batch[-1] or "None")
+        remote_list = []
+
     for key in remote_list:
         item = remote_list[key]
         response = s3.object_delete(S3Uri(item['object_uri_str']))
