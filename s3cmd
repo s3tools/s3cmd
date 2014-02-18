@@ -248,7 +248,7 @@ def cmd_bucket_delete(args):
         except S3Error, e:
             if e.info['Code'] == 'BucketNotEmpty' and (cfg.force or cfg.recursive):
                 warning(u"Bucket is not empty. Removing all the objects from it first. This may take some time...")
-                subcmd_object_del_uri(uri.uri(), recursive = True)
+                subcmd_object_del_uri(uri.uri(), recursive = True, batch_mode = True)
                 return _bucket_delete_one(uri)
             elif S3.codes.has_key(e.info["Code"]):
                 error(S3.codes[e.info["Code"]] % uri.bucket())
@@ -508,13 +508,13 @@ def cmd_object_del(args):
                 raise ParameterError("File name required, not only the bucket name. Alternatively use --recursive")
         subcmd_object_del_uri(uri_str)
 
-def subcmd_object_del_uri(uri_str, recursive = None):
+def subcmd_object_del_uri(uri_str, recursive = None, batch_mode = False):
     s3 = S3(cfg)
 
     if recursive is None:
         recursive = cfg.recursive
 
-    remote_list = fetch_remote_list(uri_str, require_attribs = False, recursive = recursive)
+    remote_list = fetch_remote_list(uri_str, require_attribs = False, recursive = recursive, batch_mode = batch_mode)
     remote_list, exclude_list = filter_exclude_include(remote_list)
 
     remote_count = len(remote_list)
@@ -537,10 +537,10 @@ def subcmd_object_del_uri(uri_str, recursive = None):
         item = remote_list[key]
         response = s3.object_delete(S3Uri(item['object_uri_str']))
         output(u"File %s deleted" % item['object_uri_str'])
-        
+
 def cmd_object_restore(args):
     s3 = S3(cfg)
-    
+
     if cfg.restore_days < 1:
         raise ParameterError("You must restore a file for 1 or more days")
 
@@ -562,14 +562,14 @@ def cmd_object_restore(args):
 
     for key in remote_list:
         item = remote_list[key]
-        
+
         uri = S3Uri(item['object_uri_str'])
         if not item['object_uri_str'].endswith("/"):
             response = s3.object_restore(S3Uri(item['object_uri_str']))
             output(u"File %s restoration started" % item['object_uri_str'])
         else:
             debug(u"Skipping directory since only files may be restored")
-        
+
 
 def subcmd_cp_mv(args, process_fce, action_str, message):
     if len(args) < 2:

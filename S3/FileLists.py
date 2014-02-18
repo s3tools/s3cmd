@@ -322,7 +322,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
 
     return local_list, single_file
 
-def fetch_remote_list(args, require_attribs = False, recursive = None):
+def fetch_remote_list(args, require_attribs = False, recursive = None, batch_mode = False):
     def _get_remote_attribs(uri, remote_item):
         response = S3(cfg).object_info(uri)
         remote_item.update({
@@ -337,7 +337,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
         except KeyError:
             pass
 
-    def _get_filelist_remote(remote_uri, recursive = True):
+    def _get_filelist_remote(remote_uri, recursive = True, batch_mode = False):
         ## If remote_uri ends with '/' then all remote files will have
         ## the remote_uri prefix removed in the relative path.
         ## If, on the other hand, the remote_uri ends with something else
@@ -357,7 +357,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
         empty_fname_re = re.compile(r'\A\s*\Z')
 
         s3 = S3(Config())
-        response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object(), recursive = recursive)
+        response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object(), recursive = recursive, batch_mode = batch_mode)
 
         rem_base_original = rem_base = remote_uri.object()
         remote_uri_original = remote_uri
@@ -417,7 +417,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
 
     if recursive:
         for uri in remote_uris:
-            objectlist = _get_filelist_remote(uri)
+            objectlist = _get_filelist_remote(uri, batch_mode = batch_mode)
             for key in objectlist:
                 remote_list[key] = objectlist[key]
                 remote_list.record_md5(key, objectlist.get_md5(key))
