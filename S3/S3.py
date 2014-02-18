@@ -7,6 +7,7 @@ import sys
 import os, os.path
 import time
 import errno
+import base64
 import httplib
 import logging
 import mimetypes
@@ -161,6 +162,7 @@ class S3(object):
         SERVICE = 0x0100,
         BUCKET = 0x0200,
         OBJECT = 0x0400,
+        BATCH = 0x0800,
         MASK = 0x0700,
     )
 
@@ -175,6 +177,7 @@ class S3(object):
         OBJECT_HEAD = targets["OBJECT"] | http_methods["HEAD"],
         OBJECT_DELETE = targets["OBJECT"] | http_methods["DELETE"],
         OBJECT_POST = targets["OBJECT"] | http_methods["POST"],
+        BATCH_DELETE = targets["BATCH"] | http_methods["POST"],
     )
 
     codes = {
@@ -482,6 +485,31 @@ class S3(object):
         request = self.create_request("OBJECT_GET", uri = uri)
         labels = { 'source' : unicodise(uri.uri()), 'destination' : unicodise(stream.name), 'extra' : extra_label }
         response = self.recv_file(request, stream, labels, start_position)
+        return response
+
+    def object_batch_delete(self, uri, batch):
+        def compose_batch_del_xml(key_list):
+#            print '%s\n%s' % (key_list[0], key_list[1])
+            body = "<Delete>"
+            for key in key_list:
+                uri = S3Uri(key)
+                if uri.type != "s3":
+                    raise ValueError("Excpected URI type 's3', got '%s'" % uri.type)
+                if not uri.has_object():
+                    raise ValueError("URI '%s' has no object" % key)
+                object = self.urlencode_string(uri.object())
+                body += "<Object><Key>%s</Key></Object>" % object
+            body += "</Delete>"
+            return body
+
+        if batch == None or len(batch) == 0:
+            raise ValueError("Key list is empty")
+        request_body = compose_batch_del_xml(batch)
+        md5_hash = md5()
+        md5_hash.update(request_body)
+        headers = {'content-md5': base64.b64encode(md5_hash.digest())}
+        request = self.create_request("BATCH_DELETE", uri = uri, extra = '?delete', headers = headers)
+        response = self.send_request(request, request_body)
         return response
 
     def object_delete(self, uri):
