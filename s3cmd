@@ -1944,7 +1944,6 @@ def main():
         if cmd.has_key("cmd"):
             commands[cmd["cmd"]] = cmd
 
-    default_verbosity = Config().verbosity
     optparser = OptionParser(option_class=OptionAll, formatter=MyHelpFormatter())
     #optparser.disable_interspersed_args()
 
@@ -1958,7 +1957,6 @@ def main():
 
     optparser.set_defaults(encoding = preferred_encoding)
     optparser.set_defaults(config = config_file)
-    optparser.set_defaults(verbosity = default_verbosity)
 
     optparser.add_option(      "--configure", dest="run_configure", action="store_true", help="Invoke interactive (re)configuration tool. Optionally use as '--configure s3://some-bucket' to test access to a specific bucket instead of attempting to list them all.")
     optparser.add_option("-c", "--config", dest="config", metavar="FILE", help="Config file name. Defaults to %default")
@@ -2068,7 +2066,7 @@ def main():
 
     ## Some mucking with logging levels to enable
     ## debugging/verbose output for config file parser on request
-    logging.basicConfig(level=options.verbosity,
+    logging.basicConfig(level=options.verbosity or Config().verbosity,
                         format='%(levelname)s: %(message)s',
                         stream = sys.stderr)
 
@@ -2100,9 +2098,8 @@ def main():
             error(u"Consider using --configure parameter to create one.")
             sys.exit(1)
 
-    ## And again some logging level adjustments
-    ## according to configfile and command line parameters
-    if options.verbosity != default_verbosity:
+    # allow commandline verbosity config to override config file
+    if options.verbosity is not None:
         cfg.verbosity = options.verbosity
     logging.root.setLevel(cfg.verbosity)
 
