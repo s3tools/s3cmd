@@ -410,22 +410,22 @@ class S3(object):
 
         ## MIME-type handling
         content_type = self.config.mime_type
-        content_encoding = None
+        content_charset = None
         if filename != "-" and not content_type and self.config.guess_mime_type:
             if self.config.use_mime_magic:
-                (content_type, content_encoding) = mime_magic(filename)
+                (content_type, content_charset) = mime_magic(filename)
             else:
-                (content_type, content_encoding) = mimetypes.guess_type(filename)
+                (content_type, content_charset) = mimetypes.guess_type(filename)
         if not content_type:
             content_type = self.config.default_mime_type
+        if not content_charset:
+            content_charset = self.config.encoding.upper()
 
         ## add charset to content type
-        if self.add_encoding(filename, content_type):
-            content_type = content_type + "; charset=" + self.config.encoding.upper()
+        if self.add_encoding(filename, content_type) and content_charset is not None:
+            content_type = content_type + "; charset=" + content_charset
 
         headers["content-type"] = content_type
-        if content_encoding is not None and self.config.add_content_encoding:
-            headers["content-encoding"] = content_encoding
 
         ## Other Amazon S3 attributes
         if self.config.acl_public:
