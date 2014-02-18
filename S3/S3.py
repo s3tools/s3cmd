@@ -223,7 +223,7 @@ class S3(object):
         response["list"] = getListFromXml(response["data"], "Bucket")
         return response
 
-    def bucket_list(self, bucket, prefix = None, recursive = None):
+    def bucket_list(self, bucket, prefix = None, recursive = None, batch_mode = False):
         def _list_truncated(data):
             ## <IsTruncated> can either be "true" or "false" or be missing completely
             is_truncated = getTextFromXml(data, ".//IsTruncated") or "false"
@@ -244,7 +244,7 @@ class S3(object):
             response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params)
             current_list = _get_contents(response["data"])
             current_prefixes = _get_common_prefixes(response["data"])
-            truncated = _list_truncated(response["data"])
+            truncated = _list_truncated(response["data"]) and not batch_mode
             if truncated:
                 if current_list:
                     uri_params['marker'] = self.urlencode_string(current_list[-1]["Key"])
@@ -490,7 +490,7 @@ class S3(object):
         request = self.create_request("OBJECT_DELETE", uri = uri)
         response = self.send_request(request)
         return response
-    
+
     def object_restore(self, uri):
         if uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
