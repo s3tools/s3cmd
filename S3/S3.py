@@ -226,7 +226,7 @@ class S3(object):
         response["list"] = getListFromXml(response["data"], "Bucket")
         return response
 
-    def bucket_list(self, bucket, prefix = None, recursive = None, batch_mode = False):
+    def bucket_list(self, bucket, prefix = None, recursive = None, batch_mode = False, uri_params = {}):
         def _list_truncated(data):
             ## <IsTruncated> can either be "true" or "false" or be missing completely
             is_truncated = getTextFromXml(data, ".//IsTruncated") or "false"
@@ -238,7 +238,6 @@ class S3(object):
         def _get_common_prefixes(data):
             return getListFromXml(data, "CommonPrefixes")
 
-        uri_params = {}
         truncated = True
         list = []
         prefixes = []

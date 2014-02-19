@@ -242,14 +242,17 @@ def cmd_website_delete(args):
                 raise
 
 def cmd_bucket_delete(args):
-    def _bucket_delete_one(uri):
+    def _bucket_delete_one(uri, args = None):
         try:
+            marker = args.get('marker', '') if args else ''
             response = s3.bucket_delete(uri.bucket())
         except S3Error, e:
             if e.info['Code'] == 'BucketNotEmpty' and (cfg.force or cfg.recursive):
                 warning(u"Bucket is not empty. Removing all the objects from it first. This may take some time...")
-                subcmd_object_del_uri(uri.uri(), recursive = True, batch_mode = True)
-                return _bucket_delete_one(uri)
+                batch_uri_args = {'marker': marker}
+                marker = subcmd_object_del_uri(uri.uri(), recursive = True, 
+                                               batch_mode = True, batch_uri_args = batch_uri_args)
+                return _bucket_delete_one(uri, args = {'marker': marker})
             elif S3.codes.has_key(e.info["Code"]):
                 error(S3.codes[e.info["Code"]] % uri.bucket())
                 return
@@ -508,13 +511,14 @@ def cmd_object_del(args):
                 raise ParameterError("File name required, not only the bucket name. Alternatively use --recursive")
         subcmd_object_del_uri(uri_str)
 
-def subcmd_object_del_uri(uri_str, recursive = None, batch_mode = False):
+def subcmd_object_del_uri(uri_str, recursive = None, batch_mode = False, batch_uri_args = {}):
     s3 = S3(cfg)
 
     if recursive is None:
         recursive = cfg.recursive
 
-    remote_list = fetch_remote_list(uri_str, require_attribs = False, recursive = recursive, batch_mode = batch_mode)
+    remote_list = fetch_remote_list(uri_str, require_attribs = False, recursive = recursive, 
+                                    batch_mode = batch_mode, uri_params = batch_uri_args)
     remote_list, exclude_list = filter_exclude_include(remote_list)
 
     remote_count = len(remote_list)
@@ -535,17 +539,25 @@ def subcmd_object_del_uri(uri_str, recursive = None, batch_mode = False):
 
     if batch_mode:
         response = s3.object_batch_delete(remote_list)
+        keys_count = len(remote_list) if remote_list else 0
         first_key = S3Uri(remote_list[remote_list.keys()[0]]['object_uri_str']) if remote_list else "None"
         last_key = S3Uri(remote_list[remote_list.keys()[-1]]['object_uri_str']) if remote_list else "None"
-        output(u"Number of deleted keys: %d" % len(remote_list))
+        output(u"Number of deleted keys: %d" % keys_count)
         output(u"From: \t%s" % first_key)
         output(u"To: \t%s" % last_key)
         remote_list = []
+        if keys_count == 1000:
+            # reached limit of keys, probably there are more..
+            # worst case scenario we do a useless listing but that's ok
+            marker = last_key.object() if last_key != "None" and last_key.has_object() else ''
+            return marker 
 
     for key in remote_list:
         item = remote_list[key]
         response = s3.object_delete(S3Uri(item['object_uri_str']))
         output(u"File %s deleted" % item['object_uri_str'])
+
+    return ''
 
 def cmd_object_restore(args):
     s3 = S3(cfg)
