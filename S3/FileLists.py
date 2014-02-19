@@ -322,7 +322,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
 
     return local_list, single_file
 
-def fetch_remote_list(args, require_attribs = False, recursive = None, batch_mode = False):
+def fetch_remote_list(args, require_attribs = False, recursive = None, batch_mode = False, uri_params = {}):
     def _get_remote_attribs(uri, remote_item):
         response = S3(cfg).object_info(uri)
         remote_item.update({
@@ -357,7 +357,8 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, batch_mod
         empty_fname_re = re.compile(r'\A\s*\Z')
 
         s3 = S3(Config())
-        response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object(), recursive = recursive, batch_mode = batch_mode)
+        response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object(),
+                                  recursive = recursive, batch_mode = batch_mode, uri_params = uri_params)
 
         rem_base_original = rem_base = remote_uri.object()
         remote_uri_original = remote_uri
