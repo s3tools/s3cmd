@@ -487,8 +487,8 @@ class S3(object):
         response = self.recv_file(request, stream, labels, start_position)
         return response
 
-    def object_batch_delete(self, uri, batch):
-        def compose_batch_del_xml(key_list):
+    def object_batch_delete(self, remote_list):
+        def compose_batch_del_xml(bucket, key_list):
             body = "<Delete>"
             for key in key_list:
                 uri = S3Uri(key)
@@ -496,18 +496,22 @@ class S3(object):
                     raise ValueError("Excpected URI type 's3', got '%s'" % uri.type)
                 if not uri.has_object():
                     raise ValueError("URI '%s' has no object" % key)
+                if uri.bucket() != bucket:
+                    raise ValueError("The batch should contain keys from the same bucket")
                 object = self.urlencode_string(uri.object())
                 body += "<Object><Key>%s</Key></Object>" % object
             body += "</Delete>"
             return body
 
-        if batch == None or len(batch) == 0:
+        batch = [remote_list[item]['object_uri_str'] for item in remote_list]
+        if len(batch) == 0:
             raise ValueError("Key list is empty")
-        request_body = compose_batch_del_xml(batch)
+        bucket = S3Uri(batch[0]).bucket()
+        request_body = compose_batch_del_xml(bucket, batch)
         md5_hash = md5()
         md5_hash.update(request_body)
         headers = {'content-md5': base64.b64encode(md5_hash.digest())}
-        request = self.create_request("BATCH_DELETE", uri = uri, extra = '?delete', headers = headers)
+        request = self.create_request("BATCH_DELETE", bucket = bucket, extra = '?delete', headers = headers)
         response = self.send_request(request, request_body)
         return response
 
