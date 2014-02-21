@@ -12,6 +12,8 @@ import re
 from subprocess import Popen, PIPE, STDOUT
 import locale
 import getpass
+import S3.Exceptions
+import S3.Config
 
 count_pass = 0
 count_fail = 0
@@ -30,6 +32,14 @@ elif os.name == "nt":
 else:
     print "Unknown platform: %s" % os.name
     sys.exit(1)
+
+config_file = None
+if os.getenv("HOME"):
+    config_file = os.path.join(os.getenv("HOME"), ".s3cfg")
+elif os.name == "nt" and os.getenv("USERPROFILE"):
+    config_file = os.path.join(os.getenv("USERPROFILE").decode('mbcs'), "Application Data", "s3cmd.ini")
+
+cfg = S3.Config.Config(config_file)
 
 ## Unpack testsuite/ directory
 if not os.path.isdir('testsuite') and os.path.isfile('testsuite.tar.gz'):
@@ -355,7 +365,7 @@ test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public'
 
 ## ====== Retrieve from URL
 if have_wget:
-    test("Retrieve from URL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.s3.amazonaws.com/xyz/etc/logo.png' % bucket(1)],
+    test("Retrieve from URL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
         must_find_re = [ 'logo.png.*saved \[22059/22059\]' ])
 
 
@@ -366,7 +376,7 @@ test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', '%s/xyz/etc/l*.p
 
 ## ====== Verify Private ACL
 if have_wget:
-    test("Verify Private ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.s3.amazonaws.com/xyz/etc/logo.png' % bucket(1)],
+    test("Verify Private ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
         retcode = 8,
         must_find_re = [ 'ERROR 403: Forbidden' ])
 
@@ -378,7 +388,7 @@ test_s3cmd("Change ACL to Public", ['setacl', '--acl-public', '--recursive', '%s
 
 ## ====== Verify Public ACL
 if have_wget:
-    test("Verify Public ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.s3.amazonaws.com/xyz/etc/logo.png' % bucket(1)],
+    test("Verify Public ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
         must_find_re = [ 'logo.png.*saved \[22059/22059\]' ])
 
 
@@ -461,7 +471,7 @@ test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % p
 test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "MIME type:.*image/png",
                      "ACL:.*\*anon\*: READ",
-                     "URL:.*http://%s.s3.amazonaws.com/copy/etc2/Logo.PNG" % bucket(2) ])
+                     "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
 
 ## ====== Rename within S3
 test_s3cmd("Rename within S3", ['mv', '%s/copy/etc2/Logo.PNG' % pbucket(2), '%s/copy/etc/logo.png' % pbucket(2)],
