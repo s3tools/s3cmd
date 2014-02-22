@@ -845,7 +845,6 @@ def cmd_sync_remote2local(args):
     info(u"Summary: %d remote files to download, %d local files to delete, %d local files to hardlink" % (remote_count + update_count, local_count, copy_pairs_count))
 
     def _set_local_filename(remote_list, destination_base):
-        keys_to_remove = []
         if len(remote_list) == 0:
             return
         if not os.path.isdir(destination_base):
@@ -861,8 +860,6 @@ def cmd_sync_remote2local(args):
                 if os.path.sep != "/":
                     local_filename = os.path.sep.join(local_filename.split("/"))
                 remote_list[key]['local_filename'] = deunicodise(local_filename)
-            for key in keys_to_remove:
-                del remote_list[key]
 
     _set_local_filename(remote_list, destination_base)
     _set_local_filename(update_list, destination_base)
