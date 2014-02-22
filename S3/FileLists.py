@@ -354,6 +354,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
         ## { 'xyz/blah.txt' : {} }
 
         info(u"Retrieving list of remote files for %s ..." % remote_uri)
+        empty_fname_re = re.compile(r'\A\s*\Z')
 
         s3 = S3(Config())
         response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object(), recursive = recursive)
@@ -376,6 +377,10 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
             else:
                 key = object['Key'][rem_base_len:]      ## Beware - this may be '' if object['Key']==rem_base !!
                 object_uri_str = remote_uri.uri() + key
+            if empty_fname_re.match(key):
+                # Objects may exist on S3 with empty names (''), which don't map so well to common filesystems.
+                warning(u"Empty object name on S3 found, ignoring.")
+                continue
             rem_list[key] = {
                 'size' : int(object['Size']),
                 'timestamp' : dateS3toUnix(object['LastModified']), ## Sadly it's upload time, not our lastmod time :-(

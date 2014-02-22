@@ -844,7 +844,6 @@ def cmd_sync_remote2local(args):
 
     info(u"Summary: %d remote files to download, %d local files to delete, %d local files to hardlink" % (remote_count + update_count, local_count, copy_pairs_count))
 
-    empty_fname_re = re.compile(r'\A\s*\Z')
     def _set_local_filename(remote_list, destination_base):
         keys_to_remove = []
         if len(remote_list) == 0:
@@ -858,11 +857,6 @@ def cmd_sync_remote2local(args):
             if destination_base[-1] != os.path.sep:
                 destination_base += os.path.sep
             for key in remote_list:
-                if empty_fname_re.match(key):
-                    # Objects may exist on S3 with empty names (''), which don't map so well to common filesystems.
-                    warning(u"Empty object name on S3 found, ignoring.")
-                    keys_to_remove.append(key)
-                    continue
                 local_filename = destination_base + key
                 if os.path.sep != "/":
                     local_filename = os.path.sep.join(local_filename.split("/"))
