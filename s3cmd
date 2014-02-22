@@ -939,7 +939,7 @@ def cmd_sync_remote2local(args):
                         if not is_empty_directory: # a normal file
                             mode = 0777 - original_umask;
                         else: # an empty directory, make them readable/executable
-                            mode = 0o775
+                            mode = 0775
                         debug(u"mode=%s" % oct(mode))
                         os.chmod(dst_file, mode);
                 except:
