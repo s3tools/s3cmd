@@ -12,6 +12,7 @@ import httplib
 import logging
 import mimetypes
 import re
+from xml.sax import saxutils
 from logging import debug, info, warning, error
 from stat import ST_SIZE
 
@@ -488,7 +489,7 @@ class S3(object):
 
     def object_batch_delete(self, remote_list):
         def compose_batch_del_xml(bucket, key_list):
-            body = "<Delete>"
+            body = u"<?xml version=\"1.0\" encoding=\"UTF-8\"?><Delete>"
             for key in key_list:
                 uri = S3Uri(key)
                 if uri.type != "s3":
@@ -497,9 +498,10 @@ class S3(object):
                     raise ValueError("URI '%s' has no object" % key)
                 if uri.bucket() != bucket:
                     raise ValueError("The batch should contain keys from the same bucket")
-                object = self.urlencode_string(uri.object())
-                body += "<Object><Key>%s</Key></Object>" % object
-            body += "</Delete>"
+                object = saxutils.escape(uri.object())
+                body += u"<Object><Key>%s</Key></Object>" % object
+            body += u"</Delete>"
+            body = body.encode('utf-8')
             return body
 
         batch = [remote_list[item]['object_uri_str'] for item in remote_list]
