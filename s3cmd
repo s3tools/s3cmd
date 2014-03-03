@@ -244,6 +244,7 @@ def cmd_website_delete(args):
 def cmd_bucket_delete(args):
     def _bucket_delete_one(uri, args = None):
         try:
+            marker = args.get('marker', '') if args else ''
             response = s3.bucket_delete(uri.bucket())
             output(u"Bucket '%s' removed" % uri.uri())
         except S3Error, e:
@@ -559,7 +560,8 @@ def subcmd_object_del_uri(uri_str, recursive = None):
     if recursive is None:
         recursive = cfg.recursive
 
-    remote_list = fetch_remote_list(uri_str, require_attribs = False, recursive = recursive)
+    remote_list = fetch_remote_list(uri_str, require_attribs = False, recursive = recursive,
+                                    batch_mode = batch_mode, uri_params = batch_uri_args)
     remote_list, exclude_list = filter_exclude_include(remote_list)
 
     remote_count = len(remote_list)
