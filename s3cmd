@@ -534,7 +534,7 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
     while True:
         if cfg.dry_run:
             for key in remote_list:
-                output(u"delete: %s" % remote_list[key]['object_uri_str'])
+                output('\n'.join((u"File %s deleted" % remote_list[p]['object_uri_str']) for p in remote_list))
         else:
             response = s3.object_batch_delete(remote_list)
             output('\n'.join((u"File %s deleted" % remote_list[p]['object_uri_str']) for p in remote_list))
