@@ -244,7 +244,6 @@ def cmd_website_delete(args):
 def cmd_bucket_delete(args):
     def _bucket_delete_one(uri, args = None):
         try:
-            marker = args.get('marker', '') if args else ''
             response = s3.bucket_delete(uri.bucket())
             output(u"Bucket '%s' removed" % uri.uri())
         except S3Error, e:
