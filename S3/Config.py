@@ -110,6 +110,9 @@ class Config(object):
     cache_file = ""
     add_headers = ""
     ignore_failed_copy = False
+    expiry_days = ""
+    expiry_date = ""
+    expiry_prefix = ""
 
     ## Creating a singleton
     def __new__(self, configfile = None):

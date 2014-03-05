@@ -242,6 +242,25 @@ def cmd_website_delete(args):
             else:
                 raise
 
+def cmd_expiration_set(args):
+    s3 = S3(Config())
+    for arg in args:
+        uri = S3Uri(arg)
+        if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
+            raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % arg)
+        try:
+            response = s3.expiration_set(uri, cfg.bucket_location)
+            if response["status"] is 200:
+                output(u"Bucket '%s': expiration configuration is set." % (uri.uri()))
+            elif response["status"] is 204:
+                output(u"Bucket '%s': expiration configuration is deleted." % (uri.uri()))
+        except S3Error, e:
+            if S3.codes.has_key(e.info["Code"]):
+                error(S3.codes[e.info["Code"]] % uri.bucket())
+                return
+            else:
+                raise
+
 def cmd_bucket_delete(args):
     def _bucket_delete_one(uri):
         try:
@@ -724,9 +743,23 @@ def cmd_info(args):
                 info = s3.bucket_info(uri)
                 output(u"%s (bucket):" % uri.uri())
                 output(u"   Location:  %s" % info['bucket-location'])
+                try:
+                    expiration = s3.expiration_info(uri, cfg.bucket_location)
+                    expiration_desc = "Expiration Rule: "
+                    if expiration['prefix'] == "":
+                        expiration_desc += "all objects in this bucket "
+                    else:
+                        expiration_desc += "objects with key prefix '" + expiration['prefix'] + "' "
+                    expiration_desc += "will expire in '"
+                    if expiration['days']:
+                        expiration_desc += expiration['days'] + "' day(s) after creation"
+                    elif expiration['date']:
+                        expiration_desc += expiration['date'] + "' "
+                    output(u"   %s" % expiration_desc)
+                except:
+                    output(u"   Expiration Rule: none")
             acl = s3.get_acl(uri)
             acl_grant_list = acl.getGrantList()
-
             try:
                 policy = s3.get_policy(uri)
                 output(u"   policy: %s" % policy)
@@ -1860,6 +1893,9 @@ def get_commands_list():
     {"cmd":"ws-delete", "label":"Delete Website", "param":"s3://BUCKET", "func":cmd_website_delete, "argc":1},
     {"cmd":"ws-info", "label":"Info about Website", "param":"s3://BUCKET", "func":cmd_website_info, "argc":1},
 
+    ## Lifecycle commands
+    {"cmd":"expire", "label":"Set or delete expiration rule for the bucket", "param":"s3://BUCKET", "func":cmd_expiration_set, "argc":1},
+
     ## CloudFront commands
     {"cmd":"cflist", "label":"List CloudFront distribution points", "param":"", "func":CfCmd.info, "argc":0},
     {"cmd":"cfinfo", "label":"Display CloudFront distribution point parameters", "param":"[cf://DIST_ID]", "func":CfCmd.info, "argc":0},
@@ -2051,6 +2087,10 @@ def main():
 
     optparser.add_option(      "--ws-index", dest="website_index", action="store", help="Name of index-document (only for [ws-create] command)")
     optparser.add_option(      "--ws-error", dest="website_error", action="store", help="Name of error-document (only for [ws-create] command)")
+
+    optparser.add_option(      "--expiry-date", dest="expiry_date", action="store", help="Indicates when the expiration rule take effect. (only for [expire] comman)")
+    optparser.add_option(      "--expiry-days", dest="expiry_days", action="store", help="Indicates the number of days after object creation the expiration rule take effect. (only for [expire] command)")
+    optparser.add_option(      "--expiry-prefix", dest="expiry_prefix", action="store", help="Identifying one or more objects with the prefix to which the expiration rule applies. (only for [expire] command)")
 
     optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default on TTY).")
     optparser.add_option(      "--no-progress", dest="progress_meter", action="store_false", help="Don't display progress meter (default on non-TTY).")

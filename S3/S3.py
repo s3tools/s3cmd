@@ -14,6 +14,7 @@ import logging
 import mimetypes
 import re
 from xml.sax import saxutils
+import base64
 from logging import debug, info, warning, error
 from stat import ST_SIZE
 
@@ -370,6 +371,62 @@ class S3(object):
             raise S3ResponseError("Expected status 204: %s" % response)
 
         return response
+
+    def expiration_info(self, uri, bucket_location = None):
+        headers = SortedDict(ignore_case = True)
+        bucket = uri.bucket()
+        body = ""
+
+        request = self.create_request("BUCKET_LIST", bucket = bucket, extra="?lifecycle")
+        try:
+            response = self.send_request(request, body)
+            response['prefix'] = getTextFromXml(response['data'], ".//Rule//Prefix")
+            response['date'] = getTextFromXml(response['data'], ".//Rule//Expiration//Date")
+            response['days'] = getTextFromXml(response['data'], ".//Rule//Expiration//Days")
+            return response
+        except S3Error, e:
+            if e.status == 404:
+                debug("Could not get /?lifecycle - lifecycle probably not configured for this bucket")
+                return None
+            raise
+
+    def expiration_set(self, uri, bucket_location = None):
+        if self.config.expiry_date and self.config.expiry_days:
+             raise ParameterError("Expect either --expiry-day or --expiry-date")
+        if not (self.config.expiry_date or self.config.expiry_days):
+             if self.config.expiry_prefix:
+                 raise ParameterError("Expect either --expiry-day or --expiry-date")
+             debug("del bucket lifecycle")
+             bucket = uri.bucket()
+             body = ""
+             request = self.create_request("BUCKET_DELETE", bucket = bucket, extra="?lifecycle")
+        else:
+             request, body = self._expiration_set(uri)
+        debug("About to send request '%s' with body '%s'" % (request, body))
+        response = self.send_request(request, body)
+        debug("Received response '%s'" % (response))
+        return response
+
+    def _expiration_set(self, uri):
+        debug("put bucket lifecycle")
+        body = '<LifecycleConfiguration>'
+        body += '  <Rule>'
+        body += ('    <Prefix>%s</Prefix>' % self.config.expiry_prefix)
+        body += ('    <Status>Enabled</Status>')
+        body += ('    <Expiration>')
+        if self.config.expiry_date:
+            body += ('    <Date>%s</Date>' % self.config.expiry_date)
+        elif self.config.expiry_days:
+            body += ('    <Days>%s</Days>' % self.config.expiry_days)
+        body += ('    </Expiration>')
+        body += '  </Rule>'
+        body += '</LifecycleConfiguration>'
+
+        headers = SortedDict(ignore_case = True)
+        headers['content-md5'] = compute_content_md5(body)
+        bucket = uri.bucket()
+        request =  self.create_request("BUCKET_CREATE", bucket = bucket, headers = headers, extra="?lifecycle")
+        return (request, body)
 
     def add_encoding(self, filename, content_type):
         if content_type.find("charset=") != -1:
@@ -1095,4 +1152,11 @@ def parse_attrs_header(attrs_header):
         key, val = attr.split(":")
         attrs[key] = val
     return attrs
+
+def compute_content_md5(body):
+    m = md5(body)
+    base64md5 = base64.encodestring(m.digest())
+    if base64md5[-1] == '\n':
+        base64md5 = base64md5[0:-1]
+    return base64md5
 # vim:et:ts=4:sts=4:ai
