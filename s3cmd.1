@@ -131,7 +131,9 @@ values set in
 .B s3cmd
 config file (by default $HOME/.s3cmd). As it's a simple text file 
 feel free to open it with your favorite text editor and do any
-changes you like. 
+changes you like. $S3CMD_CONFIG can be set to override the default
+location. (Example: export S3CMD_CONFIG=$HOME/aws/production/s3cmd)
+
 .TP
 \fB\-h\fR, \fB\-\-help\fR
 show this help message and exit
@@ -143,7 +145,7 @@ to a specific bucket instead of attempting to list
 them all.
 .TP
 \fB\-c\fR FILE, \fB\-\-config\fR=FILE
-Config file name. Defaults to /home/mludvig/.s3cfg
+Config file name. Defaults to $HOME/.s3cfg
 .TP
 \fB\-\-dump\-config\fR
 Dump current configuration after parsing config files
