@@ -15,6 +15,7 @@ import hmac
 import base64
 import errno
 import urllib
+import dateutil.parser
 
 from logging import debug, info, warning, error
 
@@ -133,8 +134,9 @@ def appendXmlTextNode(tag_name, text, parent):
 __all__.append("appendXmlTextNode")
 
 def dateS3toPython(date):
-    date = re.compile("(\.\d*)?Z").sub(".000Z", date)
-    return time.strptime(date, "%Y-%m-%dT%H:%M:%S.000Z")
+    # Reset milliseconds to 000
+    date = re.compile('\.[0-9]*(?:[Z\\-\\+]*?)').sub(".000", date)
+    return dateutil.parser.parse(date, fuzzy=True).timetuple()
 __all__.append("dateS3toPython")
 
 def dateS3toUnix(date):
