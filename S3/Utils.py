@@ -16,6 +16,7 @@ import base64
 import errno
 import urllib
 import dateutil.parser
+from calendar import timegm
 
 from logging import debug, info, warning, error
 
@@ -136,22 +137,20 @@ __all__.append("appendXmlTextNode")
 def dateS3toPython(date):
     # Reset milliseconds to 000
     date = re.compile('\.[0-9]*(?:[Z\\-\\+]*?)').sub(".000", date)
-    return dateutil.parser.parse(date, fuzzy=True).timetuple()
+    return dateutil.parser.parse(date, fuzzy=True)
 __all__.append("dateS3toPython")
 
 def dateS3toUnix(date):
-    ## FIXME: This should be timezone-aware.
-    ## Currently the argument to strptime() is GMT but mktime()
-    ## treats it as "localtime". Anyway...
-    return time.mktime(dateS3toPython(date))
+    ## NOTE: This is timezone-aware and return the timestamp regarding GMT
+    return timegm(dateS3toPython(date).utctimetuple())
 __all__.append("dateS3toUnix")
 
 def dateRFC822toPython(date):
-    return rfc822.parsedate(date)
+    return dateutil.parser.parse(date, fuzzy=True)
 __all__.append("dateRFC822toPython")
 
 def dateRFC822toUnix(date):
-    return time.mktime(dateRFC822toPython(date))
+    return timegm(dateRFC822toPython(date).utctimetuple())
 __all__.append("dateRFC822toUnix")
 
 def formatSize(size, human_readable = False, floating_point = False):
@@ -168,20 +167,8 @@ def formatSize(size, human_readable = False, floating_point = False):
 __all__.append("formatSize")
 
 def formatDateTime(s3timestamp):
-    try:
-        import pytz
-        timezone = pytz.timezone(os.environ.get('TZ', 'UTC'))
-        tz = pytz.timezone('UTC')
-        ## Can't unpack args and follow that with kwargs in python 2.5
-        ## So we pass them all as kwargs
-        params = zip(('year', 'month', 'day', 'hour', 'minute', 'second', 'tzinfo'),
-                     dateS3toPython(s3timestamp)[0:6] + (tz,))
-        params = dict(params)
-        utc_dt = datetime.datetime(**params)
-        dt_object = utc_dt.astimezone(timezone)
-    except ImportError:
-        dt_object = datetime.datetime(*dateS3toPython(s3timestamp)[0:6])
-    return dt_object.strftime("%Y-%m-%d %H:%M")
+    date_obj = dateutil.parser.parse(s3timestamp, fuzzy=True)
+    return date_obj.strftime("%Y-%m-%d %H:%M")
 __all__.append("formatDateTime")
 
 def convertTupleListToDict(list):
