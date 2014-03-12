@@ -6,6 +6,8 @@
 from SortedDict import SortedDict
 import Utils
 
+zero_length_md5 = "d41d8cd98f00b204e9800998ecf8427e"
+
 class FileDict(SortedDict):
     def __init__(self, mapping = {}, ignore_case = True, **kwargs):
         SortedDict.__init__(self, mapping = mapping, ignore_case = ignore_case, **kwargs)
@@ -13,6 +15,7 @@ class FileDict(SortedDict):
         self.by_md5 = dict() # {md5: set(relative_files)}
 
     def record_md5(self, relative_file, md5):
+        if md5 == zero_length_md5: return
         if md5 not in self.by_md5:
             self.by_md5[md5] = set()
         self.by_md5[md5].add(relative_file)
