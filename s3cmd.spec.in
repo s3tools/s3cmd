@@ -14,6 +14,7 @@ URL:            http://s3tools.logix.cz/s3cmd
 # git clone  git@github.com:mdomsch/s3cmd.git
 # git checkout -b origin/merge
 #git archive --format tar --prefix s3cmd-1.1.0-beta3-2dfe4a65/ HEAD | gzip -c > s3cmd-1.1.0-beta1-2dfe4a65.tar.gz
+# or use python setup.py sdist
 
 Source0:        https://github.com/s3tools/s3cmd/archive/%{commit}/%{name}-%{version}-%{shortcommit}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
