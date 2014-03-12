@@ -491,6 +491,10 @@ def cmd_object_get(args):
         if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
             gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
             response["size"] = os.stat(destination)[6]
+        if response["headers"].has_key("last-modified"):
+            last_modified = time.mktime(time.strptime(response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"))
+            os.utime(destination, (last_modified, last_modified))
+            debug("set mtime to %s" % last_modified)
         if not Config().progress_meter and destination != "-":
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
             output(u"File %s saved as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s)" %
@@ -994,6 +998,10 @@ def cmd_sync_remote2local(args):
                             uid = int(attrs['uid'])
                             gid = int(attrs['gid'])
                             os.lchown(dst_file,uid,gid)
+                    elif response["headers"].has_key("last-modified"):
+                        last_modified = time.mktime(time.strptime(response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"))
+                        os.utime(dst_file, (last_modified, last_modified))
+                        debug("set mtime to %s" % last_modified)
                 except OSError, e:
                     try:
                         dst_stream.close()
