@@ -7,10 +7,12 @@ import sys
 import os, os.path
 import time
 import errno
+import base64
 import httplib
 import logging
 import mimetypes
 import re
+from xml.sax import saxutils
 from logging import debug, info, warning, error
 from stat import ST_SIZE
 
@@ -161,6 +163,7 @@ class S3(object):
         SERVICE = 0x0100,
         BUCKET = 0x0200,
         OBJECT = 0x0400,
+        BATCH = 0x0800,
         MASK = 0x0700,
     )
 
@@ -175,6 +178,7 @@ class S3(object):
         OBJECT_HEAD = targets["OBJECT"] | http_methods["HEAD"],
         OBJECT_DELETE = targets["OBJECT"] | http_methods["DELETE"],
         OBJECT_POST = targets["OBJECT"] | http_methods["POST"],
+        BATCH_DELETE = targets["BATCH"] | http_methods["POST"],
     )
 
     codes = {
@@ -223,7 +227,7 @@ class S3(object):
         response["list"] = getListFromXml(response["data"], "Bucket")
         return response
 
-    def bucket_list(self, bucket, prefix = None, recursive = None):
+    def bucket_list(self, bucket, prefix = None, recursive = None, batch_mode = False, uri_params = {}):
         def _list_truncated(data):
             ## <IsTruncated> can either be "true" or "false" or be missing completely
             is_truncated = getTextFromXml(data, ".//IsTruncated") or "false"
@@ -235,7 +239,6 @@ class S3(object):
         def _get_common_prefixes(data):
             return getListFromXml(data, "CommonPrefixes")
 
-        uri_params = {}
         truncated = True
         list = []
         prefixes = []
@@ -244,7 +247,7 @@ class S3(object):
             response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params)
             current_list = _get_contents(response["data"])
             current_prefixes = _get_common_prefixes(response["data"])
-            truncated = _list_truncated(response["data"])
+            truncated = _list_truncated(response["data"]) and not batch_mode
             if truncated:
                 if current_list:
                     uri_params['marker'] = self.urlencode_string(current_list[-1]["Key"])
@@ -484,13 +487,42 @@ class S3(object):
         response = self.recv_file(request, stream, labels, start_position)
         return response
 
+    def object_batch_delete(self, remote_list):
+        def compose_batch_del_xml(bucket, key_list):
+            body = u"<?xml version=\"1.0\" encoding=\"UTF-8\"?><Delete>"
+            for key in key_list:
+                uri = S3Uri(key)
+                if uri.type != "s3":
+                    raise ValueError("Excpected URI type 's3', got '%s'" % uri.type)
+                if not uri.has_object():
+                    raise ValueError("URI '%s' has no object" % key)
+                if uri.bucket() != bucket:
+                    raise ValueError("The batch should contain keys from the same bucket")
+                object = saxutils.escape(uri.object())
+                body += u"<Object><Key>%s</Key></Object>" % object
+            body += u"</Delete>"
+            body = body.encode('utf-8')
+            return body
+
+        batch = [remote_list[item]['object_uri_str'] for item in remote_list]
+        if len(batch) == 0:
+            raise ValueError("Key list is empty")
+        bucket = S3Uri(batch[0]).bucket()
+        request_body = compose_batch_del_xml(bucket, batch)
+        md5_hash = md5()
+        md5_hash.update(request_body)
+        headers = {'content-md5': base64.b64encode(md5_hash.digest())}
+        request = self.create_request("BATCH_DELETE", bucket = bucket, extra = '?delete', headers = headers)
+        response = self.send_request(request, request_body)
+        return response
+
     def object_delete(self, uri):
         if uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
         request = self.create_request("OBJECT_DELETE", uri = uri)
         response = self.send_request(request)
         return response
-    
+
     def object_restore(self, uri):
         if uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)

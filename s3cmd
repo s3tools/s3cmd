@@ -245,11 +245,15 @@ def cmd_bucket_delete(args):
     def _bucket_delete_one(uri):
         try:
             response = s3.bucket_delete(uri.bucket())
+            output(u"Bucket '%s' removed" % uri.uri())
         except S3Error, e:
             if e.info['Code'] == 'BucketNotEmpty' and (cfg.force or cfg.recursive):
                 warning(u"Bucket is not empty. Removing all the objects from it first. This may take some time...")
-                subcmd_object_del_uri(uri.uri(), recursive = True)
-                return _bucket_delete_one(uri)
+                success = subcmd_batch_del(uri.uri())
+                if success:
+                    return _bucket_delete_one(uri)
+                else:
+                    output(u"Bucket was not removed")
             elif S3.codes.has_key(e.info["Code"]):
                 error(S3.codes[e.info["Code"]] % uri.bucket())
                 return
@@ -262,7 +266,6 @@ def cmd_bucket_delete(args):
         if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
             raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % arg)
         _bucket_delete_one(uri)
-        output(u"Bucket '%s' removed" % uri.uri())
 
 def cmd_object_put(args):
     cfg = Config()
@@ -508,6 +511,47 @@ def cmd_object_del(args):
                 raise ParameterError("File name required, not only the bucket name. Alternatively use --recursive")
         subcmd_object_del_uri(uri_str)
 
+def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
+    s3 = S3(cfg)
+
+    if len([item for item in [uri_str, bucket, remote_list] if item]) != 1:
+        raise ValueError("One and only one of 'uri_str', 'bucket', 'remote_list' can be specified.")
+
+    batch_mode = False
+    if bucket:
+        uri_str = "s3://%s" % bucket
+    if not remote_list:
+        batch_mode = True
+        remote_list = fetch_remote_list(uri_str, require_attribs = False, batch_mode = True)
+    if len(remote_list) == 0:
+        warning(u"Remote list is empty.")
+        return False
+
+    if cfg.max_delete > 0 and len(remote_list) > cfg.max_delete:
+        warning(u"delete: maximum requested number of deletes would be exceeded, none performed.")
+        return False
+
+    while True:
+        if cfg.dry_run:
+            output('\n'.join((u"File %s deleted" % remote_list[p]['object_uri_str']) for p in remote_list))
+        else:
+            response = s3.object_batch_delete(remote_list)
+            output('\n'.join((u"File %s deleted" % remote_list[p]['object_uri_str']) for p in remote_list))
+
+        keys_count = len(remote_list) if remote_list else 0
+        if keys_count < 1000 or not batch_mode:
+            break
+        last_key = S3Uri(remote_list[remote_list.keys()[-1]]['object_uri_str']) if remote_list else None
+        if not last_key or not last_key.has_object:
+            break
+        marker = last_key.object()
+        remote_list = fetch_remote_list(uri_str, require_attribs = False, batch_mode = True,
+                                        uri_params = {"marker": marker})
+    if cfg.dry_run:
+        warning(u"Exiting now because of --dry-run")
+        return False
+    return True
+
 def subcmd_object_del_uri(uri_str, recursive = None):
     s3 = S3(cfg)
 
@@ -537,10 +581,10 @@ def subcmd_object_del_uri(uri_str, recursive = None):
         item = remote_list[key]
         response = s3.object_delete(S3Uri(item['object_uri_str']))
         output(u"File %s deleted" % item['object_uri_str'])
-        
+
 def cmd_object_restore(args):
     s3 = S3(cfg)
-    
+
     if cfg.restore_days < 1:
         raise ParameterError("You must restore a file for 1 or more days")
 
@@ -562,14 +606,14 @@ def cmd_object_restore(args):
 
     for key in remote_list:
         item = remote_list[key]
-        
+
         uri = S3Uri(item['object_uri_str'])
         if not item['object_uri_str'].endswith("/"):
             response = s3.object_restore(S3Uri(item['object_uri_str']))
             output(u"File %s restoration started" % item['object_uri_str'])
         else:
             debug(u"Skipping directory since only files may be restored")
-        
+
 
 def subcmd_cp_mv(args, process_fce, action_str, message):
     if len(args) < 2:
@@ -697,20 +741,6 @@ def filedicts_to_keys(*args):
     return keys
 
 def cmd_sync_remote2remote(args):
-    def _do_deletes(s3, dst_list):
-        if cfg.max_delete > 0 and len(dst_list) > cfg.max_delete:
-            warning(u"delete: maximum requested number of deletes would be exceeded, none performed.")
-            return
-        # Delete items in destination that are not in source
-        if cfg.dry_run:
-            for key in dst_list:
-                output(u"delete: %s" % dst_list[key]['object_uri_str'])
-        else:
-            for key in dst_list:
-                uri = S3Uri(dst_list[key]['object_uri_str'])
-                s3.object_delete(uri)
-                output(u"deleted: '%s'" % uri)
-
     s3 = S3(Config())
 
     # Normalise s3://uri (e.g. assert trailing slash)
@@ -765,7 +795,7 @@ def cmd_sync_remote2remote(args):
 
     # Delete items in destination that are not in source
     if cfg.delete_removed and not cfg.delete_after:
-        _do_deletes(s3, dst_list)
+        subcmd_batch_del(remote_list = dst_list)
 
     def _upload(src_list, seq, src_count):
         file_list = src_list.keys()
@@ -809,7 +839,7 @@ def cmd_sync_remote2remote(args):
 
     # Delete items in destination that are not in source
     if cfg.delete_removed and cfg.delete_after:
-        _do_deletes(s3, dst_list)
+        subcmd_batch_del(remote_list = dst_list)
 
 def cmd_sync_remote2local(args):
     def _do_deletes(local_list):
@@ -1115,16 +1145,6 @@ def _build_attr_header(local_list, src):
 
 
 def cmd_sync_local2remote(args):
-
-    def _do_deletes(s3, remote_list):
-        if cfg.max_delete > 0 and len(remote_list) > cfg.max_delete:
-            warning(u"delete: maximum requested number of deletes would be exceeded, none performed.")
-            return
-        for key in remote_list:
-            uri = S3Uri(remote_list[key]['object_uri_str'])
-            s3.object_delete(uri)
-            output(u"deleted: '%s'" % uri)
-
     def _single_process(local_list):
         for dest in destinations:
             ## Normalize URI to convert s3://bkt to s3://bkt/ (trailing slash)
@@ -1260,7 +1280,7 @@ def cmd_sync_local2remote(args):
             cfg.delete_removed = False
 
         if cfg.delete_removed and not cfg.delete_after:
-            _do_deletes(s3, remote_list)
+            subcmd_batch_del(remote_list = remote_list)
 
         total_size = 0
         total_elapsed = 0.0
@@ -1276,7 +1296,7 @@ def cmd_sync_local2remote(args):
         n, total_size = _upload(failed_copy_files, n, failed_copy_count, total_size)
 
         if cfg.delete_removed and cfg.delete_after:
-            _do_deletes(s3, remote_list)
+            subcmd_batch_del(remote_list = remote_list)
         total_elapsed = time.time() - timestamp_start
         total_speed = total_elapsed and total_size/total_elapsed or 0.0
         speed_fmt = formatSize(total_speed, human_readable = True, floating_point = True)
