@@ -268,10 +268,11 @@ def pbucket(tail):
         return 's3://' + bucket(tail)
 
 ## ====== Remove test buckets
-test_s3cmd("Remove test buckets", ['rb', '-r', pbucket(1), pbucket(2), pbucket(3)],
-    must_find = [ "Bucket '%s/' removed" % pbucket(1),
-              "Bucket '%s/' removed" % pbucket(2),
-              "Bucket '%s/' removed" % pbucket(3) ])
+test_s3cmd("Remove test buckets", ['rb', '-r', '--force', pbucket(1), pbucket(2), pbucket(3)])
+
+## ====== verify they were removed
+test_s3cmd("Verify no test buckets", ['ls'],
+           must_not_find = [pbucket(1), pbucket(2), pbucket(3)])
 
 
 ## ====== Create one bucket (EU)
@@ -481,7 +482,7 @@ test_s3cmd("Rename within S3", ['mv', '%s/copy/etc2/Logo.PNG' % pbucket(2), '%s/
 test_s3cmd("Sync remote2remote", ['sync', '%s/xyz/' % pbucket(1), '%s/copy/' % pbucket(2), '--delete-removed', '--exclude', 'non-printables*'],
     must_find = [ "File %s/xyz/demo/dir1/file1-1.txt copied to %s/copy/demo/dir1/file1-1.txt" % (pbucket(1), pbucket(2)),
                   "remote copy: etc/logo.png -> etc2/Logo.PNG",
-                  "deleted: '%s/copy/etc/logo.png'" % pbucket(2) ],
+                  "File %s/copy/etc/logo.png deleted" % pbucket(2) ],
     must_not_find = [ "blah.txt" ])
 
 ## ====== Don't Put symbolic link
