@@ -938,7 +938,7 @@ def cmd_sync_remote2local(args):
                 if not dir_cache.has_key(dst_dir):
                     dir_cache[dst_dir] = Utils.mkdir_with_parents(dst_dir)
                 if dir_cache[dst_dir] == False:
-                    warning(u"%s: destination directory not writable: %s" % (file, dst_dir))
+                    warning(u"%s: destination directory not writable: %s" % (unicodise(file), unicodise(dst_dir)))
                     continue
 
                 try:
@@ -956,7 +956,7 @@ def cmd_sync_remote2local(args):
                         debug(u"renamed chkptfname=%s to dst_file=%s" % (unicodise(chkptfname), unicodise(dst_file)))
                 except OSError, e:
                     if e.errno == errno.EISDIR:
-                        warning(u"%s is a directory - skipping over" % dst_file)
+                        warning(u"%s is a directory - skipping over" % unicodise(dst_file))
                         continue
                     else:
                         raise
@@ -1000,10 +1000,10 @@ def cmd_sync_remote2local(args):
                         os.remove(chkptfname)
                     except: pass
                     if e.errno == errno.EEXIST:
-                        warning(u"%s exists - not overwriting" % (dst_file))
+                        warning(u"%s exists - not overwriting" % unicodise(dst_file))
                         continue
                     if e.errno in (errno.EPERM, errno.EACCES):
-                        warning(u"%s not writable: %s" % (dst_file, e.strerror))
+                        warning(u"%s not writable: %s" % (unicodise(dst_file), e.strerror))
                         continue
                     raise e
                 except KeyboardInterrupt:
