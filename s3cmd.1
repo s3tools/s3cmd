@@ -43,6 +43,9 @@ Get file from bucket
 s3cmd \fBdel\fR \fIs3://BUCKET/OBJECT\fR
 Delete file from bucket
 .TP
+s3cmd \fBrestore\fR \fIs3://BUCKET/OBJECT\fR
+Restore file from Glacier storage
+.TP
 s3cmd \fBsync\fR \fILOCAL_DIR s3://BUCKET[/PREFIX] or s3://BUCKET[/PREFIX] LOCAL_DIR\fR
 Synchronize a directory tree to S3
 .TP
@@ -131,9 +134,7 @@ values set in
 .B s3cmd
 config file (by default $HOME/.s3cmd). As it's a simple text file 
 feel free to open it with your favorite text editor and do any
-changes you like. $S3CMD_CONFIG can be set to override the default
-location. (Example: export S3CMD_CONFIG=$HOME/aws/production/s3cmd)
-
+changes you like. 
 .TP
 \fB\-h\fR, \fB\-\-help\fR
 show this help message and exit
@@ -145,7 +146,7 @@ to a specific bucket instead of attempting to list
 them all.
 .TP
 \fB\-c\fR FILE, \fB\-\-config\fR=FILE
-Config file name. Defaults to $HOME/.s3cfg
+Config file name. Defaults to /home/mdomsch/.s3cfg
 .TP
 \fB\-\-dump\-config\fR
 Dump current configuration after parsing config files
@@ -223,6 +224,10 @@ write_acp, full_control, all
 Revoke stated permission for a given amazon user.
 Permission is one of: read, write, read_acp, wr
 ite_acp, full_control, all
+.TP
+\fB\-D\fR NUM, \fB\-\-restore\-days\fR=NUM
+Number of days to keep restored file available (only
+for 'restore' command).
 .TP
 \fB\-\-delete\-removed\fR
 Delete remote objects with no corresponding local file
@@ -341,10 +346,6 @@ when putting objects.
 \fB\-\-encoding\fR=ENCODING
 Override autodetected terminal and filesystem encoding
 (character set). Autodetected: UTF-8
-.TP
-\fB\-\-disable\-content\-encoding\fR
-Don't include a Content-encoding header to the the
-uploaded objects
 .TP
 \fB\-\-add\-encoding\-exts\fR=EXTENSIONs
 Add encoding to these comma delimited extensions i.e.
