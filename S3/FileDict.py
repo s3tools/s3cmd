@@ -3,10 +3,13 @@
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
 
+import logging
 from SortedDict import SortedDict
 import Utils
+import Config
 
 zero_length_md5 = "d41d8cd98f00b204e9800998ecf8427e"
+cfg = Config.Config()
 
 class FileDict(SortedDict):
     def __init__(self, mapping = {}, ignore_case = True, **kwargs):
@@ -15,12 +18,14 @@ class FileDict(SortedDict):
         self.by_md5 = dict() # {md5: set(relative_files)}
 
     def record_md5(self, relative_file, md5):
+        if md5 is None: return
         if md5 == zero_length_md5: return
         if md5 not in self.by_md5:
             self.by_md5[md5] = set()
         self.by_md5[md5].add(relative_file)
 
     def find_md5_one(self, md5):
+        if md5 is None: return None
         try:
             return list(self.by_md5.get(md5, set()))[0]
         except:
@@ -32,13 +37,15 @@ class FileDict(SortedDict):
         if 'md5' in self[relative_file]:
             return self[relative_file]['md5']
         md5 = self.get_hardlink_md5(relative_file)
-        if md5 is None:
+        if md5 is None and 'md5' in cfg.sync_checks:
+            logging.debug(u"doing file I/O to read md5 of %s" % relative_file)
             md5 = Utils.hash_file_md5(self[relative_file]['full_name'])
         self.record_md5(relative_file, md5)
         self[relative_file]['md5'] = md5
         return md5
 
     def record_hardlink(self, relative_file, dev, inode, md5, size):
+        if md5 is None: return
         if size == 0: return # don't record 0-length files
         if dev == 0 or inode == 0: return # Windows
         if dev not in self.hardlinks:
