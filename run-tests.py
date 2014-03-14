@@ -137,8 +137,9 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 
     p = Popen(cmd_args, stdout = PIPE, stderr = STDOUT, universal_newlines = True)
     stdout, stderr = p.communicate()
-    if retcode != p.returncode:
-        return failure("retcode: %d, expected: %d" % (p.returncode, retcode))
+    if type(retcode) not in [list, tuple]: retcode = [retcode]
+    if p.returncode not in retcode:
+        return failure("retcode: %d, expected one of: %s" % (p.returncode, retcode))
 
     if type(must_find) not in [ list, tuple ]: must_find = [must_find]
     if type(must_find_re) not in [ list, tuple ]: must_find_re = [must_find_re]
@@ -378,8 +379,8 @@ test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', '%s/xyz/etc/l*.p
 ## ====== Verify Private ACL
 if have_wget:
     test("Verify Private ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
-        retcode = 8,
-        must_find_re = [ 'ERROR 403: Forbidden' ])
+         retcode = [1, 8],
+         must_find_re = [ 'ERROR 403: Forbidden' ])
 
 
 ## ====== Change ACL to Public
