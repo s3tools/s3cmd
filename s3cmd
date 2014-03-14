@@ -542,14 +542,14 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
             response = s3.object_batch_delete(remote_list)
             output('\n'.join((u"File %s deleted" % remote_list[p]['object_uri_str']) for p in remote_list))
 
-        if remote_list:
+        if len(remote_list):
             keys_count = len(remote_list)
         else:
             keys_count = 0
         if keys_count < 1000 or not batch_mode:
             break
 
-        if remote_list:
+        if len(remote_list):
             last_key = S3Uri(remote_list[remote_list.keys()[-1]]['object_uri_str'])
         else:
             last_key = None
@@ -686,11 +686,11 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
 
 def cmd_cp(args):
     s3 = S3(Config())
-    subcmd_cp_mv(args, s3.object_copy, "copy", "File %(src)s copied to %(dst)s")
+    subcmd_cp_mv(args, s3.object_copy, "copy", u"File %(src)s copied to %(dst)s")
 
 def cmd_mv(args):
     s3 = S3(Config())
-    subcmd_cp_mv(args, s3.object_move, "move", "File %(src)s moved to %(dst)s")
+    subcmd_cp_mv(args, s3.object_move, "move", u"File %(src)s moved to %(dst)s")
 
 def cmd_info(args):
     s3 = S3(Config())
