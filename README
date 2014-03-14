@@ -3,6 +3,7 @@ S3cmd tool for Amazon Simple Storage Service (S3)
 
 Author:
     Michal Ludvig <michal@logix.cz>
+    (c) TGRMN Software and contributors
 
 S3tools / S3cmd project homepage:
     http://s3tools.org
