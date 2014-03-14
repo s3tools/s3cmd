@@ -542,10 +542,18 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
             response = s3.object_batch_delete(remote_list)
             output('\n'.join((u"File %s deleted" % remote_list[p]['object_uri_str']) for p in remote_list))
 
-        keys_count = len(remote_list) if remote_list else 0
+        if remote_list:
+            keys_count = len(remote_list)
+        else:
+            keys_count = 0
         if keys_count < 1000 or not batch_mode:
             break
-        last_key = S3Uri(remote_list[remote_list.keys()[-1]]['object_uri_str']) if remote_list else None
+
+        if remote_list:
+            last_key = S3Uri(remote_list[remote_list.keys()[-1]]['object_uri_str'])
+        else:
+            last_key = None
+
         if not last_key or not last_key.has_object:
             break
         marker = last_key.object()
