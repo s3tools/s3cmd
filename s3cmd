@@ -528,6 +528,9 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
     if not remote_list:
         batch_mode = True
         remote_list = fetch_remote_list(uri_str, require_attribs = False, batch_mode = True)
+
+    remote_list, exclude_list = filter_exclude_include(remote_list)
+
     if len(remote_list) == 0:
         warning(u"Remote list is empty.")
         return False
