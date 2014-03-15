@@ -568,6 +568,7 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
         marker = last_key.object()
         remote_list = fetch_remote_list(uri_str, require_attribs = False, batch_mode = True,
                                         uri_params = {"marker": marker})
+        remote_list, exclude_list = filter_exclude_include(remote_list)
     if cfg.dry_run:
         warning(u"Exiting now because of --dry-run")
         return False
@@ -1363,6 +1364,7 @@ def cmd_sync_local2remote(args):
         sys.exit(1)
 
     local_list, single_file_local = fetch_local_list(args[:-1], is_src = True, recursive = True)
+    local_list, exclude_list = filter_exclude_include(local_list)
 
     destinations = [args[-1]]
     if cfg.additional_destinations:

@@ -60,7 +60,7 @@ def _fswalk_no_symlinks(path):
         yield (dirpath, dirnames, filenames)
 
 def filter_exclude_include(src_list):
-    info(u"Applying --exclude/--include")
+    debug(u"Applying --exclude/--include")
     cfg = Config()
     exclude_list = FileDict(ignore_case = False)
     for file in src_list.keys():
@@ -91,8 +91,6 @@ def filter_exclude_include(src_list):
 def handle_exclude_include_walk(root, dirs, files):
     cfg = Config()
     copydirs = copy.copy(dirs)
-    copyfiles = copy.copy(files)
-
     # exclude dir matches in the current directory
     # this prevents us from recursing down trees we know we want to ignore
     for x in copydirs:
@@ -100,6 +98,7 @@ def handle_exclude_include_walk(root, dirs, files):
         debug(u"CHECK: %r" % d)
         excluded = False
         for r in cfg.exclude:
+            if not r.pattern.endswith(u'/'): continue # we only check for directories here
             if r.search(d):
                 excluded = True
                 debug(u"EXCL-MATCH: '%s'" % (cfg.debug_exclude[r]))
@@ -107,6 +106,8 @@ def handle_exclude_include_walk(root, dirs, files):
         if excluded:
             ## No need to check for --include if not excluded
             for r in cfg.include:
+                if not r.pattern.endswith(u'/'): continue # we only check for directories here
+                debug(u"INCL-TEST: %s ~ %s" % (d, r.pattern))
                 if r.search(d):
                     excluded = False
                     debug(u"INCL-MATCH: '%s'" % (cfg.debug_include[r]))
@@ -118,31 +119,6 @@ def handle_exclude_include_walk(root, dirs, files):
             continue
         else:
             debug(u"PASS: %r" % (d))
-
-    # exclude file matches in the current directory
-    for x in copyfiles:
-        file = os.path.join(root, x)
-        debug(u"CHECK: %r" % file)
-        excluded = False
-        for r in cfg.exclude:
-            if r.search(file):
-                excluded = True
-                debug(u"EXCL-MATCH: '%s'" % (cfg.debug_exclude[r]))
-                break
-        if excluded:
-            ## No need to check for --include if not excluded
-            for r in cfg.include:
-                if r.search(file):
-                    excluded = False
-                    debug(u"INCL-MATCH: '%s'" % (cfg.debug_include[r]))
-                    break
-        if excluded:
-            ## Still excluded - ok, action it
-            debug(u"EXCLUDE: %s" % file)
-            files.remove(x)
-            continue
-        else:
-            debug(u"PASS: %r" % (file))
 
 
 def _get_filelist_from_file(cfg, local_path):
