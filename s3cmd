@@ -284,9 +284,7 @@ def cmd_object_put(args):
     if len(args) == 0:
         raise ParameterError("Nothing to upload. Expecting a local file or directory.")
 
-    local_list, single_file_local = fetch_local_list(args, is_src = True)
-
-    local_list, exclude_list = filter_exclude_include(local_list)
+    local_list, single_file_local, exclude_list = fetch_local_list(args, is_src = True)
 
     local_count = len(local_list)
 
@@ -875,7 +873,7 @@ def cmd_sync_remote2local(args):
     s3 = S3(Config())
 
     destination_base = args[-1]
-    local_list, single_file_local = fetch_local_list(destination_base, is_src = False, recursive = True)
+    local_list, single_file_local, dst_exclude_list = fetch_local_list(destination_base, is_src = False, recursive = True)
     remote_list = fetch_remote_list(args[:-1], recursive = True, require_attribs = True)
 
     local_count = len(local_list)
@@ -885,7 +883,6 @@ def cmd_sync_remote2local(args):
     info(u"Found %d remote files, %d local files" % (remote_count, local_count))
 
     remote_list, src_exclude_list = filter_exclude_include(remote_list)
-    local_list, dst_exclude_list = filter_exclude_include(local_list)
 
     remote_list, local_list, update_list, copy_pairs = compare_filelists(remote_list, local_list, src_remote = True, dst_remote = False, delay_updates = cfg.delay_updates)
 
@@ -1363,8 +1360,7 @@ def cmd_sync_local2remote(args):
         error(u"or disable encryption with --no-encrypt parameter.")
         sys.exit(1)
 
-    local_list, single_file_local = fetch_local_list(args[:-1], is_src = True, recursive = True)
-    local_list, exclude_list = filter_exclude_include(local_list)
+    local_list, single_file_local, exclude_list = fetch_local_list(args[:-1], is_src = True, recursive = True)
 
     destinations = [args[-1]]
     if cfg.additional_destinations:

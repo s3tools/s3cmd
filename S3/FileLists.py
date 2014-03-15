@@ -159,6 +159,41 @@ def _get_filelist_from_file(cfg, local_path):
     return result
 
 def fetch_local_list(args, is_src = False, recursive = None):
+
+    def _fetch_local_list_info(loc_list):
+        for relative_file in sorted(loc_list.keys()):
+            if relative_file == '-': continue
+
+            full_name = loc_list[relative_file]['full_name']
+            try:
+                sr = os.stat_result(os.stat(full_name))
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    # file was removed async to us getting the list
+                    continue
+                else:
+                    raise
+            loc_list[relative_file].update({
+                'size' : sr.st_size,
+                'mtime' : sr.st_mtime,
+                'dev'   : sr.st_dev,
+                'inode' : sr.st_ino,
+                'uid' : sr.st_uid,
+                'gid' : sr.st_gid,
+                'sr': sr # save it all, may need it in preserve_attrs_list
+                ## TODO: Possibly more to save here...
+            })
+            if 'md5' in cfg.sync_checks:
+                md5 = cache.md5(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size)
+                if md5 is None:
+                        try:
+                            md5 = loc_list.get_md5(relative_file) # this does the file I/O
+                        except IOError:
+                            continue
+                        cache.add(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size, md5)
+                loc_list.record_hardlink(relative_file, sr.st_dev, sr.st_ino, md5, sr.st_size)
+
+
     def _get_filelist_local(loc_list, local_uri, cache):
         info(u"Compiling list of local files...")
 
@@ -214,35 +249,11 @@ def fetch_local_list(args, is_src = False, recursive = None):
                     relative_file = replace_nonprintables(relative_file)
                 if relative_file.startswith('./'):
                     relative_file = relative_file[2:]
-                try:
-                    sr = os.stat_result(os.stat(full_name))
-                except OSError, e:
-                    if e.errno == errno.ENOENT:
-                        # file was removed async to us getting the list
-                        continue
-                    else:
-                        raise
                 loc_list[relative_file] = {
                     'full_name_unicode' : unicodise(full_name),
                     'full_name' : full_name,
-                    'size' : sr.st_size,
-                    'mtime' : sr.st_mtime,
-                    'dev'   : sr.st_dev,
-                    'inode' : sr.st_ino,
-                    'uid' : sr.st_uid,
-                    'gid' : sr.st_gid,
-                    'sr': sr # save it all, may need it in preserve_attrs_list
-                    ## TODO: Possibly more to save here...
                 }
-                if 'md5' in cfg.sync_checks:
-                    md5 = cache.md5(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size)
-                    if md5 is None:
-                            try:
-                                md5 = loc_list.get_md5(relative_file) # this does the file I/O
-                            except IOError:
-                                continue
-                            cache.add(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size, md5)
-                    loc_list.record_hardlink(relative_file, sr.st_dev, sr.st_ino, md5, sr.st_size)
+
         return loc_list, single_file
 
     def _maintain_cache(cache, local_list):
@@ -295,9 +306,10 @@ def fetch_local_list(args, is_src = False, recursive = None):
     if len(local_list) > 1:
         single_file = False
 
+    local_list, exclude_list = filter_exclude_include(local_list)
+    _fetch_local_list_info(local_list)
     _maintain_cache(cache, local_list)
-
-    return local_list, single_file
+    return local_list, single_file, exclude_list
 
 def fetch_remote_list(args, require_attribs = False, recursive = None, batch_mode = False, uri_params = {}):
     def _get_remote_attribs(uri, remote_item):
