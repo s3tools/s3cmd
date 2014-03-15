@@ -505,16 +505,21 @@ def cmd_object_get(args):
             output(u"File %s removed after fetch" % (uri))
 
 def cmd_object_del(args):
+    recursive = Config().recursive
     for uri_str in args:
         uri = S3Uri(uri_str)
         if uri.type != "s3":
             raise ParameterError("Expecting S3 URI instead of '%s'" % uri_str)
         if not uri.has_object():
-            if Config().recursive and not Config().force:
+            if recursive and not Config().force:
                 raise ParameterError("Please use --force to delete ALL contents of %s" % uri_str)
-            elif not Config().recursive:
+            elif not recursive:
                 raise ParameterError("File name required, not only the bucket name. Alternatively use --recursive")
-        subcmd_object_del_uri(uri_str)
+
+        if not recursive:
+            subcmd_object_del_uri(uri_str)
+        else:
+            subcmd_batch_del(uri_str)
 
 def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
     s3 = S3(cfg)
