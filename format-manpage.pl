@@ -172,6 +172,16 @@ about matching file names against exclude and include rules.
 For example to exclude all files with \".jpg\" extension except those beginning with a number use:
 .PP
 	\\-\\-exclude '*.jpg' \\-\\-rinclude '[0-9].*\\.jpg'
+.PP
+To exclude all files except \"*.jpg\" extension, use:
+.PP
+	\\-\\-exclude '*' \\-\\-include '*.jpg'
+.PP
+To exclude local directory 'somedir', be sure to use a trailing forward slash, as such:
+.PP
+	\\-\\-exclude 'somedir/'
+.PP
+
 .SH SEE ALSO
 For the most up to date list of options run 
 .B s3cmd \\-\\-help

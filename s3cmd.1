@@ -90,6 +90,9 @@ Sign an S3 URL to provide limited public access with expiry
 .TP
 s3cmd \fBfixbucket\fR \fIs3://BUCKET[/PREFIX]\fR
 Fix invalid file names in a bucket
+.TP
+s3cmd \fBexpire\fR \fIs3://BUCKET\fR
+Set or delete expiration rule for the bucket
 
 
 .PP
@@ -381,6 +384,20 @@ Name of index-document (only for [ws-create] command)
 \fB\-\-ws\-error\fR=WEBSITE_ERROR
 Name of error-document (only for [ws-create] command)
 .TP
+\fB\-\-expiry\-date\fR=EXPIRY_DATE
+Indicates when the expiration rule take effect. (only
+for [expire] comman)
+.TP
+\fB\-\-expiry\-days\fR=EXPIRY_DAYS
+Indicates the number of days after object creation the
+expiration rule take effect. (only for [expire]
+command)
+.TP
+\fB\-\-expiry\-prefix\fR=EXPIRY_PREFIX
+Identifying one or more objects with the prefix to
+which the expiration rule applies. (only for [expire]
+command)
+.TP
 \fB\-\-progress\fR
 Display progress meter (default on TTY).
 .TP
@@ -520,6 +537,16 @@ about matching file names against exclude and include rules.
 For example to exclude all files with ".jpg" extension except those beginning with a number use:
 .PP
 	\-\-exclude '*.jpg' \-\-rinclude '[0-9].*\.jpg'
+.PP
+To exclude all files except "*.jpg" extension, use:
+.PP
+	\-\-exclude '*' \-\-include '*.jpg'
+.PP
+To exclude local directory 'somedir', be sure to use a trailing forward slash, as such:
+.PP
+	\-\-exclude 'somedir/'
+.PP
+
 .SH SEE ALSO
 For the most up to date list of options run 
 .B s3cmd \-\-help
