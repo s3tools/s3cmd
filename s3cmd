@@ -400,8 +400,7 @@ def cmd_object_get(args):
     if len(args) == 0:
         raise ParameterError("Nothing to download. Expecting S3 URI.")
 
-    remote_list = fetch_remote_list(args, require_attribs = False)
-    remote_list, exclude_list = filter_exclude_include(remote_list)
+    remote_list, exclude_list = fetch_remote_list(args, require_attribs = False)
 
     remote_count = len(remote_list)
 
@@ -530,9 +529,7 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
         uri_str = "s3://%s" % bucket
     if not remote_list:
         batch_mode = True
-        remote_list = fetch_remote_list(uri_str, require_attribs = False, batch_mode = True)
-
-    remote_list, exclude_list = filter_exclude_include(remote_list)
+        remote_list, exclude_list = fetch_remote_list(uri_str, require_attribs = False, batch_mode = True)
 
     if len(remote_list) == 0:
         warning(u"Remote list is empty.")
@@ -564,9 +561,8 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
         if not last_key or not last_key.has_object:
             break
         marker = last_key.object()
-        remote_list = fetch_remote_list(uri_str, require_attribs = False, batch_mode = True,
-                                        uri_params = {"marker": marker})
-        remote_list, exclude_list = filter_exclude_include(remote_list)
+        remote_list, exclude_list = fetch_remote_list(uri_str, require_attribs = False, batch_mode = True,
+                                                      uri_params = {"marker": marker})
     if cfg.dry_run:
         warning(u"Exiting now because of --dry-run")
         return False
@@ -578,8 +574,7 @@ def subcmd_object_del_uri(uri_str, recursive = None):
     if recursive is None:
         recursive = cfg.recursive
 
-    remote_list = fetch_remote_list(uri_str, require_attribs = False, recursive = recursive)
-    remote_list, exclude_list = filter_exclude_include(remote_list)
+    remote_list, exclude_list = fetch_remote_list(uri_str, require_attribs = False, recursive = recursive)
 
     remote_count = len(remote_list)
 
@@ -608,8 +603,7 @@ def cmd_object_restore(args):
     if cfg.restore_days < 1:
         raise ParameterError("You must restore a file for 1 or more days")
 
-    remote_list = fetch_remote_list(args, require_attribs = False, recursive = cfg.recursive)
-    remote_list, exclude_list = filter_exclude_include(remote_list)
+    remote_list, exclude_list = fetch_remote_list(args, require_attribs = False, recursive = cfg.recursive)
 
     remote_count = len(remote_list)
 
@@ -643,8 +637,7 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
         raise ParameterError("Destination must be S3 URI. To download a file use 'get' or 'sync'.")
     destination_base = dst_base_uri.uri()
 
-    remote_list = fetch_remote_list(args, require_attribs = False)
-    remote_list, exclude_list = filter_exclude_include(remote_list)
+    remote_list, exclude_list = fetch_remote_list(args, require_attribs = False)
 
     remote_count = len(remote_list)
 
@@ -766,17 +759,14 @@ def cmd_sync_remote2remote(args):
     # Normalise s3://uri (e.g. assert trailing slash)
     destination_base = unicode(S3Uri(args[-1]))
 
-    src_list = fetch_remote_list(args[:-1], recursive = True, require_attribs = True)
-    dst_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
+    src_list, src_exclude_list = fetch_remote_list(args[:-1], recursive = True, require_attribs = True)
+    dst_list, dst_exclude_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
 
     src_count = len(src_list)
     orig_src_count = src_count
     dst_count = len(dst_list)
 
     info(u"Found %d source files, %d destination files" % (src_count, dst_count))
-
-    src_list, src_exclude_list = filter_exclude_include(src_list)
-    dst_list, dst_exclude_list = filter_exclude_include(dst_list)
 
     src_list, dst_list, update_list, copy_pairs = compare_filelists(src_list, dst_list, src_remote = True, dst_remote = True, delay_updates = cfg.delay_updates)
 
@@ -874,15 +864,13 @@ def cmd_sync_remote2local(args):
 
     destination_base = args[-1]
     local_list, single_file_local, dst_exclude_list = fetch_local_list(destination_base, is_src = False, recursive = True)
-    remote_list = fetch_remote_list(args[:-1], recursive = True, require_attribs = True)
+    remote_list, src_exclude_list = fetch_remote_list(args[:-1], recursive = True, require_attribs = True)
 
     local_count = len(local_list)
     remote_count = len(remote_list)
     orig_remote_count = remote_count
 
     info(u"Found %d remote files, %d local files" % (remote_count, local_count))
-
-    remote_list, src_exclude_list = filter_exclude_include(remote_list)
 
     remote_list, local_list, update_list, copy_pairs = compare_filelists(remote_list, local_list, src_remote = True, dst_remote = False, delay_updates = cfg.delay_updates)
 
@@ -1246,16 +1234,13 @@ def cmd_sync_local2remote(args):
                 uploaded_objects_list.append(uri.object())
             return seq, total_size
 
-        remote_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
+        remote_list, dst_exclude_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
 
         local_count = len(local_list)
         orig_local_count = local_count
         remote_count = len(remote_list)
 
         info(u"Found %d local files, %d remote files" % (local_count, remote_count))
-
-        local_list, src_exclude_list = filter_exclude_include(local_list)
-        remote_list, dst_exclude_list = filter_exclude_include(remote_list)
 
         if single_file_local and len(local_list) == 1 and len(remote_list) == 1:
             ## Make remote_key same as local_key for comparison if we're dealing with only one file
@@ -1410,8 +1395,7 @@ def cmd_setacl(args):
             else:
                 args.append(arg)
 
-    remote_list = fetch_remote_list(args)
-    remote_list, exclude_list = filter_exclude_include(remote_list)
+    remote_list, exclude_list = fetch_remote_list(args)
 
     remote_count = len(remote_list)
 

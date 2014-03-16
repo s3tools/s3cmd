@@ -21,7 +21,7 @@ import copy
 import re
 import errno
 
-__all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists", "filter_exclude_include"]
+__all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists"]
 
 def _fswalk_follow_symlinks(path):
     '''
@@ -444,7 +444,9 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, batch_mod
                 md5 = remote_item.get('md5')
                 if md5:
                     remote_list.record_md5(key, md5)
-    return remote_list
+
+    remote_list, exclude_list = filter_exclude_include(remote_list)
+    return remote_list, exclude_list
 
 
 def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates = False):
