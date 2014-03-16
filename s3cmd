@@ -250,7 +250,7 @@ def cmd_bucket_delete(args):
         except S3Error, e:
             if e.info['Code'] == 'BucketNotEmpty' and (cfg.force or cfg.recursive):
                 warning(u"Bucket is not empty. Removing all the objects from it first. This may take some time...")
-                success = subcmd_batch_del(uri.uri())
+                success = subcmd_batch_del(uri_str = uri.uri())
                 if success:
                     return _bucket_delete_one(uri)
                 else:
@@ -516,7 +516,7 @@ def cmd_object_del(args):
         if not recursive:
             subcmd_object_del_uri(uri_str)
         else:
-            subcmd_batch_del(uri_str)
+            subcmd_batch_del(uri_str = uri_str)
 
 def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
     s3 = S3(cfg)
@@ -1287,7 +1287,7 @@ def cmd_sync_local2remote(args):
             warning(u"delete: cowardly refusing to delete because no source files were found.  Use --force to override.")
             cfg.delete_removed = False
 
-        if cfg.delete_removed and not cfg.delete_after:
+        if cfg.delete_removed and not cfg.delete_after and remote_list:
             subcmd_batch_del(remote_list = remote_list)
 
         total_size = 0
@@ -1303,7 +1303,7 @@ def cmd_sync_local2remote(args):
         _set_remote_uri(failed_copy_files, destination_base, single_file_local)
         n, total_size = _upload(failed_copy_files, n, failed_copy_count, total_size)
 
-        if cfg.delete_removed and cfg.delete_after:
+        if cfg.delete_removed and cfg.delete_after and remote_list:
             subcmd_batch_del(remote_list = remote_list)
         total_elapsed = time.time() - timestamp_start
         total_speed = total_elapsed and total_size/total_elapsed or 0.0
