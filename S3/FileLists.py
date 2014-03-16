@@ -161,7 +161,7 @@ def _get_filelist_from_file(cfg, local_path):
 def fetch_local_list(args, is_src = False, recursive = None):
 
     def _fetch_local_list_info(loc_list):
-        for relative_file in sorted(loc_list.keys()):
+        for relative_file in loc_list:
             if relative_file == '-': continue
 
             full_name = loc_list[relative_file]['full_name']
