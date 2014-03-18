@@ -508,7 +508,7 @@ def cmd_object_get(args):
         if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
             gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
             response["size"] = os.stat(destination)[6]
-        if response["headers"].has_key("last-modified"):
+        if response["headers"].has_key("last-modified") and destination != "-":
             last_modified = time.mktime(time.strptime(response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"))
             os.utime(destination, (last_modified, last_modified))
             debug("set mtime to %s" % last_modified)
