@@ -161,7 +161,14 @@ def _get_filelist_from_file(cfg, local_path):
 def fetch_local_list(args, is_src = False, recursive = None):
 
     def _fetch_local_list_info(loc_list):
+        len_loc_list = len(loc_list)
+        info(u"Running stat() and reading/calculating MD5 values on %d files, this may take some time..." % len_loc_list)
+        counter = 0
         for relative_file in loc_list:
+            counter += 1
+            if counter % 1000 == 0:
+                info(u"[%d/%d]" % (counter, len_loc_list))
+
             if relative_file == '-': continue
 
             full_name = loc_list[relative_file]['full_name']
