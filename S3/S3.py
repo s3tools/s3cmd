@@ -833,6 +833,8 @@ class S3(object):
             ConnMan.put(conn)
         except ParameterError, e:
             raise
+        except (IOError, OSError), e:
+            raise
         except Exception, e:
             if retries:
                 warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
@@ -1040,6 +1042,8 @@ class S3(object):
             debug("Response: %s" % response)
         except ParameterError, e:
             raise
+        except (IOError, OSError), e:
+            raise
         except Exception, e:
             if self.config.progress_meter:
                 progress.done("failed")
@@ -1092,6 +1096,8 @@ class S3(object):
                 if self.config.progress_meter:
                     progress.update(delta_position = len(data))
             ConnMan.put(conn)
+        except (IOError, OSError), e:
+            raise
         except Exception, e:
             if self.config.progress_meter:
                 progress.done("failed")

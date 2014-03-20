@@ -2432,6 +2432,10 @@ if __name__ == '__main__':
         sys.stderr.write("See ya!\n")
         sys.exit(1)
 
+    except (OSError, IOError), e:
+        error(e.strerror)
+        sys.exit(1)
+
     except MemoryError:
         msg = """
 MemoryError!  You have exceeded the amount of memory available for this process.
