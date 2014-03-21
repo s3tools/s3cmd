@@ -2433,7 +2433,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     except (OSError, IOError), e:
-        error(e.strerror)
+        error(e)
         sys.exit(1)
 
     except MemoryError:
