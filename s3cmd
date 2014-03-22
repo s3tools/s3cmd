@@ -1785,10 +1785,15 @@ def run_configure(config_file, args):
                         else:
                             raise Exception("Encryption verification error.")
 
+                except S3Error, e:
+                    error(u"Test failed: %s" % (e))
+                    if e.code == "AccessDenied":
+                        error(u"Are you sure your keys have ListAllMyBuckets permissions?")
+                    val = raw_input("\nRetry configuration? [Y/n] ")
+                    if val.lower().startswith("y") or val == "":
+                        continue
                 except Exception, e:
                     error(u"Test failed: %s" % (e))
-                    if e.find('403') != -1:
-                        error(u"Are you sure your keys have ListAllMyBuckets permissions?")
                     val = raw_input("\nRetry configuration? [Y/n] ")
                     if val.lower().startswith("y") or val == "":
                         continue
