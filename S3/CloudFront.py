@@ -16,6 +16,7 @@ try:
 except ImportError:
     import elementtree.ElementTree as ET
 
+from S3 import S3
 from Config import Config
 from Exceptions import *
 from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, sign_string, getBucketFromHostname, getHostnameFromBucket
@@ -281,11 +282,12 @@ class InvalidationBatch(object):
 
     def __str__(self):
         tree = ET.Element("InvalidationBatch")
+        s3 = S3(Config())
 
         for path in self.paths:
             if len(path) < 1 or path[0] != "/":
                 path = "/" + path
-            appendXmlTextNode("Path", path, tree)
+            appendXmlTextNode("Path", s3.urlencode_string(path), tree)
         appendXmlTextNode("CallerReference", self.reference, tree)
         return ET.tostring(tree)
 
@@ -433,7 +435,7 @@ class CloudFront(object):
             new_paths = []
             default_index_suffix = '/' + default_index_file
             for path in paths:
-                if path.endswith(default_index_suffix) or path ==  default_index_file:
+                if path.endswith(default_index_suffix) or path == default_index_file:
                     if invalidate_default_index_on_cf:
                         new_paths.append(path)
                     if invalidate_default_index_root_on_cf:
