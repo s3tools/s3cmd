@@ -5,7 +5,7 @@
 
 Name:           s3cmd
 Version:        ##VERSION##
-Release:        0.3.git%{shortcommit}%{?dist}
+Release:        0.4.git%{shortcommit}%{?dist}
 Summary:        Tool for accessing Amazon Simple Storage Service
 
 Group:          Applications/Internet
@@ -67,6 +67,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Sun Mar 23 2014 Matt Domsch <mdomsch@fedoraproject.org> - 1.5.0-0.4.git
+- upstream 1.5.0-beta1 plus even newer upstream fixes
+
 * Sun Feb 02 2014 Matt Domsch <mdomsch@fedoraproject.org> - 1.5.0-0.3.git
 - upstream 1.5.0-beta1 plus newer upstream fixes
 
