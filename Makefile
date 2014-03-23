@@ -19,14 +19,15 @@ $(SPEC): $(SPEC).in
             -e 's/##SHORTCOMMIT##/$(SHORTCOMMIT)/' \
             $(SPEC).in > $(SPEC)
 
-tarball:
-	git archive --format tar --prefix s3cmd-$(COMMIT)/ HEAD | gzip -c > $(TARBALL)
+# fixme: python setup.py sdist also generates a PKG-INFO file which we don't have using straight git archive
+git-tarball:
+	git archive --format tar --prefix s3cmd-$(COMMIT)/ HEAD S3/ s3cmd NEWS README INSTALL setup.cfg s3cmd.1 setup.py| gzip -c > $(TARBALL)
 
 # Use older digest algorithms for local rpmbuilds, as EPEL5 and
 # earlier releases need this.  When building using mock for a
 # particular target, it will use the proper (newer) digests if that
 # target supports it.
-rpm: clean tarball $(SPEC)
+git-rpm: clean git-tarball $(SPEC)
 	tmp_dir=`mktemp -d` ; \
 	mkdir -p $${tmp_dir}/{BUILD,RPMS,SRPMS,SPECS,SOURCES} ; \
 	cp $(TARBALL) $${tmp_dir}/SOURCES ; \
