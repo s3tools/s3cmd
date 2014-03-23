@@ -27,10 +27,11 @@ BuildRequires:  python2-devel
 %endif
 %if %{!?fedora:8}%{?fedora} < 8 || %{!?rhel:6}%{?rhel} < 6
 # This is in standard library since 2.5
+BuildRequires:  python-elementtree
 Requires:       python-elementtree
 %endif
-BuildRequires: python-dateutil
-Requires: python-dateutil
+BuildRequires:  python-dateutil
+Requires:       python-dateutil
 
 %description
 S3cmd lets you copy files from/to Amazon S3
