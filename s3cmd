@@ -2163,7 +2163,7 @@ def main():
         sys.exit(1)
 
     try:
-        cfg = Config(options.config)
+        cfg = Config(options.config, options.access_key, options.secret_key)
     except IOError, e:
         if options.run_configure:
             cfg = Config()
