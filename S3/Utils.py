@@ -354,12 +354,13 @@ def sign_url_base(**parms):
     """Shared implementation of sign_url methods. Takes a hash of 'bucket', 'object' and 'expiry' as args."""
     parms['expiry']=time_to_epoch(parms['expiry'])
     parms['access_key']=Config.Config().access_key
+    parms['host_base']=Config.Config().host_base
     debug("Expiry interpreted as epoch time %s", parms['expiry'])
     signtext = 'GET\n\n\n%(expiry)d\n/%(bucket)s/%(object)s' % parms
     debug("Signing plaintext: %r", signtext)
     parms['sig'] = urllib.quote_plus(sign_string(signtext))
     debug("Urlencoded signature: %s", parms['sig'])
-    return "http://%(bucket)s.s3.amazonaws.com/%(object)s?AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s" % parms
+    return "http://%(bucket)s.%(host_base)s/%(object)s?AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s" % parms
 
 def time_to_epoch(t):
     """Convert time specified in a variety of forms into UNIX epoch time.
