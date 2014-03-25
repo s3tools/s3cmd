@@ -115,18 +115,24 @@ class Config(object):
     expiry_prefix = ""
 
     ## Creating a singleton
-    def __new__(self, configfile = None):
+    def __new__(self, configfile = None, access_key=None, secret_key=None):
         if self._instance is None:
             self._instance = object.__new__(self)
         return self._instance
 
-    def __init__(self, configfile = None):
+    def __init__(self, configfile = None, access_key=None, secret_key=None):
         if configfile:
             try:
                 self.read_config_file(configfile)
             except IOError, e:
                 if 'AWS_CREDENTIAL_FILE' in os.environ:
                     self.env_config()
+
+            # override these if passed on the command-line
+            if access_key and secret_key:
+                self.access_key = access_key
+                self.secret_key = secret_key
+
             if len(self.access_key)==0:
                 self.role_config()
 
