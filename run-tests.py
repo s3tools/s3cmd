@@ -446,9 +446,20 @@ test_s3cmd("Get multiple files", ['get', '%s/xyz/etc2/Logo.PNG' % pbucket(1), '%
     retcode = 1,
     must_find = [ 'Destination must be a directory or stdout when downloading multiple sources.' ])
 
+## ====== put/get non-ASCII filenames
+test_s3cmd("Put unicode filenames", ['put', u'testsuite/encodings/UTF-8/ŪņЇЌœđЗ/Žůžo',  u'%s/xyz/encodings/UTF-8/ŪņЇЌœđЗ/Žůžo' % pbucket(1)],
+           retcode = 0,
+           must_find = [ 'stored as' ])
+
 
 ## ====== Make dst dir for get
 test_mkdir("Make dst dir for get", "testsuite-out")
+
+
+## ====== put/get non-ASCII filenames
+test_s3cmd("Get unicode filenames", ['get', u'%s/xyz/encodings/UTF-8/ŪņЇЌœđЗ/Žůžo' % pbucket(1), 'testsuite-out'],
+           retcode = 0,
+           must_find = [ 'saved as' ])
 
 
 ## ====== Get multiple files
