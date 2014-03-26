@@ -9,7 +9,7 @@
 import sys
 
 if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
-    sys.stderr.write("ERROR: Python 2.4 or higher required, sorry.\n")
+    sys.stderr.write(u"ERROR: Python 2.4 or higher required, sorry.\n")
     sys.exit(1)
 
 import logging
@@ -298,7 +298,7 @@ def cmd_object_put(args):
     destination_base_uri = S3Uri(args.pop())
     if destination_base_uri.type != 's3':
         raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
-    destination_base = str(destination_base_uri)
+    destination_base = unicode(destination_base_uri)
 
     if len(args) == 0:
         raise ParameterError("Nothing to upload. Expecting a local file or directory.")
@@ -2347,7 +2347,7 @@ def main():
         sys.exit(1)
 
 def report_exception(e, msg=''):
-        sys.stderr.write("""
+        sys.stderr.write(u"""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     An unexpected error has occurred.
   Please try reproducing the error using
@@ -2362,20 +2362,20 @@ def report_exception(e, msg=''):
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 """ % msg)
-        s = ' '.join(sys.argv)
-        sys.stderr.write("""Invoked as: %s""" % s)
+        s = u' '.join([unicodise(a) for a in sys.argv])
+        sys.stderr.write(u"Invoked as: %s\n" % s)
 
         tb = traceback.format_exc(sys.exc_info())
         e_class = str(e.__class__)
         e_class = e_class[e_class.rfind(".")+1 : -2]
         sys.stderr.write(u"Problem: %s: %s\n" % (e_class, e))
         try:
-            sys.stderr.write("S3cmd:   %s\n" % PkgInfo.version)
+            sys.stderr.write(u"S3cmd:   %s\n" % PkgInfo.version)
         except NameError:
-            sys.stderr.write("S3cmd:   unknown version. Module import problem?\n")
-        sys.stderr.write("python:   %s\n" % sys.version)
-        sys.stderr.write("environment LANG=%s\n" % os.getenv("LANG"))
-        sys.stderr.write("\n")
+            sys.stderr.write(u"S3cmd:   unknown version. Module import problem?\n")
+        sys.stderr.write(u"python:   %s\n" % sys.version)
+        sys.stderr.write(u"environment LANG=%s\n" % os.getenv("LANG"))
+        sys.stderr.write(u"\n")
         sys.stderr.write(unicode(tb, errors="replace"))
 
         if type(e) == ImportError:
