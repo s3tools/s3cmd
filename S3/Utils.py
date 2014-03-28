@@ -16,11 +16,24 @@ import hmac
 import base64
 import errno
 import urllib
-import dateutil.parser
 from calendar import timegm
-
 from logging import debug, info, warning, error
-
+try:
+    import dateutil.parser
+except ImportError:
+    sys.stderr.write(u"""
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ImportError trying to import dateutil.parser.
+Please install the python dateutil module:
+$ sudo apt-get install python-dateutil
+  or
+$ sudo yum install python-dateutil
+  or
+$ pip install python-dateutil
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+""")
+    sys.stderr.flush()
+    sys.exit(1)
 
 import Config
 import Exceptions
