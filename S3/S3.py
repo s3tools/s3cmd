@@ -792,7 +792,7 @@ class S3(object):
         if bucket:
             resource['uri'] = "/" + self.urlencode_string(bucket)
             if object:
-                resource['uri'] = "/" + self.urlencode_string(object)
+                resource['uri'] += "/" + self.urlencode_string(object)
         if extra:
             resource['uri'] += extra
         if self.config.service_path:
