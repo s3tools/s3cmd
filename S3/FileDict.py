@@ -57,10 +57,10 @@ class FileDict(SortedDict):
 
     def get_hardlink_md5(self, relative_file):
         md5 = None
-        dev = self[relative_file]['dev']
-        inode = self[relative_file]['inode']
         try:
+            dev = self[relative_file]['dev']
+            inode = self[relative_file]['inode']
             md5 = self.hardlinks[dev][inode]['md5']
-        except:
+        except KeyError:
             pass
         return md5
