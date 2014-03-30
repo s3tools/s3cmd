@@ -535,6 +535,29 @@ test_s3cmd("Verify move", ['ls', '-r', pbucket(2)],
 test_s3cmd("Simple delete", ['del', '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
     must_find = [ "File %s/xyz/etc2/Logo.PNG deleted" % pbucket(1) ])
 
+## ====== Create expiration rule with days and prefix
+test_s3cmd("Create expiration rule with days and prefix", ['expire', pbucket(1), '--expiry-days=365', '--expiry-prefix=log/'],
+    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+
+## ====== Create expiration rule with date and prefix
+test_s3cmd("Create expiration rule with date and prefix", ['expire', pbucket(1), '--expiry-date=2012-12-31T00:00:00.000Z', '--expiry-prefix=log/'],
+    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+
+## ====== Create expiration rule with days only
+test_s3cmd("Create expiration rule with days only", ['expire', pbucket(1), '--expiry-days=365'],
+    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+
+## ====== Create expiration rule with date only
+test_s3cmd("Create expiration rule with date only", ['expire', pbucket(1), '--expiry-date=2012-12-31T00:00:00.000Z'],
+    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+
+## ====== Get current expiration setting
+test_s3cmd("Get current expiration setting", ['info', pbucket(1)],
+    must_find = [ "Expiration Rule: all objects in this bucket will expire in '2012-12-31T00:00:00.000Z'"])
+
+## ====== Delete expiration rule
+test_s3cmd("Delete expiration rule", ['expire', pbucket(1)],
+    must_find = [ "Bucket '%s/': expiration configuration is deleted." % pbucket(1)])
 
 ## ====== Recursive delete maximum exceeed
 test_s3cmd("Recursive delete maximum exceeded", ['del', '--recursive', '--max-delete=1', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],
@@ -550,11 +573,9 @@ test_s3cmd("Recursive delete", ['del', '--recursive', '--exclude', 'Atomic*', '%
 test_s3cmd("Recursive delete all", ['del', '--recursive', '--force', pbucket(1)],
     must_find_re = [ "File .*binary/random-crap deleted" ])
 
-
 ## ====== Remove empty bucket
 test_s3cmd("Remove empty bucket", ['rb', pbucket(1)],
     must_find = [ "Bucket '%s/' removed" % pbucket(1) ])
-
 
 ## ====== Remove remaining buckets
 test_s3cmd("Remove remaining buckets", ['rb', '--recursive', pbucket(2), pbucket(3)],
