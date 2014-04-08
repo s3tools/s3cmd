@@ -9,6 +9,7 @@ S3tools / S3cmd project homepage:
     http://s3tools.org
 
 S3tools / S3cmd mailing lists:
+
     * Announcements of new releases:
         s3tools-announce@lists.sourceforge.net
 
@@ -22,12 +23,33 @@ S3tools / S3cmd mailing lists:
 !!! Please consult INSTALL file for installation instructions!
 !!!
 
+What is S3cmd
+--------------
+S3cmd is a free command line tool and client for uploading, 
+retrieving and managing data in Amazon S3 and other cloud 
+storage service providers that use the S3 protocol, such as 
+Google Cloud Storage or DreamHost DreamObjects. It is best 
+suited for power users who are familiar with command line 
+programs. It is also ideal for batch scripts and automated 
+backup to S3, triggered from cron, etc.
+
+S3cmd is written in Python. It's an open source project 
+available under GNU Public License v2 (GPLv2) and is free 
+for both commercial and private use. You will only have 
+to pay Amazon for using their storage.
+
+Lots of features and options have been added to S3cmd, 
+since its very first release in 2008.... we recently counted 
+more than 60 command line options, including multipart 
+uploads, encryption, incremental backup, s3 sync, ACL and 
+Metadata management, S3 bucket size, bucket policies, and 
+more!
+
 What is Amazon S3
 -----------------
 Amazon S3 provides a managed internet-accessible storage 
 service where anyone can store any amount of data and 
-retrieve it later again. Maximum amount of data in one 
-"object" is 5GB, maximum number of objects is not limited.
+retrieve it later again.
 
 S3 is a paid service operated by Amazon. Before storing 
 anything into S3 you must sign up for an "AWS" account 
