@@ -3,7 +3,7 @@ S3cmd tool for Amazon Simple Storage Service (S3)
 
 Author:
     Michal Ludvig <michal@logix.cz>
-    (c) TGRMN Software and contributors
+    (c) TGRMN Software - http://www.tgrmn.com - and contributors
 
 S3tools / S3cmd project homepage:
     http://s3tools.org
@@ -18,9 +18,6 @@ S3tools / S3cmd mailing lists:
     * Bug reports
         s3tools-bugs@lists.sourceforge.net
 
-Amazon S3 homepage:
-    http://aws.amazon.com/s3
-
 !!!
 !!! Please consult INSTALL file for installation instructions!
 !!!
@@ -32,16 +29,16 @@ service where anyone can store any amount of data and
 retrieve it later again. Maximum amount of data in one 
 "object" is 5GB, maximum number of objects is not limited.
 
-S3 is a paid service operated by the well known Amazon.com
-internet book shop. Before storing anything into S3 you
-must sign up for an "AWS" account (where AWS = Amazon Web 
-Services) to obtain a pair of identifiers: Access Key and
-Secret Key. You will need to give these keys to S3cmd. 
+S3 is a paid service operated by Amazon. Before storing 
+anything into S3 you must sign up for an "AWS" account 
+(where AWS = Amazon Web Services) to obtain a pair of 
+identifiers: Access Key and Secret Key. You will need to 
+give these keys to S3cmd. 
 Think of them as if they were a username and password for
 your S3 account.
 
-Pricing explained
------------------
+Amazon S3 pricing explained
+---------------------------
 At the time of this writing the costs of using S3 are (in USD):
 
 $0.15 per GB per month of storage space used
@@ -336,11 +333,8 @@ to be modified in your favourite text editor.
 
 For more information refer to:
 * S3cmd / S3tools homepage at http://s3tools.org
-* Amazon S3 homepage at http://aws.amazon.com/s3
 
 Enjoy!
 
-Michal Ludvig
-* michal@logix.cz
-* http://www.logix.cz/michal
-
+Michal Ludvig - michal@logix.cz
+(c) TGRMN Software - http://www.tgrmn.com - and contributors
