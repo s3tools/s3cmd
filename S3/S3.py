@@ -95,6 +95,8 @@ def mime_magic(file):
                 result = (mimetype, charset)
             else:
                 result = (result, None)
+    if result is None:
+        result = (None, None)
     return result
 
 __all__ = []
