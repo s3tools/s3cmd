@@ -35,46 +35,30 @@ from S3Uri import S3Uri
 from ConnMan import ConnMan
 
 try:
-    import magic, gzip
+    import magic
     try:
         ## https://github.com/ahupp/python-magic
         magic_ = magic.Magic(mime=True)
         def mime_magic_file(file):
             return magic_.from_file(file)
-        def mime_magic_buffer(buffer):
-            return magic_.from_buffer(buffer)
     except TypeError:
         ## http://pypi.python.org/pypi/filemagic
         try:
             magic_ = magic.Magic(flags=magic.MAGIC_MIME)
             def mime_magic_file(file):
                 return magic_.id_filename(file)
-            def mime_magic_buffer(buffer):
-                return magic_.id_buffer(buffer)
         except TypeError:
             ## file-5.11 built-in python bindings
             magic_ = magic.open(magic.MAGIC_MIME)
             magic_.load()
             def mime_magic_file(file):
                 return magic_.file(file)
-            def mime_magic_buffer(buffer):
-                return magic_.buffer(buffer)
-
     except AttributeError:
         ## Older python-magic versions
         magic_ = magic.open(magic.MAGIC_MIME)
         magic_.load()
         def mime_magic_file(file):
             return magic_.file(file)
-        def mime_magic_buffer(buffer):
-            return magic_.buffer(buffer)
-
-    def mime_magic(file):
-        type = mime_magic_file(file)
-        if type != "application/x-gzip; charset=binary":
-            return (type, None)
-        else:
-            return (mime_magic_buffer(gzip.open(file).read(8192)), 'gzip')
 
 except ImportError, e:
     if str(e).find("magic") >= 0:
@@ -83,12 +67,35 @@ except ImportError, e:
         magic_message = "Module python-magic can't be used (%s)." % e.message
     magic_message += " Guessing MIME types based on file extensions."
     magic_warned = False
-    def mime_magic(file):
+    def mime_magic_file(file):
         global magic_warned
         if (not magic_warned):
             warning(magic_message)
             magic_warned = True
-        return mimetypes.guess_type(file)
+        return mimetypes.guess_type(file)[0]
+
+def mime_magic(file):
+    # we can't tell if a given copy of the magic library will take a
+    # filesystem-encoded string or a unicode value, so try first
+    # with the encoded string, then unicode.
+    def _mime_magic(file):
+        magictype = None
+        try:
+            magictype = mime_magic_file(file)
+        except UnicodeDecodeError:
+            magictype = mime_magic_file(unicodise(file))
+        return magictype
+
+    result = _mime_magic(file)
+    if result is not None:
+        if isinstance(result, str):
+            if ';' in result:
+                mimetype, charset = result.split(';')
+                charset = charset[len('charset'):]
+                result = (mimetype, charset)
+            else:
+                result = (result, None)
+    return result
 
 __all__ = []
 class S3Request(object):
