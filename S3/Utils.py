@@ -482,13 +482,14 @@ def calculateChecksum(buffer, mfile, offset, chunk_size, send_chunk):
 __all__.append("calculateChecksum")
 
 
-# Deal with the fact that pwd and grp modules don't exist for Windos
+# Deal with the fact that pwd and grp modules don't exist for Windows
 try:
     import pwd
     def getpwuid_username(uid):
         """returns a username from the password databse for the given uid"""
         return pwd.getpwuid(uid).pw_name
 except ImportError:
+    import getpass
     def getpwuid_username(uid):
         return getpass.getuser()
 __all__.append("getpwuid_username")
