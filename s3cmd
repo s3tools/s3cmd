@@ -1169,14 +1169,16 @@ def _build_attr_header(local_list, src):
             except KeyError:
                 attr = "uid"
                 val = local_list[src].get('uid')
-                warning(u"%s: Owner username not known. Storing UID=%d instead." % (src, val))
+                if val:
+                    warning(u"%s: Owner username not known. Storing UID=%d instead." % (src, val))
         elif attr == 'gname':
             try:
                 val = Utils.getgrgid_grpname(local_list[src].get('gid'))
             except KeyError:
                 attr = "gid"
                 val = local_list[src].get('gid')
-                warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (src, val))
+                if val:
+                    warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (src, val))
         elif attr == 'md5':
             try:
                 val = local_list.get_md5(src)
