@@ -47,7 +47,6 @@ else:
 
 try:
     import xml.etree.ElementTree as ET
-    from xml.etree.ElementTree import ParseError
 except ImportError:
     import elementtree.ElementTree as ET
 from xml.parsers.expat import ExpatError
@@ -93,7 +92,7 @@ def getTreeFromXml(xml):
     except ExpatError, e:
         error(e)
         raise Exceptions.ParameterError("Bucket contains invalid filenames. Please run: s3cmd fixbucket s3://your-bucket/")
-    except ParseError, e:
+    except Exception, e:
         error(e)
         error(xml)
         raise
