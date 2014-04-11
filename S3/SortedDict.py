@@ -47,6 +47,12 @@ class SortedDict(dict):
     def __iter__(self):
         return SortedDictIterator(self, self.keys())
 
+    def __getslice__(self, i=0, j=-1):
+        keys = self.keys()[i:j]
+        r = SortedDict(ignore_case = self.ignore_case)
+        for k in keys:
+            r[k] = self[k]
+        return r
 
 
 if __name__ == "__main__":
