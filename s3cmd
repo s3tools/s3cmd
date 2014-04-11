@@ -538,7 +538,17 @@ def cmd_object_del(args):
             subcmd_batch_del(uri_str = uri_str)
 
 def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
-    s3 = S3(cfg)
+    def _batch_del(remote_list):
+        s3 = S3(cfg)
+        to_delete = remote_list[:1000]
+        remote_list = remote_list[1000:]
+        while len(to_delete):
+            debug(u"Batch delete %d, remaining %d" % (len(to_delete), len(remote_list)))
+            if not cfg.dry_run:
+                response = s3.object_batch_delete(to_delete)
+            output('\n'.join((u"File %s deleted" % to_delete[p]['object_uri_str']) for p in to_delete))
+            to_delete = remote_list[:1000]
+            remote_list = remote_list[1000:]
 
     if len([item for item in [uri_str, bucket, remote_list] if item]) != 1:
         raise ValueError("One and only one of 'uri_str', 'bucket', 'remote_list' can be specified.")
@@ -558,30 +568,8 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
         warning(u"delete: maximum requested number of deletes would be exceeded, none performed.")
         return False
 
-    while True:
-        if cfg.dry_run:
-            output('\n'.join((u"File %s deleted" % remote_list[p]['object_uri_str']) for p in remote_list))
-        else:
-            response = s3.object_batch_delete(remote_list)
-            output('\n'.join((u"File %s deleted" % remote_list[p]['object_uri_str']) for p in remote_list))
+    _batch_del(remote_list)
 
-        if len(remote_list):
-            keys_count = len(remote_list)
-        else:
-            keys_count = 0
-        if keys_count < 1000 or not batch_mode:
-            break
-
-        if len(remote_list):
-            last_key = S3Uri(remote_list[remote_list.keys()[-1]]['object_uri_str'])
-        else:
-            last_key = None
-
-        if not last_key or not last_key.has_object:
-            break
-        marker = last_key.object()
-        remote_list, exclude_list = fetch_remote_list(uri_str, require_attribs = False, batch_mode = True,
-                                                      uri_params = {"marker": marker})
     if cfg.dry_run:
         warning(u"Exiting now because of --dry-run")
         return False
