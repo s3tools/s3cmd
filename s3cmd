@@ -1154,7 +1154,7 @@ def _build_attr_header(local_list, src):
         if attr == 'uname':
             try:
                 val = Utils.getpwuid_username(local_list[src]['uid'])
-            except KeyError:
+            except (KeyError, TypeError):
                 attr = "uid"
                 val = local_list[src].get('uid')
                 if val:
@@ -1162,7 +1162,7 @@ def _build_attr_header(local_list, src):
         elif attr == 'gname':
             try:
                 val = Utils.getgrgid_grpname(local_list[src].get('gid'))
-            except KeyError:
+            except (KeyError, TypeError):
                 attr = "gid"
                 val = local_list[src].get('gid')
                 if val:
