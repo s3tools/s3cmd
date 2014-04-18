@@ -86,7 +86,12 @@ if not os.path.isdir('testsuite/crappy-file-name'):
     # TODO: also unpack if the tarball is newer than the directory timestamp
     #       for instance when a new version was pulled from SVN.
 
-def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = []):
+def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = [], skip_host_base_re = []):
+    """
+    skip_host_base_re is a list of regexps which, if matched, the test is skipped.
+    This is because not all S3-similar services are supported by all actions.
+    Arguably, this should be done in s3cmd itself rather than just in the test suite.
+    """
     def command_output():
         print "----"
         print " ".join([arg.find(" ")>=0 and "'%s'" % arg or arg for arg in cmd_args])
@@ -135,6 +140,14 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 
     if not cmd_args:
         return skip()
+
+    skip_host_base_list = []
+    if type(skip_host_base_re) not in [ list, tuple ]: skip_host_base_re = [skip_host_base_re]
+    skip_host_base_list.extend(compile_list(skip_host_base_re))
+    for regexp in skip_host_base_list:
+        match = regexp.search(cfg.host_base)
+        if match:
+            return skip("API unsupported by service")
 
     p = Popen(cmd_args, stdout = PIPE, stderr = STDOUT, universal_newlines = True)
     stdout, stderr = p.communicate()
@@ -374,19 +387,22 @@ if have_wget:
 
 ## ====== Change ACL to Private
 test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', '%s/xyz/etc/l*.png' % pbucket(1)],
-    must_find = [ "logo.png: ACL set to Private" ])
+           must_find = [ "logo.png: ACL set to Private" ],
+           skip_host_base_re = ['objects.dreamhost.com'])
 
 
 ## ====== Verify Private ACL
 if have_wget:
     test("Verify Private ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
          retcode = [1, 8],
-         must_find_re = [ 'ERROR 403: Forbidden' ])
+         must_find_re = [ 'ERROR 403: Forbidden' ],
+         skip_host_base_re = ['objects.dreamhost.com'])
 
 
 ## ====== Change ACL to Public
 test_s3cmd("Change ACL to Public", ['setacl', '--acl-public', '--recursive', '%s/xyz/etc/' % pbucket(1) , '-v'],
-    must_find = [ "logo.png: ACL set to Public" ])
+           must_find = [ "logo.png: ACL set to Public" ],
+           skip_host_base_re = ['objects.dreamhost.com'])
 
 
 ## ====== Verify Public ACL
@@ -485,7 +501,8 @@ test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % p
 test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "MIME type:.*image/png",
                      "ACL:.*\*anon\*: READ",
-                     "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+                     "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ],
+    skip_host_base_re = ['objects.dreamhost.com'])
 
 ## ====== Rename within S3
 test_s3cmd("Rename within S3", ['mv', '%s/copy/etc2/Logo.PNG' % pbucket(2), '%s/copy/etc/logo.png' % pbucket(2)],
@@ -537,27 +554,34 @@ test_s3cmd("Simple delete", ['del', '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
 
 ## ====== Create expiration rule with days and prefix
 test_s3cmd("Create expiration rule with days and prefix", ['expire', pbucket(1), '--expiry-days=365', '--expiry-prefix=log/'],
-    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+           must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)],
+           skip_host_base_re = ['objects.dreamhost.com'])
+
 
 ## ====== Create expiration rule with date and prefix
 test_s3cmd("Create expiration rule with date and prefix", ['expire', pbucket(1), '--expiry-date=2012-12-31T00:00:00.000Z', '--expiry-prefix=log/'],
-    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+           must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)],
+           skip_host_base_re = ['objects.dreamhost.com'])
 
 ## ====== Create expiration rule with days only
 test_s3cmd("Create expiration rule with days only", ['expire', pbucket(1), '--expiry-days=365'],
-    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+           must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)],
+           skip_host_base_re = ['objects.dreamhost.com'])
 
 ## ====== Create expiration rule with date only
 test_s3cmd("Create expiration rule with date only", ['expire', pbucket(1), '--expiry-date=2012-12-31T00:00:00.000Z'],
-    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+           must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)],
+           skip_host_base_re = ['objects.dreamhost.com'])
 
 ## ====== Get current expiration setting
 test_s3cmd("Get current expiration setting", ['info', pbucket(1)],
-    must_find = [ "Expiration Rule: all objects in this bucket will expire in '2012-12-31T00:00:00.000Z'"])
+           must_find = [ "Expiration Rule: all objects in this bucket will expire in '2012-12-31T00:00:00.000Z'"],
+           skip_host_base_re = ['objects.dreamhost.com'])
 
 ## ====== Delete expiration rule
 test_s3cmd("Delete expiration rule", ['expire', pbucket(1)],
-    must_find = [ "Bucket '%s/': expiration configuration is deleted." % pbucket(1)])
+           must_find = [ "Bucket '%s/': expiration configuration is deleted." % pbucket(1)],
+           skip_host_base_re = ['objects.dreamhost.com'])
 
 ## ====== Recursive delete maximum exceeed
 test_s3cmd("Recursive delete maximum exceeded", ['del', '--recursive', '--max-delete=1', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],
