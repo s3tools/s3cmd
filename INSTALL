@@ -65,7 +65,8 @@ There are three options to run s3cmd from source tarball:
    Again, consult your distribution documentation on how to 
    find out the actual package name and how to install it then.
 
-   Note: if you are not "root" already you may need to run:
+   Note that on Linux, if you are not "root" already, you may 
+   need to run:
        
         sudo python setup.py install
 
