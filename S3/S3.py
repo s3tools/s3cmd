@@ -9,6 +9,7 @@ import os, os.path
 import time
 import errno
 import base64
+import binascii
 import httplib
 import logging
 import mimetypes
@@ -452,7 +453,7 @@ class S3(object):
         else:
             return False
 
-    def object_put(self, filename, uri, extra_headers = None, extra_label = ""):
+    def object_put(self, filename, uri, extra_headers = None, extra_label = "", content_md5 = None):
         # TODO TODO
         # Make it consistent with stream-oriented object_get()
         if uri.type != "s3":
@@ -541,6 +542,10 @@ class S3(object):
                             % (remote_size, size, uri))
 
         headers["content-length"] = size
+        if content_md5:
+            content_md5 = binascii.unhexlify(content_md5) # must be in binary, not hex format
+            headers['content-md5'] = base64.b64encode(content_md5)
+        debug(u"headers=%s" % headers)
         request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
         labels = { 'source' : unicodise(filename), 'destination' : unicodise(uri.uri()), 'extra' : extra_label }
         response = self.send_file(request, file, labels)
