@@ -58,6 +58,9 @@ Get various information about Buckets or Files
 s3cmd \fBcp\fR \fIs3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]\fR
 Copy object
 .TP
+s3cmd \fBmodify\fR \fIs3://BUCKET1/OBJECT\fR
+Modify object metadata
+.TP
 s3cmd \fBmv\fR \fIs3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]\fR
 Move object
 .TP
@@ -149,7 +152,7 @@ to a specific bucket instead of attempting to list
 them all.
 .TP
 \fB\-c\fR FILE, \fB\-\-config\fR=FILE
-Config file name. Defaults to /home/mdomsch/.s3cfg
+Config file name. Defaults to /home/user/.s3cfg
 .TP
 \fB\-\-dump\-config\fR
 Dump current configuration after parsing config files
@@ -338,8 +341,8 @@ Force MIME-type. Override both \fB--default-mime-type\fR and
 .TP
 \fB\-\-add\-header\fR=NAME:VALUE
 Add a given HTTP header to the upload request. Can be
-used multiple times. For instance set 'Expires' or 'Cache-Control' headers (or both) using this options
-if you like.
+used multiple times. For instance set 'Expires' or
+'Cache-Control' headers (or both) using this option.
 .TP
 \fB\-\-server\-side\-encryption\fR
 Specifies that server-side encryption will be used
@@ -366,8 +369,8 @@ Size of each chunk of a multipart upload. Files bigger
 than SIZE are automatically uploaded as multithreaded-
 multipart, smaller files are uploaded using the
 traditional method. SIZE is in Mega-Bytes, default
-chunk size is noneMB, minimum allowed chunk size is
-5MB, maximum is 5GB.
+chunk size is 15MB, minimum allowed chunk size is 5MB,
+maximum is 5GB.
 .TP
 \fB\-\-list\-md5\fR
 Include MD5 sums in bucket listings (only for 'ls'
@@ -384,12 +387,12 @@ Name of index-document (only for [ws-create] command)
 Name of error-document (only for [ws-create] command)
 .TP
 \fB\-\-expiry\-date\fR=EXPIRY_DATE
-Indicates when the expiration rule take effect. (only
+Indicates when the expiration rule takes effect. (only
 for [expire] command)
 .TP
 \fB\-\-expiry\-days\fR=EXPIRY_DAYS
 Indicates the number of days after object creation the
-expiration rule take effect. (only for [expire]
+expiration rule takes effect. (only for [expire]
 command)
 .TP
 \fB\-\-expiry\-prefix\fR=EXPIRY_PREFIX
@@ -547,27 +550,38 @@ To exclude local directory 'somedir', be sure to use a trailing forward slash, a
 .PP
 
 .SH SEE ALSO
-For the most up to date list of options run 
+For the most up to date list of options run: 
 .B s3cmd \-\-help
 .br
-For more info about usage, examples and other related info visit project homepage at
-.br
+For more info about usage, examples and other related info visit project homepage at:
 .B http://s3tools.org
 .SH DONATIONS
 Please consider a donation if you have found s3cmd useful:
 .br
 .B http://s3tools.org/donate
 .SH AUTHOR
-Written by Michal Ludvig <mludvig@logix.net.nz> and 15+ contributors
+Written by Michal Ludvig and contributors
 .SH CONTACT, SUPPORT
 Preferred way to get support is our mailing list:
+.br
 .I s3tools\-general@lists.sourceforge.net
+.br
+or visit the project homepage:
+.br
+.B http://s3tools.org
 .SH REPORTING BUGS
 Report bugs to 
 .I s3tools\-bugs@lists.sourceforge.net
 .SH COPYRIGHT
-Copyright \(co 2007,2008,2009,2010,2011,2012 Michal Ludvig <http://www.logix.cz/michal>
+Copyright \(co 2007-2014 TGRMN Software - http://www.tgrmn.com - and contributors
 .br
-This is free software.  You may redistribute copies of it under the terms of
-the GNU General Public License version 2 <http://www.gnu.org/licenses/gpl.html>.
-There is NO WARRANTY, to the extent permitted by law.
+.SH LICENSE
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+.br
