@@ -4,6 +4,8 @@
 
 import os
 import sys
+import base64
+import binascii
 from stat import ST_SIZE
 from logging import debug, info, warning, error
 from Utils import getTextFromXml, getTreeFromXml, formatSize, unicodise, calculateChecksum, parseNodes
@@ -141,7 +143,6 @@ class MultiPartUpload(object):
         Upload a file chunk
         http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadUploadPart.html
         """
-        # TODO implement Content-MD5
         debug("Uploading part %i of %r (%s bytes)" % (seq, self.upload_id, chunk_size))
 
         if remote_status is not None:
@@ -159,8 +160,10 @@ class MultiPartUpload(object):
                 warning("MultiPart: size (%d vs %d) does not match for %s part %d, reuploading."
                         % (int(remote_status['size']), chunk_size, self.uri, seq))
 
-        headers = { "content-length": chunk_size }
+        checksum = calculateChecksum(buffer, self.file, offset, chunk_size, self.s3.config.send_chunk)
+        headers = { "content-length": chunk_size, "content-md5": base64.b64encode(binascii.unhexlify(checksum)) }
         query_string = "?partNumber=%i&uploadId=%s" % (seq, self.upload_id)
+        debug(u'headers=%s' % headers)
         request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
         response = self.s3.send_file(request, self.file, labels, buffer, offset = offset, chunk_size = chunk_size)
         self.parts[seq] = response["headers"]["etag"]
