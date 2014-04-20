@@ -15,6 +15,7 @@ import locale
 import getpass
 import S3.Exceptions
 import S3.Config
+from S3.ExitCodes import *
 
 count_pass = 0
 count_fail = 0
@@ -290,7 +291,7 @@ test_s3cmd("Create multiple buckets", ['mb', pbucket(2), pbucket(3)],
 
 ## ====== Invalid bucket name
 test_s3cmd("Invalid bucket name", ["mb", "--bucket-location=EU", pbucket('EU')],
-    retcode = 1,
+    retcode = EX_USAGE,
     must_find = "ERROR: Parameter problem: Bucket name '%s' contains disallowed character" % bucket('EU'),
     must_not_find_re = "Bucket.*created")
 
@@ -421,7 +422,7 @@ test_s3cmd("Rename within S3", ['mv', '%s/xyz/etc/logo.png' % pbucket(1), '%s/xy
 
 ## ====== Rename (NoSuchKey)
 test_s3cmd("Rename (NoSuchKey)", ['mv', '%s/xyz/etc/logo.png' % pbucket(1), '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
-    retcode = 1,
+    retcode = EX_SOFTWARE,
     must_find_re = [ 'ERROR:.*NoSuchKey' ],
     must_not_find = [ 'File %s/xyz/etc/logo.png moved to %s/xyz/etc2/Logo.PNG' % (pbucket(1), pbucket(1)) ])
 
@@ -443,7 +444,7 @@ test_rmdir("Remove dst dir for get", "testsuite-out")
 
 ## ====== Get multiple files
 test_s3cmd("Get multiple files", ['get', '%s/xyz/etc2/Logo.PNG' % pbucket(1), '%s/xyz/etc/AtomicClockRadio.ttf' % pbucket(1), 'testsuite-out'],
-    retcode = 1,
+    retcode = EX_USAGE,
     must_find = [ 'Destination must be a directory or stdout when downloading multiple sources.' ])
 
 ## ====== put/get non-ASCII filenames

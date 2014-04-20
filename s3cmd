@@ -22,7 +22,7 @@ import sys
 
 if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
     sys.stderr.write(u"ERROR: Python 2.4 or higher required, sorry.\n")
-    sys.exit(1)
+    sys.exit(EX_OSFILE)
 
 import logging
 import time
@@ -358,7 +358,7 @@ def cmd_object_put(args):
         full_name = full_name_orig
         seq_label = "[%d of %d]" % (seq, local_count)
         if Config().encrypt:
-            exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
+            gpg_exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
         if cfg.preserve_attrs or local_list[key]['size'] > (cfg.multipart_chunk_size_mb * 1024 * 1024):
             attr_header = _build_attr_header(local_list, key)
             debug(u"attr_header: %s" % attr_header)
@@ -1398,7 +1398,7 @@ def cmd_sync_local2remote(args):
         error(u"S3cmd 'sync' doesn't yet support GPG encryption, sorry.")
         error(u"Either use unconditional 's3cmd put --recursive'")
         error(u"or disable encryption with --no-encrypt parameter.")
-        sys.exit(1)
+        sys.exit(EX_USAGE)
 
     local_list, single_file_local, src_exclude_list = fetch_local_list(args[:-1], is_src = True, recursive = True)
 
@@ -1837,14 +1837,14 @@ def run_configure(config_file, args):
 
     except IOError, e:
         error(u"Writing config file failed: %s: %s" % (config_file, e.strerror))
-        sys.exit(1)
+        sys.exit(EX_IOERR)
 
 def process_patterns_from_file(fname, patterns_list):
     try:
         fn = open(fname, "rt")
     except IOError, e:
         error(e)
-        sys.exit(1)
+        sys.exit(EX_IOERR)
     for pattern in fn:
         pattern = pattern.strip()
         if re.match("^#", pattern) or re.match("^\s*$", pattern):
@@ -2160,7 +2160,7 @@ def main():
 
     if options.show_version:
         output(u"s3cmd version %s" % PkgInfo.version)
-        sys.exit(0)
+        sys.exit(EX_OK)
 
     if options.quiet:
         try:
@@ -2173,7 +2173,7 @@ def main():
     ## Now finally parse the config file
     if not options.config:
         error(u"Can't find a config file. Please use --config option.")
-        sys.exit(1)
+        sys.exit(EX_CONFIG)
 
     try:
         cfg = Config(options.config, options.access_key, options.secret_key)
@@ -2184,7 +2184,7 @@ def main():
             error(u"%s: %s"  % (options.config, e.strerror))
             error(u"Configuration file not available.")
             error(u"Consider using --configure parameter to create one.")
-            sys.exit(1)
+            sys.exit(EX_CONFIG)
 
     # allow commandline verbosity config to override config file
     if options.verbosity is not None:
@@ -2320,20 +2320,20 @@ def main():
     if cfg.encrypt and cfg.gpg_passphrase == "":
         error(u"Encryption requested but no passphrase set in config file.")
         error(u"Please re-run 's3cmd --configure' and supply it.")
-        sys.exit(1)
+        sys.exit(EX_CONFIG)
 
     if options.dump_config:
         cfg.dump_config(sys.stdout)
-        sys.exit(0)
+        sys.exit(EX_OK)
 
     if options.run_configure:
         # 'args' may contain the test-bucket URI
         run_configure(options.config, args)
-        sys.exit(0)
+        sys.exit(EX_OK)
 
     if len(args) < 1:
         error(u"Missing command. Please run with --help for more information.")
-        sys.exit(1)
+        sys.exit(EX_USAGE)
 
     ## Unicodise all remaining arguments:
     args = [unicodise(arg) for arg in args]
@@ -2347,17 +2347,17 @@ def main():
         cmd_func = commands[command]["func"]
     except KeyError, e:
         error(u"Invalid command: %s" % e)
-        sys.exit(1)
+        sys.exit(EX_USAGE)
 
     if len(args) < commands[command]["argc"]:
         error(u"Not enough parameters for command '%s'" % command)
-        sys.exit(1)
+        sys.exit(EX_USAGE)
 
     try:
         cmd_func(args)
     except S3Error, e:
         error(u"S3 error: %s" % e)
-        sys.exit(1)
+        sys.exit(EX_SOFTWARE)
 
 def report_exception(e, msg=''):
         sys.stderr.write(u"""
@@ -2417,6 +2417,7 @@ if __name__ == '__main__':
         ## Our modules
         ## Keep them in try/except block to
         ## detect any syntax errors in there
+        from S3.ExitCodes import *
         from S3.Exceptions import *
         from S3 import PkgInfo
         from S3.S3 import S3
@@ -2433,26 +2434,30 @@ if __name__ == '__main__':
         from S3.MultiPart import MultiPartUpload
 
         main()
-        sys.exit(0)
+        sys.exit(EX_OK)
 
     except ImportError, e:
         report_exception(e)
-        sys.exit(1)
+        sys.exit(EX_GENERAL)
 
     except ParameterError, e:
         error(u"Parameter problem: %s" % e)
-        sys.exit(1)
+        sys.exit(EX_USAGE)
 
     except SystemExit, e:
         sys.exit(e.code)
 
     except KeyboardInterrupt:
         sys.stderr.write("See ya!\n")
-        sys.exit(1)
+        sys.exit(EX_BREAK)
 
-    except (OSError, IOError), e:
+    except IOError, e:
         error(e)
-        sys.exit(1)
+        sys.exit(EX_IOERR)
+
+    except OSError, e:
+        error(e)
+        sys.exit(EX_OSERR)
 
     except MemoryError:
         msg = """
@@ -2463,7 +2468,7 @@ The solutions to this are:
 2) use a 64-bit python on a 64-bit OS with >8GB RAM
         """
         sys.stderr.write(msg)
-        sys.exit(1)
+        sys.exit(EX_OSERR)
 
     except UnicodeEncodeError, e:
         lang = os.getenv("LANG")
@@ -2474,10 +2479,10 @@ Please set LANG=en_US.UTF-8 or similar in your environment before
 invoking s3cmd.
         """ % lang
         report_exception(e, msg)
-        sys.exit(1)
+        sys.exit(EX_GENERAL)
 
     except Exception, e:
         report_exception(e)
-        sys.exit(1)
+        sys.exit(EX_GENERAL)
 
 # vim:et:ts=4:sts=4:ai
