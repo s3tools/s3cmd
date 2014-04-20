@@ -499,6 +499,12 @@ def cmd_object_get(args):
                 continue
         try:
             response = s3.object_get(uri, dst_stream, start_position = start_position, extra_label = seq_label)
+        except S3DownloadError, e:
+            error(u"%s: Skipping that file.  This is usually a transient error, please try again later." % e)
+            if not file_exists: # Delete, only if file didn't exist before!
+                debug(u"object_get failed for '%s', deleting..." % (destination,))
+                os.unlink(destination)
+            continue
         except S3Error, e:
             if not file_exists: # Delete, only if file didn't exist before!
                 debug(u"object_get failed for '%s', deleting..." % (destination,))
@@ -998,6 +1004,10 @@ def cmd_sync_remote2local(args):
                         continue
                     else:
                         raise
+                except S3DownloadError, e:
+                    error(u"%s: Skipping that file.  This is usually a transient error, please try again later." % e)
+                    os.unlink(chkptfname)
+                    continue
                 except S3Error, e:
                     warning(u"Remote file %s S3Error: %s" % (e.resource, e))
                     continue
@@ -1070,7 +1080,7 @@ def cmd_sync_remote2local(args):
                     os.remove(chkptfname)
                 except: pass
             except S3DownloadError, e:
-                error(u"%s: download failed too many times. Skipping that file." % file)
+                error(u"%s: download failed too many times. Skipping that file.  This is usually a transient error, please try again later." % file)
                 continue
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
             if not Config().progress_meter:
