@@ -99,6 +99,7 @@ class MultiPartUpload(object):
             remote_statuses = self.get_parts_information(self.uri, self.upload_id)
 
         seq = 1
+        chunk_md5s = {}
         if self.file.name != "<stdin>":
             while size_left > 0:
                 offset = self.chunk_size * (seq - 1)
@@ -110,7 +111,7 @@ class MultiPartUpload(object):
                     'extra' : "[part %d of %d, %s]" % (seq, nr_parts, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
                 }
                 try:
-                    self.upload_part(seq, offset, current_chunk_size, labels, remote_status = remote_statuses.get(seq))
+                    self.upload_part(seq, offset, current_chunk_size, labels, chunk_md5s, remote_status = remote_statuses.get(seq))
                 except:
                     error(u"\nUpload of '%s' part %d failed. Use\n  %s abortmp %s %s\nto abort the upload, or\n  %s --upload-id %s put ...\nto continue the upload."
                           % (self.file.name, seq, sys.argv[0], self.uri, self.upload_id, sys.argv[0], self.upload_id))
@@ -129,7 +130,7 @@ class MultiPartUpload(object):
                 if len(buffer) == 0: # EOF
                     break
                 try:
-                    self.upload_part(seq, offset, current_chunk_size, labels, buffer, remote_status = remote_statuses.get(seq))
+                    self.upload_part(seq, offset, current_chunk_size, labels, chunk_md5s, buffer, remote_status = remote_statuses.get(seq))
                 except:
                     error(u"\nUpload of '%s' part %d failed. Use\n  %s abortmp %s %s\nto abort, or\n  %s --upload-id %s put ...\nto continue the upload."
                           % (self.file.name, seq, self.uri, sys.argv[0], self.upload_id, sys.argv[0], self.upload_id))
@@ -138,7 +139,7 @@ class MultiPartUpload(object):
 
         debug("MultiPart: Upload finished: %d parts", seq - 1)
 
-    def upload_part(self, seq, offset, chunk_size, labels, buffer = '', remote_status = None):
+    def upload_part(self, seq, offset, chunk_size, labels, chunk_md5s, buffer = '', remote_status = None):
         """
         Upload a file chunk
         http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadUploadPart.html
@@ -147,7 +148,7 @@ class MultiPartUpload(object):
 
         if remote_status is not None:
             if int(remote_status['size']) == chunk_size:
-                checksum = calculateChecksum(buffer, self.file, offset, chunk_size, self.s3.config.send_chunk)
+                checksum = chunk_md5s[seq]
                 remote_checksum = remote_status['checksum'].strip('"')
                 if remote_checksum == checksum:
                     warning("MultiPart: size and md5sum match for %s part %d, skipping." % (self.uri, seq))
@@ -161,6 +162,7 @@ class MultiPartUpload(object):
                         % (int(remote_status['size']), chunk_size, self.uri, seq))
 
         checksum = calculateChecksum(buffer, self.file, offset, chunk_size, self.s3.config.send_chunk)
+        chunk_md5s[seq] = checksum
         headers = { "content-length": chunk_size, "content-md5": base64.b64encode(binascii.unhexlify(checksum)) }
         query_string = "?partNumber=%i&uploadId=%s" % (seq, self.upload_id)
         debug(u'headers=%s' % headers)
