@@ -568,16 +568,19 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
             to_delete = remote_list[:1000]
             remote_list = remote_list[1000:]
 
+    if remote_list is not None and len(remote_list) == 0:
+        return False
+
     if len([item for item in [uri_str, bucket, remote_list] if item]) != 1:
         raise ValueError("One and only one of 'uri_str', 'bucket', 'remote_list' can be specified.")
 
-    if bucket:
+    if bucket: # bucket specified
         uri_str = "s3://%s" % bucket
-    if not remote_list:
+    if remote_list is None: # uri_str specified
         remote_list, exclude_list = fetch_remote_list(uri_str, require_attribs = False)
 
     if len(remote_list) == 0:
-        warning(u"Remote list is empty.")
+        debug(u"Remote list is empty.")
         return False
 
     if cfg.max_delete > 0 and len(remote_list) > cfg.max_delete:
