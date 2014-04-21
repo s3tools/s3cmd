@@ -238,7 +238,7 @@ class S3(object):
         response["list"] = getListFromXml(response["data"], "Bucket")
         return response
 
-    def bucket_list(self, bucket, prefix = None, recursive = None, batch_mode = False, uri_params = {}):
+    def bucket_list(self, bucket, prefix = None, recursive = None, uri_params = {}):
         def _list_truncated(data):
             ## <IsTruncated> can either be "true" or "false" or be missing completely
             is_truncated = getTextFromXml(data, ".//IsTruncated") or "false"
@@ -258,7 +258,7 @@ class S3(object):
             response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params)
             current_list = _get_contents(response["data"])
             current_prefixes = _get_common_prefixes(response["data"])
-            truncated = _list_truncated(response["data"]) and not batch_mode
+            truncated = _list_truncated(response["data"])
             if truncated:
                 if current_list:
                     uri_params['marker'] = self.urlencode_string(current_list[-1]["Key"])
