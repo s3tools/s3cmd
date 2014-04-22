@@ -1311,8 +1311,9 @@ def cmd_sync_local2remote(args):
         update_count = len(update_list)
         copy_count = len(copy_pairs)
         remote_count = len(remote_list)
+        upload_count = local_count + update_count
 
-        info(u"Summary: %d local files to upload, %d files to remote copy, %d remote files to delete" % (local_count + update_count, copy_count, remote_count))
+        info(u"Summary: %d local files to upload, %d files to remote copy, %d remote files to delete" % (upload_count, copy_count, remote_count))
 
         _set_remote_uri(local_list, destination_base, single_file_local)
         _set_remote_uri(update_list, destination_base, single_file_local)
@@ -1349,8 +1350,8 @@ def cmd_sync_local2remote(args):
         total_size = 0
         total_elapsed = 0.0
         timestamp_start = time.time()
-        n, total_size = _upload(local_list, 0, local_count, total_size)
-        n, total_size = _upload(update_list, n, local_count, total_size)
+        n, total_size = _upload(local_list, 0, upload_count, total_size)
+        n, total_size = _upload(update_list, n, upload_count, total_size)
         n_copies, saved_bytes, failed_copy_files  = remote_copy(s3, copy_pairs, destination_base)
 
         #upload file that could not be copied
