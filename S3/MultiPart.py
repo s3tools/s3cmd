@@ -7,9 +7,10 @@ import sys
 import base64
 import binascii
 from stat import ST_SIZE
+import time
 from logging import debug, info, warning, error
 from Utils import getTextFromXml, getTreeFromXml, formatSize, unicodise, calculateChecksum, parseNodes
-from Exceptions import S3UploadError
+from Exceptions import S3UploadError, S3Error
 
 class MultiPartUpload(object):
 
@@ -146,6 +147,7 @@ class MultiPartUpload(object):
         """
         debug("Uploading part %i of %r (%s bytes)" % (seq, self.upload_id, chunk_size))
 
+        retries = self.s3._max_retries
         if remote_status is not None:
             if int(remote_status['size']) == chunk_size:
                 checksum = chunk_md5s[seq]
@@ -166,9 +168,27 @@ class MultiPartUpload(object):
         headers = { "content-length": chunk_size, "content-md5": base64.b64encode(binascii.unhexlify(checksum)) }
         query_string = "?partNumber=%i&uploadId=%s" % (seq, self.upload_id)
         debug(u'headers=%s' % headers)
-        request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
-        response = self.s3.send_file(request, self.file, labels, buffer, offset = offset, chunk_size = chunk_size)
-        self.parts[seq] = response["headers"]["etag"]
+
+        while retries:
+            request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
+            response = self.s3.send_file(request, self.file, labels, buffer, offset = offset, chunk_size = chunk_size)
+            self.parts[seq] = response["headers"]["etag"]
+
+            if response["status"] >= 400:
+                err = S3Error(response)
+                if err.code in [ 'BadDigest', 'OperationAborted', 'TokenRefreshRequired', 'RequestTimeout', 'SlowDown' ]:
+                    retries -= 1
+                    warning(u'Retrying failed request: %s' % err)
+                    warning(u'Waiting %d sec...' % self._fail_wait(retries))
+                    time.sleep(self.s3._fail_wait(retries))
+                    continue
+            else:
+                break
+
+        if retries == 0:
+            warning(u'Too many failures. Giving up.')
+            raise S3UploadError
+
         return response
 
     def complete_multipart_upload(self):
