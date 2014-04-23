@@ -1143,10 +1143,14 @@ class S3(object):
                 response["md5"] = response["headers"]["etag"]
 
         md5_hash = response["headers"]["etag"]
-        try:
-            md5_hash = response["s3cmd-attrs"]["md5"]
-        except KeyError:
-            pass
+        if not 'x-amz-meta-s3tools-gpgenc' in response["headers"]:
+            # we can't trust our stored md5 because we
+            # encrypted the file after calculating it but before
+            # uploading it.
+            try:
+                md5_hash = response["s3cmd-attrs"]["md5"]
+            except KeyError:
+                pass
 
         response["md5match"] = md5_hash.find(response["md5"]) >= 0
         response["elapsed"] = timestamp_end - timestamp_start
