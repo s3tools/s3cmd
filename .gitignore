@@ -5,3 +5,4 @@ testsuite
 /dist
 build/*
 s3cmd.spec
+.idea
