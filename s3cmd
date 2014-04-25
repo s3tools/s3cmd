@@ -1672,7 +1672,7 @@ def gpg_encrypt(filename):
         "input_file" : filename,
         "output_file" : tmp_filename,
     }
-    info(u"Encrypting file %(input_file)s to %(output_file)s..." % args)
+    info(u"Encrypting file %s to %s..." % (unicodise(filename), tmp_filename))
     command = resolve_list(cfg.gpg_encrypt.split(" "), args)
     code = gpg_command(command, cfg.gpg_passphrase)
     return (code, tmp_filename, "gpg")
@@ -1685,11 +1685,11 @@ def gpg_decrypt(filename, gpgenc_header = "", in_place = True):
         "input_file" : filename,
         "output_file" : tmp_filename,
     }
-    info(u"Decrypting file %(input_file)s to %(output_file)s..." % args)
+    info(u"Decrypting file %s to %s..." % (unicodise(filename), tmp_filename))
     command = resolve_list(cfg.gpg_decrypt.split(" "), args)
     code = gpg_command(command, cfg.gpg_passphrase)
     if code == 0 and in_place:
-        debug(u"Renaming %s to %s" % (tmp_filename, filename))
+        debug(u"Renaming %s to %s" % (tmp_filename, unicodise(filename)))
         os.unlink(filename)
         os.rename(tmp_filename, filename)
         tmp_filename = filename
