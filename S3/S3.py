@@ -250,6 +250,7 @@ class S3(object):
         def _get_common_prefixes(data):
             return getListFromXml(data, "CommonPrefixes")
 
+        uri_params = uri_params.copy()
         truncated = True
         list = []
         prefixes = []
