@@ -2334,7 +2334,7 @@ def main():
         sys.exit(0)
 
     if len(args) < 1:
-        error(u"Missing command. Please run with --help for more information.")
+        optparser.print_help()
         sys.exit(1)
 
     ## Unicodise all remaining arguments:
