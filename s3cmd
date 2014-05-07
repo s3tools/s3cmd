@@ -2035,7 +2035,7 @@ def main():
     if os.getenv("S3CMD_CONFIG"):
         config_file = os.getenv("S3CMD_CONFIG")
     elif os.name == "nt" and os.getenv("USERPROFILE"):
-        config_file = os.path.join(os.getenv("USERPROFILE").decode('mbcs'), "Application Data", "s3cmd.ini")
+        config_file = os.path.join(os.getenv("USERPROFILE").decode('mbcs'), os.getenv("APPDATA").decode('mbcs') or 'Application Data', "s3cmd.ini")
     else:
         from os.path import expanduser
         config_file = os.path.join(expanduser("~"), ".s3cfg")
