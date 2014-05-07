@@ -38,7 +38,7 @@ config_file = None
 if os.getenv("HOME"):
     config_file = os.path.join(os.getenv("HOME"), ".s3cfg")
 elif os.name == "nt" and os.getenv("USERPROFILE"):
-    config_file = os.path.join(os.getenv("USERPROFILE").decode('mbcs'), os.getenv("APPDATA").decode('mbcs'), "s3cmd.ini")
+    config_file = os.path.join(os.getenv("USERPROFILE").decode('mbcs'), os.getenv("APPDATA").decode('mbcs') or 'Application Data', "s3cmd.ini")
 
 cfg = S3.Config.Config(config_file)
 
