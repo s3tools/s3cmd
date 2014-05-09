@@ -18,6 +18,7 @@ import errno
 import urllib
 from calendar import timegm
 from logging import debug, info, warning, error
+from ExitCodes import EX_OSFILE
 try:
     import dateutil.parser
 except ImportError:
@@ -33,7 +34,7 @@ $ pip install python-dateutil
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 """)
     sys.stderr.flush()
-    sys.exit(1)
+    sys.exit(EX_OSFILE)
 
 import Config
 import Exceptions
