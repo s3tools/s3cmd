@@ -331,6 +331,9 @@ def cmd_object_put(args):
 
     info(u"Summary: %d local files to upload" % local_count)
 
+    if local_count == 0:
+        raise ParameterError("Nothing to upload.")
+
     if local_count > 0:
         if not single_file_local and '-' in local_list.keys():
             raise ParameterError("Cannot specify multiple local files if uploading from '-' (ie stdin)")
