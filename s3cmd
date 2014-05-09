@@ -2405,6 +2405,8 @@ def main():
 
     try:
         rc = cmd_func(args)
+        if rc is None: # if we missed any cmd_*() returns
+            rc = EX_GENERAL
         return rc
     except S3Error, e:
         error(u"S3 error: %s" % e)
@@ -2491,11 +2493,16 @@ if __name__ == '__main__':
         report_exception(e)
         sys.exit(EX_GENERAL)
 
-    except ParameterError, e:
+    except (ParameterError, InvalidFileError), e:
         error(u"Parameter problem: %s" % e)
         sys.exit(EX_USAGE)
 
-    except S3Error, e:
+    except (S3DownloadError, S3UploadError, S3RequestError), e:
+        error(u"S3 Temporary Error: %s.  Please try again later." % e)
+        sys.exit(EX_TEMPFAIL)
+
+    except (S3Error, S3Exception, S3ResponseError, CloudFrontError), e:
+        report_exception(e)
         sys.exit(EX_SOFTWARE)
 
     except SystemExit, e:
