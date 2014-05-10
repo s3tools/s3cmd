@@ -46,14 +46,13 @@ class S3Error (S3Exception):
             for header in response["headers"]:
                 debug("HttpHeader: %s: %s" % (header, response["headers"][header]))
         if response.has_key("data") and response["data"]:
-            tree = getTreeFromXml(response["data"])
-            error_node = tree
-            if not error_node.tag == "Error":
-                error_node = tree.find(".//Error")
-            for child in error_node.getchildren():
-                if child.text != "":
-                    debug("ErrorXML: " + child.tag + ": " + repr(child.text))
-                    self.info[child.tag] = child.text
+            try:
+                tree = getTreeFromXml(response["data"])
+            except ET.ParseError:
+                debug("Not an XML response")
+            else:
+                self.info.update(self.parse_error_xml(tree))
+
         self.code = self.info["Code"]
         self.message = self.info["Message"]
         self.resource = self.info["Resource"]
@@ -64,6 +63,20 @@ class S3Error (S3Exception):
         if self.info.has_key("Message"):
             retval += (u": %s" % self.info["Message"])
         return retval
+
+    @staticmethod
+    def parse_error_xml(tree):
+        info = {}
+        error_node = tree
+        if not error_node.tag == "Error":
+            error_node = tree.find(".//Error")
+        for child in error_node.getchildren():
+            if child.text != "":
+                debug("ErrorXML: " + child.tag + ": " + repr(child.text))
+                info[child.tag] = child.text
+
+        return info
+
 
 class CloudFrontError(S3Error):
     pass
