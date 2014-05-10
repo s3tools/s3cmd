@@ -40,7 +40,7 @@ class ConnMan(object):
         conn = None
         if cfg.proxy_host != "":
             if ssl:
-                raise ParameterError("use_ssl=True can't be used with proxy")
+                raise ParameterError("use_https=True can't be used with proxy")
             conn_id = "proxy://%s:%s" % (cfg.proxy_host, cfg.proxy_port)
         else:
             conn_id = "http%s://%s" % (ssl and "s" or "", hostname)
