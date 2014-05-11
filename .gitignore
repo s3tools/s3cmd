@@ -1,6 +1,7 @@
 *.pyc
 *.swp
 testsuite
+testsuite-out
 /MANIFEST
 /dist
 build/*
