@@ -316,7 +316,7 @@ if have_encoding:
 
 ## ====== List bucket content
 test_s3cmd("List bucket content", ['ls', '%s/xyz/' % pbucket(1) ],
-    must_find_re = [ u"DIR   %s/xyz/binary/$" % pbucket(1) , u"DIR   %s/xyz/etc/$" % pbucket(1) ],
+    must_find_re = [ u"DIR +%s/xyz/binary/$" % pbucket(1) , u"DIR +%s/xyz/etc/$" % pbucket(1) ],
     must_not_find = [ u"random-crap.md5", u"/demo" ])
 
 
