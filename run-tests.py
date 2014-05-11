@@ -316,7 +316,7 @@ if have_encoding:
 
 ## ====== List bucket content
 test_s3cmd("List bucket content", ['ls', '%s/xyz/' % pbucket(1) ],
-    must_find_re = [ u"DIR   %s/xyz/binary/$" % pbucket(1) , u"DIR   %s/xyz/etc/$" % pbucket(1) ],
+    must_find_re = [ u"DIR +%s/xyz/binary/$" % pbucket(1) , u"DIR +%s/xyz/etc/$" % pbucket(1) ],
     must_not_find = [ u"random-crap.md5", u"/demo" ])
 
 
@@ -536,6 +536,10 @@ test_s3cmd("Verify move", ['ls', '-r', pbucket(2)],
 test_s3cmd("Simple delete", ['del', '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
     must_find = [ "File %s/xyz/etc2/Logo.PNG deleted" % pbucket(1) ])
 
+## ====== Simple delete with rm
+test_s3cmd("Simple delete with rm", ['rm', '%s/xyz/test_rm/TypeRa.ttf' % pbucket(1)],
+    must_find = [ "File %s/xyz/test_rm/TypeRa.ttf deleted" % pbucket(1) ])
+
 ## ====== Create expiration rule with days and prefix
 test_s3cmd("Create expiration rule with days and prefix", ['expire', pbucket(1), '--expiry-days=365', '--expiry-prefix=log/'],
     must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
@@ -568,6 +572,12 @@ test_s3cmd("Recursive delete maximum exceeded", ['del', '--recursive', '--max-de
 test_s3cmd("Recursive delete", ['del', '--recursive', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],
     must_find = [ "File %s/xyz/etc/TypeRa.ttf deleted" % pbucket(1) ],
     must_find_re = [ "File .*/etc/logo.png deleted" ],
+    must_not_find = [ "AtomicClockRadio.ttf" ])
+
+## ====== Recursive delete with rm
+test_s3cmd("Recursive delete with rm", ['rm', '--recursive', '--exclude', 'Atomic*', '%s/xyz/test_rm' % pbucket(1)],
+    must_find = [ "File %s/xyz/test_rm/more/give-me-more.txt deleted" % pbucket(1) ],
+    must_find_re = [ "File .*/test_rm/logo.png deleted" ],
     must_not_find = [ "AtomicClockRadio.ttf" ])
 
 ## ====== Recursive delete all
