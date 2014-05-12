@@ -501,7 +501,8 @@ test_s3cmd("Sync remote2remote", ['sync', '%s/xyz/' % pbucket(1), '%s/copy/' % p
 
 ## ====== Don't Put symbolic link
 test_s3cmd("Don't put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),],
-    must_not_find_re = [ "linked1.png"])
+           retcode = EX_USAGE,
+           must_not_find_re = [ "linked1.png"])
 
 ## ====== Put symbolic link
 test_s3cmd("Put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),'--follow-symlinks' ],
