@@ -1751,7 +1751,7 @@ def gpg_decrypt(filename, gpgenc_header = "", in_place = True):
 def run_configure(config_file, args):
     cfg = Config()
     options = [
-        ("access_key", "Access Key", "Access key and Secret key are your identifiers for Amazon S3"),
+        ("access_key", "Access Key", "Access key and Secret key are your identifiers for Amazon S3. You can enter $AWS_ACCESS_KEY_ID and $AWS_SECRET_ACCESS_KEY for using the env variables."),
         ("secret_key", "Secret Key"),
         ("gpg_passphrase", "Encryption password", "Encryption password is used to protect your files from reading\nby unauthorized persons while in transfer to S3"),
         ("gpg_command", "Path to GPG program"),
