@@ -135,6 +135,11 @@ class Config(object):
 
             if len(self.access_key)==0:
                 self.role_config()
+            else:
+                if self.access_key[0] == '$':
+                    self.access_key = os.environ.get(self.access_key[1:])
+                if self.secret_key[0] == '$':
+                    self.secret_key = os.environ.get(self.secret_key[1:])
 
     def role_config(self):
         if sys.version_info[0] * 10 + sys.version_info[1] < 26:
