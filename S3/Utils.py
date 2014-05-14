@@ -2,6 +2,7 @@
 ## Author: Michal Ludvig <michal@logix.cz>
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
+## Copyright: TGRMN Software and contributors
 
 import datetime
 import os
@@ -15,9 +16,25 @@ import hmac
 import base64
 import errno
 import urllib
-
+from calendar import timegm
 from logging import debug, info, warning, error
-
+from ExitCodes import EX_OSFILE
+try:
+    import dateutil.parser
+except ImportError:
+    sys.stderr.write(u"""
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ImportError trying to import dateutil.parser.
+Please install the python dateutil module:
+$ sudo apt-get install python-dateutil
+  or
+$ sudo yum install python-dateutil
+  or
+$ pip install python-dateutil
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+""")
+    sys.stderr.flush()
+    sys.exit(EX_OSFILE)
 
 import Config
 import Exceptions
@@ -76,6 +93,11 @@ def getTreeFromXml(xml):
     except ExpatError, e:
         error(e)
         raise Exceptions.ParameterError("Bucket contains invalid filenames. Please run: s3cmd fixbucket s3://your-bucket/")
+    except Exception, e:
+        error(e)
+        error(xml)
+        raise
+
 __all__.append("getTreeFromXml")
 
 def getListFromXml(xml, node):
@@ -133,23 +155,22 @@ def appendXmlTextNode(tag_name, text, parent):
 __all__.append("appendXmlTextNode")
 
 def dateS3toPython(date):
-    date = re.compile("(\.\d*)?Z").sub(".000Z", date)
-    return time.strptime(date, "%Y-%m-%dT%H:%M:%S.000Z")
+    # Reset milliseconds to 000
+    date = re.compile('\.[0-9]*(?:[Z\\-\\+]*?)').sub(".000", date)
+    return dateutil.parser.parse(date, fuzzy=True)
 __all__.append("dateS3toPython")
 
 def dateS3toUnix(date):
-    ## FIXME: This should be timezone-aware.
-    ## Currently the argument to strptime() is GMT but mktime()
-    ## treats it as "localtime". Anyway...
-    return time.mktime(dateS3toPython(date))
+    ## NOTE: This is timezone-aware and return the timestamp regarding GMT
+    return timegm(dateS3toPython(date).utctimetuple())
 __all__.append("dateS3toUnix")
 
 def dateRFC822toPython(date):
-    return rfc822.parsedate(date)
+    return dateutil.parser.parse(date, fuzzy=True)
 __all__.append("dateRFC822toPython")
 
 def dateRFC822toUnix(date):
-    return time.mktime(dateRFC822toPython(date))
+    return timegm(dateRFC822toPython(date).utctimetuple())
 __all__.append("dateRFC822toUnix")
 
 def formatSize(size, human_readable = False, floating_point = False):
@@ -166,20 +187,8 @@ def formatSize(size, human_readable = False, floating_point = False):
 __all__.append("formatSize")
 
 def formatDateTime(s3timestamp):
-    try:
-        import pytz
-        timezone = pytz.timezone(os.environ.get('TZ', 'UTC'))
-        tz = pytz.timezone('UTC')
-        ## Can't unpack args and follow that with kwargs in python 2.5
-        ## So we pass them all as kwargs
-        params = zip(('year', 'month', 'day', 'hour', 'minute', 'second', 'tzinfo'),
-                     dateS3toPython(s3timestamp)[0:6] + (tz,))
-        params = dict(params)
-        utc_dt = datetime.datetime(**params)
-        dt_object = utc_dt.astimezone(timezone)
-    except ImportError:
-        dt_object = datetime.datetime(*dateS3toPython(s3timestamp)[0:6])
-    return dt_object.strftime("%Y-%m-%d %H:%M")
+    date_obj = dateutil.parser.parse(s3timestamp, fuzzy=True)
+    return date_obj.strftime("%Y-%m-%d %H:%M")
 __all__.append("formatDateTime")
 
 def convertTupleListToDict(list):
@@ -364,12 +373,13 @@ def sign_url_base(**parms):
     """Shared implementation of sign_url methods. Takes a hash of 'bucket', 'object' and 'expiry' as args."""
     parms['expiry']=time_to_epoch(parms['expiry'])
     parms['access_key']=Config.Config().access_key
+    parms['host_base']=Config.Config().host_base
     debug("Expiry interpreted as epoch time %s", parms['expiry'])
     signtext = 'GET\n\n\n%(expiry)d\n/%(bucket)s/%(object)s' % parms
     debug("Signing plaintext: %r", signtext)
     parms['sig'] = urllib.quote_plus(sign_string(signtext))
     debug("Urlencoded signature: %s", parms['sig'])
-    return "http://%(bucket)s.s3.amazonaws.com/%(object)s?AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s" % parms
+    return "http://%(bucket)s.%(host_base)s/%(object)s?AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s" % parms
 
 def time_to_epoch(t):
     """Convert time specified in a variety of forms into UNIX epoch time.
@@ -478,13 +488,14 @@ def calculateChecksum(buffer, mfile, offset, chunk_size, send_chunk):
 __all__.append("calculateChecksum")
 
 
-# Deal with the fact that pwd and grp modules don't exist for Windos
+# Deal with the fact that pwd and grp modules don't exist for Windows
 try:
     import pwd
     def getpwuid_username(uid):
         """returns a username from the password databse for the given uid"""
         return pwd.getpwuid(uid).pw_name
 except ImportError:
+    import getpass
     def getpwuid_username(uid):
         return getpass.getuser()
 __all__.append("getpwuid_username")

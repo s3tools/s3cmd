@@ -1,3 +1,9 @@
+## Amazon S3 manager
+## Author: Michal Ludvig <michal@logix.cz>
+##         http://www.logix.cz/michal
+## License: GPL Version 2
+## Copyright: TGRMN Software and contributors
+
 import httplib
 from urlparse import urlparse
 from threading import Semaphore
@@ -34,7 +40,7 @@ class ConnMan(object):
         conn = None
         if cfg.proxy_host != "":
             if ssl:
-                raise ParameterError("use_ssl=True can't be used with proxy")
+                raise ParameterError("use_https=True can't be used with proxy")
             conn_id = "proxy://%s:%s" % (cfg.proxy_host, cfg.proxy_port)
         else:
             conn_id = "http%s://%s" % (ssl and "s" or "", hostname)

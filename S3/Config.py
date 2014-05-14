@@ -2,6 +2,7 @@
 ## Author: Michal Ludvig <michal@logix.cz>
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
+## Copyright: TGRMN Software and contributors
 
 import logging
 from logging import debug, info, warning, error
@@ -109,20 +110,29 @@ class Config(object):
     cache_file = ""
     add_headers = ""
     ignore_failed_copy = False
+    expiry_days = ""
+    expiry_date = ""
+    expiry_prefix = ""
 
     ## Creating a singleton
-    def __new__(self, configfile = None):
+    def __new__(self, configfile = None, access_key=None, secret_key=None):
         if self._instance is None:
             self._instance = object.__new__(self)
         return self._instance
 
-    def __init__(self, configfile = None):
+    def __init__(self, configfile = None, access_key=None, secret_key=None):
         if configfile:
             try:
                 self.read_config_file(configfile)
             except IOError, e:
                 if 'AWS_CREDENTIAL_FILE' in os.environ:
                     self.env_config()
+
+            # override these if passed on the command-line
+            if access_key and secret_key:
+                self.access_key = access_key
+                self.secret_key = secret_key
+
             if len(self.access_key)==0:
                 self.role_config()
 
@@ -222,31 +232,43 @@ class Config(object):
     def update_option(self, option, value):
         if value is None:
             return
+
         #### Handle environment reference
         if str(value).startswith("$"):
             return self.update_option(option, os.getenv(str(value)[1:]))
+
         #### Special treatment of some options
         ## verbosity must be known to "logging" module
         if option == "verbosity":
+            # support integer verboisities
             try:
-                setattr(Config, "verbosity", logging._levelNames[value])
-            except KeyError:
-                error("Config: verbosity level '%s' is not valid" % value)
+                value = int(value)
+            except ValueError, e:
+                try:
+                    # otherwise it must be a key known to the logging module
+                    value = logging._levelNames[value]
+                except KeyError:
+                    error("Config: verbosity level '%s' is not valid" % value)
+                    return
+
         ## allow yes/no, true/false, on/off and 1/0 for boolean options
         elif type(getattr(Config, option)) is type(True):   # bool
             if str(value).lower() in ("true", "yes", "on", "1"):
-                setattr(Config, option, True)
+                value = True
             elif str(value).lower() in ("false", "no", "off", "0"):
-                setattr(Config, option, False)
+                value = False
             else:
                 error("Config: value of option '%s' must be Yes or No, not '%s'" % (option, value))
+                return
+
         elif type(getattr(Config, option)) is type(42):     # int
             try:
-                setattr(Config, option, int(value))
+                value = int(value)
             except ValueError, e:
                 error("Config: value of option '%s' must be an integer, not '%s'" % (option, value))
-        else:                           # string
-            setattr(Config, option, value)
+                return
+
+        setattr(Config, option, value)
 
 class ConfigParser(object):
     def __init__(self, file, sections = []):
@@ -304,6 +326,12 @@ class ConfigDumper(object):
     def dump(self, section, config):
         self.stream.write("[%s]\n" % section)
         for option in config.option_list():
-            self.stream.write("%s = %s\n" % (option, getattr(config, option)))
+            value = getattr(config, option)
+            if option == "verbosity":
+                # we turn level numbers back into strings if possible
+                if isinstance(value,int) and value in logging._levelNames:
+                    value = logging._levelNames[value]
+
+            self.stream.write("%s = %s\n" % (option, value))
 
 # vim:et:ts=4:sts=4:ai

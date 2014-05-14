@@ -172,29 +172,50 @@ about matching file names against exclude and include rules.
 For example to exclude all files with \".jpg\" extension except those beginning with a number use:
 .PP
 	\\-\\-exclude '*.jpg' \\-\\-rinclude '[0-9].*\\.jpg'
+.PP
+To exclude all files except \"*.jpg\" extension, use:
+.PP
+	\\-\\-exclude '*' \\-\\-include '*.jpg'
+.PP
+To exclude local directory 'somedir', be sure to use a trailing forward slash, as such:
+.PP
+	\\-\\-exclude 'somedir/'
+.PP
+
 .SH SEE ALSO
-For the most up to date list of options run 
+For the most up to date list of options run: 
 .B s3cmd \\-\\-help
 .br
-For more info about usage, examples and other related info visit project homepage at
-.br
+For more info about usage, examples and other related info visit project homepage at:
 .B http://s3tools.org
 .SH DONATIONS
 Please consider a donation if you have found s3cmd useful:
 .br
 .B http://s3tools.org/donate
 .SH AUTHOR
-Written by Michal Ludvig <mludvig\@logix.net.nz> and 15+ contributors
+Written by Michal Ludvig and contributors
 .SH CONTACT, SUPPORT
 Preferred way to get support is our mailing list:
+.br
 .I s3tools\\-general\@lists.sourceforge.net
+.br
+or visit the project homepage:
+.br
+.B http://s3tools.org
 .SH REPORTING BUGS
 Report bugs to 
 .I s3tools\\-bugs\@lists.sourceforge.net
 .SH COPYRIGHT
-Copyright \\(co 2007,2008,2009,2010,2011,2012 Michal Ludvig <http://www.logix.cz/michal>
+Copyright \\(co 2007-2014 TGRMN Software - http://www.tgrmn.com - and contributors
 .br
-This is free software.  You may redistribute copies of it under the terms of
-the GNU General Public License version 2 <http://www.gnu.org/licenses/gpl.html>.
-There is NO WARRANTY, to the extent permitted by law.
+.SH LICENSE
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+.br
 ";

@@ -2,6 +2,7 @@
 ## Author: Michal Ludvig <michal@logix.cz>
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
+## Copyright: TGRMN Software and contributors
 
 from BidirMap import BidirMap
 import Utils
@@ -46,6 +47,12 @@ class SortedDict(dict):
     def __iter__(self):
         return SortedDictIterator(self, self.keys())
 
+    def __getslice__(self, i=0, j=-1):
+        keys = self.keys()[i:j]
+        r = SortedDict(ignore_case = self.ignore_case)
+        for k in keys:
+            r[k] = self[k]
+        return r
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@
 
 Name:           s3cmd
 Version:        ##VERSION##
-Release:        0.3.git%{shortcommit}%{?dist}
+Release:        0.4.git%{shortcommit}%{?dist}
 Summary:        Tool for accessing Amazon Simple Storage Service
 
 Group:          Applications/Internet
@@ -14,6 +14,7 @@ URL:            http://s3tools.logix.cz/s3cmd
 # git clone  git@github.com:mdomsch/s3cmd.git
 # git checkout -b origin/merge
 #git archive --format tar --prefix s3cmd-1.1.0-beta3-2dfe4a65/ HEAD | gzip -c > s3cmd-1.1.0-beta1-2dfe4a65.tar.gz
+# or use python setup.py sdist
 
 Source0:        https://github.com/s3tools/s3cmd/archive/%{commit}/%{name}-%{version}-%{shortcommit}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -26,8 +27,11 @@ BuildRequires:  python2-devel
 %endif
 %if %{!?fedora:8}%{?fedora} < 8 || %{!?rhel:6}%{?rhel} < 6
 # This is in standard library since 2.5
+BuildRequires:  python-elementtree
 Requires:       python-elementtree
 %endif
+BuildRequires:  python-dateutil
+Requires:       python-dateutil
 
 %description
 S3cmd lets you copy files from/to Amazon S3
@@ -64,6 +68,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Sun Mar 23 2014 Matt Domsch <mdomsch@fedoraproject.org> - 1.5.0-0.4.git
+- upstream 1.5.0-beta1 plus even newer upstream fixes
+
 * Sun Feb 02 2014 Matt Domsch <mdomsch@fedoraproject.org> - 1.5.0-0.3.git
 - upstream 1.5.0-beta1 plus newer upstream fixes
 
