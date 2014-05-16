@@ -134,12 +134,13 @@ class Config(object):
                 self.secret_key = secret_key
 
             if len(self.access_key)==0:
-                self.role_config()
-            else:
-                if self.access_key[0] == '$':
-                    self.access_key = os.environ.get(self.access_key[1:])
-                if self.secret_key[0] == '$':
-                    self.secret_key = os.environ.get(self.secret_key[1:])
+                env_access_key = os.environ.get("AWS_ACCESS_KEY_ID", None)
+                env_secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
+                if env_access_key:
+                    self.access_key = env_access_key
+                    self.secret_key = env_secret_key
+                else:
+                    self.role_config()
 
     def role_config(self):
         if sys.version_info[0] * 10 + sys.version_info[1] < 26:
