@@ -276,34 +276,6 @@ def cmd_expiration_set(args):
             raise
     return EX_OK
 
-def cmd_setlifecyclepolicy(args):
-    s3 = S3(cfg)
-    uri = S3Uri(args[1])
-    lifecycle_policy_file = args[0]
-    lifecycle_policy = open(lifecycle_policy_file, 'r').read()
-
-    if cfg.dry_run: return EX_OK
-
-    response = s3.set_lifecycle_policy(uri, lifecycle_policy)
-
-    #if retsponse['status'] == 200:
-    debug(u"response - %s" % response['status'])
-    if response['status'] == 204:
-        output(u"%s: Lifecycle policy updated" % uri)
-    return EX_OK
-
-def cmd_delpolicy(args):
-    s3 = S3(cfg)
-    uri = S3Uri(args[0])
-    if cfg.dry_run: return EX_OK
-
-    response = s3.delete_lifecycle_policy(uri)
-
-    #if retsponse['status'] == 200:
-    debug(u"response - %s" % response['status'])
-    output(u"%s: Lifecycle policy deleted" % uri)
-    return EX_OK
-
 def cmd_bucket_delete(args):
     def _bucket_delete_one(uri):
         try:
@@ -1585,7 +1557,6 @@ def cmd_setlifecycle(args):
 
     response = s3.set_lifecycle_policy(uri, lifecycle_policy)
 
-    #if retsponse['status'] == 200:
     debug(u"response - %s" % response['status'])
     if response['status'] == 204:
         output(u"%s: Lifecycle Policy updated" % uri)
@@ -1598,7 +1569,6 @@ def cmd_dellifecycle(args):
 
     response = s3.delete_lifecycle_policy(uri)
 
-    #if retsponse['status'] == 200:
     debug(u"response - %s" % response['status'])
     output(u"%s: Lifecycle Policy deleted" % uri)
     return EX_OK
