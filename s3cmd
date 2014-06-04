@@ -1403,7 +1403,7 @@ def cmd_sync_local2remote(args):
 
         # Only print out the result if any work has been done or
         # if the user asked for verbose output
-        outstr = "Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s.  Copied %d files saving %d bytes transfer." % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1], n_copies, saved_bytes)
+        outstr = "Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s. Copied %d files saving %d bytes transfer." % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1], n_copies, saved_bytes)
         if total_size + saved_bytes > 0:
             output(outstr)
         else:
