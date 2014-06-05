@@ -381,7 +381,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
             rem_list[key] = {
                 'size' : int(object['Size']),
                 'timestamp' : dateS3toUnix(object['LastModified']), ## Sadly it's upload time, not our lastmod time :-(
-                'md5' : object['ETag'][1:-1],
+                'md5' : object['ETag'].strip('"\''),
                 'object_key' : object['Key'],
                 'object_uri_str' : object_uri_str,
                 'base_uri' : remote_uri,
