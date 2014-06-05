@@ -388,7 +388,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
                 'dev' : None,
                 'inode' : None,
             }
-            if rem_list[key]['md5'].find("-") > 0: # always get it for multipart uploads
+            if '-' in rem_list[key]['md5']: # always get it for multipart uploads
                 _get_remote_attribs(S3Uri(object_uri_str), rem_list[key])
             md5 = rem_list[key]['md5']
             rem_list.record_md5(key, md5)
@@ -478,7 +478,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
         compare_md5 = 'md5' in cfg.sync_checks
         # Multipart-uploaded files don't have a valid md5 sum - it ends with "...-nn"
         if compare_md5:
-            if (src_remote == True and src_list[file]['md5'].find("-") >= 0) or (dst_remote == True and dst_list[file]['md5'].find("-") >= 0):
+            if (src_remote == True and '-' in src_list[file]['md5']) or (dst_remote == True and '-' in dst_list[file]['md5']):
                 compare_md5 = False
                 info(u"disabled md5 check for %s" % file)
         if attribs_match and compare_md5:
