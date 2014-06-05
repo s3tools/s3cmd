@@ -147,7 +147,7 @@ class MultiPartUpload(object):
         if remote_status is not None:
             if int(remote_status['size']) == chunk_size:
                 checksum = calculateChecksum(buffer, self.file, offset, chunk_size, self.s3.config.send_chunk)
-                remote_checksum = remote_status['checksum'].strip('"')
+                remote_checksum = remote_status['checksum'].strip('"\'')
                 if remote_checksum == checksum:
                     warning("MultiPart: size and md5sum match for %s part %d, skipping." % (self.uri, seq))
                     self.parts[seq] = remote_status['checksum']

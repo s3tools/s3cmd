@@ -173,7 +173,7 @@ def subcmd_bucket_list(s3, uri):
             "uri": uri.compose_uri(bucket, prefix["Prefix"])})
 
     for object in response["list"]:
-        md5 = object['ETag'].strip('"')
+        md5 = object['ETag'].strip('"\'')
         if cfg.list_md5:
             if md5.find('-') >= 0: # need to get md5 from the object
                 object_uri = uri.compose_uri(bucket, object["Key"])
@@ -775,7 +775,7 @@ def cmd_info(args):
                 output(u"   File size: %s" % info['headers']['content-length'])
                 output(u"   Last mod:  %s" % info['headers']['last-modified'])
                 output(u"   MIME type: %s" % info['headers']['content-type'])
-                md5 = info['headers']['etag'].strip('"')
+                md5 = info['headers']['etag'].strip('"\'')
                 try:
                     md5 = info['s3cmd-attrs']['md5']
                 except KeyError:

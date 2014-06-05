@@ -528,7 +528,7 @@ class S3(object):
 
             if info is not None:
                 remote_size = int(info['headers']['content-length'])
-                remote_checksum = info['headers']['etag'].strip('"')
+                remote_checksum = info['headers']['etag'].strip('"\'')
                 if size == remote_size:
                     checksum = calculateChecksum('', file, 0, size, self.config.send_chunk)
                     if remote_checksum == checksum:
