@@ -159,11 +159,11 @@ class ACL(object):
         grantee.name = name
         grantee.permission = permission
 
-        if  name.find('@') > -1:
+        if  '@' in name:
             grantee.name = grantee.name.lower()
             grantee.xsi_type = "AmazonCustomerByEmail"
             grantee.tag = "EmailAddress"
-        elif name.find('http://acs.amazonaws.com/groups/') > -1:
+        elif 'http://acs.amazonaws.com/groups/' in name:
             grantee.xsi_type = "Group"
             grantee.tag = "URI"
         else:

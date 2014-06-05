@@ -175,7 +175,7 @@ def subcmd_bucket_list(s3, uri):
     for object in response["list"]:
         md5 = object['ETag'].strip('"\'')
         if cfg.list_md5:
-            if md5.find('-') >= 0: # need to get md5 from the object
+            if '-' in md5.find('-'): # need to get md5 from the object
                 object_uri = uri.compose_uri(bucket, object["Key"])
                 info_response = s3.object_info(S3Uri(object_uri))
                 try:

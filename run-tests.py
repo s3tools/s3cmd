@@ -90,7 +90,7 @@ if not os.path.isdir('testsuite/crappy-file-name'):
 def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = []):
     def command_output():
         print "----"
-        print " ".join([arg.find(" ")>=0 and "'%s'" % arg or arg for arg in cmd_args])
+        print " ".join([" " in arg and "'%s'" % arg or arg for arg in cmd_args])
         print "----"
         print stdout
         print "----"
@@ -245,7 +245,7 @@ while argv:
             print "Bucket prefix option must explicitly supply a bucket name prefix"
             sys.exit(0)
         continue
-    if arg.find("..") >= 0:
+    if ".." in arg:
         range_idx = arg.find("..")
         range_start = arg[:range_idx] or 0
         range_end = arg[range_idx+2:] or 999

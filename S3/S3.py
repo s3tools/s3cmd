@@ -61,7 +61,7 @@ try:
             return magic_.file(file)
 
 except ImportError, e:
-    if str(e).find("magic") >= 0:
+    if 'magic' in str(e):
         magic_message = "Module python-magic is not available."
     else:
         magic_message = "Module python-magic can't be used (%s)." % e.message
@@ -439,7 +439,7 @@ class S3(object):
         return (request, body)
 
     def add_encoding(self, filename, content_type):
-        if content_type.find("charset=") != -1:
+        if 'charset=' in content_type:
            return False
         exts = self.config.add_encoding_exts.split(',')
         if exts[0]=='':
@@ -1170,7 +1170,7 @@ class S3(object):
             except KeyError:
                 pass
 
-        response["md5match"] = md5_hash.find(response["md5"]) >= 0
+        response["md5match"] = response["md5"] in md5_hash
         response["elapsed"] = timestamp_end - timestamp_start
         response["size"] = current_position
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
