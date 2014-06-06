@@ -17,6 +17,7 @@ from xml.sax import saxutils
 import base64
 from logging import debug, info, warning, error
 from stat import ST_SIZE
+import urllib2
 
 try:
     from hashlib import md5
@@ -1170,6 +1171,7 @@ class S3(object):
 __all__.append("S3")
 
 def parse_attrs_header(attrs_header):
+    attrs_header = urllib2.unquote(attrs_header)
     attrs = {}
     for attr in attrs_header.split("/"):
         key, val = attr.split(":")
