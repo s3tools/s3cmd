@@ -1054,6 +1054,8 @@ class S3(object):
             raise
         except (IOError, OSError), e:
             raise
+        except ValueError, e:
+            raise
         except Exception, e:
             if self.config.progress_meter:
                 progress.done("failed")
