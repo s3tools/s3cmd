@@ -21,7 +21,7 @@ import copy
 import re
 import errno
 
-__all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists"]
+__all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists", "fetch_bucket_versions"]
 
 def _fswalk_follow_symlinks(path):
     '''
@@ -455,6 +455,27 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
     remote_list, exclude_list = filter_exclude_include(remote_list)
     return remote_list, exclude_list
 
+def fetch_bucket_versions(uri_str):
+    def _get_base_object_dict(remote_uri, key, version_id):
+        object_uri_str = remote_uri + key
+        return {
+            'object_key' : key,
+            'object_uri_str' : object_uri_str,
+            'base_uri' : remote_uri,
+            'version_id' : version_id
+            }
+
+    uri = S3Uri(uri_str)
+    if not uri.type == 's3':
+        raise ParameterError("Expecting S3 URI instead of '%s'" % arg)
+    bucket = uri.bucket()
+    s3 = S3(Config())
+    response = s3.bucket_versions(bucket)
+    rem_list = []
+    remote_uri = u's3://%s/' % bucket
+    for object in response["Version"] + response["DeleteMarker"]:
+        rem_list.append(_get_base_object_dict(remote_uri, object["Key"], object["VersionId"]))
+    return rem_list
 
 def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates = False):
     def __direction_str(is_remote):
