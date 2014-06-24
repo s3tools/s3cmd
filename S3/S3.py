@@ -579,7 +579,8 @@ class S3(object):
         request_body = compose_batch_del_xml(bucket, batch)
         md5_hash = md5()
         md5_hash.update(request_body)
-        headers = {'content-md5': base64.b64encode(md5_hash.digest())}
+        headers = {'content-md5': base64.b64encode(md5_hash.digest()),
+                   'content-type': 'application/xml'}
         request = self.create_request("BATCH_DELETE", bucket = bucket, extra = '?delete', headers = headers)
         response = self.send_request(request, request_body)
         return response
@@ -652,10 +653,13 @@ class S3(object):
         return acl
 
     def set_acl(self, uri, acl):
+        headers = {'content-type': 'application/xml'}
         if uri.has_object():
-            request = self.create_request("OBJECT_PUT", uri = uri, extra = "?acl")
+            request = self.create_request("OBJECT_PUT", uri = uri, extra = "?acl",
+                                          headers = headers)
         else:
-            request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(), extra = "?acl")
+            request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(), extra = "?acl",
+                                          headers = headers)
 
         body = str(acl)
         debug(u"set_acl(%s): acl-xml: %s" % (uri, body))
