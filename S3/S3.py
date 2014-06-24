@@ -685,6 +685,23 @@ class S3(object):
         response = self.send_request(request)
         return response
 
+    def set_lifecycle_policy(self, uri, policy):
+        headers = SortedDict(ignore_case = True)
+        headers['content-md5'] = compute_content_md5(policy)
+        request = self.create_request("BUCKET_CREATE", uri = uri,
+                                      extra = "?lifecycle", headers=headers)
+        body = policy
+        debug(u"set_lifecycle_policy(%s): policy-xml: %s" % (uri, body))
+        request.sign()
+        response = self.send_request(request, body=body)
+        return response
+
+    def delete_lifecycle_policy(self, uri):
+        request = self.create_request("BUCKET_DELETE", uri = uri, extra = "?lifecycle")
+        debug(u"delete_lifecycle_policy(%s)" % uri)
+        response = self.send_request(request)
+        return response
+
     def get_multipart(self, uri):
         request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?uploads")
         response = self.send_request(request)

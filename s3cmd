@@ -1547,6 +1547,32 @@ def cmd_delpolicy(args):
     output(u"%s: Policy deleted" % uri)
     return EX_OK
 
+def cmd_setlifecycle(args):
+    s3 = S3(cfg)
+    uri = S3Uri(args[1])
+    lifecycle_policy_file = args[0]
+    lifecycle_policy = open(lifecycle_policy_file, 'r').read()
+
+    if cfg.dry_run: return EX_OK
+
+    response = s3.set_lifecycle_policy(uri, lifecycle_policy)
+
+    debug(u"response - %s" % response['status'])
+    if response['status'] == 204:
+        output(u"%s: Lifecycle Policy updated" % uri)
+    return EX_OK
+
+def cmd_dellifecycle(args):
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+    if cfg.dry_run: return EX_OK
+
+    response = s3.delete_lifecycle_policy(uri)
+
+    debug(u"response - %s" % response['status'])
+    output(u"%s: Lifecycle Policy deleted" % uri)
+    return EX_OK
+
 def cmd_multipart(args):
     s3 = S3(cfg)
     uri = S3Uri(args[0])
@@ -1979,6 +2005,8 @@ def get_commands_list():
 
     ## Lifecycle commands
     {"cmd":"expire", "label":"Set or delete expiration rule for the bucket", "param":"s3://BUCKET", "func":cmd_expiration_set, "argc":1},
+    {"cmd":"setlifecycle", "label":"Upload a lifecycle policy for the bucket", "param":"s3://BUCKET", "func":cmd_setlifecycle, "argc":1},
+    {"cmd":"dellifecycle", "label":"Remove a lifecycle policy for the bucket", "param":"s3://BUCKET", "func":cmd_dellifecycle, "argc":1},
 
     ## CloudFront commands
     {"cmd":"cflist", "label":"List CloudFront distribution points", "param":"", "func":CfCmd.info, "argc":0},
