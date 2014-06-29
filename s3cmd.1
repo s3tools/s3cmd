@@ -43,6 +43,9 @@ Get file from bucket
 s3cmd \fBdel\fR \fIs3://BUCKET/OBJECT\fR
 Delete file from bucket
 .TP
+s3cmd \fBrm\fR \fIs3://BUCKET/OBJECT\fR
+Delete file from bucket (alias for del)
+.TP
 s3cmd \fBrestore\fR \fIs3://BUCKET/OBJECT\fR
 Restore file from Glacier storage
 .TP
@@ -96,6 +99,12 @@ Fix invalid file names in a bucket
 .TP
 s3cmd \fBexpire\fR \fIs3://BUCKET\fR
 Set or delete expiration rule for the bucket
+.TP
+s3cmd \fBsetlifecycle\fR \fIs3://BUCKET\fR
+Upload a lifecycle policy for the bucket
+.TP
+s3cmd \fBdellifecycle\fR \fIs3://BUCKET\fR
+Remove a lifecycle policy for the bucket
 
 
 .PP
@@ -152,7 +161,7 @@ to a specific bucket instead of attempting to list
 them all.
 .TP
 \fB\-c\fR FILE, \fB\-\-config\fR=FILE
-Config file name. Defaults to /home/user/.s3cfg
+Config file name. Defaults to /home/mludvig/.s3cfg
 .TP
 \fB\-\-dump\-config\fR
 Dump current configuration after parsing config files
@@ -452,7 +461,7 @@ Enable verbose output.
 Enable debug output.
 .TP
 \fB\-\-version\fR
-Show s3cmd version (1.5.0-beta1) and exit.
+Show s3cmd version (1.5.0-rc1) and exit.
 .TP
 \fB\-F\fR, \fB\-\-follow\-symlinks\fR
 Follow symbolic links as if they are regular files
