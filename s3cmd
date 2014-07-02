@@ -2528,7 +2528,7 @@ if __name__ == '__main__':
 
     except ImportError, e:
         report_exception(e)
-        sys.exit(EX_GENERAL)
+        sys.exit(1)
 
     except (ParameterError, InvalidFileError), e:
         error(u"Parameter problem: %s" % e)
