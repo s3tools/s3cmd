@@ -2435,14 +2435,10 @@ def main():
         error(u"Not enough parameters for command '%s'" % command)
         sys.exit(EX_USAGE)
 
-    try:
-        rc = cmd_func(args)
-        if rc is None: # if we missed any cmd_*() returns
-            rc = EX_GENERAL
-        return rc
-    except S3Error, e:
-        error(u"S3 error: %s" % e)
-        sys.exit(EX_SOFTWARE)
+    rc = cmd_func(args)
+    if rc is None: # if we missed any cmd_*() returns
+        rc = EX_GENERAL
+    return rc
 
 def report_exception(e, msg=''):
         sys.stderr.write(u"""
@@ -2533,7 +2529,11 @@ if __name__ == '__main__':
         error(u"S3 Temporary Error: %s.  Please try again later." % e)
         sys.exit(EX_TEMPFAIL)
 
-    except (S3Error, S3Exception, S3ResponseError, CloudFrontError), e:
+    except S3Error, e:
+        error(u"S3 error: %s" % e)
+        sys.exit(e.get_error_code())
+
+    except (S3Exception, S3ResponseError, CloudFrontError), e:
         report_exception(e)
         sys.exit(EX_SOFTWARE)
 
