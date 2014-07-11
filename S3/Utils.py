@@ -511,7 +511,11 @@ except ImportError:
 
 __all__.append("getgrgid_grpname")
 
-
+def resolve_list(lst, args):
+    retval = []
+    for item in lst:
+        retval.append(item % args)
+    return retval
 
 # vim:et:ts=4:sts=4:ai
 

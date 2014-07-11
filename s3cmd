@@ -371,7 +371,16 @@ def cmd_object_put(args):
         full_name = full_name_orig
         seq_label = "[%d of %d]" % (seq, local_count)
         if Config().encrypt:
+<<<<<<< HEAD
             gpg_exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
+=======
+            if key == "-" :
+                extra_headers["x-amz-meta-s3tools-gpgenc"]="gpg"
+                #raise ParameterError("Cannot encrypt before uploading from stdin")
+                #deal with it later
+            else:
+                gpg_exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
+>>>>>>> e650499... Started adding gpg streaming encryption
         if cfg.preserve_attrs or local_list[key]['size'] > (cfg.multipart_chunk_size_mb * 1024 * 1024):
             attr_header = _build_attr_header(local_list, key)
             debug(u"attr_header: %s" % attr_header)
@@ -1727,11 +1736,6 @@ def cmd_fixbucket(args):
         warning("them publicly readable if required.")
     return EX_OK
 
-def resolve_list(lst, args):
-    retval = []
-    for item in lst:
-        retval.append(item % args)
-    return retval
 
 def gpg_command(command, passphrase = ""):
     debug("GPG command: " + " ".join(command))
