@@ -74,7 +74,7 @@ class Config(object):
     delay_updates = False
     gpg_passphrase = ""
     gpg_command = "/usr/bin/gpg"
-    gpg_stream  = "%(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase %(passphrase)s"    
+    gpg_stream  = "%(gpg_command)s -c -a --verbose --no-use-agent --batch --yes --passphrase %(passphrase)s"
     gpg_encrypt = "%(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
     gpg_decrypt = "%(gpg_command)s -d --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
     use_https = False

@@ -125,49 +125,37 @@ class MultiPartUpload(object):
                 }
                 info(u"Encrypting stdin...")
                 command = resolve_list(self.s3.config.gpg_stream.split(" "), args)
-
                 debug("GPG command: " + " ".join(command))
-                p = subprocess.Popen(command, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.STDOUT, bufsize=self.chunk_size)
-                
-                while True:
-                    #print self.file
-                    buffer = self.file.read(self.chunk_size)
-                    offset = self.chunk_size * (seq - 1)
-                    current_chunk_size = len(buffer)
-                    labels = {
-                        'source' : unicodise(self.file.name),
-                        'destination' : unicodise(self.uri.uri()),
-                        'extra' : "[part %d, %s]" % (seq, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
-                    }
-                    if len(buffer) == 0: # EOF
-                        break
-                    try:
-                        self.upload_part(seq, offset, current_chunk_size, labels, buffer, remote_status = remote_statuses.get(seq))
-                    except:
-                        error(u"\nUpload of '%s' part %d failed. Use\n  %s abortmp %s %s\nto abort, or\n  %s --upload-id %s put ...\nto continue the upload."
-                              % (self.file.name, seq, self.uri, sys.argv[0], self.upload_id, sys.argv[0], self.upload_id))
-                        raise
-                    seq += 1
-                
+                p = subprocess.Popen(command, stdin = sys.stdin, stdout = subprocess.PIPE)
+                stream=p.stdout
             else:
-                while True:
-                    buffer = self.file.read(self.chunk_size)
-                    offset = self.chunk_size * (seq - 1)
-                    current_chunk_size = len(buffer)
-                    labels = {
-                        'source' : unicodise(self.file.name),
-                        'destination' : unicodise(self.uri.uri()),
-                        'extra' : "[part %d, %s]" % (seq, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
-                    }
-                    if len(buffer) == 0: # EOF
+                stream=self.file
+            cont = True
+            while cont:
+                buffer = stream.read(self.chunk_size)
+                offset = self.chunk_size * (seq - 1)
+                current_chunk_size = len(buffer)
+                labels = {
+                    'source' : unicodise(self.file.name),
+                    'destination' : unicodise(self.uri.uri()),
+                    'extra' : "[part %d, %s]" % (seq, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
+                }
+                if len(buffer) == 0: # EOF
+                    if self.s3.config.encrypt == True:
+                        p.wait()
+                        buffer=stream.read()
+                        cont=False
+                        if len(buffer) ==0:
+                            break;
+                    else:
                         break
-                    try:
-                        self.upload_part(seq, offset, current_chunk_size, labels, buffer, remote_status = remote_statuses.get(seq))
-                    except:
-                        error(u"\nUpload of '%s' part %d failed. Use\n  %s abortmp %s %s\nto abort, or\n  %s --upload-id %s put ...\nto continue the upload."
-                              % (self.file.name, seq, self.uri, sys.argv[0], self.upload_id, sys.argv[0], self.upload_id))
-                        raise
-                    seq += 1
+                try:
+                    self.upload_part(seq, offset, current_chunk_size, labels, buffer, remote_status = remote_statuses.get(seq))
+                except:
+                    error(u"\nUpload of '%s' part %d failed. Use\n  %s abortmp %s %s\nto abort, or\n  %s --upload-id %s put ...\nto continue the upload."
+                          % (self.file.name, seq, self.uri, sys.argv[0], self.upload_id, sys.argv[0], self.upload_id))
+                    raise
+                seq += 1
 
         debug("MultiPart: Upload finished: %d parts", seq - 1)
 
