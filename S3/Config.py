@@ -132,6 +132,8 @@ class Config(object):
     extra_headers = SortedDict(ignore_case = True)
     force = False
     server_side_encryption = False
+    sse_customer_key = ""
+    sse_copy_source_customer_key = ""
     enable = None
     get_continue = False
     put_continue = False
@@ -293,6 +295,10 @@ class Config(object):
                 warning('Cannot have server_side_encryption (S3 SSE) and KMS_key set (S3 KMS). KMS encryption will be used. Please set server_side_encryption to False')
             if self.kms_key and self.signature_v2 == True:
                 raise Exception('KMS encryption requires signature v4. Please set signature_v2 to False')
+            if self.sse_customer_key and len(self.sse_customer_key) != 32:
+                raise Exception('sse-customer-key must be 32 characters')
+            if self.sse_copy_source_customer_key and len(self.sse_copy_source_customer_key) != 32:
+                raise Exception('sse_copy_source_customer_key must be 32 characters')
 
     def role_config(self):
         """

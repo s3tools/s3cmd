@@ -531,6 +531,8 @@ def cmd_object_get(args):
 
     remote_count = len(remote_list)
 
+    extra_headers = copy(cfg.extra_headers)
+
     info(u"Summary: %d remote files to download" % remote_count)
 
     if remote_count > 0:
@@ -618,7 +620,7 @@ def cmd_object_get(args):
 
         try:
             try:
-                response = s3.object_get(uri, dst_stream, destination, start_position = start_position, extra_label = seq_label)
+                response = s3.object_get(uri, dst_stream, destination, extra_headers, start_position = start_position, extra_label = seq_label)
             finally:
                 dst_stream.close()
         except S3DownloadError as e:
@@ -1341,6 +1343,7 @@ def cmd_sync_remote2local(args):
     def _download(remote_list, seq, total, total_size, dir_cache):
         original_umask = os.umask(0)
         os.umask(original_umask)
+        extra_headers = copy(cfg.extra_headers)
         file_list = remote_list.keys()
         file_list.sort()
         ret = EX_OK
@@ -1375,7 +1378,7 @@ def cmd_sync_remote2local(args):
                     with io.open(chkptfd, mode='wb') as dst_stream:
                         dst_stream.stream_name = unicodise(chkptfname_b)
                         debug(u"created chkptfname=%s" % dst_stream.stream_name)
-                        response = s3.object_get(uri, dst_stream, dst_file, extra_label = seq_label)
+                        response = s3.object_get(uri, dst_stream, dst_file, extra_headers, extra_label = seq_label)
 
                     # download completed, rename the file to destination
                     if os.name == "nt":
@@ -1920,6 +1923,15 @@ def cmd_sync_local2remote(args):
         error(u"or disable encryption with --no-encrypt parameter.")
         sys.exit(EX_USAGE)
 
+    # Disable md5 checks if using SSE-C. Add mtime check
+    if cfg.sse_customer_key or cfg.sse_copy_source_customer_key:
+        try:
+            cfg.sync_checks.remove("md5")
+        except Exception:
+            pass
+        if cfg.sync_checks.count("mtime") == 0:
+            cfg.sync_checks.append("mtime")
+
     for arg in args[:-1]:
         if not os.path.exists(deunicodise(arg)):
             raise ParameterError("Invalid source: '%s' is not an existing file or directory" % arg)
@@ -2365,6 +2377,8 @@ def run_configure(config_file, args):
         ("gpg_passphrase", "Encryption password", "Encryption password is used to protect your files from reading\nby unauthorized persons while in transfer to S3"),
         ("gpg_command", "Path to GPG program"),
         ("use_https", "Use HTTPS protocol", "When using secure HTTPS protocol all communication with Amazon S3\nservers is protected from 3rd party eavesdropping. This method is\nslower than plain HTTP, and can only be proxied with Python 2.7 or newer"),
+        ("sse_customer_key", "Encryption key for server-side-encryption with customer key.\nMust be 32 characters"),
+        ("sse_copy_source_customer_key", "Encryption key for server-side-encryption with customer key.\nMust be 32 characters"),
         ("proxy_host", "HTTP Proxy server name", "On some networks all internet access must go through a HTTP proxy.\nTry setting it here if you can't connect to S3 directly"),
         ("proxy_port", "HTTP Proxy server port"),
         ]
@@ -2804,6 +2818,8 @@ def main():
 
     optparser.add_option(      "--server-side-encryption", dest="server_side_encryption", action="store_true", help="Specifies that server-side encryption will be used when putting objects. [put, sync, cp, modify]")
     optparser.add_option(      "--server-side-encryption-kms-id", dest="kms_key", action="store", help="Specifies the key id used for server-side encryption with AWS KMS-Managed Keys (SSE-KMS) when putting objects. [put, sync, cp, modify]")
+    optparser.add_option(      "--sse-customer-key", dest="sse_customer_key", action="store", metavar="12345678901234567890123456789012", help="Specifies a customer provided key for server-side encryption. Must be 32 character string.")
+    optparser.add_option(      "--sse-copy-source-customer-key", dest="sse_copy_source_customer_key", action="store", metavar="12345678901234567890123456789012", help="Specifies the encryption key for copying or moving objects with a customer provided key for server-side encryption.")
 
     optparser.add_option(      "--encoding", dest="encoding", metavar="ENCODING", help="Override autodetected terminal and filesystem encoding (character set). Autodetected: %s" % autodetected_encoding)
     optparser.add_option(      "--add-encoding-exts", dest="add_encoding_exts", metavar="EXTENSIONs", help="Add encoding to these comma delimited extensions i.e. (css,js,html) when uploading to S3 )")

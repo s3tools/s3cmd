@@ -417,6 +417,14 @@ Specifies the key id used for server\-side encryption
 with AWS KMS\-Managed Keys (SSE\-KMS) when putting
 objects. [put, sync, cp, modify]
 .TP
+\fB\-\-sse\-customer\-key\fR=12345678901234567890123456789012
+Specifies a customer key for server-side encryption, to be used
+when putting objects. Must be 32 characters.
+.TP
+\fB\-\-sse\-copy\-source\-customer\-key\fR=12345678901234567890123456789012
+Specifies the key for copying objects with server-side
+encryption customer key. Must be 32 characters.
+.TP
 \fB\-\-encoding\fR=ENCODING
 Override autodetected terminal and filesystem encoding
 (character set). Autodetected: UTF\-8

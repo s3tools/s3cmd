@@ -743,6 +743,24 @@ test_s3cmd("Simple delete", ['del', '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
 test_s3cmd("Simple delete with rm", ['rm', '%s/xyz/test_rm/TypeRa.ttf' % pbucket(1)],
     must_find = [ "delete: '%s/xyz/test_rm/TypeRa.ttf'" % pbucket(1) ])
 
+## ====== Check SSE-C encrypted object upload
+test_s3cmd("Put server-side encrypted object", ['put', 'testsuite/demo/some-file.xml', 's3://%s/xyz/demo/some-file.xml' % bucket(1), '--sse-customer-key=12345678901234567890123456789012'],
+    retcode=0,
+    must_find=["upload: 'testsuite/demo/some-file.xml' -> '%s/xyz/demo/some-file.xml'" % pbucket(1)])
+
+## ====== Check SSE-C encrypted object wrong passphrase
+test_s3cmd("Get server-side encrypted object with wrong passphrase", ['get', u'%s/xyz/demo/some-file.xml' % pbucket(1), 'testsuite-out', '--sse-customer-key=11111111111111111111111111111111'],
+           retcode = EX_SERVERERROR,
+           must_find = [ "The calculated MD5 hash of the key did not match" ])
+
+## ====== Check SSE-C encrypted object download
+test_s3cmd("Get server-side encrypted object", ['get', u'%s/xyz/demo/some-file.xml' % pbucket(1), 'testsuite-out', '--sse-customer-key=12345678901234567890123456789012'],
+           retcode = 0,
+           must_find = [ "-> 'testsuite-out/some-file.xml'" ])
+
+## ====== Clean up local destination dir
+test_flushdir("Clean testsuite-out/", "testsuite-out")
+
 ## ====== Create expiration rule with days and prefix
 # Minio: disabled
 #test_s3cmd("Create expiration rule with days and prefix", ['expire', pbucket(1), '--expiry-days=365', '--expiry-prefix=log/'],

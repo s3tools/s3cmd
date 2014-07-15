@@ -552,6 +552,23 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
                 attribs_match = False
                 debug(u"XFER: %s (md5 mismatch: src=%s dst=%s)" % (file, src_md5, dst_md5))
 
+        # Check mtime. This compares local mtime to the upload time of remote file
+        compare_mtime = 'mtime' in cfg.sync_checks
+        if attribs_match and compare_mtime:
+            try:
+                src_mtime = src_list[file]['mtime']
+                dst_mtime = dst_list[file]['timestamp']
+            except (IOError,OSError):
+                # mtime sum verification failed - ignore that file altogether
+                debug(u"IGNR: %s (disappeared)" % (file))
+                warning(u"%s: file disappeared, ignoring." % (file))
+                raise
+
+            if src_mtime > dst_mtime:
+                ## checksums are different.
+                attribs_match = False
+                debug(u"XFER: %s (mtime newer than last upload: src=%s dst=%s)" % (file, src_mtime, dst_mtime))
+
         return attribs_match
 
     # we don't support local->local sync, use 'rsync' or something like that instead ;-)
