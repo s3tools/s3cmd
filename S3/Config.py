@@ -38,6 +38,7 @@ class Config(object):
     extra_headers = SortedDict(ignore_case = True)
     force = False
     server_side_encryption = False
+    sse_customer_key = None
     enable = None
     get_continue = False
     put_continue = False

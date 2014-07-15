@@ -1019,7 +1019,7 @@ class S3(object):
             raise S3Error(response)
 
         debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
-        if response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
+        if self.config.sse_customer_key is None and response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
             warning("MD5 Sums don't match!")
             if retries:
                 warning("Retrying upload of %s" % (file.name))
