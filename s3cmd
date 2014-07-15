@@ -371,7 +371,9 @@ def cmd_object_put(args):
         full_name = full_name_orig
         seq_label = "[%d of %d]" % (seq, local_count)
         if Config().encrypt:
-            if not key == "-" : #deal with encrypting stdin in multipart upload
+            if key == "-" : #deal with encrypting stdin in multipart upload
+                extra_headers["x-amz-meta-s3tools-gpgenc"]="gpg"
+            else
                 gpg_exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
         if cfg.preserve_attrs or local_list[key]['size'] > (cfg.multipart_chunk_size_mb * 1024 * 1024):
             attr_header = _build_attr_header(local_list, key)

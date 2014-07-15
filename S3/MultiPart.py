@@ -118,7 +118,6 @@ class MultiPartUpload(object):
                 seq += 1
         else:
             if self.s3.config.encrypt == True:
-                self.headers_baseline['x-amz-meta-s3tools-gpgenc']='gpg'
                 args = {
                     "gpg_command" : self.s3.config.gpg_command,
                     "passphrase" : self.s3.config.gpg_passphrase,
