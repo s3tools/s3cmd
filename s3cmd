@@ -373,7 +373,7 @@ def cmd_object_put(args):
         if Config().encrypt:
             if key == "-" : #deal with encrypting stdin in multipart upload
                 extra_headers["x-amz-meta-s3tools-gpgenc"]="gpg"
-            else
+            else:
                 gpg_exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
         if cfg.preserve_attrs or local_list[key]['size'] > (cfg.multipart_chunk_size_mb * 1024 * 1024):
             attr_header = _build_attr_header(local_list, key)
