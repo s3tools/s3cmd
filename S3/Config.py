@@ -223,7 +223,7 @@ class Config(object):
     def read_config_file(self, configfile):
         cp = ConfigParser(configfile)
         for option in self.option_list():
-            self.update_option(option, cp.get(option))
+            self.update_option(option, cp.get(option).strip())
 
         if cp.get('add_headers'):
             for option in cp.get('add_headers').split(","):
