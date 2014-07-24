@@ -2294,16 +2294,28 @@ def main():
             cfg.progress_meter = False
 
     if options.sse_customer_key is not None:
-        cfg.sse_customer_key = options.sse_customer_key
+        if len(options.sse_customer_key) ==32:
+            cfg.sse_customer_key = options.sse_customer_key
+        else:
+            error(u"sse-customer-key must be 32 characters")
+            sys.exit(EX_CONFIG)
 
-    if cfg.sse_customer_key is not None:
+    if cfg.sse_customer_key:
         md5 = hashlib.md5()
-        md5.update(options.sse_customer_key)
+        md5.update(cfg.sse_customer_key)
         md5_encoded = base64.b64encode(md5.digest())
-        encoded = base64.b64encode(options.sse_customer_key)
+        encoded = base64.b64encode(cfg.sse_customer_key)
         cfg.extra_headers["x-amz-server-side-encryption-customer-algorithm"] = "AES256"
         cfg.extra_headers["x-amz-server-side-encryption-customer-key"] = encoded
         cfg.extra_headers["x-amz-server-side-encryption-customer-key-md5"] = md5_encoded
+        
+        debug(u"Updating Config.Config extra_headers[%s] -> %s" % ("x-amz-server-side-encryption-customer-algorithm", "AES256"))
+        debug(u"Updating Config.Config extra_headers[%s] -> %s" % ("x-amz-server-side-encryption-customer-key", encoded))
+        debug(u"Updating Config.Config extra_headers[%s] -> %s" % ("x-amz-server-side-encryption-customer-key-md5", md5_encoded))
+
+        # Force check-md5 option to off because the returned checksums will not match
+        options.check_md5 = False
+        debug(u"Forcing check_md5 to False")
 
     if options.sse_copy_source_customer_key is not None:
         md5 = hashlib.md5()
@@ -2313,6 +2325,10 @@ def main():
         cfg.extra_headers["x-amz-copy-source-server-side-encryption-customer-algorithm"] = "AES256"
         cfg.extra_headers["x-amz-copy-source-server-side-encryption-customer-key"] = encoded
         cfg.extra_headers["x-amz-copy-source-server-side-encryption-customer-key-md5"] = md5_encoded
+        
+        debug(u"Updating Config.Config extra_headers[%s] -> %s" % ("x-amz-copy-source-server-side-encryption-customer-algorithm", "AES256"))
+        debug(u"Updating Config.Config extra_headers[%s] -> %s" % ("x-amz-copy-source-server-side-encryption-customer-key", encoded))
+        debug(u"Updating Config.Config extra_headers[%s] -> %s" % ("x-amz-copy-source-server-side-encryption-customer-key-md5", md5_encoded))
 
     ## Pre-process --add-header's and put them to Config.extra_headers SortedDict()
     if options.add_header:
