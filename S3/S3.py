@@ -1018,15 +1018,27 @@ class S3(object):
             ## Non-recoverable error
             raise S3Error(response)
 
-        debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
-        if self.config.sse_customer_key is None and response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
-            warning("MD5 Sums don't match!")
-            if retries:
-                warning("Retrying upload of %s" % (file.name))
-                return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
+        if self.config.sse_customer_key:
+            if response["headers"]["x-amz-server-side-encryption-customer-key-md5"] != self.config.extra_headers["x-amz-server-side-encryption-customer-key-md5"]:
+                warning("MD5 of customer key don't match!")
+                if retries:
+                    warning("Retrying upload of %s" % (file.name))
+                    return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
+                else:
+                    warning("Too many failures. Giving up on '%s'" % (file.name))
+                    raise S3UploadError
             else:
-                warning("Too many failures. Giving up on '%s'" % (file.name))
-                raise S3UploadError
+                debug("Match of x-amz-server-side-encryption-customer-key-md5")
+        else:
+            debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
+            if response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
+                warning("MD5 Sums don't match!")
+                if retries:
+                    warning("Retrying upload of %s" % (file.name))
+                    return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
+                else:
+                    warning("Too many failures. Giving up on '%s'" % (file.name))
+                    raise S3UploadError
 
         return response
 

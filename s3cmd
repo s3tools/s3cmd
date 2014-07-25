@@ -1441,6 +1441,16 @@ def cmd_sync_local2remote(args):
         error(u"or disable encryption with --no-encrypt parameter.")
         sys.exit(EX_USAGE)
 
+    # Disable md5 checks if using SSE-C. Add mtime check
+    if cfg.sse_customer_key:
+        try:
+            cfg.sync_checks.remove("md5")
+            cfg.preserve_attrs_list.remove("md5")
+        except Exception:
+            pass
+        if cfg.sync_checks.count("mtime") == 0:
+            cfg.sync_checks.append("mtime")
+        
     local_list, single_file_local, src_exclude_list = fetch_local_list(args[:-1], is_src = True, recursive = True)
 
     destinations = [args[-1]]
@@ -2312,10 +2322,6 @@ def main():
         debug(u"Updating Config.Config extra_headers[%s] -> %s" % ("x-amz-server-side-encryption-customer-algorithm", "AES256"))
         debug(u"Updating Config.Config extra_headers[%s] -> %s" % ("x-amz-server-side-encryption-customer-key", encoded))
         debug(u"Updating Config.Config extra_headers[%s] -> %s" % ("x-amz-server-side-encryption-customer-key-md5", md5_encoded))
-
-        # Force check-md5 option to off because the returned checksums will not match
-        options.check_md5 = False
-        debug(u"Forcing check_md5 to False")
 
     if options.sse_copy_source_customer_key is not None:
         md5 = hashlib.md5()
