@@ -2200,8 +2200,8 @@ def main():
     optparser.add_option(      "--add-header", dest="add_header", action="append", metavar="NAME:VALUE", help="Add a given HTTP header to the upload request. Can be used multiple times. For instance set 'Expires' or 'Cache-Control' headers (or both) using this option.")
 
     optparser.add_option(      "--server-side-encryption", dest="server_side_encryption", action="store_true", help="Specifies that server-side encryption will be used when putting objects.")
-    optparser.add_option(      "--sse-customer-key", dest="sse_customer_key", action="store", help="Specifies a customer provided key for server-side encryption. Must be 32 characters for AES256.")
-    optparser.add_option(      "--sse-copy-source-customer-key", dest="sse_copy_source_customer_key", action="store", help="Specifies the encryption key for copying or moving objects with a customer provided key for server-side encryption.")
+    optparser.add_option(      "--sse-customer-key", dest="sse_customer_key", action="store", metavar="12345678901234567890123456789012", help="Specifies a customer provided key for server-side encryption. Must be 32 character string.")
+    optparser.add_option(      "--sse-copy-source-customer-key", dest="sse_copy_source_customer_key", action="store", metavar="12345678901234567890123456789012", help="Specifies the encryption key for copying or moving objects with a customer provided key for server-side encryption.")
 
     optparser.add_option(      "--encoding", dest="encoding", metavar="ENCODING", help="Override autodetected terminal and filesystem encoding (character set). Autodetected: %s" % preferred_encoding)
     optparser.add_option(      "--add-encoding-exts", dest="add_encoding_exts", metavar="EXTENSIONs", help="Add encoding to these comma delimited extensions i.e. (css,js,html) when uploading to S3 )")
