@@ -1445,7 +1445,6 @@ def cmd_sync_local2remote(args):
     if cfg.sse_customer_key:
         try:
             cfg.sync_checks.remove("md5")
-            cfg.preserve_attrs_list.remove("md5")
         except Exception:
             pass
         if cfg.sync_checks.count("mtime") == 0:
