@@ -212,7 +212,7 @@ class Config(object):
             self.keyring_get_acct())
         if not blob: return False
         try:
-            secrets = json.loads()
+            secrets = json.loads(blob)
         except Exception, e:
             return False
         for s in self.keyring_secret_names:
