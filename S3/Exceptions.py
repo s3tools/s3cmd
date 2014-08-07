@@ -99,4 +99,7 @@ class InvalidFileError(S3Exception):
 class ParameterError(S3Exception):
     pass
 
+class S3CmdConfigError(S3Exception):
+    pass
+
 # vim:et:ts=4:sts=4:ai
