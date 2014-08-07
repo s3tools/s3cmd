@@ -210,11 +210,11 @@ class Config(object):
         if not self.keyring_is_enabled(): return False
         blob = keyring.get_password(self.keyring_service_name,
             self.keyring_get_acct())
-        if not blob or blob == "": return False
+        if not blob: return False
         try:
             secrets = json.loads()
         except Exception, e:
-            return false
+            return False
         for s in self.keyring_secret_names:
             if s not in secrets: continue
             # self may already have the real secrets if they were passed in
