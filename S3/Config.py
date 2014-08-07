@@ -208,8 +208,13 @@ class Config(object):
     def keyring_get_secrets(self):
         """Read JSON blob from keyring; deserialize it; add secrets to self"""
         if not self.keyring_is_enabled(): return False
-        secrets = json.loads(keyring.get_password(self.keyring_service_name,
-            self.keyring_get_acct()))
+        blob = keyring.get_password(self.keyring_service_name,
+            self.keyring_get_acct())
+        if not blob or blob == "": return False
+        try:
+            secrets = json.loads()
+        except Exception, e:
+            return false
         for s in self.keyring_secret_names:
             if s not in secrets: continue
             # self may already have the real secrets if they were passed in
