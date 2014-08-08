@@ -162,7 +162,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
 
     def _fetch_local_list_info(loc_list):
         len_loc_list = len(loc_list)
-        info(u"Running stat() and reading/calculating MD5 values on %d files, this may take some time..." % len_loc_list)
+        print (u"Running stat() and reading/calculating MD5 values on %d files, this may take some time..." % len_loc_list)
         counter = 0
         for relative_file in loc_list:
             counter += 1
