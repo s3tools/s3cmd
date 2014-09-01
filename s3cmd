@@ -1037,7 +1037,7 @@ def cmd_sync_remote2local(args):
                         response = s3.object_get(uri, dst_stream, extra_label = seq_label)
                         dst_stream.close()
                         # download completed, rename the file to destination
-                        os.rename(chkptfname, dst_file)
+                        shutil.move(chkptfname, dst_file)
                         debug(u"renamed chkptfname=%s to dst_file=%s" % (unicodise(chkptfname), unicodise(dst_file)))
                 except OSError, e:
                     if e.errno == errno.EISDIR:
