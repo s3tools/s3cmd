@@ -277,7 +277,7 @@ def cmd_expiration_set(args):
     return EX_OK
 
 def cmd_bucket_delete(args):
-    def _bucket_delete_one(uri):
+    def _bucket_delete_one(uri, retry=True):
         try:
             response = s3.bucket_delete(uri.bucket())
             output(u"Bucket '%s' removed" % uri.uri())
@@ -287,11 +287,11 @@ def cmd_bucket_delete(args):
                     return EX_OK
                 else:
                     return EX_USAGE
-            if e.info['Code'] == 'BucketNotEmpty' and (cfg.force or cfg.recursive):
+            if e.info['Code'] == 'BucketNotEmpty' and retry and (cfg.force or cfg.recursive):
                 warning(u"Bucket is not empty. Removing all the objects from it first. This may take some time...")
                 rc = subcmd_batch_del(uri_str = uri.uri())
                 if rc == EX_OK:
-                    return _bucket_delete_one(uri)
+                    return _bucket_delete_one(uri, False)
                 else:
                     output(u"Bucket was not removed")
             elif S3.codes.has_key(e.info["Code"]):
