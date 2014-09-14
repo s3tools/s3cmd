@@ -468,9 +468,11 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
             return False
 
         ## check size first
-        if 'size' in cfg.sync_checks and dst_list[file]['size'] != src_list[file]['size']:
-            debug(u"xfer: %s (size mismatch: src=%s dst=%s)" % (file, src_list[file]['size'], dst_list[file]['size']))
-            attribs_match = False
+        if 'size' in cfg.sync_checks:
+            if 'size' in dst_list[file] and 'size' in src_list[file]:
+                if dst_list[file]['size'] != src_list[file]['size']:
+                    debug(u"xfer: %s (size mismatch: src=%s dst=%s)" % (file, src_list[file]['size'], dst_list[file]['size']))
+                    attribs_match = False
 
         ## check md5
         compare_md5 = 'md5' in cfg.sync_checks
