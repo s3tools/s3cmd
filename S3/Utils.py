@@ -441,6 +441,8 @@ def check_bucket_name(bucket, dns_strict = True):
 __all__.append("check_bucket_name")
 
 def check_bucket_name_dns_conformity(bucket):
+    if Config.Config().use_path_mode:
+        return False
     try:
         return check_bucket_name(bucket, dns_strict = True)
     except Exceptions.ParameterError:
