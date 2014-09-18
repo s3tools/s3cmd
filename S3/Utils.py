@@ -442,7 +442,10 @@ __all__.append("check_bucket_name")
 
 def check_bucket_name_dns_conformity(bucket):
     try:
-        return check_bucket_name(bucket, dns_strict = True)
+        if Config.Config().host_dns_compatible:
+            return check_bucket_name(bucket, dns_strict = True)
+        else:
+            return False
     except Exceptions.ParameterError:
         return False
 __all__.append("check_bucket_name_dns_conformity")
@@ -514,4 +517,3 @@ __all__.append("getgrgid_grpname")
 
 
 # vim:et:ts=4:sts=4:ai
-

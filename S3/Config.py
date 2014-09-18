@@ -113,6 +113,7 @@ class Config(object):
     expiry_days = ""
     expiry_date = ""
     expiry_prefix = ""
+    host_dns_compatible = True
 
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None):
