@@ -16,6 +16,7 @@ import getpass
 import S3.Exceptions
 import S3.Config
 from S3.ExitCodes import *
+from time import sleep
 
 count_pass = 0
 count_fail = 0
@@ -87,7 +88,8 @@ if not os.path.isdir('testsuite/crappy-file-name'):
     # TODO: also unpack if the tarball is newer than the directory timestamp
     #       for instance when a new version was pulled from SVN.
 
-def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = []):
+def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = [], retry=5, attempt=1):
+    test_args = [label, cmd_args, retcode, must_find, must_not_find, must_find_re, must_not_find_re, retry, attempt]
     def command_output():
         print "----"
         print " ".join([arg.find(" ")>=0 and "'%s'" % arg or arg for arg in cmd_args])
@@ -95,28 +97,39 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
         print stdout
         print "----"
 
-    def failure(message = ""):
+    def failure(message = "", test_args=[]):
+        label, cmd_args, retcode, must_find, must_not_find, must_find_re, must_not_find_re, retry, attempt = test_args
+        if attempt < retry:
+            attempt += 1
+            sleep(attempt)
+            return test(label, cmd_args, retcode, must_find, must_not_find, must_find_re, must_not_find_re, retry, attempt)
         global count_fail
         if message:
             message = "  (%r)" % message
+        if attempt > 1:
+            message += ' (attempt %u/%u)' % (attempt, retry)
         print "\x1b[31;1mFAIL%s\x1b[0m" % (message)
         count_fail += 1
         command_output()
         #return 1
         sys.exit(1)
-    def success(message = ""):
+    def success(message = "", attempt=0, retry=0):
         global count_pass
         if message:
             message = "  (%r)" % message
+        if attempt > 1:
+            message += ' (attempt %u/%u)' % (attempt, retry)
         print "\x1b[32;1mOK\x1b[0m%s" % (message)
         count_pass += 1
         if verbose:
             command_output()
         return 0
-    def skip(message = ""):
+    def skip(message = "", attempt=0, retry=0):
         global count_skip
         if message:
             message = "  (%r)" % message
+        if attempt > 1:
+            message += ' (attempt %u/%u)' % (attempt, retry)
         print "\x1b[33;1mSKIP\x1b[0m%s" % (message)
         count_skip += 1
         return 0
@@ -128,20 +141,21 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 
     global test_counter
     test_counter += 1
-    print ("%3d  %s " % (test_counter, label)).ljust(30, "."),
+    if attempt == 1:
+        print ("%3d  %s " % (test_counter, label)).ljust(30, "."),
     sys.stdout.flush()
 
     if run_tests.count(test_counter) == 0 or exclude_tests.count(test_counter) > 0:
-        return skip()
+        return skip('', attempt, retry)
 
     if not cmd_args:
-        return skip()
+        return skip('', attempt, retry)
 
     p = Popen(cmd_args, stdout = PIPE, stderr = STDOUT, universal_newlines = True)
     stdout, stderr = p.communicate()
     if type(retcode) not in [list, tuple]: retcode = [retcode]
     if p.returncode not in retcode:
-        return failure("retcode: %d, expected one of: %s" % (p.returncode, retcode))
+        return failure("retcode: %d, expected one of: %s" % (p.returncode, retcode), test_args)
 
     if type(must_find) not in [ list, tuple ]: must_find = [must_find]
     if type(must_find_re) not in [ list, tuple ]: must_find_re = [must_find_re]
@@ -165,19 +179,18 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
     for index in range(len(find_list)):
         match = find_list[index].search(stdout)
         if not match:
-            return failure("pattern not found: %s" % find_list_patterns[index])
+            return failure("pattern not found: %s" % find_list_patterns[index], test_args)
     for index in range(len(not_find_list)):
         match = not_find_list[index].search(stdout)
         if match:
-            return failure("pattern found: %s (match: %s)" % (not_find_list_patterns[index], match.group(0)))
+            return failure("pattern found: %s (match: %s)" % (not_find_list_patterns[index], match.group(0)), test_args)
 
-    return success()
+    return success('', attempt, retry)
 
 def test_s3cmd(label, cmd_args = [], **kwargs):
     if not cmd_args[0].endswith("s3cmd"):
         cmd_args.insert(0, "python")
         cmd_args.insert(1, "s3cmd")
-
     return test(label, cmd_args, **kwargs)
 
 def test_mkdir(label, dir_name):
@@ -559,7 +572,7 @@ test_s3cmd("Create expiration rule with date only", ['expire', pbucket(1), '--ex
 
 ## ====== Get current expiration setting
 test_s3cmd("Get current expiration setting", ['info', pbucket(1)],
-    must_find = [ "Expiration Rule: all objects in this bucket will expire in '2012-12-31T00:00:00.000Z'"])
+    must_find = [ "Expiration Rule: all objects in this bucket will expire in '2012-12-31T00:00:00.000Z'"], retry=10)
 
 ## ====== Delete expiration rule
 test_s3cmd("Delete expiration rule", ['expire', pbucket(1)],
