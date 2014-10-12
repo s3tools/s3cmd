@@ -12,6 +12,7 @@ import sys
 import Progress
 from SortedDict import SortedDict
 import httplib
+from socket import timeout
 try:
     import json
 except ImportError, e:
@@ -139,8 +140,19 @@ class Config(object):
                 if env_access_key:
                     self.access_key = env_access_key
                     self.secret_key = env_secret_key
-                else:
+                elif self.host_is_ec2():
                     self.role_config()
+
+    @staticmethod
+    def host_is_ec2():
+        try:
+            conn = httplib.HTTPConnection(host='169.254.169.254', timeout=2)
+            conn.request('GET', "/1.0/")
+            resp = conn.getresponse()
+            resp.read()
+        except timeout:
+            return False
+        return resp.status == 200
 
     def role_config(self):
         if sys.version_info[0] * 10 + sys.version_info[1] < 26:
