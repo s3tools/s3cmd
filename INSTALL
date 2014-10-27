@@ -1,14 +1,11 @@
 Installation of s3cmd package
 =============================
 
-Author:
-    Michal Ludvig <michal@logix.cz>
+Copyright:
+    TGRMN Software and contributors
 
 S3tools / S3cmd project homepage:
-    http://s3tools.sourceforge.net
-
-Amazon S3 homepage:
-    http://aws.amazon.com/s3
+    http://s3tools.org
 
 !!!
 !!! Please consult README file for setup, usage and examples!
@@ -17,10 +14,11 @@ Amazon S3 homepage:
 Package formats
 ---------------
 S3cmd is distributed in two formats:
+
 1) Prebuilt RPM file - should work on most RPM-based
    distributions
-2) Source .tar.gz package
 
+2) Source .tar.gz package
 
 
 Installation of RPM package
@@ -36,12 +34,13 @@ on Python or some libraries. Please consult your
 distribution documentation on ways to solve the problem.
 
 
-Installation of source .tar.gz package
---------------------------------------
+Installation from zip file 
+--------------------------
 There are three options to run s3cmd from source tarball:
 
-1) S3cmd program as distributed in s3cmd-X.Y.Z.tar.gz 
-   can be run directly from where you untar'ed the package.
+1) The S3cmd program, as distributed in s3cmd-X.Y.Z.tar.gz
+   on SourceForge or in master.zip on GitHub, can be run directly 
+   from where you unzipped the package.
 
 2) Or you may want to move "s3cmd" file and "S3" subdirectory
    to some other path. Make sure that "S3" subdirectory ends up
@@ -51,7 +50,8 @@ There are three options to run s3cmd from source tarball:
    you will have $HOME/bin/s3cmd file and $HOME/bin/S3 directory 
    with a number of support files.
 
-3) The cleanest and most recommended approach is to run
+3) The cleanest and most recommended approach is to unzip the 
+   package and then just run:
 
 	python setup.py install
 
@@ -65,8 +65,15 @@ There are three options to run s3cmd from source tarball:
    Again, consult your distribution documentation on how to 
    find out the actual package name and how to install it then.
 
+   Note that on Linux, if you are not "root" already, you may 
+   need to run:
+       
+        sudo python setup.py install
 
-Note to distibutions package maintainers
+   instead.
+
+
+Note to distributions package maintainers
 ----------------------------------------
 Define shell environment variable S3CMD_PACKAGING=yes if you
 don't want setup.py to install manpages and doc files. You'll
@@ -86,12 +93,6 @@ get back to us via mailing list:
 
 	s3tools-general@lists.sourceforge.net
 
-For more information refer to:
-* S3cmd / S3tools homepage at http://s3tools.sourceforge.net
+or visit the S3cmd / S3tools homepage at: 
 
-Enjoy!
-
-Michal Ludvig
-* michal@logix.cz
-* http://www.logix.cz/michal
-
+        http://s3tools.org

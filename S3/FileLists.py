@@ -2,11 +2,12 @@
 ## Author: Michal Ludvig <michal@logix.cz>
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
+## Copyright: TGRMN Software and contributors
 
 from S3 import S3
 from Config import Config
 from S3Uri import S3Uri
-from SortedDict import SortedDict
+from FileDict import FileDict
 from Utils import *
 from Exceptions import ParameterError
 from HashCache import HashCache
@@ -14,10 +15,13 @@ from HashCache import HashCache
 from logging import debug, info, warning, error
 
 import os
+import sys
 import glob
 import copy
+import re
+import errno
 
-__all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists", "filter_exclude_include", "parse_attrs_header"]
+__all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists"]
 
 def _fswalk_follow_symlinks(path):
     '''
@@ -56,9 +60,9 @@ def _fswalk_no_symlinks(path):
         yield (dirpath, dirnames, filenames)
 
 def filter_exclude_include(src_list):
-    info(u"Applying --exclude/--include")
+    debug(u"Applying --exclude/--include")
     cfg = Config()
-    exclude_list = SortedDict(ignore_case = False)
+    exclude_list = FileDict(ignore_case = False)
     for file in src_list.keys():
         debug(u"CHECK: %s" % file)
         excluded = False
@@ -87,8 +91,6 @@ def filter_exclude_include(src_list):
 def handle_exclude_include_walk(root, dirs, files):
     cfg = Config()
     copydirs = copy.copy(dirs)
-    copyfiles = copy.copy(files)
-
     # exclude dir matches in the current directory
     # this prevents us from recursing down trees we know we want to ignore
     for x in copydirs:
@@ -96,6 +98,7 @@ def handle_exclude_include_walk(root, dirs, files):
         debug(u"CHECK: %r" % d)
         excluded = False
         for r in cfg.exclude:
+            if not r.pattern.endswith(u'/'): continue # we only check for directories here
             if r.search(d):
                 excluded = True
                 debug(u"EXCL-MATCH: '%s'" % (cfg.debug_exclude[r]))
@@ -103,6 +106,8 @@ def handle_exclude_include_walk(root, dirs, files):
         if excluded:
             ## No need to check for --include if not excluded
             for r in cfg.include:
+                if not r.pattern.endswith(u'/'): continue # we only check for directories here
+                debug(u"INCL-TEST: %s ~ %s" % (d, r.pattern))
                 if r.search(d):
                     excluded = False
                     debug(u"INCL-MATCH: '%s'" % (cfg.debug_include[r]))
@@ -115,51 +120,120 @@ def handle_exclude_include_walk(root, dirs, files):
         else:
             debug(u"PASS: %r" % (d))
 
-    # exclude file matches in the current directory
-    for x in copyfiles:
-        file = os.path.join(root, x)
-        debug(u"CHECK: %r" % file)
-        excluded = False
-        for r in cfg.exclude:
-            if r.search(file):
-                excluded = True
-                debug(u"EXCL-MATCH: '%s'" % (cfg.debug_exclude[r]))
-                break
-        if excluded:
-            ## No need to check for --include if not excluded
-            for r in cfg.include:
-                if r.search(file):
-                    excluded = False
-                    debug(u"INCL-MATCH: '%s'" % (cfg.debug_include[r]))
-                    break
-        if excluded:
-            ## Still excluded - ok, action it
-            debug(u"EXCLUDE: %s" % file)
-            files.remove(x)
-            continue
-        else:
-            debug(u"PASS: %r" % (file))
 
-def fetch_local_list(args, recursive = None):
+def _get_filelist_from_file(cfg, local_path):
+    def _append(d, key, value):
+        if key not in d:
+            d[key] = [value]
+        else:
+            d[key].append(value)
+
+    filelist = {}
+    for fname in cfg.files_from:
+        if fname == u'-':
+            f = sys.stdin
+        else:
+            try:
+                f = open(fname, 'r')
+            except IOError, e:
+                warning(u"--files-from input file %s could not be opened for reading (%s), skipping." % (fname, e.strerror))
+                continue
+
+        for line in f:
+            line = line.strip()
+            line = os.path.normpath(os.path.join(local_path, line))
+            dirname = os.path.dirname(line)
+            basename = os.path.basename(line)
+            _append(filelist, dirname, basename)
+        if f != sys.stdin:
+            f.close()
+
+    # reformat to match os.walk()
+    result = []
+    keys = filelist.keys()
+    keys.sort()
+    for key in keys:
+        values = filelist[key]
+        values.sort()
+        result.append((key, [], values))
+    return result
+
+def fetch_local_list(args, is_src = False, recursive = None):
+
+    def _fetch_local_list_info(loc_list):
+        len_loc_list = len(loc_list)
+        info(u"Running stat() and reading/calculating MD5 values on %d files, this may take some time..." % len_loc_list)
+        counter = 0
+        for relative_file in loc_list:
+            counter += 1
+            if counter % 1000 == 0:
+                info(u"[%d/%d]" % (counter, len_loc_list))
+
+            if relative_file == '-': continue
+
+            full_name = loc_list[relative_file]['full_name']
+            try:
+                sr = os.stat_result(os.stat(full_name))
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    # file was removed async to us getting the list
+                    continue
+                else:
+                    raise
+            loc_list[relative_file].update({
+                'size' : sr.st_size,
+                'mtime' : sr.st_mtime,
+                'dev'   : sr.st_dev,
+                'inode' : sr.st_ino,
+                'uid' : sr.st_uid,
+                'gid' : sr.st_gid,
+                'sr': sr # save it all, may need it in preserve_attrs_list
+                ## TODO: Possibly more to save here...
+            })
+            if 'md5' in cfg.sync_checks:
+                md5 = cache.md5(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size)
+                if md5 is None:
+                        try:
+                            md5 = loc_list.get_md5(relative_file) # this does the file I/O
+                        except IOError:
+                            continue
+                        cache.add(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size, md5)
+                loc_list.record_hardlink(relative_file, sr.st_dev, sr.st_ino, md5, sr.st_size)
+
+
     def _get_filelist_local(loc_list, local_uri, cache):
         info(u"Compiling list of local files...")
 
         if deunicodise(local_uri.basename()) == "-":
+            try:
+                uid = os.geteuid()
+                gid = os.getegid()
+            except:
+                uid = 0
+                gid = 0
             loc_list["-"] = {
                 'full_name_unicode' : '-',
                 'full_name' : '-',
                 'size' : -1,
                 'mtime' : -1,
+                'uid' : uid,
+                'gid' : gid,
+                'dev' : 0,
+                'inode': 0,
             }
             return loc_list, True
         if local_uri.isdir():
             local_base = deunicodise(local_uri.basename())
             local_path = deunicodise(local_uri.path())
-            if cfg.follow_symlinks:
-                filelist = _fswalk_follow_symlinks(local_path)
+            if is_src and len(cfg.files_from):
+                filelist = _get_filelist_from_file(cfg, local_path)
+                single_file = False
             else:
-                filelist = _fswalk_no_symlinks(local_path)
-            single_file = False
+                if cfg.follow_symlinks:
+                    filelist = _fswalk_follow_symlinks(local_path)
+                else:
+                    filelist = _fswalk_no_symlinks(local_path)
+                single_file = False
         else:
             local_base = ""
             local_path = deunicodise(local_uri.dirname())
@@ -182,32 +256,19 @@ def fetch_local_list(args, recursive = None):
                     relative_file = replace_nonprintables(relative_file)
                 if relative_file.startswith('./'):
                     relative_file = relative_file[2:]
-                sr = os.stat_result(os.lstat(full_name))
                 loc_list[relative_file] = {
                     'full_name_unicode' : unicodise(full_name),
                     'full_name' : full_name,
-                    'size' : sr.st_size,
-                    'mtime' : sr.st_mtime,
-                    'dev'   : sr.st_dev,
-                    'inode' : sr.st_ino,
-                    'uid' : sr.st_uid,
-                    'gid' : sr.st_gid,
-                    'sr': sr # save it all, may need it in preserve_attrs_list
-                    ## TODO: Possibly more to save here...
                 }
-                if 'md5' in cfg.sync_checks:
-                    md5 = cache.md5(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size)
-                    if md5 is None:
-                            try:
-                                md5 = loc_list.get_md5(relative_file) # this does the file I/O
-                            except IOError:
-                                continue
-                            cache.add(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size, md5)
-                    loc_list.record_hardlink(relative_file, sr.st_dev, sr.st_ino, md5)
+
         return loc_list, single_file
 
     def _maintain_cache(cache, local_list):
-        if cfg.cache_file:
+        # if getting the file list from files_from, it is going to be
+        # a subset of the actual tree.  We should not purge content
+        # outside of that subset as we don't know if it's valid or
+        # not.  Leave it to a non-files_from run to purge.
+        if cfg.cache_file and len(cfg.files_from) == 0:
             cache.mark_all_for_purge()
             for i in local_list.keys():
                 cache.unmark_for_purge(local_list[i]['dev'], local_list[i]['inode'], local_list[i]['mtime'], local_list[i]['size'])
@@ -224,7 +285,7 @@ def fetch_local_list(args, recursive = None):
             info(u"No cache file found, creating it.")
 
     local_uris = []
-    local_list = SortedDict(ignore_case = False)
+    local_list = FileDict(ignore_case = False)
     single_file = False
 
     if type(args) not in (list, tuple):
@@ -252,11 +313,26 @@ def fetch_local_list(args, recursive = None):
     if len(local_list) > 1:
         single_file = False
 
+    local_list, exclude_list = filter_exclude_include(local_list)
+    _fetch_local_list_info(local_list)
     _maintain_cache(cache, local_list)
+    return local_list, single_file, exclude_list
 
-    return local_list, single_file
+def fetch_remote_list(args, require_attribs = False, recursive = None, uri_params = {}):
+    def _get_remote_attribs(uri, remote_item):
+        response = S3(cfg).object_info(uri)
+        remote_item.update({
+        'size': int(response['headers']['content-length']),
+        'md5': response['headers']['etag'].strip('"\''),
+        'timestamp' : dateRFC822toUnix(response['headers']['date'])
+        })
+        try:
+            md5 = response['s3cmd-attrs']['md5']
+            remote_item.update({'md5': md5})
+            debug(u"retreived md5=%s from headers" % md5)
+        except KeyError:
+            pass
 
-def fetch_remote_list(args, require_attribs = False, recursive = None):
     def _get_filelist_remote(remote_uri, recursive = True):
         ## If remote_uri ends with '/' then all remote files will have
         ## the remote_uri prefix removed in the relative path.
@@ -274,9 +350,11 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
         ## { 'xyz/blah.txt' : {} }
 
         info(u"Retrieving list of remote files for %s ..." % remote_uri)
+        empty_fname_re = re.compile(r'\A\s*\Z')
 
         s3 = S3(Config())
-        response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object(), recursive = recursive)
+        response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object(),
+                                  recursive = recursive, uri_params = uri_params)
 
         rem_base_original = rem_base = remote_uri.object()
         remote_uri_original = remote_uri
@@ -284,18 +362,22 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
             rem_base = rem_base[:rem_base.rfind('/')+1]
             remote_uri = S3Uri("s3://%s/%s" % (remote_uri.bucket(), rem_base))
         rem_base_len = len(rem_base)
-        rem_list = SortedDict(ignore_case = False)
+        rem_list = FileDict(ignore_case = False)
         break_now = False
         for object in response['list']:
-            if object['Key'] == rem_base_original and object['Key'][-1] != os.path.sep:
+            if object['Key'] == rem_base_original and object['Key'][-1] != "/":
                 ## We asked for one file and we got that file :-)
                 key = os.path.basename(object['Key'])
                 object_uri_str = remote_uri_original.uri()
                 break_now = True
-                rem_list = SortedDict(ignore_case = False)   ## Remove whatever has already been put to rem_list
+                rem_list = FileDict(ignore_case = False)   ## Remove whatever has already been put to rem_list
             else:
                 key = object['Key'][rem_base_len:]      ## Beware - this may be '' if object['Key']==rem_base !!
                 object_uri_str = remote_uri.uri() + key
+            if empty_fname_re.match(key):
+                # Objects may exist on S3 with empty names (''), which don't map so well to common filesystems.
+                warning(u"Empty object name on S3 found, ignoring.")
+                continue
             rem_list[key] = {
                 'size' : int(object['Size']),
                 'timestamp' : dateS3toUnix(object['LastModified']), ## Sadly it's upload time, not our lastmod time :-(
@@ -306,7 +388,9 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
                 'dev' : None,
                 'inode' : None,
             }
-            md5 = object['ETag'][1:-1]
+            if rem_list[key]['md5'].find("-") > 0: # always get it for multipart uploads
+                _get_remote_attribs(S3Uri(object_uri_str), rem_list[key])
+            md5 = rem_list[key]['md5']
             rem_list.record_md5(key, md5)
             if break_now:
                 break
@@ -314,7 +398,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
 
     cfg = Config()
     remote_uris = []
-    remote_list = SortedDict(ignore_case = False)
+    remote_list = FileDict(ignore_case = False)
 
     if type(args) not in (list, tuple):
         args = [args]
@@ -330,25 +414,21 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
 
     if recursive:
         for uri in remote_uris:
-            objectlist = _get_filelist_remote(uri)
+            objectlist = _get_filelist_remote(uri, recursive = True)
             for key in objectlist:
                 remote_list[key] = objectlist[key]
                 remote_list.record_md5(key, objectlist.get_md5(key))
     else:
         for uri in remote_uris:
-            uri_str = str(uri)
+            uri_str = unicode(uri)
             ## Wildcards used in remote URI?
             ## If yes we'll need a bucket listing...
-            if uri_str.find('*') > -1 or uri_str.find('?') > -1:
-                first_wildcard = uri_str.find('*')
-                first_questionmark = uri_str.find('?')
-                if first_questionmark > -1 and first_questionmark < first_wildcard:
-                    first_wildcard = first_questionmark
-                prefix = uri_str[:first_wildcard]
-                rest = uri_str[first_wildcard+1:]
+            wildcard_split_result = re.split("\*|\?", uri_str, maxsplit=1)
+            if len(wildcard_split_result) == 2: # wildcards found
+                prefix, rest = wildcard_split_result
                 ## Only request recursive listing if the 'rest' of the URI,
                 ## i.e. the part after first wildcard, contains '/'
-                need_recursion = rest.find('/') > -1
+                need_recursion = '/' in rest
                 objectlist = _get_filelist_remote(S3Uri(prefix), recursive = need_recursion)
                 for key in objectlist:
                     ## Check whether the 'key' matches the requested wildcards
@@ -365,27 +445,15 @@ def fetch_remote_list(args, require_attribs = False, recursive = None):
                     'object_key': uri.object()
                 }
                 if require_attribs:
-                    response = S3(cfg).object_info(uri)
-                    remote_item.update({
-                    'size': int(response['headers']['content-length']),
-                    'md5': response['headers']['etag'].strip('"\''),
-                    'timestamp' : dateRFC822toUnix(response['headers']['date'])
-                    })
-                    # get md5 from header if it's present.  We would have set that during upload
-                    if response['headers'].has_key('x-amz-meta-s3cmd-attrs'):
-                        attrs = parse_attrs_header(response['headers']['x-amz-meta-s3cmd-attrs'])
-                        if attrs.has_key('md5'):
-                            remote_item.update({'md5': attrs['md5']})
+                    _get_remote_attribs(uri, remote_item)
 
                 remote_list[key] = remote_item
-    return remote_list
+                md5 = remote_item.get('md5')
+                if md5:
+                    remote_list.record_md5(key, md5)
 
-def parse_attrs_header(attrs_header):
-    attrs = {}
-    for attr in attrs_header.split("/"):
-        key, val = attr.split(":")
-        attrs[key] = val
-    return attrs
+    remote_list, exclude_list = filter_exclude_include(remote_list)
+    return remote_list, exclude_list
 
 
 def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates = False):
@@ -400,9 +468,11 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
             return False
 
         ## check size first
-        if 'size' in cfg.sync_checks and dst_list[file]['size'] != src_list[file]['size']:
-            debug(u"xfer: %s (size mismatch: src=%s dst=%s)" % (file, src_list[file]['size'], dst_list[file]['size']))
-            attribs_match = False
+        if 'size' in cfg.sync_checks:
+            if 'size' in dst_list[file] and 'size' in src_list[file]:
+                if dst_list[file]['size'] != src_list[file]['size']:
+                    debug(u"xfer: %s (size mismatch: src=%s dst=%s)" % (file, src_list[file]['size'], dst_list[file]['size']))
+                    attribs_match = False
 
         ## check md5
         compare_md5 = 'md5' in cfg.sync_checks
@@ -436,7 +506,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
     ## Items left on src_list will be transferred
     ## Items left on update_list will be transferred after src_list
     ## Items left on copy_pairs will be copied from dst1 to dst2
-    update_list = SortedDict(ignore_case = False)
+    update_list = FileDict(ignore_case = False)
     ## Items left on dst_list will be deleted
     copy_pairs = []
 

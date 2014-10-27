@@ -2,6 +2,7 @@
 ## Author: Michal Ludvig <michal@logix.cz>
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
+## Copyright: TGRMN Software and contributors
 
 import sys
 import time
@@ -15,6 +16,7 @@ try:
 except ImportError:
     import elementtree.ElementTree as ET
 
+from S3 import S3
 from Config import Config
 from Exceptions import *
 from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, sign_string, getBucketFromHostname, getHostnameFromBucket
@@ -280,11 +282,12 @@ class InvalidationBatch(object):
 
     def __str__(self):
         tree = ET.Element("InvalidationBatch")
+        s3 = S3(Config())
 
         for path in self.paths:
             if len(path) < 1 or path[0] != "/":
                 path = "/" + path
-            appendXmlTextNode("Path", path, tree)
+            appendXmlTextNode("Path", s3.urlencode_string(path), tree)
         appendXmlTextNode("CallerReference", self.reference, tree)
         return ET.tostring(tree)
 
@@ -432,7 +435,7 @@ class CloudFront(object):
             new_paths = []
             default_index_suffix = '/' + default_index_file
             for path in paths:
-                if path.endswith(default_index_suffix) or path ==  default_index_file:
+                if path.endswith(default_index_suffix) or path == default_index_file:
                     if invalidate_default_index_on_cf:
                         new_paths.append(path)
                     if invalidate_default_index_root_on_cf:
@@ -510,7 +513,7 @@ class CloudFront(object):
                 warning(unicode(e))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
-                return self.send_request(op_name, dist_id, body, retries - 1)
+                return self.send_request(op_name, dist_id, body, retries = retries - 1)
             else:
                 raise e
 
@@ -535,7 +538,7 @@ class CloudFront(object):
             headers["x-amz-date"] = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
 
         if len(self.config.access_token)>0:
-            self.config.refresh_role()
+            self.config.role_refresh()
             headers['x-amz-security-token']=self.config.access_token
 
         signature = self.sign_request(headers)
@@ -567,7 +570,7 @@ class CloudFront(object):
         if (uri.type == "cf"):
             return uri
         if (uri.type != "s3"):
-            raise ParameterError("CloudFront or S3 URI required instead of: %s" % arg)
+            raise ParameterError("CloudFront or S3 URI required instead of: %s" % uri)
 
         debug("_get_dist_name_for_bucket(%r)" % uri)
         if CloudFront.dist_list is None:
@@ -592,7 +595,7 @@ class CloudFront(object):
             return CloudFront.dist_list[uri.bucket()]
         except Exception, e:
             debug(e)
-            raise ParameterError("Unable to translate S3 URI to CloudFront distribution name: %s" % arg)
+            raise ParameterError("Unable to translate S3 URI to CloudFront distribution name: %s" % uri)
 
 class Cmd(object):
     """
@@ -675,7 +678,7 @@ class Cmd(object):
         for arg in args:
             uri = S3Uri(arg)
             if uri.type != "s3":
-                raise ParameterError("Bucket can only be created from a s3:// URI instead of: %s" % arg)
+                raise ParameterError("Distribution can only be created from a s3:// URI instead of: %s" % arg)
             if uri.object():
                 raise ParameterError("Use s3:// URI with a bucket name only instead of: %s" % arg)
             if not uri.is_dns_compatible():

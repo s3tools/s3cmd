@@ -5,13 +5,17 @@
 ## Author: Michal Ludvig <michal@logix.cz>
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
+## Copyright: TGRMN Software and contributors
 
 import sys
 import os
 import re
 from subprocess import Popen, PIPE, STDOUT
 import locale
-import pwd
+import getpass
+import S3.Exceptions
+import S3.Config
+from S3.ExitCodes import *
 
 count_pass = 0
 count_fail = 0
@@ -30,6 +34,14 @@ elif os.name == "nt":
 else:
     print "Unknown platform: %s" % os.name
     sys.exit(1)
+
+config_file = None
+if os.getenv("HOME"):
+    config_file = os.path.join(os.getenv("HOME"), ".s3cfg")
+elif os.name == "nt" and os.getenv("USERPROFILE"):
+    config_file = os.path.join(os.getenv("USERPROFILE").decode('mbcs'), os.getenv("APPDATA").decode('mbcs') or 'Application Data', "s3cmd.ini")
+
+cfg = S3.Config.Config(config_file)
 
 ## Unpack testsuite/ directory
 if not os.path.isdir('testsuite') and os.path.isfile('testsuite.tar.gz'):
@@ -127,8 +139,9 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 
     p = Popen(cmd_args, stdout = PIPE, stderr = STDOUT, universal_newlines = True)
     stdout, stderr = p.communicate()
-    if retcode != p.returncode:
-        return failure("retcode: %d, expected: %d" % (p.returncode, retcode))
+    if type(retcode) not in [list, tuple]: retcode = [retcode]
+    if p.returncode not in retcode:
+        return failure("retcode: %d, expected one of: %s" % (p.returncode, retcode))
 
     if type(must_find) not in [ list, tuple ]: must_find = [must_find]
     if type(must_find_re) not in [ list, tuple ]: must_find_re = [must_find_re]
@@ -206,11 +219,7 @@ def test_copy(label, src_file, dst_file):
     cmd.append(dst_file)
     return test(label, cmd)
 
-try:
-    pwd = pwd.getpwuid(os.getuid())
-    bucket_prefix = "%s.%s-" % (pwd.pw_name, pwd.pw_uid)
-except:
-    bucket_prefix = ''
+bucket_prefix = u"%s-" % getpass.getuser()
 print "Using bucket prefix: '%s'" % bucket_prefix
 
 argv = sys.argv[1:]
@@ -262,10 +271,11 @@ def pbucket(tail):
         return 's3://' + bucket(tail)
 
 ## ====== Remove test buckets
-test_s3cmd("Remove test buckets", ['rb', '-r', pbucket(1), pbucket(2), pbucket(3)],
-    must_find = [ "Bucket '%s/' removed" % pbucket(1),
-              "Bucket '%s/' removed" % pbucket(2),
-              "Bucket '%s/' removed" % pbucket(3) ])
+test_s3cmd("Remove test buckets", ['rb', '-r', '--force', pbucket(1), pbucket(2), pbucket(3)])
+
+## ====== verify they were removed
+test_s3cmd("Verify no test buckets", ['ls'],
+           must_not_find = [pbucket(1), pbucket(2), pbucket(3)])
 
 
 ## ====== Create one bucket (EU)
@@ -281,7 +291,7 @@ test_s3cmd("Create multiple buckets", ['mb', pbucket(2), pbucket(3)],
 
 ## ====== Invalid bucket name
 test_s3cmd("Invalid bucket name", ["mb", "--bucket-location=EU", pbucket('EU')],
-    retcode = 1,
+    retcode = EX_USAGE,
     must_find = "ERROR: Parameter problem: Bucket name '%s' contains disallowed character" % bucket('EU'),
     must_not_find_re = "Bucket.*created")
 
@@ -306,7 +316,7 @@ if have_encoding:
 
 ## ====== List bucket content
 test_s3cmd("List bucket content", ['ls', '%s/xyz/' % pbucket(1) ],
-    must_find_re = [ u"DIR   %s/xyz/binary/$" % pbucket(1) , u"DIR   %s/xyz/etc/$" % pbucket(1) ],
+    must_find_re = [ u"DIR +%s/xyz/binary/$" % pbucket(1) , u"DIR +%s/xyz/etc/$" % pbucket(1) ],
     must_not_find = [ u"random-crap.md5", u"/demo" ])
 
 
@@ -359,7 +369,7 @@ test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public'
 
 ## ====== Retrieve from URL
 if have_wget:
-    test("Retrieve from URL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.s3.amazonaws.com/xyz/etc/logo.png' % bucket(1)],
+    test("Retrieve from URL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
         must_find_re = [ 'logo.png.*saved \[22059/22059\]' ])
 
 
@@ -370,9 +380,9 @@ test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', '%s/xyz/etc/l*.p
 
 ## ====== Verify Private ACL
 if have_wget:
-    test("Verify Private ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.s3.amazonaws.com/xyz/etc/logo.png' % bucket(1)],
-        retcode = 8,
-        must_find_re = [ 'ERROR 403: Forbidden' ])
+    test("Verify Private ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
+         retcode = [1, 8],
+         must_find_re = [ 'ERROR 403: Forbidden' ])
 
 
 ## ====== Change ACL to Public
@@ -382,7 +392,7 @@ test_s3cmd("Change ACL to Public", ['setacl', '--acl-public', '--recursive', '%s
 
 ## ====== Verify Public ACL
 if have_wget:
-    test("Verify Public ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.s3.amazonaws.com/xyz/etc/logo.png' % bucket(1)],
+    test("Verify Public ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
         must_find_re = [ 'logo.png.*saved \[22059/22059\]' ])
 
 
@@ -412,10 +422,13 @@ test_s3cmd("Rename within S3", ['mv', '%s/xyz/etc/logo.png' % pbucket(1), '%s/xy
 
 ## ====== Rename (NoSuchKey)
 test_s3cmd("Rename (NoSuchKey)", ['mv', '%s/xyz/etc/logo.png' % pbucket(1), '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
-    retcode = 1,
+    retcode = EX_SOFTWARE,
     must_find_re = [ 'ERROR:.*NoSuchKey' ],
     must_not_find = [ 'File %s/xyz/etc/logo.png moved to %s/xyz/etc2/Logo.PNG' % (pbucket(1), pbucket(1)) ])
 
+## ====== Sync more from S3 (invalid src)
+test_s3cmd("Sync more from S3 (invalid src)", ['sync', '--delete-removed', '%s/xyz/DOESNOTEXIST' % pbucket(1), 'testsuite-out'],
+    must_not_find = [ "deleted: testsuite-out/logo.png" ])
 
 ## ====== Sync more from S3
 test_s3cmd("Sync more from S3", ['sync', '--delete-removed', '%s/xyz' % pbucket(1), 'testsuite-out'],
@@ -431,12 +444,23 @@ test_rmdir("Remove dst dir for get", "testsuite-out")
 
 ## ====== Get multiple files
 test_s3cmd("Get multiple files", ['get', '%s/xyz/etc2/Logo.PNG' % pbucket(1), '%s/xyz/etc/AtomicClockRadio.ttf' % pbucket(1), 'testsuite-out'],
-    retcode = 1,
+    retcode = EX_USAGE,
     must_find = [ 'Destination must be a directory or stdout when downloading multiple sources.' ])
+
+## ====== put/get non-ASCII filenames
+test_s3cmd("Put unicode filenames", ['put', u'testsuite/encodings/UTF-8/ŪņЇЌœđЗ/Žůžo',  u'%s/xyz/encodings/UTF-8/ŪņЇЌœđЗ/Žůžo' % pbucket(1)],
+           retcode = 0,
+           must_find = [ 'stored as' ])
 
 
 ## ====== Make dst dir for get
 test_mkdir("Make dst dir for get", "testsuite-out")
+
+
+## ====== put/get non-ASCII filenames
+test_s3cmd("Get unicode filenames", ['get', u'%s/xyz/encodings/UTF-8/ŪņЇЌœđЗ/Žůžo' % pbucket(1), 'testsuite-out'],
+           retcode = 0,
+           must_find = [ 'saved as' ])
 
 
 ## ====== Get multiple files
@@ -462,7 +486,7 @@ test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % p
 test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "MIME type:.*image/png",
                      "ACL:.*\*anon\*: READ",
-                     "URL:.*http://%s.s3.amazonaws.com/copy/etc2/Logo.PNG" % bucket(2) ])
+                     "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
 
 ## ====== Rename within S3
 test_s3cmd("Rename within S3", ['mv', '%s/copy/etc2/Logo.PNG' % pbucket(2), '%s/copy/etc/logo.png' % pbucket(2)],
@@ -472,12 +496,13 @@ test_s3cmd("Rename within S3", ['mv', '%s/copy/etc2/Logo.PNG' % pbucket(2), '%s/
 test_s3cmd("Sync remote2remote", ['sync', '%s/xyz/' % pbucket(1), '%s/copy/' % pbucket(2), '--delete-removed', '--exclude', 'non-printables*'],
     must_find = [ "File %s/xyz/demo/dir1/file1-1.txt copied to %s/copy/demo/dir1/file1-1.txt" % (pbucket(1), pbucket(2)),
                   "remote copy: etc/logo.png -> etc2/Logo.PNG",
-                  "deleted: '%s/copy/etc/logo.png'" % pbucket(2) ],
+                  "File %s/copy/etc/logo.png deleted" % pbucket(2) ],
     must_not_find = [ "blah.txt" ])
 
 ## ====== Don't Put symbolic link
 test_s3cmd("Don't put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),],
-    must_not_find_re = [ "linked1.png"])
+           retcode = EX_USAGE,
+           must_not_find_re = [ "linked1.png"])
 
 ## ====== Put symbolic link
 test_s3cmd("Put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),'--follow-symlinks' ],
@@ -512,6 +537,37 @@ test_s3cmd("Verify move", ['ls', '-r', pbucket(2)],
 test_s3cmd("Simple delete", ['del', '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
     must_find = [ "File %s/xyz/etc2/Logo.PNG deleted" % pbucket(1) ])
 
+## ====== Simple delete with rm
+test_s3cmd("Simple delete with rm", ['rm', '%s/xyz/test_rm/TypeRa.ttf' % pbucket(1)],
+    must_find = [ "File %s/xyz/test_rm/TypeRa.ttf deleted" % pbucket(1) ])
+
+## ====== Create expiration rule with days and prefix
+test_s3cmd("Create expiration rule with days and prefix", ['expire', pbucket(1), '--expiry-days=365', '--expiry-prefix=log/'],
+    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+
+## ====== Create expiration rule with date and prefix
+test_s3cmd("Create expiration rule with date and prefix", ['expire', pbucket(1), '--expiry-date=2012-12-31T00:00:00.000Z', '--expiry-prefix=log/'],
+    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+
+## ====== Create expiration rule with days only
+test_s3cmd("Create expiration rule with days only", ['expire', pbucket(1), '--expiry-days=365'],
+    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+
+## ====== Create expiration rule with date only
+test_s3cmd("Create expiration rule with date only", ['expire', pbucket(1), '--expiry-date=2012-12-31T00:00:00.000Z'],
+    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+
+## ====== Get current expiration setting
+test_s3cmd("Get current expiration setting", ['info', pbucket(1)],
+    must_find = [ "Expiration Rule: all objects in this bucket will expire in '2012-12-31T00:00:00.000Z'"])
+
+## ====== Delete expiration rule
+test_s3cmd("Delete expiration rule", ['expire', pbucket(1)],
+    must_find = [ "Bucket '%s/': expiration configuration is deleted." % pbucket(1)])
+
+## ====== Recursive delete maximum exceeed
+test_s3cmd("Recursive delete maximum exceeded", ['del', '--recursive', '--max-delete=1', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],
+    must_not_find = [ "File %s/xyz/etc/TypeRa.ttf deleted" % pbucket(1) ])
 
 ## ====== Recursive delete
 test_s3cmd("Recursive delete", ['del', '--recursive', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],
@@ -519,15 +575,19 @@ test_s3cmd("Recursive delete", ['del', '--recursive', '--exclude', 'Atomic*', '%
     must_find_re = [ "File .*/etc/logo.png deleted" ],
     must_not_find = [ "AtomicClockRadio.ttf" ])
 
+## ====== Recursive delete with rm
+test_s3cmd("Recursive delete with rm", ['rm', '--recursive', '--exclude', 'Atomic*', '%s/xyz/test_rm' % pbucket(1)],
+    must_find = [ "File %s/xyz/test_rm/more/give-me-more.txt deleted" % pbucket(1) ],
+    must_find_re = [ "File .*/test_rm/logo.png deleted" ],
+    must_not_find = [ "AtomicClockRadio.ttf" ])
+
 ## ====== Recursive delete all
 test_s3cmd("Recursive delete all", ['del', '--recursive', '--force', pbucket(1)],
     must_find_re = [ "File .*binary/random-crap deleted" ])
 
-
 ## ====== Remove empty bucket
 test_s3cmd("Remove empty bucket", ['rb', pbucket(1)],
     must_find = [ "Bucket '%s/' removed" % pbucket(1) ])
-
 
 ## ====== Remove remaining buckets
 test_s3cmd("Remove remaining buckets", ['rb', '--recursive', pbucket(2), pbucket(3)],

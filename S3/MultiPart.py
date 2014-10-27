@@ -3,9 +3,10 @@
 ## License: GPL Version 2
 
 import os
+import sys
 from stat import ST_SIZE
 from logging import debug, info, warning, error
-from Utils import getTextFromXml, formatSize, unicodise
+from Utils import getTextFromXml, getTreeFromXml, formatSize, unicodise, calculateChecksum, parseNodes
 from Exceptions import S3UploadError
 
 class MultiPartUpload(object):
@@ -22,15 +23,55 @@ class MultiPartUpload(object):
         self.headers_baseline = headers_baseline
         self.upload_id = self.initiate_multipart_upload()
 
+    def get_parts_information(self, uri, upload_id):
+        multipart_response = self.s3.list_multipart(uri, upload_id)
+        tree = getTreeFromXml(multipart_response['data'])
+
+        parts = dict()
+        for elem in parseNodes(tree):
+            try:
+                parts[int(elem['PartNumber'])] = {'checksum': elem['ETag'], 'size': elem['Size']}
+            except KeyError:
+                pass
+
+        return parts
+
+    def get_unique_upload_id(self, uri):
+        upload_id = None
+        multipart_response = self.s3.get_multipart(uri)
+        tree = getTreeFromXml(multipart_response['data'])
+        for mpupload in parseNodes(tree):
+            try:
+                mp_upload_id = mpupload['UploadId']
+                mp_path = mpupload['Key']
+                info("mp_path: %s, object: %s" % (mp_path, uri.object()))
+                if mp_path == uri.object():
+                    if upload_id is not None:
+                        raise ValueError("More than one UploadId for URI %s.  Disable multipart upload, or use\n %s multipart %s\nto list the Ids, then pass a unique --upload-id into the put command." % (uri, sys.argv[0], uri))
+                    upload_id = mp_upload_id
+            except KeyError:
+                pass
+
+        return upload_id
+
     def initiate_multipart_upload(self):
         """
         Begin a multipart upload
         http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadInitiate.html
         """
-        request = self.s3.create_request("OBJECT_POST", uri = self.uri, headers = self.headers_baseline, extra = "?uploads")
-        response = self.s3.send_request(request)
-        data = response["data"]
-        self.upload_id = getTextFromXml(data, "UploadId")
+        if self.s3.config.upload_id is not None:
+            self.upload_id = self.s3.config.upload_id
+        elif self.s3.config.put_continue:
+            self.upload_id = self.get_unique_upload_id(self.uri)
+        else:
+            self.upload_id = None
+
+        if self.upload_id is None:
+            request = self.s3.create_request("OBJECT_POST", uri = self.uri, headers = self.headers_baseline, extra = "?uploads")
+            response = self.s3.send_request(request)
+            data = response["data"]
+            self.upload_id = getTextFromXml(data, "UploadId")
+
         return self.upload_id
 
     def upload_all_parts(self):
@@ -51,6 +92,10 @@ class MultiPartUpload(object):
         else:
             debug("MultiPart: Uploading from %s" % (self.file.name))
 
+        remote_statuses = dict()
+        if self.s3.config.put_continue:
+            remote_statuses = self.get_parts_information(self.uri, self.upload_id)
+
         seq = 1
         if self.file.name != "<stdin>":
             while size_left > 0:
@@ -63,10 +108,10 @@ class MultiPartUpload(object):
                     'extra' : "[part %d of %d, %s]" % (seq, nr_parts, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
                 }
                 try:
-                    self.upload_part(seq, offset, current_chunk_size, labels)
+                    self.upload_part(seq, offset, current_chunk_size, labels, remote_status = remote_statuses.get(seq))
                 except:
-                    error(u"Upload of '%s' part %d failed. Aborting multipart upload." % (self.file.name, seq))
-                    self.abort_upload()
+                    error(u"\nUpload of '%s' part %d failed. Use\n  %s abortmp %s %s\nto abort the upload, or\n  %s --upload-id %s put ...\nto continue the upload."
+                          % (self.file.name, seq, sys.argv[0], self.uri, self.upload_id, sys.argv[0], self.upload_id))
                     raise
                 seq += 1
         else:
@@ -82,22 +127,38 @@ class MultiPartUpload(object):
                 if len(buffer) == 0: # EOF
                     break
                 try:
-                    self.upload_part(seq, offset, current_chunk_size, labels, buffer)
+                    self.upload_part(seq, offset, current_chunk_size, labels, buffer, remote_status = remote_statuses.get(seq))
                 except:
-                    error(u"Upload of '%s' part %d failed. Aborting multipart upload." % (self.file.name, seq))
-                    self.abort_upload()
+                    error(u"\nUpload of '%s' part %d failed. Use\n  %s abortmp %s %s\nto abort, or\n  %s --upload-id %s put ...\nto continue the upload."
+                          % (self.file.name, seq, self.uri, sys.argv[0], self.upload_id, sys.argv[0], self.upload_id))
                     raise
                 seq += 1
 
         debug("MultiPart: Upload finished: %d parts", seq - 1)
 
-    def upload_part(self, seq, offset, chunk_size, labels, buffer = ''):
+    def upload_part(self, seq, offset, chunk_size, labels, buffer = '', remote_status = None):
         """
         Upload a file chunk
         http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadUploadPart.html
         """
         # TODO implement Content-MD5
         debug("Uploading part %i of %r (%s bytes)" % (seq, self.upload_id, chunk_size))
+
+        if remote_status is not None:
+            if int(remote_status['size']) == chunk_size:
+                checksum = calculateChecksum(buffer, self.file, offset, chunk_size, self.s3.config.send_chunk)
+                remote_checksum = remote_status['checksum'].strip('"')
+                if remote_checksum == checksum:
+                    warning("MultiPart: size and md5sum match for %s part %d, skipping." % (self.uri, seq))
+                    self.parts[seq] = remote_status['checksum']
+                    return
+                else:
+                    warning("MultiPart: checksum (%s vs %s) does not match for %s part %d, reuploading."
+                            % (remote_checksum, checksum, self.uri, seq))
+            else:
+                warning("MultiPart: size (%d vs %d) does not match for %s part %d, reuploading."
+                        % (int(remote_status['size']), chunk_size, self.uri, seq))
+
         headers = { "content-length": chunk_size }
         query_string = "?partNumber=%i&uploadId=%s" % (seq, self.upload_id)
         request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
@@ -130,8 +191,9 @@ class MultiPartUpload(object):
         http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadAbort.html
         """
         debug("MultiPart: Aborting upload: %s" % self.upload_id)
-        request = self.s3.create_request("OBJECT_DELETE", uri = self.uri, extra = "?uploadId=%s" % (self.upload_id))
-        response = self.s3.send_request(request)
+        #request = self.s3.create_request("OBJECT_DELETE", uri = self.uri, extra = "?uploadId=%s" % (self.upload_id))
+        #response = self.s3.send_request(request)
+        response = None
         return response
 
 # vim:et:ts=4:sts=4:ai

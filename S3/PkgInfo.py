@@ -1,5 +1,11 @@
+## Amazon S3 manager
+## Author: Michal Ludvig <michal@logix.cz>
+##         http://www.logix.cz/michal
+## License: GPL Version 2
+## Copyright: TGRMN Software and contributors
+
 package = "s3cmd"
-version = "1.5.0-alpha2"
+version = "1.5.0-rc1"
 url = "http://s3tools.org"
 license = "GPL version 2"
 short_description = "Command line tool for managing Amazon S3 and CloudFront services"

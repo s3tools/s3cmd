@@ -2,6 +2,7 @@
 ## Author: Michal Ludvig <michal@logix.cz>
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
+## Copyright: TGRMN Software and contributors
 
 import logging
 from logging import debug, info, warning, error
@@ -11,7 +12,10 @@ import sys
 import Progress
 from SortedDict import SortedDict
 import httplib
-import json
+try:
+    import json
+except ImportError, e:
+    pass
 
 class Config(object):
     _instance = None
@@ -33,10 +37,14 @@ class Config(object):
     human_readable_sizes = False
     extra_headers = SortedDict(ignore_case = True)
     force = False
+    server_side_encryption = False
     enable = None
     get_continue = False
+    put_continue = False
+    upload_id = None
     skip_existing = False
     recursive = False
+    restore_days = 1
     acl_public = None
     acl_grants = []
     acl_revokes = []
@@ -61,6 +69,7 @@ class Config(object):
     delete_removed = False
     delete_after = False
     delete_after_fetch = False
+    max_delete = -1
     _doc['delete_removed'] = "[sync] Remove remote S3 objects when local file has been deleted"
     delay_updates = False
     gpg_passphrase = ""
@@ -71,6 +80,7 @@ class Config(object):
     bucket_location = "US"
     default_mime_type = "binary/octet-stream"
     guess_mime_type = True
+    use_mime_magic = True
     mime_type = ""
     enable_multipart = True
     multipart_chunk_size_mb = 15    # MB
@@ -96,32 +106,55 @@ class Config(object):
     website_error = ""
     website_endpoint = "http://%(bucket)s.s3-website-%(location)s.amazonaws.com/"
     additional_destinations = []
+    files_from = []
     cache_file = ""
     add_headers = ""
+    ignore_failed_copy = False
+    expiry_days = ""
+    expiry_date = ""
+    expiry_prefix = ""
 
     ## Creating a singleton
-    def __new__(self, configfile = None):
+    def __new__(self, configfile = None, access_key=None, secret_key=None):
         if self._instance is None:
             self._instance = object.__new__(self)
         return self._instance
 
-    def __init__(self, configfile = None):
+    def __init__(self, configfile = None, access_key=None, secret_key=None):
         if configfile:
             try:
                 self.read_config_file(configfile)
             except IOError, e:
                 if 'AWS_CREDENTIAL_FILE' in os.environ:
                     self.env_config()
+
+            # override these if passed on the command-line
+            if access_key and secret_key:
+                self.access_key = access_key
+                self.secret_key = secret_key
+
             if len(self.access_key)==0:
-                self.role_config()  
+                env_access_key = os.environ.get("AWS_ACCESS_KEY", None) or os.environ.get("AWS_ACCESS_KEY_ID", None)
+                env_secret_key = os.environ.get("AWS_SECRET_KEY", None) or os.environ.get("AWS_SECRET_ACCESS_KEY", None)
+                if env_access_key:
+                    self.access_key = env_access_key
+                    self.secret_key = env_secret_key
+                else:
+                    self.role_config()
 
     def role_config(self):
-        conn = httplib.HTTPConnection(host='169.254.169.254',timeout=0.1)
+        if sys.version_info[0] * 10 + sys.version_info[1] < 26:
+            error("IAM authentication requires Python 2.6 or newer")
+            raise
+        if not 'json' in sys.modules:
+            error("IAM authentication not available -- missing module json")
+            raise
         try:
+            conn = httplib.HTTPConnection(host='169.254.169.254', timeout = 2)
             conn.request('GET', "/latest/meta-data/iam/security-credentials/")
             resp = conn.getresponse()
             files = resp.read()
-            if resp.status == 200 and len(files)>1:               
+            if resp.status == 200 and len(files)>1:
                 conn.request('GET', "/latest/meta-data/iam/security-credentials/%s"%files)
                 resp=conn.getresponse()
                 if resp.status == 200:
@@ -164,16 +197,14 @@ class Config(object):
                     elif data["orig_key"]=="AWSSecretKey":
                         data["key"] = "secret_key"
                     else:
-                        del data["key"]                    
+                        del data["key"]
                     if "key" in data:
                         Config().update_option(data["key"], data["value"])
                         if data["key"] in ("access_key", "secret_key", "gpg_passphrase"):
-                            print_value = (data["value"][:2]+"...%d_chars..."+data["value"][-1:]) % (len(data["value"]) - 3)
+                            print_value = ("%s...%d_chars...%s") % (data["value"][:2], len(data["value"]) - 3, data["value"][-1:])
                         else:
                             print_value = data["value"]
                         debug("env_Config: %s->%s" % (data["key"], print_value))
-                
-        
 
     def option_list(self):
         retval = []
@@ -207,31 +238,43 @@ class Config(object):
     def update_option(self, option, value):
         if value is None:
             return
+
         #### Handle environment reference
         if str(value).startswith("$"):
             return self.update_option(option, os.getenv(str(value)[1:]))
+
         #### Special treatment of some options
         ## verbosity must be known to "logging" module
         if option == "verbosity":
+            # support integer verboisities
             try:
-                setattr(Config, "verbosity", logging._levelNames[value])
-            except KeyError:
-                error("Config: verbosity level '%s' is not valid" % value)
+                value = int(value)
+            except ValueError, e:
+                try:
+                    # otherwise it must be a key known to the logging module
+                    value = logging._levelNames[value]
+                except KeyError:
+                    error("Config: verbosity level '%s' is not valid" % value)
+                    return
+
         ## allow yes/no, true/false, on/off and 1/0 for boolean options
         elif type(getattr(Config, option)) is type(True):   # bool
             if str(value).lower() in ("true", "yes", "on", "1"):
-                setattr(Config, option, True)
+                value = True
             elif str(value).lower() in ("false", "no", "off", "0"):
-                setattr(Config, option, False)
+                value = False
             else:
                 error("Config: value of option '%s' must be Yes or No, not '%s'" % (option, value))
+                return
+
         elif type(getattr(Config, option)) is type(42):     # int
             try:
-                setattr(Config, option, int(value))
+                value = int(value)
             except ValueError, e:
                 error("Config: value of option '%s' must be an integer, not '%s'" % (option, value))
-        else:                           # string
-            setattr(Config, option, value)
+                return
+
+        setattr(Config, option, value)
 
 class ConfigParser(object):
     def __init__(self, file, sections = []):
@@ -264,7 +307,7 @@ class ConfigParser(object):
                     data["value"] = data["value"][1:-1]
                 self.__setitem__(data["key"], data["value"])
                 if data["key"] in ("access_key", "secret_key", "gpg_passphrase"):
-                    print_value = (data["value"][:2]+"...%d_chars..."+data["value"][-1:]) % (len(data["value"]) - 3)
+                    print_value = ("%s...%d_chars...%s") % (data["value"][:2], len(data["value"]) - 3, data["value"][-1:])
                 else:
                     print_value = data["value"]
                 debug("ConfigParser: %s->%s" % (data["key"], print_value))
@@ -289,6 +332,12 @@ class ConfigDumper(object):
     def dump(self, section, config):
         self.stream.write("[%s]\n" % section)
         for option in config.option_list():
-            self.stream.write("%s = %s\n" % (option, getattr(config, option)))
+            value = getattr(config, option)
+            if option == "verbosity":
+                # we turn level numbers back into strings if possible
+                if isinstance(value,int) and value in logging._levelNames:
+                    value = logging._levelNames[value]
+
+            self.stream.write("%s = %s\n" % (option, value))
 
 # vim:et:ts=4:sts=4:ai
