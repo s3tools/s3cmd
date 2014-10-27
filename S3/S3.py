@@ -33,6 +33,7 @@ from Exceptions import *
 from MultiPart import MultiPartUpload
 from S3Uri import S3Uri
 from ConnMan import ConnMan
+from Crypto import sign_string_v2
 
 try:
     import magic
@@ -150,7 +151,7 @@ class S3Request(object):
             h += "/" + self.resource['bucket']
         h += self.resource['uri']
         debug("SignHeaders: " + repr(h))
-        signature = sign_string(h)
+        signature = sign_string_v2(h)
 
         self.headers["Authorization"] = "AWS "+self.s3.config.access_key+":"+signature
 
