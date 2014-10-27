@@ -438,6 +438,26 @@ class S3(object):
         request =  self.create_request("BUCKET_CREATE", bucket = bucket, headers = headers, extra="?lifecycle")
         return (request, body)
 
+    def content_type(self, filename):
+        content_type = self.config.mime_type
+        content_charset = None
+
+        if filename != "-" and not content_type and self.config.guess_mime_type:
+            if self.config.use_mime_magic:
+                (content_type, content_charset) = mime_magic(filename)
+            else:
+                (content_type, content_charset) = mimetypes.guess_type(filename)
+        if not content_type:
+            content_type = self.config.default_mime_type
+        if not content_charset:
+            content_charset = self.config.encoding.upper()
+
+        ## add charset to content type
+        if self.add_encoding(filename, content_type) and content_charset is not None:
+            content_type = content_type + "; charset=" + content_charset
+
+        return content_type
+
     def add_encoding(self, filename, content_type):
         if content_type.find("charset=") != -1:
            return False
@@ -480,23 +500,7 @@ class S3(object):
             headers["x-amz-server-side-encryption"] = "AES256"
 
         ## MIME-type handling
-        content_type = self.config.mime_type
-        content_charset = None
-        if filename != "-" and not content_type and self.config.guess_mime_type:
-            if self.config.use_mime_magic:
-                (content_type, content_charset) = mime_magic(filename)
-            else:
-                (content_type, content_charset) = mimetypes.guess_type(filename)
-        if not content_type:
-            content_type = self.config.default_mime_type
-        if not content_charset:
-            content_charset = self.config.encoding.upper()
-
-        ## add charset to content type
-        if self.add_encoding(filename, content_type) and content_charset is not None:
-            content_type = content_type + "; charset=" + content_charset
-
-        headers["content-type"] = content_type
+        headers["content-type"] = self.content_type(filename)
 
         ## Other Amazon S3 attributes
         if self.config.acl_public:
@@ -624,6 +628,10 @@ class S3(object):
         if extra_headers:
             headers['x-amz-metadata-directive'] = "REPLACE"
             headers.update(extra_headers)
+
+        filename = os.path.basename(str(src_uri))
+        headers["content-type"] = self.content_type(filename)
+
         request = self.create_request("OBJECT_PUT", uri = dst_uri, headers = headers)
         response = self.send_request(request)
         return response
