@@ -19,7 +19,8 @@ except ImportError:
 from S3 import S3
 from Config import Config
 from Exceptions import *
-from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, sign_string, getBucketFromHostname, getHostnameFromBucket
+from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, getBucketFromHostname, getHostnameFromBucket
+from Crypto import sign_string_v2
 from S3Uri import S3Uri, S3UriS3
 from FileLists import fetch_remote_list
 
@@ -553,7 +554,7 @@ class CloudFront(object):
 
     def sign_request(self, headers):
         string_to_sign = headers['x-amz-date']
-        signature = sign_string(string_to_sign)
+        signature = sign_string_v2(string_to_sign)
         debug(u"CloudFront.sign_request('%s') = %s" % (string_to_sign, signature))
         return signature
 
