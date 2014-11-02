@@ -112,7 +112,8 @@ class Config(object):
     ignore_failed_copy = False
     expiry_days = ""
     expiry_date = ""
-    expiry_prefix = ""
+    expiry_prefix = "",
+    check_md5 = True
 
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None):

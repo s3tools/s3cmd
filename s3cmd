@@ -377,7 +377,7 @@ def cmd_object_put(args):
             debug(u"attr_header: %s" % attr_header)
             extra_headers.update(attr_header)
         try:
-            response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label)
+            response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label, check_md5 = Config().check_md5)
         except S3UploadError, e:
             error(u"Upload of '%s' failed too many times. Skipping that file." % full_name_orig)
             continue
@@ -2315,9 +2315,11 @@ def main():
         try:
             cfg.sync_checks.remove("md5")
             cfg.preserve_attrs_list.remove("md5")
+            cfg.check_md5 = False
         except Exception:
             pass
     if options.check_md5 == True:
+        cfg.check_md5 = True
         if cfg.sync_checks.count("md5") == 0:
             cfg.sync_checks.append("md5")
         if cfg.preserve_attrs_list.count("md5") == 0:

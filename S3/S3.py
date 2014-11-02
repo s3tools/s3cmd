@@ -453,7 +453,7 @@ class S3(object):
         else:
             return False
 
-    def object_put(self, filename, uri, extra_headers = None, extra_label = ""):
+    def object_put(self, filename, uri, extra_headers = None, extra_label = "", check_md5 = True):
         # TODO TODO
         # Make it consistent with stream-oriented object_get()
         if uri.type != "s3":
@@ -530,13 +530,18 @@ class S3(object):
                 remote_size = int(info['headers']['content-length'])
                 remote_checksum = info['headers']['etag'].strip('"')
                 if size == remote_size:
-                    checksum = calculateChecksum('', file, 0, size, self.config.send_chunk)
-                    if remote_checksum == checksum:
-                        warning("Put: size and md5sum match for %s, skipping." % uri)
-                        return
+                    if check_md5:
+                        checksum = calculateChecksum('', file, 0, size, self.config.send_chunk)
+                        if remote_checksum == checksum:
+                            warning("Put: size and md5sum match for %s, skipping." % uri)
+                            return
+                        else:
+                            warning("MultiPart: checksum (%s vs %s) does not match for %s, reuploading."
+                                    % (remote_checksum, checksum, uri))
                     else:
-                        warning("MultiPart: checksum (%s vs %s) does not match for %s, reuploading."
-                                % (remote_checksum, checksum, uri))
+                        warning("Put: size match (md5sum comparison disabled) for %s, skipping." % uri)
+                        return
+
                 else:
                     warning("MultiPart: size (%d vs %d) does not match for %s, reuploading."
                             % (remote_size, size, uri))
