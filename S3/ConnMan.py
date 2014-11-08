@@ -20,12 +20,18 @@ class http_connection(object):
         self.ssl = ssl
         self.id = id
         self.counter = 0
-        if cfg.proxy_host != "":
-            self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
-        elif not ssl:
-            self.c = httplib.HTTPConnection(hostname)
+
+        if not ssl:
+            if cfg.proxy_host != "":
+                self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
+            else:
+                self.c = httplib.HTTPConnection(hostname)
         else:
-            self.c = httplib.HTTPSConnection(hostname)
+            if cfg.proxy_host != "":
+                self.c = httplib.HTTPSConnection(cfg.proxy_host, cfg.proxy_port)
+                self.c.set_tunnel(hostname)
+            else:
+                self.c = httplib.HTTPSConnection(hostname)
 
 class ConnMan(object):
     conn_pool_sem = Semaphore()
@@ -39,8 +45,6 @@ class ConnMan(object):
             ssl = cfg.use_https
         conn = None
         if cfg.proxy_host != "":
-            if ssl:
-                raise ParameterError("use_https=True can't be used with proxy")
             conn_id = "proxy://%s:%s" % (cfg.proxy_host, cfg.proxy_port)
         else:
             conn_id = "http%s://%s" % (ssl and "s" or "", hostname)
