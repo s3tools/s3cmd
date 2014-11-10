@@ -4,6 +4,7 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
+import sys
 import httplib
 from urlparse import urlparse
 from threading import Semaphore
@@ -45,6 +46,8 @@ class ConnMan(object):
             ssl = cfg.use_https
         conn = None
         if cfg.proxy_host != "":
+            if ssl and sys.hexversion < 0x02070000:
+                raise ParameterError("use_https=True can't be used with proxy on Python <2.7")
             conn_id = "proxy://%s:%s" % (cfg.proxy_host, cfg.proxy_port)
         else:
             conn_id = "http%s://%s" % (ssl and "s" or "", hostname)
