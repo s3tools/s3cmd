@@ -208,7 +208,7 @@ class S3(object):
         self.config = config
 
     def get_hostname(self, bucket):
-        if bucket and check_bucket_name_dns_conformity(bucket):
+        if bucket and check_bucket_name_dns_support(self.config.host_bucket, bucket):
             if self.redir_map.has_key(bucket):
                 host = self.redir_map[bucket]
             else:
@@ -222,7 +222,7 @@ class S3(object):
         self.redir_map[bucket] = redir_hostname
 
     def format_uri(self, resource):
-        if resource['bucket'] and not check_bucket_name_dns_conformity(resource['bucket']):
+        if resource['bucket'] and not check_bucket_name_dns_support(self.config.host_bucket, resource['bucket']):
             uri = "/%s%s" % (resource['bucket'], resource['uri'])
         else:
             uri = resource['uri']

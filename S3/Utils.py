@@ -447,6 +447,20 @@ def check_bucket_name_dns_conformity(bucket):
         return False
 __all__.append("check_bucket_name_dns_conformity")
 
+def check_bucket_name_dns_support(bucket_host, bucket_name):
+    """
+    Check whether either the host_bucket support buckets and
+    either bucket name is dns compatible
+    """
+    if "%(bucket)s" not in bucket_host:
+        return False
+
+    try:
+        return check_bucket_name(bucket_name, dns_strict = True)
+    except Exceptions.ParameterError:
+        return False
+__all__.append("check_bucket_name_dns_support")
+
 def getBucketFromHostname(hostname):
     """
     bucket, success = getBucketFromHostname(hostname)
