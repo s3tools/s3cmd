@@ -33,7 +33,7 @@ from Exceptions import *
 from MultiPart import MultiPartUpload
 from S3Uri import S3Uri
 from ConnMan import ConnMan
-from Crypto import sign_string_v2
+from Crypto import sign_string_v2, checksum_sha256
 
 try:
     import magic
@@ -115,6 +115,7 @@ class S3Request(object):
         self.method_string = method_string
         self.params = params
         self.body = body
+        self.region = Config().default_region
 
         self.update_timestamp()
         self.sign()
@@ -150,10 +151,20 @@ class S3Request(object):
         if self.resource['bucket']:
             h += "/" + self.resource['bucket']
         h += self.resource['uri']
-        debug("SignHeaders: " + repr(h))
-        signature = sign_string_v2(h)
 
-        self.headers["Authorization"] = "AWS "+self.s3.config.access_key+":"+signature
+        if self.resource['bucket'] is None or not check_bucket_name_dns_conformity(self.resource['bucket']):
+            debug("SignHeaders: " + repr(h))
+            signature = sign_string_v2(h)
+            self.headers["Authorization"] = "AWS "+self.s3.config.access_key+":"+signature
+        else:
+            from Crypto import sign_string_v4
+            self.headers = sign_string_v4(self.method_string,
+                                          self.s3.get_hostname(self.resource['bucket']),
+                                          self.resource['uri'],
+                                          self.params,
+                                          self.region,
+                                          self.headers,
+                                          self.body)
 
     def get_triplet(self):
         self.update_timestamp()
@@ -252,6 +263,7 @@ class S3(object):
         def _get_common_prefixes(data):
             return getListFromXml(data, "CommonPrefixes")
 
+
         uri_params = uri_params.copy()
         truncated = True
         list = []
@@ -304,6 +316,7 @@ class S3(object):
             check_bucket_name(bucket, dns_strict = False)
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
+
         request = self.create_request("BUCKET_CREATE", bucket = bucket, headers = headers, body = body)
         response = self.send_request(request)
         return response
@@ -537,7 +550,7 @@ class S3(object):
                             % (remote_size, size, uri))
 
         headers["content-length"] = size
-        request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
+        request = self.create_request("OBJECT_PUT", uri = uri, headers = headers, body=checksum_sha256(filename))
         labels = { 'source' : unicodise(filename), 'destination' : unicodise(uri.uri()), 'extra' : extra_label }
         response = self.send_file(request, file, labels)
         return response
@@ -828,13 +841,9 @@ class S3(object):
 
     def send_request(self, request, retries = _max_retries):
         method_string, resource, headers = request.get_triplet()
+
         debug("Processing request, please wait...")
-        if not headers.has_key('content-length'):
-            headers['content-length'] = request.body and len(request.body) or 0
         try:
-            # "Stringify" all headers
-            for header in headers.keys():
-                headers[header] = str(headers[header])
             conn = ConnMan.get(self.get_hostname(resource['bucket']))
             uri = self.format_uri(resource)
             debug("Sending request method_string=%r, uri=%r, headers=%r, body=(%i bytes)" % (method_string, uri, headers, len(request.body or "")))
@@ -862,6 +871,14 @@ class S3(object):
                 return self.send_request(request, retries - 1)
             else:
                 raise S3RequestError("Request failed for: %s" % resource['uri'])
+
+        if response["status"] == 400:
+            if getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
+                region = getTextFromXml(response['data'], 'Region')
+                if region is not None:
+                    request.region = region
+                    warning('Forwarding request to %s' % region)
+                    return self.send_request(request)
 
         if response["status"] == 307:
             ## RedirectPermanent
@@ -895,6 +912,10 @@ class S3(object):
         else:
             info("Sending file '%s', please wait..." % file.name)
         timestamp_start = time.time()
+
+        sha256_hash = checksum_sha256(file.name, offset, size_total)
+        request.body = sha256_hash
+        method_string, resource, headers = request.get_triplet()
         try:
             conn = ConnMan.get(self.get_hostname(resource['bucket']))
             conn.c.putrequest(method_string, self.format_uri(resource))
@@ -980,6 +1001,14 @@ class S3(object):
             self.set_hostname(redir_bucket, redir_hostname)
             warning("Redirected to: %s" % (redir_hostname))
             return self.send_file(request, file, labels, buffer, offset = offset, chunk_size = chunk_size)
+
+        if response["status"] == 400:
+            if getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
+                region = getTextFromXml(response['data'], 'Region')
+                if region is not None:
+                    request.region = region
+                    warning('Forwarding request to %s' % region)
+                    return self.send_file(request, file, labels, buffer, offset = offset, chunk_size = chunk_size)
 
         # S3 from time to time doesn't send ETag back in a response :-(
         # Force re-upload here.
@@ -1083,6 +1112,14 @@ class S3(object):
             self.set_hostname(redir_bucket, redir_hostname)
             warning("Redirected to: %s" % (redir_hostname))
             return self.recv_file(request, stream, labels)
+
+        if response["status"] == 400:
+            if getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
+                region = getTextFromXml(response['data'], 'Region')
+                if region is not None:
+                    request.region = region
+                    warning('Forwarding request to %s' % region)
+                    return self.recv_file(request, stream, labels)
 
         if response["status"] < 200 or response["status"] > 299:
             raise S3Error(response)

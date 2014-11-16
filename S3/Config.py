@@ -79,6 +79,7 @@ class Config(object):
     use_https = False
     bucket_location = "US"
     default_mime_type = "binary/octet-stream"
+    default_region = 'us-east-1'
     guess_mime_type = True
     use_mime_magic = True
     mime_type = ""

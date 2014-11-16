@@ -1777,6 +1777,7 @@ def run_configure(config_file, args):
     options = [
         ("access_key", "Access Key", "Access key and Secret key are your identifiers for Amazon S3. Leave them empty for using the env variables."),
         ("secret_key", "Secret Key"),
+        ("default_region", "Default Region"),
         ("gpg_passphrase", "Encryption password", "Encryption password is used to protect your files from reading\nby unauthorized persons while in transfer to S3"),
         ("gpg_command", "Path to GPG program"),
         ("use_https", "Use HTTPS protocol", "When using secure HTTPS protocol all communication with Amazon S3\nservers is protected from 3rd party eavesdropping. This method is\nslower than plain HTTP and can't be used if you're behind a proxy"),
