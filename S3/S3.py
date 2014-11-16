@@ -102,6 +102,8 @@ def mime_magic(file):
 
 __all__ = []
 class S3Request(object):
+    region_map = {}
+
     def __init__(self, s3, method_string, resource, headers, body, params = {}):
         self.s3 = s3
         self.headers = SortedDict(headers or {}, ignore_case = True)
@@ -115,7 +117,6 @@ class S3Request(object):
         self.method_string = method_string
         self.params = params
         self.body = body
-        self.region = Config().default_region
 
         self.update_timestamp()
         self.sign()
@@ -165,7 +166,7 @@ class S3Request(object):
                                           self.s3.get_hostname(self.resource['bucket']),
                                           self.resource['uri'],
                                           self.params,
-                                          self.region,
+                                          S3Request.region_map.get(self.resource['bucket'], Config().default_region),
                                           self.headers,
                                           self.body)
 
@@ -879,7 +880,7 @@ class S3(object):
             if getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
                 region = getTextFromXml(response['data'], 'Region')
                 if region is not None:
-                    request.region = region
+                    S3Request.region_map[request.resource['bucket']] = region
                     warning('Forwarding request to %s' % region)
                     return self.send_request(request)
 
@@ -1009,7 +1010,7 @@ class S3(object):
             if getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
                 region = getTextFromXml(response['data'], 'Region')
                 if region is not None:
-                    request.region = region
+                    S3Request.region_map[request.resource['bucket']] = region
                     warning('Forwarding request to %s' % region)
                     return self.send_file(request, file, labels, buffer, offset = offset, chunk_size = chunk_size)
 
@@ -1120,7 +1121,7 @@ class S3(object):
             if getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
                 region = getTextFromXml(response['data'], 'Region')
                 if region is not None:
-                    request.region = region
+                    S3Request.region_map[request.resource['bucket']] = region
                     warning('Forwarding request to %s' % region)
                     return self.recv_file(request, stream, labels)
 
