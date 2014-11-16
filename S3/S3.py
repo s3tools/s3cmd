@@ -33,7 +33,7 @@ from Exceptions import *
 from MultiPart import MultiPartUpload
 from S3Uri import S3Uri
 from ConnMan import ConnMan
-from Crypto import sign_string_v2, checksum_sha256
+from Crypto import sign_string_v2, sign_string_v4, checksum_sha256
 
 try:
     import magic
@@ -153,11 +153,14 @@ class S3Request(object):
         h += self.resource['uri']
 
         if self.resource['bucket'] is None or not check_bucket_name_dns_conformity(self.resource['bucket']):
+            # in case of bad DNS name due to bucket name v2 will be used
+            # this way we can still use capital letters in bucket names for the older regions
+            debug("Using signature v2")
             debug("SignHeaders: " + repr(h))
             signature = sign_string_v2(h)
             self.headers["Authorization"] = "AWS "+self.s3.config.access_key+":"+signature
         else:
-            from Crypto import sign_string_v4
+            debug("Using signature v4")
             self.headers = sign_string_v4(self.method_string,
                                           self.s3.get_hostname(self.resource['bucket']),
                                           self.resource['uri'],
