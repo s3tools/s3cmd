@@ -877,12 +877,18 @@ class S3(object):
                 raise S3RequestError("Request failed for: %s" % resource['uri'])
 
         if response["status"] == 400:
-            if getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
+            if len(response['data']) > 0 and getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
                 region = getTextFromXml(response['data'], 'Region')
-                if region is not None:
-                    S3Request.region_map[request.resource['bucket']] = region
-                    warning('Forwarding request to %s' % region)
-                    return self.send_request(request)
+            else:
+                s3_uri = S3Uri('s3://' + request.resource['bucket'])
+                region = self.get_bucket_location(s3_uri)
+            if region is not None:
+                S3Request.region_map[request.resource['bucket']] = region
+                warning('Forwarding request to %s' % region)
+                return self.send_request(request)
+            else:
+                warning('Could not determine bucket location. Please consider using --region parameter.')
+                sys.exit(2)
 
         if response["status"] == 307:
             ## RedirectPermanent
