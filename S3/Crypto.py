@@ -86,11 +86,11 @@ def sign_string_v4(method='GET', host='', canonical_uri='/', params={}, region='
     amzdate = t.strftime('%Y%m%dT%H%M%SZ')
     datestamp = t.strftime('%Y%m%d')
 
-    canonical_querystring = '&'.join(['%s=%s' % (urllib.quote_plus(p), urllib.quote_plus(params[p])) for p in sorted(params.keys())])
+    canonical_querystring = '&'.join(['%s=%s' % (urllib.quote_plus(p), quote_param(params[p])) for p in sorted(params.keys())])
+
     splits = canonical_uri.split('?')
 
-    # As stated by Amazon the '/' in the filename should stay unquoted and %20 should be used for space instead of '+'
-    canonical_uri = urllib.quote_plus(urllib.unquote_plus(splits[0])).replace('%2F', '/').replace('+', '%20')
+    canonical_uri = quote_param(splits[0], quote_backslashes=False)
     canonical_querystring += '&'.join([('%s' if '=' in qs else '%s=') % urllib.quote_plus(qs) for qs in splits[1:]])
 
     if type(body) == type(sha256('')):
@@ -103,10 +103,10 @@ def sign_string_v4(method='GET', host='', canonical_uri='/', params={}, region='
 
     for header in cur_headers.keys():
         # avoid duplicate headers and previous Authorization
-        if header == 'Authorization' or header in sorted(signed_headers.split(';')):
+        if header == 'Authorization' or header in signed_headers.split(';'):
             continue
         canonical_headers += header.strip() + ':' + str(cur_headers[header]).strip() + '\n'
-        signed_headers += ';' + header
+        signed_headers += ';' + header.strip()
 
     # sort headers
     canonical_headers = '\n'.join(sorted(canonical_headers.split())) + '\n'
@@ -123,6 +123,13 @@ def sign_string_v4(method='GET', host='', canonical_uri='/', params={}, region='
     authorization_header = algorithm + ' ' + 'Credential=' + access_key + '/' + credential_scope + ',' +  'SignedHeaders=' + signed_headers + ',' + 'Signature=' + signature
     headers = dict(cur_headers.items() + {'x-amz-date':amzdate, 'Authorization':authorization_header, 'x-amz-content-sha256': payload_hash}.items())
     return headers
+
+def quote_param(param, quote_backslashes=True):
+    # As stated by Amazon the '/' in the filename should stay unquoted and %20 should be used for space instead of '+'
+    quoted = urllib.quote_plus(urllib.unquote_plus(param)).replace('+', '%20')
+    if not quote_backslashes:
+        quoted = quoted.replace('%2F', '/')
+    return quoted
 
 def checksum_sha256(filename, offset=0, size=None):
     canonical_uri = urllib.quote_plus(filename).replace('%2F', '/')
