@@ -877,7 +877,7 @@ class S3(object):
                 raise S3RequestError("Request failed for: %s" % resource['uri'])
 
         if response["status"] == 400:
-            if len(response['data']) > 0 and getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
+            if 'data' in response and len(response['data']) > 0 and getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
                 region = getTextFromXml(response['data'], 'Region')
             else:
                 s3_uri = S3Uri('s3://' + request.resource['bucket'])
@@ -1013,7 +1013,7 @@ class S3(object):
             return self.send_file(request, file, labels, buffer, offset = offset, chunk_size = chunk_size)
 
         if response["status"] == 400:
-            if getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
+            if 'data' in response and len(response['data']) > 0 and getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
                 region = getTextFromXml(response['data'], 'Region')
                 if region is not None:
                     S3Request.region_map[request.resource['bucket']] = region
@@ -1124,7 +1124,7 @@ class S3(object):
             return self.recv_file(request, stream, labels)
 
         if response["status"] == 400:
-            if getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
+            if 'data' in response and len(response['data']) > 0 and getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
                 region = getTextFromXml(response['data'], 'Region')
                 if region is not None:
                     S3Request.region_map[request.resource['bucket']] = region
