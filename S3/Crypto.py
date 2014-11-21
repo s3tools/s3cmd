@@ -122,6 +122,7 @@ def sign_string_v4(method='GET', host='', canonical_uri='/', params={}, region='
     signature = hmac.new(signing_key, (string_to_sign).encode('utf-8'), sha256).hexdigest()
     authorization_header = algorithm + ' ' + 'Credential=' + access_key + '/' + credential_scope + ',' +  'SignedHeaders=' + signed_headers + ',' + 'Signature=' + signature
     headers = dict(cur_headers.items() + {'x-amz-date':amzdate, 'Authorization':authorization_header, 'x-amz-content-sha256': payload_hash}.items())
+    debug("signature-v4 headers: %s" % headers)
     return headers
 
 def quote_param(param, quote_backslashes=True):
