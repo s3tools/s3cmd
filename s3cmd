@@ -38,6 +38,7 @@ import htmlentitydefs
 import socket
 import shutil
 import tempfile
+import unicodedata
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -1248,7 +1249,11 @@ def cmd_sync_local2remote(args):
             destination_base_uri = S3Uri(dest)
             if destination_base_uri.type != 's3':
                 raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
-            destination_base = str(destination_base_uri)
+
+            ## Normalize to remove latin chars
+            ## Related to issue 417
+            safe_destination_base_uri = unicodedata.normalize('NFKD', unicode(destination_base_uri)).encode('ascii','ignore')
+            destination_base = str(safe_destination_base_uri)
             rc = _child(destination_base, local_list)
             if rc:
                 any_child_failed = True
@@ -1266,7 +1271,11 @@ def cmd_sync_local2remote(args):
             destination_base_uri = S3Uri(dest)
             if destination_base_uri.type != 's3':
                 raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
-            destination_base = str(destination_base_uri)
+
+            ## Normalization to remove latin chars
+            ## Related to issue 417
+            safe_destination_base_uri = unicodedata.normalize('NFKD', unicode(destination_base_uri)).encode('ascii','ignore')
+            destination_base = str(safe_destination_base_uri)
             child_pid = os.fork()
             if child_pid == 0:
                 _child(destination_base, local_list)
