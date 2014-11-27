@@ -1015,10 +1015,13 @@ class S3(object):
         if response["status"] == 400:
             if 'data' in response and len(response['data']) > 0 and getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
                 region = getTextFromXml(response['data'], 'Region')
-                if region is not None:
-                    S3Request.region_map[request.resource['bucket']] = region
-                    warning('Forwarding request to %s' % region)
-                    return self.send_file(request, file, labels, buffer, offset = offset, chunk_size = chunk_size)
+            else:
+                s3_uri = S3Uri('s3://' + request.resource['bucket'])
+                region = self.get_bucket_location(s3_uri)
+            if region is not None:
+                S3Request.region_map[request.resource['bucket']] = region
+                warning('Forwarding request to %s' % region)
+                return self.send_file(request, file, labels, buffer, offset = offset, chunk_size = chunk_size)
 
         # S3 from time to time doesn't send ETag back in a response :-(
         # Force re-upload here.
@@ -1126,10 +1129,13 @@ class S3(object):
         if response["status"] == 400:
             if 'data' in response and len(response['data']) > 0 and getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
                 region = getTextFromXml(response['data'], 'Region')
-                if region is not None:
-                    S3Request.region_map[request.resource['bucket']] = region
-                    warning('Forwarding request to %s' % region)
-                    return self.recv_file(request, stream, labels)
+            else:
+                s3_uri = S3Uri('s3://' + request.resource['bucket'])
+                region = self.get_bucket_location(s3_uri)
+            if region is not None:
+                S3Request.region_map[request.resource['bucket']] = region
+                warning('Forwarding request to %s' % region)
+                return self.recv_file(request, stream, labels)
 
         if response["status"] < 200 or response["status"] > 299:
             raise S3Error(response)
