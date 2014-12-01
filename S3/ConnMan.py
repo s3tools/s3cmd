@@ -5,6 +5,7 @@
 ## Copyright: TGRMN Software and contributors
 
 import httplib
+import ssl
 from urlparse import urlparse
 from threading import Semaphore
 from logging import debug, info, warning, error
@@ -15,6 +16,35 @@ from Exceptions import ParameterError
 __all__ = [ "ConnMan" ]
 
 class http_connection(object):
+    context = None
+    context_set = False
+
+    @staticmethod
+    def _ssl_context():
+        if http_connection.context_set:
+            return http_connection.context
+
+        cfg = Config()
+        try:
+            if cfg.ca_certs_file:
+                http_connection.context = ssl.SSLContext.load_cert_chain(cfg.ca_certs_file)
+            else:
+                http_connection.context = ssl._create_unverified_context
+            http_connection.context_set = True
+        except AttributeError: # no SSLContext
+            pass
+        http_connection.context_set = True
+        return http_connection.context
+
+    @staticmethod
+    def _https_connection(hostname):
+        try:
+            context = http_connection._ssl_context()
+            conn = httplib.HTTPSConnection(hostname, context=http_connection.context)
+        except TypeError:
+            conn = httplib.HTTPSConnection(hostname)
+        return conn
+
     def __init__(self, id, hostname, ssl, cfg):
         self.hostname = hostname
         self.ssl = ssl
@@ -25,7 +55,7 @@ class http_connection(object):
         elif not ssl:
             self.c = httplib.HTTPConnection(hostname)
         else:
-            self.c = httplib.HTTPSConnection(hostname)
+            self.c = http_connection._https_connection(hostname)
 
 class ConnMan(object):
     conn_pool_sem = Semaphore()
