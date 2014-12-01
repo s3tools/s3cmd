@@ -4,10 +4,13 @@
 
 import os
 import sys
+import base64
+import binascii
 from stat import ST_SIZE
+import time
 from logging import debug, info, warning, error
 from Utils import getTextFromXml, getTreeFromXml, formatSize, unicodise, calculateChecksum, parseNodes
-from Exceptions import S3UploadError
+from Exceptions import S3UploadError, S3Error
 
 class MultiPartUpload(object):
 
@@ -97,6 +100,7 @@ class MultiPartUpload(object):
             remote_statuses = self.get_parts_information(self.uri, self.upload_id)
 
         seq = 1
+        chunk_md5s = {}
         if self.file.name != "<stdin>":
             while size_left > 0:
                 offset = self.chunk_size * (seq - 1)
@@ -108,7 +112,7 @@ class MultiPartUpload(object):
                     'extra' : "[part %d of %d, %s]" % (seq, nr_parts, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
                 }
                 try:
-                    self.upload_part(seq, offset, current_chunk_size, labels, remote_status = remote_statuses.get(seq))
+                    self.upload_part(seq, offset, current_chunk_size, labels, chunk_md5s, remote_status = remote_statuses.get(seq))
                 except:
                     error(u"\nUpload of '%s' part %d failed. Use\n  %s abortmp %s %s\nto abort the upload, or\n  %s --upload-id %s put ...\nto continue the upload."
                           % (self.file.name, seq, sys.argv[0], self.uri, self.upload_id, sys.argv[0], self.upload_id))
@@ -127,7 +131,7 @@ class MultiPartUpload(object):
                 if len(buffer) == 0: # EOF
                     break
                 try:
-                    self.upload_part(seq, offset, current_chunk_size, labels, buffer, remote_status = remote_statuses.get(seq))
+                    self.upload_part(seq, offset, current_chunk_size, labels, chunk_md5s, buffer, remote_status = remote_statuses.get(seq))
                 except:
                     error(u"\nUpload of '%s' part %d failed. Use\n  %s abortmp %s %s\nto abort, or\n  %s --upload-id %s put ...\nto continue the upload."
                           % (self.file.name, seq, self.uri, sys.argv[0], self.upload_id, sys.argv[0], self.upload_id))
@@ -136,17 +140,17 @@ class MultiPartUpload(object):
 
         debug("MultiPart: Upload finished: %d parts", seq - 1)
 
-    def upload_part(self, seq, offset, chunk_size, labels, buffer = '', remote_status = None):
+    def upload_part(self, seq, offset, chunk_size, labels, chunk_md5s, buffer = '', remote_status = None):
         """
         Upload a file chunk
         http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadUploadPart.html
         """
-        # TODO implement Content-MD5
         debug("Uploading part %i of %r (%s bytes)" % (seq, self.upload_id, chunk_size))
 
+        retries = self.s3._max_retries
         if remote_status is not None:
             if int(remote_status['size']) == chunk_size:
-                checksum = calculateChecksum(buffer, self.file, offset, chunk_size, self.s3.config.send_chunk)
+                checksum = chunk_md5s[seq]
                 remote_checksum = remote_status['checksum'].strip('"')
                 if remote_checksum == checksum:
                     warning("MultiPart: size and md5sum match for %s part %d, skipping." % (self.uri, seq))
@@ -159,11 +163,32 @@ class MultiPartUpload(object):
                 warning("MultiPart: size (%d vs %d) does not match for %s part %d, reuploading."
                         % (int(remote_status['size']), chunk_size, self.uri, seq))
 
-        headers = { "content-length": chunk_size }
+        checksum = calculateChecksum(buffer, self.file, offset, chunk_size, self.s3.config.send_chunk)
+        chunk_md5s[seq] = checksum
+        headers = { "content-length": chunk_size, "content-md5": base64.b64encode(binascii.unhexlify(checksum)) }
         query_string = "?partNumber=%i&uploadId=%s" % (seq, self.upload_id)
-        request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
-        response = self.s3.send_file(request, self.file, labels, buffer, offset = offset, chunk_size = chunk_size)
-        self.parts[seq] = response["headers"]["etag"]
+        debug(u'headers=%s' % headers)
+
+        while retries:
+            request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
+            response = self.s3.send_file(request, self.file, labels, buffer, offset = offset, chunk_size = chunk_size)
+            self.parts[seq] = response["headers"]["etag"]
+
+            if response["status"] >= 400:
+                err = S3Error(response)
+                if err.code in [ 'BadDigest', 'OperationAborted', 'TokenRefreshRequired', 'RequestTimeout', 'SlowDown' ]:
+                    retries -= 1
+                    warning(u'Retrying failed request: %s' % err)
+                    warning(u'Waiting %d sec...' % self._fail_wait(retries))
+                    time.sleep(self.s3._fail_wait(retries))
+                    continue
+            else:
+                break
+
+        if retries == 0:
+            warning(u'Too many failures. Giving up.')
+            raise S3UploadError
+
         return response
 
     def complete_multipart_upload(self):
