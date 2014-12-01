@@ -71,7 +71,8 @@ $0.00 per GB - all data uploaded
 
 plus
 
-$0.12 per GB - first 10 TB / month data downloaded
+$0.00 per GB - first 1GB / month data downloaded
+$0.12 per GB - up to 10 TB / month data downloaded
 $0.09 per GB - next 40 TB / month data downloaded
 $0.07 per GB - data downloaded / month over 50 TB
 
@@ -105,7 +106,7 @@ you use is what you pay for. At the beginning my bill used
 to be like US$0.03 or even nil.
 
 That's the pricing model of Amazon S3 in a nutshell. Check
-Amazon S3 homepage at http://aws.amazon.com/s3 for more 
+Amazon S3 homepage at http://aws.amazon.com/s3/pricing/ for more 
 details.
 
 Needless to say that all these money are charged by Amazon 
