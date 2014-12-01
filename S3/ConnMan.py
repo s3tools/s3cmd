@@ -26,12 +26,14 @@ class http_connection(object):
 
         cfg = Config()
         try:
-            http_connection.context = ssl.create_default_context()
-            if cfg.ca_certs_file:
-                http_connection.context.load_cert_chain(cfg.ca_certs_file)
+            http_connection.context = ssl.create_default_context(cafile=cfg.ca_certs_file)
             http_connection.context_set = True
         except AttributeError: # no ssl.create_default_context
-            pass
+            try:
+                http_connection.context = ssl._create_unverified_context()
+            except AttributeError: # no ssl._create_unverified_context()
+                pass
+
         http_connection.context_set = True
         return http_connection.context
 
