@@ -438,21 +438,33 @@ class S3(object):
         request =  self.create_request("BUCKET_CREATE", bucket = bucket, headers = headers, extra="?lifecycle")
         return (request, body)
 
-    def content_type(self, filename):
-        content_type = self.config.mime_type
+    def _guess_content_type(self, filename):
+        content_type = self.config.default_mime_type
         content_charset = None
 
-        if filename != "-" and not content_type and self.config.guess_mime_type:
+        if filename == "-" and not self.config.default_mime_type:
+            raise ParameterError("You must specify --mime-type or --default-mime-type for files uploaded from stdin.")
+
+        if self.config.guess_mime_type:
             if self.config.use_mime_magic:
                 (content_type, content_charset) = mime_magic(filename)
             else:
                 (content_type, content_charset) = mimetypes.guess_type(filename)
         if not content_type:
             content_type = self.config.default_mime_type
-        if not content_charset:
-            content_charset = self.config.encoding.upper()
+        return (content_type, content_charset)
+
+    def content_type(self, filename=None):
+        # explicit command line argument always wins
+        content_type = self.config.mime_type
+        content_charset = None
+
+        if not content_type:
+            (content_type, content_charset) = self._guess_content_type(filename)
 
         ## add charset to content type
+        if not content_charset:
+            content_charset = self.config.encoding.upper()
         if self.add_encoding(filename, content_type) and content_charset is not None:
             content_type = content_type + "; charset=" + content_charset
 
@@ -500,7 +512,7 @@ class S3(object):
             headers["x-amz-server-side-encryption"] = "AES256"
 
         ## MIME-type handling
-        headers["content-type"] = self.content_type(filename)
+        headers["content-type"] = self.content_type(filename=filename)
 
         ## Other Amazon S3 attributes
         if self.config.acl_public:
@@ -614,7 +626,6 @@ class S3(object):
             raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
         headers = SortedDict(ignore_case = True)
         headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object()))
-        ## TODO: For now COPY, later maybe add a switch?
         headers['x-amz-metadata-directive'] = "COPY"
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
@@ -626,11 +637,33 @@ class S3(object):
             headers["x-amz-server-side-encryption"] = "AES256"
 
         if extra_headers:
-            headers['x-amz-metadata-directive'] = "REPLACE"
             headers.update(extra_headers)
 
-        filename = os.path.basename(str(src_uri))
-        headers["content-type"] = self.content_type(filename)
+        request = self.create_request("OBJECT_PUT", uri = dst_uri, headers = headers)
+        response = self.send_request(request)
+        return response
+
+    def object_replace(self, src_uri, dst_uri, extra_headers = None):
+        if src_uri.type != "s3":
+            raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
+        if dst_uri.type != "s3":
+            raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
+        headers = SortedDict(ignore_case = True)
+        headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object()))
+        headers['x-amz-metadata-directive'] = "REPLACE"
+        if self.config.acl_public:
+            headers["x-amz-acl"] = "public-read"
+        if self.config.reduced_redundancy:
+            headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
+
+        ## Set server side encryption
+        if self.config.server_side_encryption:
+            headers["x-amz-server-side-encryption"] = "AES256"
+
+        if extra_headers:
+            headers.update(extra_headers)
+
+        headers["content-type"] = self.content_type()
 
         request = self.create_request("OBJECT_PUT", uri = dst_uri, headers = headers)
         response = self.send_request(request)

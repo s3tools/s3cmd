@@ -753,7 +753,7 @@ def cmd_cp(args):
 
 def cmd_modify(args):
     s3 = S3(Config())
-    return subcmd_cp_mv(args, s3.object_copy, "modify", u"File %(src)s modified")
+    return subcmd_cp_mv(args, s3.object_replace, "modify", u"File %(src)s modified")
 
 def cmd_mv(args):
     s3 = S3(Config())
