@@ -25,8 +25,12 @@ class http_connection(object):
             return http_connection.context
 
         cfg = Config()
+        cafile = cfg.ca_certs_file
+        if cafile == "":
+            cafile = None
+        debug(u"Using ca_certs_file %s" % cafile)
         try:
-            http_connection.context = ssl.create_default_context(cafile=cfg.ca_certs_file)
+            http_connection.context = ssl.create_default_context(cafile=cafile)
             http_connection.context_set = True
         except AttributeError: # no ssl.create_default_context
             try:

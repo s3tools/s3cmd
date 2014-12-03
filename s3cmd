@@ -2372,8 +2372,6 @@ def main():
         cfg.additional_destinations = options.additional_destinations
     if options.files_from:
         cfg.files_from = options.files_from
-    if options.ca_certs_file:
-        cfg.ca_certs_file = options.ca_certs_file
 
     ## Set output and filesystem encoding for printing out filenames.
     sys.stdout = codecs.getwriter(cfg.encoding)(sys.stdout, "replace")
