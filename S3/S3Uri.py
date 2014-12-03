@@ -78,7 +78,7 @@ class S3UriS3(S3Uri):
         return u"/".join([u"s3:/", self._bucket, self._object])
 
     def is_dns_compatible(self):
-        return check_bucket_name_dns_conformity(self._bucket)
+        return check_bucket_name_dns_support(Config.Config().host_bucket, self._bucket)
 
     def public_url(self):
         if self.is_dns_compatible():

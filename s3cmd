@@ -173,9 +173,9 @@ def subcmd_bucket_list(s3, uri):
             "uri": uri.compose_uri(bucket, prefix["Prefix"])})
 
     for object in response["list"]:
-        md5 = object['ETag'].strip('"')
+        md5 = object['ETag'].strip('"\'')
         if cfg.list_md5:
-            if md5.find('-') >= 0: # need to get md5 from the object
+            if '-' in md5: # need to get md5 from the object
                 object_uri = uri.compose_uri(bucket, object["Key"])
                 info_response = s3.object_info(S3Uri(object_uri))
                 try:
@@ -775,7 +775,7 @@ def cmd_info(args):
                 output(u"   File size: %s" % info['headers']['content-length'])
                 output(u"   Last mod:  %s" % info['headers']['last-modified'])
                 output(u"   MIME type: %s" % info['headers']['content-type'])
-                md5 = info['headers']['etag'].strip('"')
+                md5 = info['headers']['etag'].strip('"\'')
                 try:
                     md5 = info['s3cmd-attrs']['md5']
                 except KeyError:
@@ -1403,7 +1403,7 @@ def cmd_sync_local2remote(args):
 
         # Only print out the result if any work has been done or
         # if the user asked for verbose output
-        outstr = "Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s.  Copied %d files saving %d bytes transfer." % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1], n_copies, saved_bytes)
+        outstr = "Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s. Copied %d files saving %d bytes transfer." % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1], n_copies, saved_bytes)
         if total_size + saved_bytes > 0:
             output(outstr)
         else:
@@ -2435,14 +2435,10 @@ def main():
         error(u"Not enough parameters for command '%s'" % command)
         sys.exit(EX_USAGE)
 
-    try:
-        rc = cmd_func(args)
-        if rc is None: # if we missed any cmd_*() returns
-            rc = EX_GENERAL
-        return rc
-    except S3Error, e:
-        error(u"S3 error: %s" % e)
-        sys.exit(EX_SOFTWARE)
+    rc = cmd_func(args)
+    if rc is None: # if we missed any cmd_*() returns
+        rc = EX_GENERAL
+    return rc
 
 def report_exception(e, msg=''):
         sys.stderr.write(u"""
@@ -2536,7 +2532,11 @@ if __name__ == '__main__':
         error(u"S3 Temporary Error: %s.  Please try again later." % e)
         sys.exit(EX_TEMPFAIL)
 
-    except (S3Error, S3Exception, S3ResponseError, CloudFrontError), e:
+    except S3Error, e:
+        error(u"S3 error: %s" % e)
+        sys.exit(e.get_error_code())
+
+    except (S3Exception, S3ResponseError, CloudFrontError), e:
         report_exception(e)
         sys.exit(EX_SOFTWARE)
 

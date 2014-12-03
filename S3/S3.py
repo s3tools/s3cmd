@@ -61,7 +61,7 @@ try:
             return magic_.file(file)
 
 except ImportError, e:
-    if str(e).find("magic") >= 0:
+    if 'magic' in str(e):
         magic_message = "Module python-magic is not available."
     else:
         magic_message = "Module python-magic can't be used (%s)." % e.message
@@ -208,7 +208,7 @@ class S3(object):
         self.config = config
 
     def get_hostname(self, bucket):
-        if bucket and check_bucket_name_dns_conformity(bucket):
+        if bucket and check_bucket_name_dns_support(self.config.host_bucket, bucket):
             if self.redir_map.has_key(bucket):
                 host = self.redir_map[bucket]
             else:
@@ -222,7 +222,7 @@ class S3(object):
         self.redir_map[bucket] = redir_hostname
 
     def format_uri(self, resource):
-        if resource['bucket'] and not check_bucket_name_dns_conformity(resource['bucket']):
+        if resource['bucket'] and not check_bucket_name_dns_support(self.config.host_bucket, resource['bucket']):
             uri = "/%s%s" % (resource['bucket'], resource['uri'])
         else:
             uri = resource['uri']
@@ -439,7 +439,7 @@ class S3(object):
         return (request, body)
 
     def add_encoding(self, filename, content_type):
-        if content_type.find("charset=") != -1:
+        if 'charset=' in content_type:
            return False
         exts = self.config.add_encoding_exts.split(',')
         if exts[0]=='':
@@ -528,7 +528,7 @@ class S3(object):
 
             if info is not None:
                 remote_size = int(info['headers']['content-length'])
-                remote_checksum = info['headers']['etag'].strip('"')
+                remote_checksum = info['headers']['etag'].strip('"\'')
                 if size == remote_size:
                     checksum = calculateChecksum('', file, 0, size, self.config.send_chunk)
                     if remote_checksum == checksum:
@@ -1174,7 +1174,7 @@ class S3(object):
             except KeyError:
                 pass
 
-        response["md5match"] = md5_hash.find(response["md5"]) >= 0
+        response["md5match"] = response["md5"] in md5_hash
         response["elapsed"] = timestamp_end - timestamp_start
         response["size"] = current_position
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)

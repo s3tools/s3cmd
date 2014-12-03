@@ -6,6 +6,7 @@
 
 from Utils import getTreeFromXml, unicodise, deunicodise
 from logging import debug, info, warning, error
+import ExitCodes
 
 try:
     import xml.etree.ElementTree as ET
@@ -63,6 +64,26 @@ class S3Error (S3Exception):
         if self.info.has_key("Message"):
             retval += (u": %s" % self.info["Message"])
         return retval
+
+    def get_error_code(self):
+        if self.status in [301, 307]:
+            return ExitCodes.EX_SERVERMOVED
+        elif self.status in [400, 405, 411, 416, 501]:
+            return ExitCodes.EX_SERVERERROR
+        elif self.status == 403:
+            return ExitCodes.EX_ACCESSDENIED
+        elif self.status == 404:
+            return ExitCodes.EX_NOTFOUND
+        elif self.status == 409:
+            return ExitCodes.EX_CONFLICT
+        elif self.status == 412:
+            return ExitCodes.EX_PRECONDITION
+        elif self.status == 500:
+            return ExitCodes.EX_SOFTWARE
+        elif self.status == 503:
+            return ExitCodes.EX_SERVICE
+        else:
+            return ExitCodes.EX_SOFTWARE
 
     @staticmethod
     def parse_error_xml(tree):
