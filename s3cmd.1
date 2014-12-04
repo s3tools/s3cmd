@@ -129,7 +129,7 @@ List CloudFront distribution points
 .TP
 s3cmd \fBcfinfo\fR \fI[cf://DIST_ID]\fR
 Display CloudFront distribution point parameters
-.TP
+ .TP
 s3cmd \fBcfcreate\fR \fIs3://BUCKET\fR
 Create CloudFront distribution point
 .TP
@@ -357,6 +357,14 @@ used multiple times. For instance set 'Expires' or
 \fB\-\-server\-side\-encryption\fR
 Specifies that server-side encryption will be used
 when putting objects.
+.TP
+\fB\-\-sse\-customer\-key\fR=12345678901234567890123456789012
+Specifies a customer key for server-side encryption, to be used
+when putting objects. Must be 32 characters.
+.TP
+\fB\-\-sse\-copy\-source\-customer\-key\fR=12345678901234567890123456789012
+Specifies the key for copying objects with server-side
+encryption customer key. Must be 32 characters.
 .TP
 \fB\-\-encoding\fR=ENCODING
 Override autodetected terminal and filesystem encoding

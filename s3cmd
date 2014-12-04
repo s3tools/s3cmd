@@ -38,6 +38,8 @@ import htmlentitydefs
 import socket
 import shutil
 import tempfile
+import base64
+import hashlib
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -1437,6 +1439,15 @@ def cmd_sync_local2remote(args):
         error(u"or disable encryption with --no-encrypt parameter.")
         sys.exit(EX_USAGE)
 
+    # Disable md5 checks if using SSE-C. Add mtime check
+    if cfg.sse_customer_key:
+        try:
+            cfg.sync_checks.remove("md5")
+        except Exception:
+            pass
+        if cfg.sync_checks.count("mtime") == 0:
+            cfg.sync_checks.append("mtime")
+        
     local_list, single_file_local, src_exclude_list = fetch_local_list(args[:-1], is_src = True, recursive = True)
 
     destinations = [args[-1]]
@@ -1779,6 +1790,7 @@ def run_configure(config_file, args):
         ("secret_key", "Secret Key"),
         ("gpg_passphrase", "Encryption password", "Encryption password is used to protect your files from reading\nby unauthorized persons while in transfer to S3"),
         ("gpg_command", "Path to GPG program"),
+        ("sse_customer_key", "Encryption key for server-side-encryption with customer key.\nMust be 32 characters"),
         ("use_https", "Use HTTPS protocol", "When using secure HTTPS protocol all communication with Amazon S3\nservers is protected from 3rd party eavesdropping. This method is\nslower than plain HTTP and can't be used if you're behind a proxy"),
         ("proxy_host", "HTTP Proxy server name", "On some networks all internet access must go through a HTTP proxy.\nTry setting it here if you can't connect to S3 directly"),
         ("proxy_port", "HTTP Proxy server port"),
@@ -2185,6 +2197,8 @@ def main():
     optparser.add_option(      "--add-header", dest="add_header", action="append", metavar="NAME:VALUE", help="Add a given HTTP header to the upload request. Can be used multiple times. For instance set 'Expires' or 'Cache-Control' headers (or both) using this option.")
 
     optparser.add_option(      "--server-side-encryption", dest="server_side_encryption", action="store_true", help="Specifies that server-side encryption will be used when putting objects.")
+    optparser.add_option(      "--sse-customer-key", dest="sse_customer_key", action="store", metavar="12345678901234567890123456789012", help="Specifies a customer provided key for server-side encryption. Must be 32 character string.")
+    optparser.add_option(      "--sse-copy-source-customer-key", dest="sse_copy_source_customer_key", action="store", metavar="12345678901234567890123456789012", help="Specifies the encryption key for copying or moving objects with a customer provided key for server-side encryption.")
 
     optparser.add_option(      "--encoding", dest="encoding", metavar="ENCODING", help="Override autodetected terminal and filesystem encoding (character set). Autodetected: %s" % preferred_encoding)
     optparser.add_option(      "--add-encoding-exts", dest="add_encoding_exts", metavar="EXTENSIONs", help="Add encoding to these comma delimited extensions i.e. (css,js,html) when uploading to S3 )")
@@ -2285,6 +2299,39 @@ def main():
         if cfg.progress_meter:
             error(u"Option --progress is not yet supported on MS Windows platform. Assuming --no-progress.")
             cfg.progress_meter = False
+
+    if options.sse_customer_key is not None:
+        if len(options.sse_customer_key) ==32:
+            cfg.sse_customer_key = options.sse_customer_key
+        else:
+            error(u"sse-customer-key must be 32 characters")
+            sys.exit(EX_CONFIG)
+
+    if cfg.sse_customer_key:
+        md5 = hashlib.md5()
+        md5.update(cfg.sse_customer_key)
+        md5_encoded = base64.b64encode(md5.digest())
+        encoded = base64.b64encode(cfg.sse_customer_key)
+        cfg.extra_headers["x-amz-server-side-encryption-customer-algorithm"] = "AES256"
+        cfg.extra_headers["x-amz-server-side-encryption-customer-key"] = encoded
+        cfg.extra_headers["x-amz-server-side-encryption-customer-key-md5"] = md5_encoded
+        
+        debug(u"Updating Config.Config extra_headers[%s] -> %s" % ("x-amz-server-side-encryption-customer-algorithm", "AES256"))
+        debug(u"Updating Config.Config extra_headers[%s] -> %s" % ("x-amz-server-side-encryption-customer-key", encoded))
+        debug(u"Updating Config.Config extra_headers[%s] -> %s" % ("x-amz-server-side-encryption-customer-key-md5", md5_encoded))
+
+    if options.sse_copy_source_customer_key is not None:
+        md5 = hashlib.md5()
+        md5.update(options.sse_copy_source_customer_key)
+        md5_encoded = base64.b64encode(md5.digest())
+        encoded = base64.b64encode(options.sse_copy_source_customer_key)
+        cfg.extra_headers["x-amz-copy-source-server-side-encryption-customer-algorithm"] = "AES256"
+        cfg.extra_headers["x-amz-copy-source-server-side-encryption-customer-key"] = encoded
+        cfg.extra_headers["x-amz-copy-source-server-side-encryption-customer-key-md5"] = md5_encoded
+        
+        debug(u"Updating Config.Config extra_headers[%s] -> %s" % ("x-amz-copy-source-server-side-encryption-customer-algorithm", "AES256"))
+        debug(u"Updating Config.Config extra_headers[%s] -> %s" % ("x-amz-copy-source-server-side-encryption-customer-key", encoded))
+        debug(u"Updating Config.Config extra_headers[%s] -> %s" % ("x-amz-copy-source-server-side-encryption-customer-key-md5", md5_encoded))
 
     ## Pre-process --add-header's and put them to Config.extra_headers SortedDict()
     if options.add_header:

@@ -165,6 +165,10 @@ def dateS3toUnix(date):
     return timegm(dateS3toPython(date).utctimetuple())
 __all__.append("dateS3toUnix")
 
+def UnixtoDate(epoch):
+    return time.ctime(epoch)
+__all__.append("UnixtoDate")
+
 def dateRFC822toPython(date):
     return dateutil.parser.parse(date, fuzzy=True)
 __all__.append("dateRFC822toPython")
