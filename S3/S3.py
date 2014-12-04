@@ -619,18 +619,39 @@ class S3(object):
         debug("Received response '%s'" % (response))
         return response
 
+    @staticmethod
+    def _sanitize_headers(headers):
+        to_remove = ('content-length',
+                     'x-amz-id-2',
+                     'accept-ranges',
+                     'x-amz-meta-s3cmd-attrs',
+                     'server',
+                     'last-modified',
+                     'etag',
+                     'x-amz-request-id',
+                     'content-type')
+        for h in to_remove:
+            if h in headers: del headers[h]
+        return headers
+
     def object_copy(self, src_uri, dst_uri, extra_headers = None):
         if src_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
         if dst_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
-        headers = SortedDict(ignore_case = True)
+
+        response = self.object_info(src_uri)
+        headers = response['headers']
+        headers = self._sanitize_headers(headers)
+
         headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object()))
         headers['x-amz-metadata-directive'] = "COPY"
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
         if self.config.reduced_redundancy:
             headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
+        else:
+            headers["x-amz-storage-class"] = "STANDARD"
 
         ## Set server side encryption
         if self.config.server_side_encryption:
@@ -642,19 +663,22 @@ class S3(object):
         request = self.create_request("OBJECT_PUT", uri = dst_uri, headers = headers)
         response = self.send_request(request)
         return response
-
-    def object_replace(self, src_uri, dst_uri, extra_headers = None):
+        
+    def object_modify(self, src_uri, dst_uri, extra_headers = None):
         if src_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
         if dst_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
-        headers = SortedDict(ignore_case = True)
+
+        info_response = self.object_info(src_uri)
+        headers = info_response['headers']
+        headers = self._sanitize_headers(headers)
+        acl = self.get_acl(src_uri)
+
         headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object()))
         headers['x-amz-metadata-directive'] = "REPLACE"
-        if self.config.acl_public:
-            headers["x-amz-acl"] = "public-read"
-        if self.config.reduced_redundancy:
-            headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
+
+        # cannot change between standard and reduced redundancy with a REPLACE.
 
         ## Set server side encryption
         if self.config.server_side_encryption:
@@ -665,8 +689,11 @@ class S3(object):
 
         headers["content-type"] = self.content_type()
 
-        request = self.create_request("OBJECT_PUT", uri = dst_uri, headers = headers)
+        request = self.create_request("OBJECT_PUT", uri = src_uri, headers = headers)
         response = self.send_request(request)
+
+        acl_response = self.set_acl(src_uri, acl)
+
         return response
 
     def object_move(self, src_uri, dst_uri, extra_headers = None):
