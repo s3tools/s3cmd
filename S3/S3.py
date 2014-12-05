@@ -621,15 +621,22 @@ class S3(object):
 
     @staticmethod
     def _sanitize_headers(headers):
-        to_remove = ('content-length',
-                     'x-amz-id-2',
-                     'accept-ranges',
-                     'x-amz-meta-s3cmd-attrs',
-                     'server',
-                     'last-modified',
-                     'etag',
-                     'x-amz-request-id',
-                     'content-type')
+        to_remove = (
+            # from http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMetadata.html
+            'date',
+            'content-length',
+            'last-modified',
+            'content-md5',
+            'x-amz-version-id',
+            'x-amz-delete-marker',
+            # other headers returned from object_info() we don't want to send
+            'accept-ranges',
+            'etag',
+            'server',
+            'x-amz-id-2',
+            'x-amz-request-id',
+        )
+
         for h in to_remove:
             if h in headers: del headers[h]
         return headers
