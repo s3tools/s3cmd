@@ -619,9 +619,8 @@ class S3(object):
         debug("Received response '%s'" % (response))
         return response
 
-    @staticmethod
-    def _sanitize_headers(headers):
-        to_remove = (
+    def _sanitize_headers(self, headers):
+        to_remove = [
             # from http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMetadata.html
             'date',
             'content-length',
@@ -635,7 +634,7 @@ class S3(object):
             'server',
             'x-amz-id-2',
             'x-amz-request-id',
-        )
+        ]
 
         for h in to_remove + self.config.remove_headers:
             if h in headers:
@@ -647,11 +646,7 @@ class S3(object):
             raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
         if dst_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
-
-        response = self.object_info(src_uri)
-        headers = response['headers']
-        headers = self._sanitize_headers(headers)
-
+        headers = SortedDict(ignore_case = True)
         headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object()))
         headers['x-amz-metadata-directive'] = "COPY"
         if self.config.acl_public:
