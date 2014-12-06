@@ -637,8 +637,9 @@ class S3(object):
             'x-amz-request-id',
         )
 
-        for h in to_remove:
-            if h in headers: del headers[h]
+        for h in to_remove + self.config.remove_headers:
+            if h in headers:
+                del headers[h]
         return headers
 
     def object_copy(self, src_uri, dst_uri, extra_headers = None):
