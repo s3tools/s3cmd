@@ -638,7 +638,7 @@ class S3(object):
 
         for h in to_remove + self.config.remove_headers:
             if h.lower() in headers:
-                del headers[h]
+                del headers[h.lower()]
         return headers
 
     def object_copy(self, src_uri, dst_uri, extra_headers = None):
