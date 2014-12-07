@@ -637,7 +637,7 @@ class S3(object):
         ]
 
         for h in to_remove + self.config.remove_headers:
-            if h in headers:
+            if h.lower() in headers:
                 del headers[h]
         return headers
 
