@@ -690,7 +690,8 @@ class S3(object):
         if extra_headers:
             headers.update(extra_headers)
 
-        headers["content-type"] = self.content_type()
+        if self.config.mime_type:
+            headers["content-type"] = self.config.mime_type
 
         request = self.create_request("OBJECT_PUT", uri = src_uri, headers = headers)
         response = self.send_request(request)
