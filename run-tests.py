@@ -219,6 +219,11 @@ def test_copy(label, src_file, dst_file):
     cmd.append(dst_file)
     return test(label, cmd)
 
+def test_curl_HEAD(label, src_file, **kwargs):
+    cmd = ['curl', '-s', '-I']
+    cmd.append(src_file)
+    return test(label, cmd, **kwargs)
+
 bucket_prefix = u"%s-" % getpass.getuser()
 print "Using bucket prefix: '%s'" % bucket_prefix
 
@@ -502,6 +507,18 @@ test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucke
     must_find_re = [ "MIME type:.*image/png",
                      "ACL:.*\*anon\*: READ",
                      "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+
+test_s3cmd("Add cache-control header", ['modify', '--add-header=cache-control: max-age=3600', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+    must_find_re = [ "File .* modified" ])
+
+test_curl_HEAD("HEAD check Cache-Control present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
+               must_find_re = [ "Cache-Control: max-age=3600" ])
+
+test_s3cmd("Remove cache-control header", ['modify', '--remove-header=cache-control', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+    must_find_re = [ "File .* modified" ])
+
+test_curl_HEAD("HEAD check Cache-Control not present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
+               must_not_find_re = [ "Cache-Control: max-age=3600" ])
 
 
 ## ====== Rename within S3
