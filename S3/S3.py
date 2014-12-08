@@ -725,6 +725,10 @@ class S3(object):
         return acl
 
     def set_acl(self, uri, acl):
+        # dreamhost doesn't support set_acl properly
+        if 'objects.dreamhost.com' in self.config.host_base:
+            return { 'status' : 501 } # not implemented
+
         headers = {'content-type': 'application/xml'}
         if uri.has_object():
             request = self.create_request("OBJECT_PUT", uri = uri, extra = "?acl",
