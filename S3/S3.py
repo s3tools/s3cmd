@@ -438,6 +438,38 @@ class S3(object):
         request =  self.create_request("BUCKET_CREATE", bucket = bucket, headers = headers, extra="?lifecycle")
         return (request, body)
 
+    def _guess_content_type(self, filename):
+        content_type = self.config.default_mime_type
+        content_charset = None
+
+        if filename == "-" and not self.config.default_mime_type:
+            raise ParameterError("You must specify --mime-type or --default-mime-type for files uploaded from stdin.")
+
+        if self.config.guess_mime_type:
+            if self.config.use_mime_magic:
+                (content_type, content_charset) = mime_magic(filename)
+            else:
+                (content_type, content_charset) = mimetypes.guess_type(filename)
+        if not content_type:
+            content_type = self.config.default_mime_type
+        return (content_type, content_charset)
+
+    def content_type(self, filename=None):
+        # explicit command line argument always wins
+        content_type = self.config.mime_type
+        content_charset = None
+
+        if not content_type:
+            (content_type, content_charset) = self._guess_content_type(filename)
+
+        ## add charset to content type
+        if not content_charset:
+            content_charset = self.config.encoding.upper()
+        if self.add_encoding(filename, content_type) and content_charset is not None:
+            content_type = content_type + "; charset=" + content_charset
+
+        return content_type
+
     def add_encoding(self, filename, content_type):
         if 'charset=' in content_type:
            return False
@@ -480,23 +512,7 @@ class S3(object):
             headers["x-amz-server-side-encryption"] = "AES256"
 
         ## MIME-type handling
-        content_type = self.config.mime_type
-        content_charset = None
-        if filename != "-" and not content_type and self.config.guess_mime_type:
-            if self.config.use_mime_magic:
-                (content_type, content_charset) = mime_magic(filename)
-            else:
-                (content_type, content_charset) = mimetypes.guess_type(filename)
-        if not content_type:
-            content_type = self.config.default_mime_type
-        if not content_charset:
-            content_charset = self.config.encoding.upper()
-
-        ## add charset to content type
-        if self.add_encoding(filename, content_type) and content_charset is not None:
-            content_type = content_type + "; charset=" + content_charset
-
-        headers["content-type"] = content_type
+        headers["content-type"] = self.content_type(filename=filename)
 
         ## Other Amazon S3 attributes
         if self.config.acl_public:
@@ -604,6 +620,28 @@ class S3(object):
         debug("Received response '%s'" % (response))
         return response
 
+    def _sanitize_headers(self, headers):
+        to_remove = [
+            # from http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMetadata.html
+            'date',
+            'content-length',
+            'last-modified',
+            'content-md5',
+            'x-amz-version-id',
+            'x-amz-delete-marker',
+            # other headers returned from object_info() we don't want to send
+            'accept-ranges',
+            'etag',
+            'server',
+            'x-amz-id-2',
+            'x-amz-request-id',
+        ]
+
+        for h in to_remove + self.config.remove_headers:
+            if h.lower() in headers:
+                del headers[h.lower()]
+        return headers
+
     def object_copy(self, src_uri, dst_uri, extra_headers = None):
         if src_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
@@ -611,22 +649,56 @@ class S3(object):
             raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
         headers = SortedDict(ignore_case = True)
         headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object()))
-        ## TODO: For now COPY, later maybe add a switch?
         headers['x-amz-metadata-directive'] = "COPY"
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
         if self.config.reduced_redundancy:
             headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
+        else:
+            headers["x-amz-storage-class"] = "STANDARD"
 
         ## Set server side encryption
         if self.config.server_side_encryption:
             headers["x-amz-server-side-encryption"] = "AES256"
 
         if extra_headers:
-            headers['x-amz-metadata-directive'] = "REPLACE"
             headers.update(extra_headers)
+
         request = self.create_request("OBJECT_PUT", uri = dst_uri, headers = headers)
         response = self.send_request(request)
+        return response
+        
+    def object_modify(self, src_uri, dst_uri, extra_headers = None):
+        if src_uri.type != "s3":
+            raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
+        if dst_uri.type != "s3":
+            raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
+
+        info_response = self.object_info(src_uri)
+        headers = info_response['headers']
+        headers = self._sanitize_headers(headers)
+        acl = self.get_acl(src_uri)
+
+        headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object()))
+        headers['x-amz-metadata-directive'] = "REPLACE"
+
+        # cannot change between standard and reduced redundancy with a REPLACE.
+
+        ## Set server side encryption
+        if self.config.server_side_encryption:
+            headers["x-amz-server-side-encryption"] = "AES256"
+
+        if extra_headers:
+            headers.update(extra_headers)
+
+        if self.config.mime_type:
+            headers["content-type"] = self.config.mime_type
+
+        request = self.create_request("OBJECT_PUT", uri = src_uri, headers = headers)
+        response = self.send_request(request)
+
+        acl_response = self.set_acl(src_uri, acl)
+
         return response
 
     def object_move(self, src_uri, dst_uri, extra_headers = None):

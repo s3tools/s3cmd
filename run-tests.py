@@ -219,6 +219,11 @@ def test_copy(label, src_file, dst_file):
     cmd.append(dst_file)
     return test(label, cmd)
 
+def test_wget_HEAD(label, src_file, **kwargs):
+    cmd = ['wget', '-q', '-S', '--method=HEAD']
+    cmd.append(src_file)
+    return test(label, cmd, **kwargs)
+
 bucket_prefix = u"%s-" % getpass.getuser()
 print "Using bucket prefix: '%s'" % bucket_prefix
 
@@ -487,6 +492,36 @@ test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucke
     must_find_re = [ "MIME type:.*image/png",
                      "ACL:.*\*anon\*: READ",
                      "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+
+## ====== modify MIME type
+test_s3cmd("Modify MIME type", ['modify', '--mime-type=binary/octet-stream', '%s/copy/etc2/Logo.PNG' % pbucket(2) ])
+
+test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+    must_find_re = [ "MIME type:.*binary/octet-stream",
+                     "ACL:.*\*anon\*: READ",
+                     "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+
+test_s3cmd("Modify MIME type back", ['modify', '--mime-type=image/png', '%s/copy/etc2/Logo.PNG' % pbucket(2) ])
+
+test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+    must_find_re = [ "MIME type:.*image/png",
+                     "ACL:.*\*anon\*: READ",
+                     "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+
+test_s3cmd("Add cache-control header", ['modify', '--add-header=cache-control: max-age=3600', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+    must_find_re = [ "File .* modified" ])
+
+if have_wget:
+    test_wget_HEAD("HEAD check Cache-Control present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
+                   must_find_re = [ "Cache-Control: max-age=3600" ])
+
+test_s3cmd("Remove cache-control header", ['modify', '--remove-header=cache-control', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+    must_find_re = [ "File .* modified" ])
+
+if have_wget:
+    test_wget_HEAD("HEAD check Cache-Control not present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
+                   must_not_find_re = [ "Cache-Control: max-age=3600" ])
+
 
 ## ====== Rename within S3
 test_s3cmd("Rename within S3", ['mv', '%s/copy/etc2/Logo.PNG' % pbucket(2), '%s/copy/etc/logo.png' % pbucket(2)],
