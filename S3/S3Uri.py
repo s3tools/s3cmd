@@ -10,7 +10,7 @@ import sys
 from BidirMap import BidirMap
 from logging import debug
 import S3
-from Utils import unicodise, check_bucket_name_dns_conformity
+from Utils import unicodise, check_bucket_name_dns_conformity, check_bucket_name_dns_support
 import Config
 
 class S3Uri(object):
