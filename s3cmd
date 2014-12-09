@@ -2170,7 +2170,7 @@ def main():
     optparser.add_option(      "--ignore-failed-copy", dest="ignore_failed_copy", action="store_true", help="Don't exit unsuccessfully because of missing keys")
 
     optparser.add_option(      "--files-from", dest="files_from", action="append", metavar="FILE", help="Read list of source-file names from FILE. Use - to read from stdin.")
-    optparser.add_option(      "--bucket-location", dest="bucket_location", help="Region to create bucket in. As of now the regions are: us-east-1, us-west-1, us-west-2, eu-west-1, eu-central-1, ap-northeast-1, ap-southeast-1, ap-southeast-2, sa-east-1")
+    optparser.add_option(      "--region", "--bucket-location", metavar="REGION", dest="bucket_location", help="Region to create bucket in. As of now the regions are: us-east-1, us-west-1, us-west-2, eu-west-1, eu-central-1, ap-northeast-1, ap-southeast-1, ap-southeast-2, sa-east-1")
     optparser.add_option(      "--reduced-redundancy", "--rr", dest="reduced_redundancy", action="store_true", help="Store object with 'Reduced redundancy'. Lower per-GB price. [put, cp, mv]")
     optparser.add_option(      "--no-reduced-redundancy", "--no-rr", dest="reduced_redundancy", action="store_false", help="Store object without 'Reduced redundancy'. Higher per-GB price. [put, cp, mv]")
 
