@@ -916,6 +916,14 @@ class S3(object):
 
     def send_file(self, request, file, labels, buffer = '', throttle = 0, retries = _max_retries, offset = 0, chunk_size = -1):
         method_string, resource, headers = request.get_triplet()
+        if S3Request.region_map.get(request.resource['bucket'], None) is None:
+            debug('asking for bucket location')
+            print('asking for bucket location')
+            s3_uri = S3Uri('s3://' + request.resource['bucket'])
+            region = self.get_bucket_location(s3_uri)
+            if region is not None:
+                S3Request.region_map[request.resource['bucket']] = region
+
         size_left = size_total = headers.get("content-length")
         if self.config.progress_meter:
             progress = self.config.progress_class(labels, size_total)

@@ -91,7 +91,7 @@ def sign_string_v4(method='GET', host='', canonical_uri='/', params={}, region='
     splits = canonical_uri.split('?')
 
     canonical_uri = quote_param(splits[0], quote_backslashes=False)
-    canonical_querystring += '&'.join([('%s' if '=' in qs else '%s=') % urllib.quote_plus(qs) for qs in splits[1:]])
+    canonical_querystring += '&'.join([('%s' if '=' in qs else '%s=') % qs for qs in splits[1:]])
 
     if type(body) == type(sha256('')):
         payload_hash = body.hexdigest()
