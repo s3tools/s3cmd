@@ -82,6 +82,10 @@ class http_connection(object):
                 self.c = http_connection._https_connection(hostname)
                 debug(u'non-proxied HTTPSConnection(%s)' % hostname)
 
+            # S3's wildcart certificate doesn't work with DNS-style named buckets.
+            if 's3.amazonaws.com' in hostname and http_connection.context:
+                http_connection.context.check_hostname = False
+                debug(u'Disabling SSL certificate hostname verification for S3 wildcard cert')
 
 class ConnMan(object):
     conn_pool_sem = Semaphore()
