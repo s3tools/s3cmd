@@ -173,9 +173,9 @@ def subcmd_bucket_list(s3, uri):
             "uri": uri.compose_uri(bucket, prefix["Prefix"])})
 
     for object in response["list"]:
-        md5 = object['ETag'].strip('"')
+        md5 = object['ETag'].strip('"\'')
         if cfg.list_md5:
-            if md5.find('-') >= 0: # need to get md5 from the object
+            if '-' in md5: # need to get md5 from the object
                 object_uri = uri.compose_uri(bucket, object["Key"])
                 info_response = s3.object_info(S3Uri(object_uri))
                 try:
@@ -753,7 +753,7 @@ def cmd_cp(args):
 
 def cmd_modify(args):
     s3 = S3(Config())
-    return subcmd_cp_mv(args, s3.object_copy, "modify", u"File %(src)s modified")
+    return subcmd_cp_mv(args, s3.object_modify, "modify", u"File %(src)s modified")
 
 def cmd_mv(args):
     s3 = S3(Config())
@@ -775,7 +775,7 @@ def cmd_info(args):
                 output(u"   File size: %s" % info['headers']['content-length'])
                 output(u"   Last mod:  %s" % info['headers']['last-modified'])
                 output(u"   MIME type: %s" % info['headers']['content-type'])
-                md5 = info['headers']['etag'].strip('"')
+                md5 = info['headers']['etag'].strip('"\'')
                 try:
                     md5 = info['s3cmd-attrs']['md5']
                 except KeyError:
@@ -1403,7 +1403,7 @@ def cmd_sync_local2remote(args):
 
         # Only print out the result if any work has been done or
         # if the user asked for verbose output
-        outstr = "Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s.  Copied %d files saving %d bytes transfer." % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1], n_copies, saved_bytes)
+        outstr = "Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s. Copied %d files saving %d bytes transfer." % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1], n_copies, saved_bytes)
         if total_size + saved_bytes > 0:
             output(outstr)
         else:
@@ -1779,7 +1779,7 @@ def run_configure(config_file, args):
         ("secret_key", "Secret Key"),
         ("gpg_passphrase", "Encryption password", "Encryption password is used to protect your files from reading\nby unauthorized persons while in transfer to S3"),
         ("gpg_command", "Path to GPG program"),
-        ("use_https", "Use HTTPS protocol", "When using secure HTTPS protocol all communication with Amazon S3\nservers is protected from 3rd party eavesdropping. This method is\nslower than plain HTTP and can't be used if you're behind a proxy"),
+        ("use_https", "Use HTTPS protocol", "When using secure HTTPS protocol all communication with Amazon S3\nservers is protected from 3rd party eavesdropping. This method is\nslower than plain HTTP, and can only be proxied with Python 2.7 or newer"),
         ("proxy_host", "HTTP Proxy server name", "On some networks all internet access must go through a HTTP proxy.\nTry setting it here if you can't connect to S3 directly"),
         ("proxy_port", "HTTP Proxy server port"),
         ]
@@ -1800,7 +1800,7 @@ def run_configure(config_file, args):
             for option in options:
                 prompt = option[1]
                 ## Option-specific handling
-                if option[0] == 'proxy_host' and getattr(cfg, 'use_https') == True:
+                if option[0] == 'proxy_host' and getattr(cfg, 'use_https') == True and sys.hexversion < 0x02070000:
                     setattr(cfg, option[0], "")
                     continue
                 if option[0] == 'proxy_port' and getattr(cfg, 'proxy_host') == "":
@@ -2133,6 +2133,8 @@ def main():
 
     optparser.add_option("-n", "--dry-run", dest="dry_run", action="store_true", help="Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though (only for file transfer commands)")
 
+    optparser.add_option("-s", "--ssl", dest="use_https", action="store_true", help="Use HTTPS connection when communicating with S3.")
+    optparser.add_option(      "--no-ssl", dest="use_https", action="store_false", help="Don't use HTTPS. (default)")
     optparser.add_option("-e", "--encrypt", dest="encrypt", action="store_true", help="Encrypt files before uploading to S3.")
     optparser.add_option(      "--no-encrypt", dest="encrypt", action="store_false", help="Don't encrypt files.")
     optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations.")
@@ -2170,8 +2172,9 @@ def main():
     optparser.add_option(      "--ignore-failed-copy", dest="ignore_failed_copy", action="store_true", help="Don't exit unsuccessfully because of missing keys")
 
     optparser.add_option(      "--files-from", dest="files_from", action="append", metavar="FILE", help="Read list of source-file names from FILE. Use - to read from stdin.")
-    optparser.add_option(      "--bucket-location", dest="bucket_location", help="Datacentre to create bucket in. As of now the datacenters are: US (default), EU, ap-northeast-1, ap-southeast-1, sa-east-1, us-west-1 and us-west-2")
+    optparser.add_option(      "--region", "--bucket-location", metavar="REGION", dest="bucket_location", help="Region to create bucket in. As of now the regions are: us-east-1, us-west-1, us-west-2, eu-west-1, eu-central-1, ap-northeast-1, ap-southeast-1, ap-southeast-2, sa-east-1")
     optparser.add_option(      "--reduced-redundancy", "--rr", dest="reduced_redundancy", action="store_true", help="Store object with 'Reduced redundancy'. Lower per-GB price. [put, cp, mv]")
+    optparser.add_option(      "--no-reduced-redundancy", "--no-rr", dest="reduced_redundancy", action="store_false", help="Store object without 'Reduced redundancy'. Higher per-GB price. [put, cp, mv]")
 
     optparser.add_option(      "--access-logging-target-prefix", dest="log_target_prefix", help="Target prefix for access logs (S3 URI) (for [cfmodify] and [accesslog] commands)")
     optparser.add_option(      "--no-access-logging", dest="log_target_prefix", action="store_false", help="Disable access logging (for [cfmodify] and [accesslog] commands)")
@@ -2183,8 +2186,9 @@ def main():
     optparser.add_option("-m", "--mime-type", dest="mime_type", type="mimetype", metavar="MIME/TYPE", help="Force MIME-type. Override both --default-mime-type and --guess-mime-type.")
 
     optparser.add_option(      "--add-header", dest="add_header", action="append", metavar="NAME:VALUE", help="Add a given HTTP header to the upload request. Can be used multiple times. For instance set 'Expires' or 'Cache-Control' headers (or both) using this option.")
+    optparser.add_option(      "--remove-header", dest="remove_headers", action="append", metavar="NAME", help="Remove a given HTTP header.  Can be used multiple times.  For instance, remove 'Expires' or 'Cache-Control' headers (or both) using this option. [modify]")
 
-    optparser.add_option(      "--server-side-encryption", dest="server_side_encryption", action="store_true", help="Specifies that server-side encryption will be used when putting objects.")
+    optparser.add_option(      "--server-side-encryption", dest="server_side_encryption", action="store_true", help="Specifies that server-side encryption will be used when putting objects. [put, sync, cp, modify]")
 
     optparser.add_option(      "--encoding", dest="encoding", metavar="ENCODING", help="Override autodetected terminal and filesystem encoding (character set). Autodetected: %s" % preferred_encoding)
     optparser.add_option(      "--add-encoding-exts", dest="add_encoding_exts", metavar="EXTENSIONs", help="Add encoding to these comma delimited extensions i.e. (css,js,html) when uploading to S3 )")
@@ -2303,6 +2307,10 @@ def main():
                 raise ParameterError("Invalid character(s) in header name '%s': \"%s\"" % (key, key_inval))
             debug(u"Updating Config.Config extra_headers[%s] -> %s" % (key.strip(), val.strip()))
             cfg.extra_headers[key.strip()] = val.strip()
+
+    # Process --remove-header
+    if options.remove_headers:
+        cfg.remove_headers = options.remove_headers
 
     ## --acl-grant/--acl-revoke arguments are pre-parsed by OptionS3ACL()
     if options.acl_grants:
@@ -2438,14 +2446,10 @@ def main():
         error(u"Not enough parameters for command '%s'" % command)
         sys.exit(EX_USAGE)
 
-    try:
-        rc = cmd_func(args)
-        if rc is None: # if we missed any cmd_*() returns
-            rc = EX_GENERAL
-        return rc
-    except S3Error, e:
-        error(u"S3 error: %s" % e)
-        sys.exit(EX_SOFTWARE)
+    rc = cmd_func(args)
+    if rc is None: # if we missed any cmd_*() returns
+        rc = EX_GENERAL
+    return rc
 
 def report_exception(e, msg=''):
         sys.stderr.write(u"""
@@ -2463,7 +2467,10 @@ def report_exception(e, msg=''):
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 """ % msg)
-        s = u' '.join([unicodise(a) for a in sys.argv])
+	if type(e) == ImportError:
+	    s = u' '.join([(a) for a in sys.argv])
+	else:
+            s = u' '.join([unicodise(a) for a in sys.argv])
         sys.stderr.write(u"Invoked as: %s\n" % s)
 
         tb = traceback.format_exc(sys.exc_info())
@@ -2526,7 +2533,7 @@ if __name__ == '__main__':
 
     except ImportError, e:
         report_exception(e)
-        sys.exit(EX_GENERAL)
+        sys.exit(1)
 
     except (ParameterError, InvalidFileError), e:
         error(u"Parameter problem: %s" % e)
@@ -2536,7 +2543,11 @@ if __name__ == '__main__':
         error(u"S3 Temporary Error: %s.  Please try again later." % e)
         sys.exit(EX_TEMPFAIL)
 
-    except (S3Error, S3Exception, S3ResponseError, CloudFrontError), e:
+    except S3Error, e:
+        error(u"S3 error: %s" % e)
+        sys.exit(e.get_error_code())
+
+    except (S3Exception, S3ResponseError, CloudFrontError), e:
         report_exception(e)
         sys.exit(EX_SOFTWARE)
 
