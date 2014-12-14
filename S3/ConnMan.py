@@ -21,15 +21,6 @@ class http_connection(object):
     context_set = False
 
     @staticmethod
-    def _ssl_unverified_context():
-        context = None
-        try:
-            context = ssl._create_unverified_context()
-        except AttributeError: # no ssl._create_unverified_context()
-            pass
-        return context
-
-    @staticmethod
     def _ssl_verified_context(cafile):
         context = None
         try:
@@ -49,10 +40,11 @@ class http_connection(object):
             cafile = None
         debug(u"Using ca_certs_file %s" % cafile)
 
-        if cfg.check_ssl_certificate:
-            context = http_connection._ssl_verified_context(cafile)
-        else:
-            context = http_connection._ssl_unverified_context()
+        context = http_connection._ssl_verified_context(cafile)
+
+        if context and not cfg.check_ssl_certificate:
+            context.check_hostname = False
+            debug(u'Disabling hostname checking')
 
         http_connection.context = context
         http_connection.context_set = True
@@ -87,9 +79,13 @@ class http_connection(object):
                 debug(u'proxied HTTPSConnection(%s, %s)' % (cfg.proxy_host, cfg.proxy_port))
                 debug(u'tunnel to %s' % hostname)
             else:
-                self.c = httplib.HTTPSConnection(hostname)
+                self.c = http_connection._https_connection(hostname)
                 debug(u'non-proxied HTTPSConnection(%s)' % hostname)
 
+            # S3's wildcart certificate doesn't work with DNS-style named buckets.
+            if 's3.amazonaws.com' in hostname and http_connection.context:
+                http_connection.context.check_hostname = False
+                debug(u'Disabling SSL certificate hostname verification for S3 wildcard cert')
 
 class ConnMan(object):
     conn_pool_sem = Semaphore()
