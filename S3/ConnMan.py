@@ -76,14 +76,19 @@ class http_connection(object):
         if not ssl:
             if cfg.proxy_host != "":
                 self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
+                debug(u'proxied HTTPConnection(%s, %s)' % (cfg.proxy_host, cfg.proxy_port))
             else:
                 self.c = httplib.HTTPConnection(hostname)
+                debug(u'non-proxied HTTPConnection(%s)' % hostname)
         else:
             if cfg.proxy_host != "":
                 self.c = http_connection._https_connection(cfg.proxy_host, cfg.proxy_port)
                 self.c.set_tunnel(hostname)
+                debug(u'proxied HTTPSConnection(%s, %s)' % (cfg.proxy_host, cfg.proxy_port))
+                debug(u'tunnel to %s' % hostname)
             else:
                 self.c = httplib.HTTPSConnection(hostname)
+                debug(u'non-proxied HTTPSConnection(%s)' % hostname)
 
 
 class ConnMan(object):
