@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding=utf-8 -*-
 
 ## Amazon S3cmd - testsuite
@@ -175,7 +175,7 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 
 def test_s3cmd(label, cmd_args = [], **kwargs):
     if not cmd_args[0].endswith("s3cmd"):
-        cmd_args.insert(0, "python")
+        cmd_args.insert(0, "python2")
         cmd_args.insert(1, "s3cmd")
 
     return test(label, cmd_args, **kwargs)
