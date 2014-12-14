@@ -76,7 +76,6 @@ class http_connection(object):
         if not ssl:
             if cfg.proxy_host != "":
                 self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
-                self.c.set_tunnel(hostname)
             else:
                 self.c = httplib.HTTPConnection(hostname)
         else:
