@@ -6,6 +6,7 @@
 
 import sys
 import httplib
+import ssl
 from urlparse import urlparse
 from threading import Semaphore
 from logging import debug, info, warning, error
@@ -16,6 +17,56 @@ from Exceptions import ParameterError
 __all__ = [ "ConnMan" ]
 
 class http_connection(object):
+    context = None
+    context_set = False
+
+    @staticmethod
+    def _ssl_unverified_context():
+        context = None
+        try:
+            context = ssl._create_unverified_context()
+        except AttributeError: # no ssl._create_unverified_context()
+            pass
+        return context
+
+    @staticmethod
+    def _ssl_verified_context(cafile):
+        context = None
+        try:
+            context = ssl.create_default_context(cafile=cafile)
+        except AttributeError: # no ssl.create_default_context
+            pass
+        return context
+
+    @staticmethod
+    def _ssl_context():
+        if http_connection.context_set:
+            return http_connection.context
+
+        cfg = Config()
+        cafile = cfg.ca_certs_file
+        if cafile == "":
+            cafile = None
+        debug(u"Using ca_certs_file %s" % cafile)
+
+        if cfg.check_ssl_certificate:
+            context = http_connection._ssl_verified_context(cafile)
+        else:
+            context = http_connection._ssl_unverified_context()
+
+        http_connection.context = context
+        http_connection.context_set = True
+        return context
+
+    @staticmethod
+    def _https_connection(hostname, port=None):
+        try:
+            context = http_connection._ssl_context()
+            conn = httplib.HTTPSConnection(hostname, port, context=context)
+        except TypeError:
+            conn = httplib.HTTPSConnection(hostname, port)
+        return conn
+
     def __init__(self, id, hostname, ssl, cfg):
         self.hostname = hostname
         self.ssl = ssl
@@ -25,14 +76,20 @@ class http_connection(object):
         if not ssl:
             if cfg.proxy_host != "":
                 self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
+                debug(u'proxied HTTPConnection(%s, %s)' % (cfg.proxy_host, cfg.proxy_port))
             else:
                 self.c = httplib.HTTPConnection(hostname)
+                debug(u'non-proxied HTTPConnection(%s)' % hostname)
         else:
             if cfg.proxy_host != "":
-                self.c = httplib.HTTPSConnection(cfg.proxy_host, cfg.proxy_port)
+                self.c = http_connection._https_connection(cfg.proxy_host, cfg.proxy_port)
                 self.c.set_tunnel(hostname)
+                debug(u'proxied HTTPSConnection(%s, %s)' % (cfg.proxy_host, cfg.proxy_port))
+                debug(u'tunnel to %s' % hostname)
             else:
                 self.c = httplib.HTTPSConnection(hostname)
+                debug(u'non-proxied HTTPSConnection(%s)' % hostname)
+
 
 class ConnMan(object):
     conn_pool_sem = Semaphore()

@@ -77,6 +77,8 @@ class Config(object):
     gpg_encrypt = "%(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
     gpg_decrypt = "%(gpg_command)s -d --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
     use_https = False
+    ca_certs_file = ""
+    check_ssl_certificate = True
     bucket_location = "US"
     default_mime_type = "binary/octet-stream"
     guess_mime_type = True
