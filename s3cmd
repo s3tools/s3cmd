@@ -2098,14 +2098,6 @@ class MyHelpFormatter(IndentedHelpFormatter):
         else:
             return ""
 
-def set_host_bucket(region):
-    global cfg
-    if region:
-        endpoint = region_endpoint(region)
-        if endpoint:
-            cfg.host_base = endpoint
-            cfg.host_bucket = "%(bucket)s." + endpoint
-
 def main():
     global cfg
 
@@ -2528,7 +2520,7 @@ if __name__ == '__main__':
         from S3.ExitCodes import *
         from S3.Exceptions import *
         from S3 import PkgInfo
-        from S3.S3 import S3
+        from S3.S3 import S3, set_host_bucket
         from S3.Config import Config
         from S3.SortedDict import SortedDict
         from S3.FileDict import FileDict
@@ -2540,7 +2532,6 @@ if __name__ == '__main__':
         from S3.CloudFront import CloudFront
         from S3.FileLists import *
         from S3.MultiPart import MultiPartUpload
-        from S3.RegionEndpoints import region_endpoint
 
         rc = main()
         sys.exit(rc)
