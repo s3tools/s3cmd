@@ -504,7 +504,7 @@ class CloudFront(object):
         response["reason"] = http_response.reason
         response["headers"] = dict(http_response.getheaders())
         response["data"] =  http_response.read()
-        conn.put()
+        ConnMan.put(conn)
 
         debug("CloudFront: response: %r" % response)
 
