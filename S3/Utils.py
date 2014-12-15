@@ -72,7 +72,7 @@ def stripNameSpace(xml):
     """
     removeNameSpace(xml) -- remove top-level AWS namespace
     """
-    r = re.compile('^(<?[^>]+?>\s?)(<\w+) xmlns=[\'"](http://[^\'"]+)[\'"](.*)', re.MULTILINE)
+    r = re.compile('^(<?[^>]+?>\s*)(<\w+) xmlns=[\'"](http://[^\'"]+)[\'"](.*)', re.MULTILINE)
     if r.match(xml):
         xmlns = r.match(xml).groups()[2]
         xml = r.sub("\\1\\2\\4", xml)
@@ -406,6 +406,20 @@ def check_bucket_name_dns_conformity(bucket):
     except Exceptions.ParameterError:
         return False
 __all__.append("check_bucket_name_dns_conformity")
+
+def check_bucket_name_dns_support(bucket_host, bucket_name):
+    """
+    Check whether either the host_bucket support buckets and
+    either bucket name is dns compatible
+    """
+    if "%(bucket)s" not in bucket_host:
+        return False
+
+    try:
+        return check_bucket_name(bucket_name, dns_strict = True)
+    except Exceptions.ParameterError:
+        return False
+__all__.append("check_bucket_name_dns_support")
 
 def getBucketFromHostname(hostname):
     """

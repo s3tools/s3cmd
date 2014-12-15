@@ -4,7 +4,9 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
+import sys
 import httplib
+import ssl
 from urlparse import urlparse
 from threading import Semaphore
 from logging import debug, info, warning, error
@@ -15,17 +17,75 @@ from Exceptions import ParameterError
 __all__ = [ "ConnMan" ]
 
 class http_connection(object):
+    context = None
+    context_set = False
+
+    @staticmethod
+    def _ssl_verified_context(cafile):
+        context = None
+        try:
+            context = ssl.create_default_context(cafile=cafile)
+        except AttributeError: # no ssl.create_default_context
+            pass
+        return context
+
+    @staticmethod
+    def _ssl_context():
+        if http_connection.context_set:
+            return http_connection.context
+
+        cfg = Config()
+        cafile = cfg.ca_certs_file
+        if cafile == "":
+            cafile = None
+        debug(u"Using ca_certs_file %s" % cafile)
+
+        context = http_connection._ssl_verified_context(cafile)
+
+        if context and not cfg.check_ssl_certificate:
+            context.check_hostname = False
+            debug(u'Disabling hostname checking')
+
+        http_connection.context = context
+        http_connection.context_set = True
+        return context
+
+    @staticmethod
+    def _https_connection(hostname, port=None):
+        try:
+            context = http_connection._ssl_context()
+            conn = httplib.HTTPSConnection(hostname, port, context=context)
+        except TypeError:
+            conn = httplib.HTTPSConnection(hostname, port)
+        return conn
+
     def __init__(self, id, hostname, ssl, cfg):
         self.hostname = hostname
         self.ssl = ssl
         self.id = id
         self.counter = 0
-        if cfg.proxy_host != "":
-            self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
-        elif not ssl:
-            self.c = httplib.HTTPConnection(hostname)
+
+        if not ssl:
+            if cfg.proxy_host != "":
+                self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
+                debug(u'proxied HTTPConnection(%s, %s)' % (cfg.proxy_host, cfg.proxy_port))
+            else:
+                self.c = httplib.HTTPConnection(hostname)
+                debug(u'non-proxied HTTPConnection(%s)' % hostname)
         else:
-            self.c = httplib.HTTPSConnection(hostname)
+            if cfg.proxy_host != "":
+                self.c = http_connection._https_connection(cfg.proxy_host, cfg.proxy_port)
+                self.c.set_tunnel(hostname)
+                debug(u'proxied HTTPSConnection(%s, %s)' % (cfg.proxy_host, cfg.proxy_port))
+                debug(u'tunnel to %s' % hostname)
+            else:
+                self.c = http_connection._https_connection(hostname)
+                debug(u'non-proxied HTTPSConnection(%s)' % hostname)
+
+            # S3's wildcart certificate doesn't work with DNS-style named buckets.
+            if 's3.amazonaws.com' in hostname and http_connection.context:
+                http_connection.context.check_hostname = False
+                debug(u'Disabling SSL certificate hostname verification for S3 wildcard cert')
 
 class ConnMan(object):
     conn_pool_sem = Semaphore()
@@ -39,8 +99,8 @@ class ConnMan(object):
             ssl = cfg.use_https
         conn = None
         if cfg.proxy_host != "":
-            if ssl:
-                raise ParameterError("use_https=True can't be used with proxy")
+            if ssl and sys.hexversion < 0x02070000:
+                raise ParameterError("use_https=True can't be used with proxy on Python <2.7")
             conn_id = "proxy://%s:%s" % (cfg.proxy_host, cfg.proxy_port)
         else:
             conn_id = "http%s://%s" % (ssl and "s" or "", hostname)

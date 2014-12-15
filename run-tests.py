@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding=utf-8 -*-
 
 ## Amazon S3cmd - testsuite
@@ -90,7 +90,7 @@ if not os.path.isdir('testsuite/crappy-file-name'):
 def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = []):
     def command_output():
         print "----"
-        print " ".join([arg.find(" ")>=0 and "'%s'" % arg or arg for arg in cmd_args])
+        print " ".join([" " in arg and "'%s'" % arg or arg for arg in cmd_args])
         print "----"
         print stdout
         print "----"
@@ -175,7 +175,7 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 
 def test_s3cmd(label, cmd_args = [], **kwargs):
     if not cmd_args[0].endswith("s3cmd"):
-        cmd_args.insert(0, "python")
+        cmd_args.insert(0, "python2")
         cmd_args.insert(1, "s3cmd")
 
     return test(label, cmd_args, **kwargs)
@@ -219,6 +219,11 @@ def test_copy(label, src_file, dst_file):
     cmd.append(dst_file)
     return test(label, cmd)
 
+def test_wget_HEAD(label, src_file, **kwargs):
+    cmd = ['wget', '-q', '-S', '--method=HEAD']
+    cmd.append(src_file)
+    return test(label, cmd, **kwargs)
+
 bucket_prefix = u"%s-" % getpass.getuser()
 print "Using bucket prefix: '%s'" % bucket_prefix
 
@@ -245,7 +250,7 @@ while argv:
             print "Bucket prefix option must explicitly supply a bucket name prefix"
             sys.exit(0)
         continue
-    if arg.find("..") >= 0:
+    if ".." in arg:
         range_idx = arg.find("..")
         range_start = arg[:range_idx] or 0
         range_end = arg[range_idx+2:] or 999
@@ -422,7 +427,7 @@ test_s3cmd("Rename within S3", ['mv', '%s/xyz/etc/logo.png' % pbucket(1), '%s/xy
 
 ## ====== Rename (NoSuchKey)
 test_s3cmd("Rename (NoSuchKey)", ['mv', '%s/xyz/etc/logo.png' % pbucket(1), '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
-    retcode = EX_SOFTWARE,
+    retcode = EX_NOTFOUND,
     must_find_re = [ 'ERROR:.*NoSuchKey' ],
     must_not_find = [ 'File %s/xyz/etc/logo.png moved to %s/xyz/etc2/Logo.PNG' % (pbucket(1), pbucket(1)) ])
 
@@ -487,6 +492,36 @@ test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucke
     must_find_re = [ "MIME type:.*image/png",
                      "ACL:.*\*anon\*: READ",
                      "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+
+## ====== modify MIME type
+test_s3cmd("Modify MIME type", ['modify', '--mime-type=binary/octet-stream', '%s/copy/etc2/Logo.PNG' % pbucket(2) ])
+
+test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+    must_find_re = [ "MIME type:.*binary/octet-stream",
+                     "ACL:.*\*anon\*: READ",
+                     "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+
+test_s3cmd("Modify MIME type back", ['modify', '--mime-type=image/png', '%s/copy/etc2/Logo.PNG' % pbucket(2) ])
+
+test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+    must_find_re = [ "MIME type:.*image/png",
+                     "ACL:.*\*anon\*: READ",
+                     "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+
+test_s3cmd("Add cache-control header", ['modify', '--add-header=cache-control: max-age=3600', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+    must_find_re = [ "File .* modified" ])
+
+if have_wget:
+    test_wget_HEAD("HEAD check Cache-Control present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
+                   must_find_re = [ "Cache-Control: max-age=3600" ])
+
+test_s3cmd("Remove cache-control header", ['modify', '--remove-header=cache-control', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+    must_find_re = [ "File .* modified" ])
+
+if have_wget:
+    test_wget_HEAD("HEAD check Cache-Control not present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
+                   must_not_find_re = [ "Cache-Control: max-age=3600" ])
+
 
 ## ====== Rename within S3
 test_s3cmd("Rename within S3", ['mv', '%s/copy/etc2/Logo.PNG' % pbucket(2), '%s/copy/etc/logo.png' % pbucket(2)],

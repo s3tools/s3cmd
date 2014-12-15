@@ -23,6 +23,7 @@ from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPy
 from Crypto import sign_string_v2
 from S3Uri import S3Uri, S3UriS3
 from FileLists import fetch_remote_list
+from ConnMan import ConnMan
 
 cloudfront_api_version = "2010-11-01"
 cloudfront_resource = "/%(api_ver)s/distribution" % { 'api_ver' : cloudfront_api_version }
@@ -496,14 +497,14 @@ class CloudFront(object):
         request = self.create_request(operation, dist_id, request_id, headers)
         conn = self.get_connection()
         debug("send_request(): %s %s" % (request['method'], request['resource']))
-        conn.request(request['method'], request['resource'], body, request['headers'])
-        http_response = conn.getresponse()
+        conn.c.request(request['method'], request['resource'], body, request['headers'])
+        http_response = conn.c.getresponse()
         response = {}
         response["status"] = http_response.status
         response["reason"] = http_response.reason
         response["headers"] = dict(http_response.getheaders())
         response["data"] =  http_response.read()
-        conn.close()
+        conn.put()
 
         debug("CloudFront: response: %r" % response)
 
@@ -561,7 +562,8 @@ class CloudFront(object):
     def get_connection(self):
         if self.config.proxy_host != "":
             raise ParameterError("CloudFront commands don't work from behind a HTTP proxy")
-        return httplib.HTTPSConnection(self.config.cloudfront_host)
+        conn = ConnMan.get(self.config.cloudfront_host)
+        return conn
 
     def _fail_wait(self, retries):
         # Wait a few seconds. The more it fails the more we wait.

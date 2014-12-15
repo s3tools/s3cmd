@@ -77,9 +77,10 @@ class Config(object):
     gpg_encrypt = "%(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
     gpg_decrypt = "%(gpg_command)s -d --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
     use_https = False
+    ca_certs_file = ""
+    check_ssl_certificate = True
     bucket_location = "US"
     default_mime_type = "binary/octet-stream"
-    default_region = 'us-east-1'
     guess_mime_type = True
     use_mime_magic = True
     mime_type = ""
@@ -110,6 +111,7 @@ class Config(object):
     files_from = []
     cache_file = ""
     add_headers = ""
+    remove_headers = []
     ignore_failed_copy = False
     expiry_days = ""
     expiry_date = ""
@@ -224,7 +226,10 @@ class Config(object):
     def read_config_file(self, configfile):
         cp = ConfigParser(configfile)
         for option in self.option_list():
-            self.update_option(option, cp.get(option))
+            _option = cp.get(option)
+            if _option is not None:
+                _option = _option.strip()
+            self.update_option(option, _option)
 
         if cp.get('add_headers'):
             for option in cp.get('add_headers').split(","):
