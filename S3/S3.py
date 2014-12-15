@@ -736,27 +736,18 @@ class S3(object):
         return acl
 
     def set_acl(self, uri, acl):
-<<<<<<< HEAD
-        body = str(acl)
-        debug(u"set_acl(%s): acl-xml: %s" % (uri, body))
-
-        if uri.has_object():
-            request = self.create_request("OBJECT_PUT", uri = uri, extra = "?acl", body = body)
-        else:
-            request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(), extra = "?acl", body = body)
-=======
         # dreamhost doesn't support set_acl properly
         if 'objects.dreamhost.com' in self.config.host_base:
             return { 'status' : 501 } # not implemented
 
+        body = str(acl)
+        debug(u"set_acl(%s): acl-xml: %s" % (uri, body))
+
         headers = {'content-type': 'application/xml'}
         if uri.has_object():
-            request = self.create_request("OBJECT_PUT", uri = uri, extra = "?acl",
-                                          headers = headers)
+            request = self.create_request("OBJECT_PUT", uri = uri, extra = "?acl", body = body)
         else:
-            request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(), extra = "?acl",
-                                          headers = headers)
->>>>>>> upstream-master
+            request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(), extra = "?acl", body = body)
 
         response = self.send_request(request)
         return response
