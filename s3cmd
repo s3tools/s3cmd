@@ -2306,7 +2306,7 @@ def main():
                 key_inval = key_inval.replace(" ", "<space>")
                 key_inval = key_inval.replace("\t", "<tab>")
                 raise ParameterError("Invalid character(s) in header name '%s': \"%s\"" % (key, key_inval))
-            debug(u"Updating Config.Config extra_headers[%s] -> %s" % (key.strip(), val.strip()))
+            debug(u"Updating Config.Config extra_headers[%s] -> %s" % (key.strip().lower(), val.strip()))
             cfg.extra_headers[key.strip().lower()] = val.strip()
 
     # Process --remove-header
