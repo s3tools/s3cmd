@@ -50,8 +50,7 @@ s3cmd \fBrestore\fR \fIs3://BUCKET/OBJECT\fR
 Restore file from Glacier storage
 .TP
 s3cmd \fBsync\fR \fILOCAL_DIR s3://BUCKET[/PREFIX] or s3://BUCKET[/PREFIX] LOCAL_DIR\fR
-Synchronize a directory tree to S3 (checks files freshness using size and md5
-checksum, unless overriden by options, see below)
+Synchronize a directory tree to S3 (checks files freshness using size and md5 checksum, unless overriden by options, see below)
 .TP
 s3cmd \fBdu\fR \fI[s3://BUCKET[/PREFIX]]\fR
 Disk usage by buckets
@@ -162,7 +161,7 @@ to a specific bucket instead of attempting to list
 them all.
 .TP
 \fB\-c\fR FILE, \fB\-\-config\fR=FILE
-Config file name. Defaults to /home/mludvig/.s3cfg
+Config file name. Defaults to $HOME/.s3cfg
 .TP
 \fB\-\-dump\-config\fR
 Dump current configuration after parsing config files
@@ -179,6 +178,12 @@ Only show what should be uploaded or downloaded but
 don't actually do it. May still perform S3 requests to
 get bucket listings and other information though (only
 for file transfer commands)
+.TP
+\fB\-s\fR, \fB\-\-ssl\fR
+Use HTTPS connection when communicating with S3.
+.TP
+\fB\-\-no\-ssl\fR
+Don't use HTTPS. (default)
 .TP
 \fB\-e\fR, \fB\-\-encrypt\fR
 Encrypt files before uploading to S3.
@@ -312,14 +317,19 @@ Don't exit unsuccessfully because of missing keys
 Read list of source-file names from FILE. Use - to
 read from stdin.
 .TP
-\fB\-\-bucket\-location\fR=BUCKET_LOCATION
-Datacentre to create bucket in. As of now the
-datacenters are: US (default), EU, ap-northeast-1, ap-
-southeast-1, sa-east-1, us-west-1 and us-west-2
+\fB\-\-region\fR=REGION, \fB\-\-bucket\-location\fR=REGION
+Region to create bucket in. As of now the regions are:
+us-east-1, us-west-1, us-west-2, eu-west-1, eu-
+central-1, ap-northeast-1, ap-southeast-1, ap-
+southeast-2, sa-east-1
 .TP
 \fB\-\-reduced\-redundancy\fR, \fB\-\-rr\fR
 Store object with 'Reduced redundancy'. Lower per-GB
 price. [put, cp, mv]
+.TP
+\fB\-\-no\-reduced\-redundancy\fR, \fB\-\-no\-rr\fR
+Store object without 'Reduced redundancy'. Higher per-
+GB price. [put, cp, mv]
 .TP
 \fB\-\-access\-logging\-target\-prefix\fR=LOG_TARGET_PREFIX
 Target prefix for access logs (S3 URI) (for [cfmodify]
@@ -354,9 +364,14 @@ Add a given HTTP header to the upload request. Can be
 used multiple times. For instance set 'Expires' or
 'Cache-Control' headers (or both) using this option.
 .TP
+\fB\-\-remove\-header\fR=NAME
+Remove a given HTTP header.  Can be used multiple
+times.  For instance, remove 'Expires' or 'Cache-
+Control' headers (or both) using this option. [modify]
+.TP
 \fB\-\-server\-side\-encryption\fR
 Specifies that server-side encryption will be used
-when putting objects.
+when putting objects. [put, sync, cp, modify]
 .TP
 \fB\-\-encoding\fR=ENCODING
 Override autodetected terminal and filesystem encoding
@@ -472,6 +487,16 @@ Cache FILE containing local source MD5 values
 .TP
 \fB\-q\fR, \fB\-\-quiet\fR
 Silence output on stdout
+.TP
+\fB\-\-ca\-certs\fR=CA_CERTS_FILE
+Path to SSL CA certificate FILE (instead of system
+default)
+.TP
+\fB\-\-check\-certificate\fR
+Check SSL certificate validity
+.TP
+\fB\-\-no\-check\-certificate\fR
+Check SSL certificate validity
 
 
 .SH EXAMPLES

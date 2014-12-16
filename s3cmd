@@ -1976,7 +1976,7 @@ def get_commands_list():
     {"cmd":"rm", "label":"Delete file from bucket (alias for del)", "param":"s3://BUCKET/OBJECT", "func":cmd_object_del, "argc":1},
     #{"cmd":"mkdir", "label":"Make a virtual S3 directory", "param":"s3://BUCKET/path/to/dir", "func":cmd_mkdir, "argc":1},
     {"cmd":"restore", "label":"Restore file from Glacier storage", "param":"s3://BUCKET/OBJECT", "func":cmd_object_restore, "argc":1},
-    {"cmd":"sync", "label":"Synchronize a directory tree to S3", "param":"LOCAL_DIR s3://BUCKET[/PREFIX] or s3://BUCKET[/PREFIX] LOCAL_DIR", "func":cmd_sync, "argc":2},
+    {"cmd":"sync", "label":"Synchronize a directory tree to S3 (checks files freshness using size and md5 checksum, unless overriden by options, see below)", "param":"LOCAL_DIR s3://BUCKET[/PREFIX] or s3://BUCKET[/PREFIX] LOCAL_DIR", "func":cmd_sync, "argc":2},
     {"cmd":"du", "label":"Disk usage by buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_du, "argc":0},
     {"cmd":"info", "label":"Get various information about Buckets or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_info, "argc":1},
     {"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
@@ -2127,7 +2127,7 @@ def main():
     optparser.set_defaults(config = config_file)
 
     optparser.add_option(      "--configure", dest="run_configure", action="store_true", help="Invoke interactive (re)configuration tool. Optionally use as '--configure s3://some-bucket' to test access to a specific bucket instead of attempting to list them all.")
-    optparser.add_option("-c", "--config", dest="config", metavar="FILE", help="Config file name. Defaults to %default")
+    optparser.add_option("-c", "--config", dest="config", metavar="FILE", help="Config file name. Defaults to $HOME/.s3cfg")
     optparser.add_option(      "--dump-config", dest="dump_config", action="store_true", help="Dump current configuration after parsing config files and command line options and exit.")
     optparser.add_option(      "--access_key", dest="access_key", help="AWS Access Key")
     optparser.add_option(      "--secret_key", dest="secret_key", help="AWS Secret Key")
