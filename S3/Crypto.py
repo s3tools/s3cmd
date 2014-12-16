@@ -16,25 +16,6 @@ import datetime
 import urllib
 from ExitCodes import EX_OSFILE
 
-try:
-    import requests
-except ImportError:
-    sys.stderr.write(u"""
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-ImportError trying to import requests
-Please install the python requests module:
-$ sudo apt-get install python-requests
-  or
-$ sudo yum install python-requests
-  or
-$ sudo pacman -S python2-requests
-  or
-$ pip install requests
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-""")
-    sys.stderr.flush()
-    sys.exit(EX_OSFILE)
-
 # hashlib backported to python 2.4 / 2.5 is not compatible with hmac!
 if sys.version_info[0] == 2 and sys.version_info[1] < 6:
     from md5 import md5

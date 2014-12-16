@@ -75,7 +75,7 @@ Authors:
 --------
     Michal Ludvig  <michal@logix.cz>
 """ % (S3.PkgInfo.long_description),
-    requires=["dateutil", "requests"]
+    requires=["dateutil"]
     )
 
 # vim:et:ts=4:sts=4:ai
