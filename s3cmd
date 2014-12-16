@@ -2469,13 +2469,13 @@ def report_exception(e, msg=''):
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 """ % msg)
-	if type(e) == ImportError:
-	    s = u' '.join([(a) for a in sys.argv])
-	else:
+        tb = traceback.format_exc(sys.exc_info())
+        try:
             s = u' '.join([unicodise(a) for a in sys.argv])
+        except NameError:
+            s = u' '.join([(a) for a in sys.argv])
         sys.stderr.write(u"Invoked as: %s\n" % s)
 
-        tb = traceback.format_exc(sys.exc_info())
         e_class = str(e.__class__)
         e_class = e_class[e_class.rfind(".")+1 : -2]
         sys.stderr.write(u"Problem: %s: %s\n" % (e_class, e))
@@ -2529,13 +2529,18 @@ if __name__ == '__main__':
         from S3.CloudFront import CloudFront
         from S3.FileLists import *
         from S3.MultiPart import MultiPartUpload
+    except Exception as e:
+        report_exception(e, "Error loading some components of s3cmd (Import Error)"))
+        # 1 = EX_GENERAL but be safe in that situation
+        sys.exit(1)
 
+    try:
         rc = main()
         sys.exit(rc)
 
     except ImportError, e:
         report_exception(e)
-        sys.exit(1)
+        sys.exit(EX_GENERAL)
 
     except (ParameterError, InvalidFileError), e:
         error(u"Parameter problem: %s" % e)
