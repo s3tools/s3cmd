@@ -14,7 +14,6 @@ from logging import debug
 import os
 import datetime
 import urllib
-from ExitCodes import EX_OSFILE
 
 # hashlib backported to python 2.4 / 2.5 is not compatible with hmac!
 if sys.version_info[0] == 2 and sys.version_info[1] < 6:
