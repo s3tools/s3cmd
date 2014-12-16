@@ -153,7 +153,7 @@ class S3Request(object):
             h += "/" + self.resource['bucket']
         h += self.resource['uri']
 
-        if self.resource['bucket'] is None or not check_bucket_name_dns_conformity(self.resource['bucket']):
+        if self.resource['bucket'] is None or not check_bucket_name_dns_conformity(self.resource['bucket']) or self.s3.config.signature_v2:
             # in case of bad DNS name due to bucket name v2 will be used
             # this way we can still use capital letters in bucket names for the older regions
             debug("Using signature v2")
