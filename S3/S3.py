@@ -118,9 +118,6 @@ class S3Request(object):
         self.params = params
         self.body = body
 
-        self.update_timestamp()
-        self.sign()
-
     def update_timestamp(self):
         if self.headers.has_key("date"):
             del(self.headers["date"])
