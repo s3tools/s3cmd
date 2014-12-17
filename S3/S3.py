@@ -567,7 +567,7 @@ class S3(object):
                             % (remote_size, size, uri))
 
         headers["content-length"] = size
-        request = self.create_request("OBJECT_PUT", uri = uri, headers = headers, body=checksum_sha256(filename))
+        request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
         labels = { 'source' : unicodise(filename), 'destination' : unicodise(uri.uri()), 'extra' : extra_label }
         response = self.send_file(request, file, labels)
         return response
