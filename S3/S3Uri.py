@@ -53,7 +53,7 @@ class S3Uri(object):
 
 class S3UriS3(S3Uri):
     type = "s3"
-    _re = re.compile("^s3://([^/]+)/?(.*)", re.IGNORECASE)
+    _re = re.compile("^s3://([^/]*)/?(.*)", re.IGNORECASE)
     def __init__(self, string):
         match = self._re.match(string)
         if not match:
