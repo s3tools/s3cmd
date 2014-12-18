@@ -34,6 +34,7 @@ from MultiPart import MultiPartUpload
 from S3Uri import S3Uri
 from ConnMan import ConnMan
 from Crypto import sign_string_v2, sign_string_v4, checksum_sha256
+from ExitCodes import *
 
 try:
     import magic
@@ -117,6 +118,8 @@ class S3Request(object):
         self.method_string = method_string
         self.params = params
         self.body = body
+        self.fallback_to_signature_v2 = False
+        self.force_signature_v4 = False
 
     def update_timestamp(self):
         if self.headers.has_key("date"):
@@ -138,6 +141,16 @@ class S3Request(object):
                 param_str += "&%s" % param
         return param_str and "?" + param_str[1:]
 
+    def use_signature_v2(self):
+        if self.force_signature_v4:
+            return False
+        # in case of bad DNS name due to bucket name v2 will be used
+        # this way we can still use capital letters in bucket names for the older regions
+
+        if self.resource['bucket'] is None or not check_bucket_name_dns_conformity(self.resource['bucket']) or self.s3.config.signature_v2 or self.fallback_to_signature_v2:
+            return True
+        return False
+
     def sign(self):
         h  = self.method_string + "\n"
         h += self.headers.get("content-md5", "")+"\n"
@@ -150,9 +163,7 @@ class S3Request(object):
             h += "/" + self.resource['bucket']
         h += self.resource['uri']
 
-        if self.resource['bucket'] is None or not check_bucket_name_dns_conformity(self.resource['bucket']) or self.s3.config.signature_v2:
-            # in case of bad DNS name due to bucket name v2 will be used
-            # this way we can still use capital letters in bucket names for the older regions
+        if self.use_signature_v2():
             debug("Using signature v2")
             debug("SignHeaders: " + repr(h))
             signature = sign_string_v2(h)
@@ -918,6 +929,37 @@ class S3(object):
         # Wait a few seconds. The more it fails the more we wait.
         return (self._max_retries - retries + 1) * 3
 
+    def _http_400_handler(self, request, response, fn, *args, **kwargs):
+        # AWS response AuthorizationHeaderMalformed means we sent the request to the wrong region
+        # get the right region out of the response and send it there.
+        message = 'Unknown error'
+        if 'data' in response and len(response['data']) > 0:
+            failureCode = getTextFromXml(response['data'], 'Code')
+            message = getTextFromXml(response['data'], 'Message')
+            if failureCode == 'AuthorizationHeaderMalformed':  # we sent the request to the wrong region
+                region = getTextFromXml(response['data'], 'Region')
+                if region is not None:
+                    S3Request.region_map[request.resource['bucket']] = region
+                    warning('Forwarding request to %s' % region)
+                    return fn(*args, **kwargs)
+                else:
+                    message = u'Could not determine bucket location. Please consider using --region parameter.'
+
+            elif failureCode == 'InvalidArgument': # returned by DreamObjects which doesn't support signature v4. Retry with signature v2
+                if not request.use_signature_v2() and not request.fallback_to_signature_v2: # have not tried with v2 yet
+                    debug(u'Falling back to signature v2')
+                    request.fallback_to_signature_v2 = True
+                    return fn(*args, **kwargs)
+
+            elif failureCode == 'InvalidRequest':
+                if message == 'The authorization mechanism you have provided is not supported. Please use AWS4-HMAC-SHA256.':
+                    debug(u'Region requires signature v4')
+                    request.force_signature_v4 = True
+                    return fn(*args, **kwargs)
+
+        error(u"S3 error: %s" % message)
+        sys.exit(ExitCodes.EX_GENERAL)
+
     def send_request(self, request, retries = _max_retries):
         method_string, resource, headers = request.get_triplet()
 
@@ -952,18 +994,7 @@ class S3(object):
                 raise S3RequestError("Request failed for: %s" % resource['uri'])
 
         if response["status"] == 400:
-            if 'data' in response and len(response['data']) > 0 and getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
-                region = getTextFromXml(response['data'], 'Region')
-            else:
-                s3_uri = S3Uri('s3://' + request.resource['bucket'])
-                region = self.get_bucket_location(s3_uri)
-            if region is not None:
-                S3Request.region_map[request.resource['bucket']] = region
-                warning('Forwarding request to %s' % region)
-                return self.send_request(request)
-            else:
-                warning('Could not determine bucket location. Please consider using --region parameter.')
-                sys.exit(2)
+            return self._http_400_handler(request, response, self.send_request, request)
 
         if response["status"] == 307:
             ## RedirectPermanent
