@@ -964,6 +964,20 @@ class S3(object):
                 request.fallback_to_signature_v2 = True
                 return fn(*args, **kwargs)
 
+        error(u"S3 error: %s" % message)
+        sys.exit(ExitCodes.EX_GENERAL)
+
+    def _http_403_handler(self, request, response, fn, *args, **kwargs):
+        message = 'Unknown error'
+        if 'data' in response and len(response['data']) > 0:
+            failureCode = getTextFromXml(response['data'], 'Code')
+            message = getTextFromXml(response['data'], 'Message')
+            if failureCode == 'AccessDenied':  # traditional HTTP 403
+                if message == 'AWS authentication requires a valid Date or x-amz-date header': # message from an Eucalyptus walrus server
+                    if not request.use_signature_v2() and not request.fallback_to_signature_v2: # have not tried with v2 yet
+                        debug(u'Falling back to signature v2')
+                        request.fallback_to_signature_v2 = True
+                        return fn(*args, **kwargs)
 
         error(u"S3 error: %s" % message)
         sys.exit(ExitCodes.EX_GENERAL)
@@ -1003,6 +1017,8 @@ class S3(object):
 
         if response["status"] == 400:
             return self._http_400_handler(request, response, self.send_request, request)
+        if response["status"] == 403:
+            return self._http_403_handler(request, response, self.send_request, request)
 
         if response["status"] == 307:
             ## RedirectPermanent
@@ -1136,6 +1152,8 @@ class S3(object):
 
         if response["status"] == 400:
             return self._http_400_handler(request, response, self.send_file, request, file, labels, buffer, offset = offset, chunk_size = chunk_size)
+        if response["status"] == 403:
+            return self._http_403_handler(request, response, self.send_file, request, file, labels, buffer, offset = offset, chunk_size = chunk_size)
 
         # S3 from time to time doesn't send ETag back in a response :-(
         # Force re-upload here.
@@ -1242,6 +1260,8 @@ class S3(object):
 
         if response["status"] == 400:
             return self._http_400_handler(request, response, self.recv_file, request, stream, labels)
+        if response["status"] == 403:
+            return self._http_403_handler(request, response, self.recv_file, request, stream, labels)
 
         if response["status"] < 200 or response["status"] > 299:
             raise S3Error(response)
