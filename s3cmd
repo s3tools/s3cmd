@@ -124,10 +124,20 @@ def cmd_ls(args):
         if uri.type == "s3" and uri.has_bucket():
             subcmd_bucket_list(s3, uri)
             return EX_OK
-    subcmd_buckets_list_all(s3)
+
+    # If not a s3 type uri or no bucket was provided, list all the buckets
+    subcmd_all_buckets_list(s3)
     return EX_OK
 
-def cmd_buckets_list_all_all(args):
+def subcmd_all_buckets_list(s3):
+
+    response = s3.list_all_buckets()
+
+    for bucket in response["list"]:
+        output(u"%s  s3://%s" % (formatDateTime(bucket["CreationDate"]),
+                                 bucket["Name"]))
+
+def cmd_all_buckets_list_all_content(args):
     s3 = S3(Config())
 
     response = s3.list_all_buckets()
@@ -136,14 +146,6 @@ def cmd_buckets_list_all_all(args):
         subcmd_bucket_list(s3, S3Uri("s3://" + bucket["Name"]))
         output(u"")
     return EX_OK
-
-def subcmd_buckets_list_all(s3):
-    response = s3.list_all_buckets()
-    for bucket in response["list"]:
-        output(u"%s  s3://%s" % (
-            formatDateTime(bucket["CreationDate"]),
-            bucket["Name"],
-            ))
 
 def subcmd_bucket_list(s3, uri):
     bucket = uri.bucket()
@@ -1969,7 +1971,7 @@ def get_commands_list():
     {"cmd":"mb", "label":"Make bucket", "param":"s3://BUCKET", "func":cmd_bucket_create, "argc":1},
     {"cmd":"rb", "label":"Remove bucket", "param":"s3://BUCKET", "func":cmd_bucket_delete, "argc":1},
     {"cmd":"ls", "label":"List objects or buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_ls, "argc":0},
-    {"cmd":"la", "label":"List all object in all buckets", "param":"", "func":cmd_buckets_list_all_all, "argc":0},
+    {"cmd":"la", "label":"List all object in all buckets", "param":"", "func":cmd_all_buckets_list_all_content, "argc":0},
     {"cmd":"put", "label":"Put file into bucket", "param":"FILE [FILE...] s3://BUCKET[/PREFIX]", "func":cmd_object_put, "argc":2},
     {"cmd":"get", "label":"Get file from bucket", "param":"s3://BUCKET/OBJECT LOCAL_FILE", "func":cmd_object_get, "argc":1},
     {"cmd":"del", "label":"Delete file from bucket", "param":"s3://BUCKET/OBJECT", "func":cmd_object_del, "argc":1},
