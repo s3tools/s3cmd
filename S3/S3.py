@@ -34,6 +34,7 @@ from MultiPart import MultiPartUpload
 from S3Uri import S3Uri
 from ConnMan import ConnMan
 from Crypto import sign_string_v2, sign_string_v4, checksum_sha256
+from RegionEndpoints import region_endpoint
 
 try:
     import magic
@@ -960,6 +961,7 @@ class S3(object):
             if region is not None:
                 S3Request.region_map[request.resource['bucket']] = region
                 warning('Forwarding request to %s' % region)
+                set_host_bucket(region)
                 return self.send_request(request)
             else:
                 warning('Could not determine bucket location. Please consider using --region parameter.')
@@ -1104,6 +1106,7 @@ class S3(object):
             if region is not None:
                 S3Request.region_map[request.resource['bucket']] = region
                 warning('Forwarding request to %s' % region)
+                set_host_bucket(region)
                 return self.send_file(request, file, labels, buffer, offset = offset, chunk_size = chunk_size)
 
         # S3 from time to time doesn't send ETag back in a response :-(
@@ -1218,6 +1221,7 @@ class S3(object):
             if region is not None:
                 S3Request.region_map[request.resource['bucket']] = region
                 warning('Forwarding request to %s' % region)
+                set_host_bucket(region)
                 return self.recv_file(request, stream, labels)
 
         if response["status"] < 200 or response["status"] > 299:
@@ -1325,4 +1329,13 @@ def compute_content_md5(body):
     if base64md5[-1] == '\n':
         base64md5 = base64md5[0:-1]
     return base64md5
+
+def set_host_bucket(region):
+    cfg = Config()
+    if region:
+        endpoint = region_endpoint(region)
+        if endpoint:
+            cfg.host_base = endpoint
+            cfg.host_bucket = "%(bucket)s." + endpoint
+__all__.append('set_host_bucket')
 # vim:et:ts=4:sts=4:ai

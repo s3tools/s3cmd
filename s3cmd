@@ -2412,6 +2412,10 @@ def main():
     ## Set socket read()/write() timeout
     socket.setdefaulttimeout(cfg.socket_timeout)
 
+    ## Use region-specific endpoints when region is known
+    if options.bucket_location:
+        set_host_bucket(options.bucket_location)
+
     if cfg.encrypt and cfg.gpg_passphrase == "":
         error(u"Encryption requested but no passphrase set in config file.")
         error(u"Please re-run 's3cmd --configure' and supply it.")
@@ -2517,7 +2521,7 @@ if __name__ == '__main__':
         from S3.ExitCodes import *
         from S3.Exceptions import *
         from S3 import PkgInfo
-        from S3.S3 import S3
+        from S3.S3 import S3, set_host_bucket
         from S3.Config import Config
         from S3.SortedDict import SortedDict
         from S3.FileDict import FileDict
