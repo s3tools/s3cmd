@@ -156,7 +156,7 @@ class S3Request(object):
         h += self.headers.get("content-md5", "")+"\n"
         h += self.headers.get("content-type", "")+"\n"
         h += self.headers.get("date", "")+"\n"
-        for header in self.headers.keys():
+        for header in sorted(self.headers.keys()):
             if header.startswith("x-amz-"):
                 h += header+":"+str(self.headers[header])+"\n"
         if self.resource['bucket']:
