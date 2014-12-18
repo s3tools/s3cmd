@@ -945,17 +945,25 @@ class S3(object):
                 else:
                     message = u'Could not determine bucket location. Please consider using --region parameter.'
 
-            elif failureCode == 'InvalidArgument': # returned by DreamObjects which doesn't support signature v4. Retry with signature v2
-                if not request.use_signature_v2() and not request.fallback_to_signature_v2: # have not tried with v2 yet
-                    debug(u'Falling back to signature v2')
-                    request.fallback_to_signature_v2 = True
-                    return fn(*args, **kwargs)
-
             elif failureCode == 'InvalidRequest':
                 if message == 'The authorization mechanism you have provided is not supported. Please use AWS4-HMAC-SHA256.':
                     debug(u'Region requires signature v4')
                     request.force_signature_v4 = True
                     return fn(*args, **kwargs)
+
+            elif failureCode == 'InvalidArgument': # returned by DreamObjects on send_request and send_file,
+                                                   # which doesn't support signature v4. Retry with signature v2
+                if not request.use_signature_v2() and not request.fallback_to_signature_v2: # have not tried with v2 yet
+                    debug(u'Falling back to signature v2')
+                    request.fallback_to_signature_v2 = True
+                    return fn(*args, **kwargs)
+
+        else: # returned by DreamObjects on recv_file, which doesn't support signature v4. Retry with signature v2
+            if not request.use_signature_v2() and not request.fallback_to_signature_v2: # have not tried with v2 yet
+                debug(u'Falling back to signature v2')
+                request.fallback_to_signature_v2 = True
+                return fn(*args, **kwargs)
+
 
         error(u"S3 error: %s" % message)
         sys.exit(ExitCodes.EX_GENERAL)
@@ -1233,15 +1241,7 @@ class S3(object):
             return self.recv_file(request, stream, labels)
 
         if response["status"] == 400:
-            if 'data' in response and len(response['data']) > 0 and getTextFromXml(response['data'], 'Code') == 'AuthorizationHeaderMalformed':
-                region = getTextFromXml(response['data'], 'Region')
-            else:
-                s3_uri = S3Uri('s3://' + request.resource['bucket'])
-                region = self.get_bucket_location(s3_uri)
-            if region is not None:
-                S3Request.region_map[request.resource['bucket']] = region
-                warning('Forwarding request to %s' % region)
-                return self.recv_file(request, stream, labels)
+            return self._http_400_handler(request, response, self.recv_file, request, stream, labels)
 
         if response["status"] < 200 or response["status"] > 299:
             raise S3Error(response)
