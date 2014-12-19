@@ -126,13 +126,13 @@ def sign_string_v4(method='GET', host='', canonical_uri='/', params={}, region='
 
 def quote_param(param, quote_backslashes=True):
     # As stated by Amazon the '/' in the filename should stay unquoted and %20 should be used for space instead of '+'
-    quoted = urllib.quote_plus(urllib.unquote_plus(param)).replace('+', '%20')
+    quoted = urllib.quote_plus(urllib.unquote_plus(param), safe='~').replace('+', '%20')
     if not quote_backslashes:
         quoted = quoted.replace('%2F', '/')
     return quoted
 
 def checksum_sha256(filename, offset=0, size=None):
-    canonical_uri = urllib.quote_plus(filename).replace('%2F', '/')
+    canonical_uri = urllib.quote_plus(filename, safe='~').replace('%2F', '/')
     try:
         hash = sha256()
     except:
