@@ -47,8 +47,8 @@ else:
 try:
     import xml.etree.ElementTree as ET
 except ImportError:
+    # xml.etree.ElementTree was only added in python 2.5
     import elementtree.ElementTree as ET
-from xml.parsers.expat import ExpatError
 
 __all__ = []
 def parseNodes(nodes):
@@ -88,11 +88,8 @@ def getTreeFromXml(xml):
         if xmlns:
             tree.attrib['xmlns'] = xmlns
         return tree
-    except ExpatError, e:
-        error(e)
-        raise Exceptions.ParameterError("Bucket contains invalid filenames. Please run: s3cmd fixbucket s3://your-bucket/")
     except Exception, e:
-        error(e)
+        error("Error parsing xml: %s", e)
         error(xml)
         raise
 
