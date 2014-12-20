@@ -118,8 +118,6 @@ class S3Request(object):
         self.method_string = method_string
         self.params = params
         self.body = body
-        self.fallback_to_signature_v2 = False
-        self.force_signature_v4 = False
 
     def update_timestamp(self):
         if self.headers.has_key("date"):
@@ -142,12 +140,12 @@ class S3Request(object):
         return param_str and "?" + param_str[1:]
 
     def use_signature_v2(self):
-        if self.force_signature_v4:
+        if self.s3.endpoint_requires_signature_v4:
             return False
         # in case of bad DNS name due to bucket name v2 will be used
         # this way we can still use capital letters in bucket names for the older regions
 
-        if self.resource['bucket'] is None or not check_bucket_name_dns_conformity(self.resource['bucket']) or self.s3.config.signature_v2 or self.fallback_to_signature_v2:
+        if self.resource['bucket'] is None or not check_bucket_name_dns_conformity(self.resource['bucket']) or self.s3.config.signature_v2 or self.s3.fallback_to_signature_v2:
             return True
         return False
 
@@ -231,6 +229,8 @@ class S3(object):
 
     def __init__(self, config):
         self.config = config
+        self.fallback_to_signature_v2 = False
+        self.endpoint_requires_signature_v4 = False
 
     def get_hostname(self, bucket):
         if bucket and check_bucket_name_dns_support(self.config.host_bucket, bucket):
@@ -947,21 +947,21 @@ class S3(object):
 
             elif failureCode == 'InvalidRequest':
                 if message == 'The authorization mechanism you have provided is not supported. Please use AWS4-HMAC-SHA256.':
-                    debug(u'Region requires signature v4')
-                    request.force_signature_v4 = True
+                    debug(u'Endpoint requires signature v4')
+                    self.endpoint_requires_signature_v4 = True
                     return fn(*args, **kwargs)
 
             elif failureCode == 'InvalidArgument': # returned by DreamObjects on send_request and send_file,
                                                    # which doesn't support signature v4. Retry with signature v2
-                if not request.use_signature_v2() and not request.fallback_to_signature_v2: # have not tried with v2 yet
+                if not request.use_signature_v2() and not self.fallback_to_signature_v2: # have not tried with v2 yet
                     debug(u'Falling back to signature v2')
-                    request.fallback_to_signature_v2 = True
+                    self.fallback_to_signature_v2 = True
                     return fn(*args, **kwargs)
 
         else: # returned by DreamObjects on recv_file, which doesn't support signature v4. Retry with signature v2
-            if not request.use_signature_v2() and not request.fallback_to_signature_v2: # have not tried with v2 yet
+            if not request.use_signature_v2() and not self.fallback_to_signature_v2: # have not tried with v2 yet
                 debug(u'Falling back to signature v2')
-                request.fallback_to_signature_v2 = True
+                self.fallback_to_signature_v2 = True
                 return fn(*args, **kwargs)
 
         error(u"S3 error: %s" % message)
@@ -974,9 +974,9 @@ class S3(object):
             message = getTextFromXml(response['data'], 'Message')
             if failureCode == 'AccessDenied':  # traditional HTTP 403
                 if message == 'AWS authentication requires a valid Date or x-amz-date header': # message from an Eucalyptus walrus server
-                    if not request.use_signature_v2() and not request.fallback_to_signature_v2: # have not tried with v2 yet
+                    if not request.use_signature_v2() and not self.fallback_to_signature_v2: # have not tried with v2 yet
                         debug(u'Falling back to signature v2')
-                        request.fallback_to_signature_v2 = True
+                        self.fallback_to_signature_v2 = True
                         return fn(*args, **kwargs)
 
         error(u"S3 error: %s" % message)
