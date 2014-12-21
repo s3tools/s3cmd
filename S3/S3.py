@@ -1025,7 +1025,7 @@ class S3(object):
             redir_bucket = getTextFromXml(response['data'], ".//Bucket")
             redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
             self.set_hostname(redir_bucket, redir_hostname)
-            warning("Redirected to: %s" % (redir_hostname))
+            info("Redirected to: %s" % (redir_hostname))
             return self.send_request(request)
 
         if response["status"] >= 500:
@@ -1147,7 +1147,7 @@ class S3(object):
             redir_bucket = getTextFromXml(response['data'], ".//Bucket")
             redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
             self.set_hostname(redir_bucket, redir_hostname)
-            warning("Redirected to: %s" % (redir_hostname))
+            info("Redirected to: %s" % (redir_hostname))
             return self.send_file(request, file, labels, buffer, offset = offset, chunk_size = chunk_size)
 
         if response["status"] == 400:
@@ -1255,7 +1255,7 @@ class S3(object):
             redir_bucket = getTextFromXml(response['data'], ".//Bucket")
             redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
             self.set_hostname(redir_bucket, redir_hostname)
-            warning("Redirected to: %s" % (redir_hostname))
+            info("Redirected to: %s" % (redir_hostname))
             return self.recv_file(request, stream, labels)
 
         if response["status"] == 400:
