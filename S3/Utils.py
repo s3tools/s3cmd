@@ -360,6 +360,9 @@ def time_to_epoch(t):
     elif isinstance(t, str) or isinstance(t, unicode):
         # See if it's a string representation of an epoch
         try:
+            # Support relative times (eg. "+60")
+            if t.startswith('+'):
+                return time.time() + int(t[1:])
             return int(t)
         except ValueError:
             # Try to parse it as a timestamp string
