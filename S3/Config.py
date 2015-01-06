@@ -12,6 +12,7 @@ import sys
 import Progress
 from SortedDict import SortedDict
 import httplib
+import locale
 try:
     import json
 except ImportError, e:
@@ -94,7 +95,7 @@ class Config(object):
     # Dict mapping compiled REGEXPs back to their textual form
     debug_exclude = {}
     debug_include = {}
-    encoding = "utf-8"
+    encoding = locale.getpreferredencoding() or "UTF-8"
     urlencoding_mode = "normal"
     log_target_prefix = ""
     reduced_redundancy = False
