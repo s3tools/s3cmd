@@ -1045,6 +1045,10 @@ def cmd_sync_remote2local(args):
                     if e.errno == errno.EISDIR:
                         warning(u"%s is a directory - skipping over" % unicodise(dst_file))
                         continue
+                    elif e.errno == errno.ETXTBSY:
+                        warning(u"%s is currently open for execute, cannot be overwritten.  Skipping over." % unicodise(dst_file))
+                        os.unlink(chkptfname)
+                        continue
                     else:
                         raise
                 except S3DownloadError, e:
