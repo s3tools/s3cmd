@@ -560,9 +560,7 @@ class CloudFront(object):
         return signature
 
     def get_connection(self):
-        if self.config.proxy_host != "":
-            raise ParameterError("CloudFront commands don't work from behind a HTTP proxy")
-        conn = ConnMan.get(self.config.cloudfront_host)
+        conn = ConnMan.get(self.config.cloudfront_host, ssl = True)
         return conn
 
     def _fail_wait(self, retries):
