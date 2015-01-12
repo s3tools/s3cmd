@@ -60,7 +60,7 @@ There are three options to run s3cmd from source tarball:
    OpenSuse Python 2.5 package) or it can be installed using your
    package manager, e.g. in Debian use 
 
-	apt-get install python2.4-setuptools
+	apt-get install python-setuptools
 
    Again, consult your distribution documentation on how to 
    find out the actual package name and how to install it then.

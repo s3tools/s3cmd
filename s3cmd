@@ -20,8 +20,8 @@
 
 import sys
 
-if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.4:
-    sys.stderr.write(u"ERROR: Python 2.4 or higher required, sorry.\n")
+if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.6:
+    sys.stderr.write(u"ERROR: Python 2.6 or higher required, sorry.\n")
     sys.exit(EX_OSFILE)
 
 import logging
