@@ -1,6 +1,30 @@
+s3cmd-1.5.0        - 2015-01-12
+===============
+* add support for newer regions such as Frankfurt that
+  require newer authorization signature v4 support
+  (Vasileios Mitrousis, Michal Ludvig, Matt Domsch)
+* drop support for python 2.4 due to signature v4 code.
+  python 2.6 is now the minimum, and python 3 is still not supported.
+* handle redirects to the "right" region for a bucket.
+* add --ca-cert=FILE for self-signed certs (Matt Domsch)
+* allow proxied SSL connections with python >= 2.7 (Damian Gerow)
+* add --remove-headers for [modify] command (Matt Domsch)
+* add -s/--ssl and --no-ssl options (Viktor Szakáts)
+* add --signature-v2 for backwards compatibility with S3 clones.
+* bugfixes by 17 contributors
+
 s3cmd 1.5.0-rc1      -   2014-06-29
 ===============
-[TODO - extract from: git log --no-merges v1.5.0-beta1..]
+* add environment variable S3CMD_CONFIG (Devon Jones),
+  access key and secre keys (Vasileios Mitrousis)
+* added modify command (Francois Gaudin)
+* better debug messages (Matt Domsch)
+* faster batch deletes (Matt Domsch)
+* Added support for restoring files from Glacier storage (Robert Palmer)
+* Add and remove full lifecycle policies (Sam Rudge)
+* Add support for object expiration (hrchu)
+* bugfixes by 26 contributors
+
 
 s3cmd 1.5.0-beta1    -   2013-12-02
 =================
