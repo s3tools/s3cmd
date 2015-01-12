@@ -35,7 +35,7 @@ In the below, 1.5.0-rc1 is the example version being released.  Salt to taste.
     git tag --sign -a v1.5.0-rc1 -m "Tag v1.5.0-rc1"
 
 11. Push back to github:
-    git push
+    git push --tags
 
 
 That's it for building the release. Now upload it to SourceForge:
