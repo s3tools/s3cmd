@@ -224,7 +224,7 @@ def test_wget_HEAD(label, src_file, **kwargs):
     cmd.append(src_file)
     return test(label, cmd, **kwargs)
 
-bucket_prefix = u"%s-" % getpass.getuser()
+bucket_prefix = u"s3cmd-tests-%s-" % getpass.getuser()
 print "Using bucket prefix: '%s'" % bucket_prefix
 
 argv = sys.argv[1:]
