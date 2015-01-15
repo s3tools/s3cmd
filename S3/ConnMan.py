@@ -51,9 +51,34 @@ class http_connection(object):
         return context
 
     @staticmethod
+    def match_hostname_aws(cert, hostname, e):
+        san = cert.get('subjectAltName', ())
+        for key, value in san:
+            if key == 'DNS':
+                if value.startswith('*.s3') and value.endswith('.amazonaws.com') and hostname.endswith('.amazonaws.com'):
+                    return
+        raise e
+
+    @staticmethod
+    def match_hostname(conn):
+        cert = conn.c.sock.getpeercert()
+        hostname = conn.c.sock.server_hostname
+        try:
+            ssl.match_hostname(cert, hostname)
+        except ssl.CertificateError, e:
+            http_connection.match_hostname_aws(cert, hostname, e)
+
+    @staticmethod
     def _https_connection(hostname, port=None):
         try:
             context = http_connection._ssl_context()
+            # S3's wildcart certificate doesn't work with DNS-style named buckets.
+            if hostname.endswith('.amazonaws.com') and context:
+                # this merely delays running the hostname check until
+                # after the connection is made and we get control
+                # back.  We then run the same check, relaxed for S3's
+                # wildcard certificates.
+                context.check_hostname = False
             conn = httplib.HTTPSConnection(hostname, port, context=context)
         except TypeError:
             conn = httplib.HTTPSConnection(hostname, port)
@@ -82,10 +107,6 @@ class http_connection(object):
                 self.c = http_connection._https_connection(hostname)
                 debug(u'non-proxied HTTPSConnection(%s)' % hostname)
 
-            # S3's wildcart certificate doesn't work with DNS-style named buckets.
-            if 's3.amazonaws.com' in hostname and http_connection.context:
-                http_connection.context.check_hostname = False
-                debug(u'Disabling SSL certificate hostname verification for S3 wildcard cert')
 
 class ConnMan(object):
     conn_pool_sem = Semaphore()
@@ -115,6 +136,8 @@ class ConnMan(object):
             debug("ConnMan.get(): creating new connection: %s" % conn_id)
             conn = http_connection(conn_id, hostname, ssl, cfg)
             conn.c.connect()
+            if conn.ssl:
+                http_connection.match_hostname(conn)
         conn.counter += 1
         return conn
 
