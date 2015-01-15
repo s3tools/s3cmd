@@ -168,7 +168,7 @@ class S3Request(object):
             self.headers["Authorization"] = "AWS "+self.s3.config.access_key+":"+signature
         else:
             debug("Using signature v4")
-            self.headers = sign_string_v4(self.method_string,
+            self.headers = sign_string_v4('s3',self.method_string,
                                           self.s3.get_hostname(self.resource['bucket']),
                                           self.resource['uri'],
                                           self.params,
