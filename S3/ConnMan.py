@@ -52,6 +52,23 @@ class http_connection(object):
 
     @staticmethod
     def match_hostname_aws(cert, hostname, e):
+        """
+        Wildcard matching for *.s3.amazonaws.com and similar per region.
+
+        Per http://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html:
+        "We recommend that all bucket names comply with DNS naming conventions."
+
+        Per http://docs.aws.amazon.com/AmazonS3/latest/dev/VirtualHosting.html:
+        "When using virtual hosted-style buckets with SSL, the SSL
+        wild card certificate only matches buckets that do not contain
+        periods. To work around this, use HTTP or write your own
+        certificate verification logic."
+
+        Therefore, we need a custom validation routine that allows
+        mybucket.example.com.s3.amazonaws.com to be considered a valid
+        hostname for the *.s3.amazonaws.com wildcard cert, and for the
+        region-specific *.s3-[region].amazonaws.com wildcard cert.
+        """
         san = cert.get('subjectAltName', ())
         for key, value in san:
             if key == 'DNS':
