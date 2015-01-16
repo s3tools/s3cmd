@@ -118,6 +118,7 @@ class Config(object):
     expiry_date = ""
     expiry_prefix = ""
     signature_v2 = False
+    limitrate = 0
 
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None):
@@ -265,6 +266,20 @@ class Config(object):
                     error("Config: verbosity level '%s' is not valid" % value)
                     return
 
+        elif option == "limitrate":
+            #convert kb,mb to bytes
+            if value.endswith("k") or value.endswith("K"):
+                shift = 10
+            elif value.endswith("m") or value.endswith("M"):
+                shift = 20
+            else:
+                shift = 0
+            try:
+                value = shift and int(value[:-1]) << shift or int(value)
+            except:
+                error("Config: value of option %s must have suffix m, k, or nothing, not '%s'" % (option, value))
+                return
+
         ## allow yes/no, true/false, on/off and 1/0 for boolean options
         elif type(getattr(Config, option)) is type(True):   # bool
             if str(value).lower() in ("true", "yes", "on", "1"):
@@ -281,6 +296,7 @@ class Config(object):
             except ValueError, e:
                 error("Config: value of option '%s' must be an integer, not '%s'" % (option, value))
                 return
+
 
         setattr(Config, option, value)
 

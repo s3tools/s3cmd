@@ -1090,16 +1090,24 @@ class S3(object):
         try:
             while (size_left > 0):
                 #debug("SendFile: Reading up to %d bytes from '%s' - remaining bytes: %s" % (self.config.send_chunk, file.name, size_left))
+                l = min(self.config.send_chunk, size_left)
                 if buffer == '':
-                    data = file.read(min(self.config.send_chunk, size_left))
+                    data = file.read(l)
                 else:
                     data = buffer
 
+                start_time = time.time()
                 md5_hash.update(data)
                 conn.c.send(data)
                 if self.config.progress_meter:
                     progress.update(delta_position = len(data))
                 size_left -= len(data)
+
+                #throttle
+                if self.config.limitrate > 0:
+                    real_duration = time.time() - start_time
+                    expected_duration = float(l)/self.config.limitrate
+                    throttle = max(expected_duration - real_duration, throttle)
                 if throttle:
                     time.sleep(throttle)
             md5_computed = md5_hash.hexdigest()
@@ -1282,9 +1290,18 @@ class S3(object):
         try:
             while (current_position < size_total):
                 this_chunk = size_left > self.config.recv_chunk and self.config.recv_chunk or size_left
+
+                start_time = time.time()
                 data = http_response.read(this_chunk)
                 if len(data) == 0:
                     raise S3Error("EOF from S3!")
+
+                #throttle
+                if self.config.limitrate > 0:
+                    real_duration = time.time() - start_time
+                    expected_duration = float(this_chunk)/self.config.limitrate
+                    if expected_duration > real_duration:
+                        time.sleep(expected_duration - real_duration)
 
                 stream.write(data)
                 if start_position == 0:
