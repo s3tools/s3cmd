@@ -20,12 +20,11 @@ from S3 import S3
 from Config import Config
 from Exceptions import *
 from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, getBucketFromHostname, getHostnameFromBucket
-from Crypto import sign_string_v2
+from Crypto import sign_string_v4
 from S3Uri import S3Uri, S3UriS3
-from FileLists import fetch_remote_list
 from ConnMan import ConnMan
 
-cloudfront_api_version = "2010-11-01"
+cloudfront_api_version = "2014-10-21"
 cloudfront_resource = "/%(api_ver)s/distribution" % { 'api_ver' : cloudfront_api_version }
 
 def output(message):
@@ -531,33 +530,16 @@ class CloudFront(object):
         if not headers:
             headers = {}
 
-        if headers.has_key("date"):
-            if not headers.has_key("x-amz-date"):
-                headers["x-amz-date"] = headers["date"]
-            del(headers["date"])
+        headers= self.headers = sign_string_v4('cloudfront','GET',
+                                               self.config.cloudfront_host,
+                                               resource,
+                                               {},
+                                               'us-east-1',
+                                               headers,
+                                               '')
 
-        if not headers.has_key("x-amz-date"):
-            headers["x-amz-date"] = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
-
-        if len(self.config.access_token)>0:
-            self.config.role_refresh()
-            headers['x-amz-security-token']=self.config.access_token
-
-        signature = self.sign_request(headers)
-        headers["Authorization"] = "AWS "+self.config.access_key+":"+signature
-
-        request = {}
-        request['resource'] = resource
-        request['headers'] = headers
-        request['method'] = operation['method']
-
+        request = {'resource': resource, 'headers': headers, 'method': operation['method']}
         return request
-
-    def sign_request(self, headers):
-        string_to_sign = headers['x-amz-date']
-        signature = sign_string_v2(string_to_sign)
-        debug(u"CloudFront.sign_request('%s') = %s" % (string_to_sign, signature))
-        return signature
 
     def get_connection(self):
         conn = ConnMan.get(self.config.cloudfront_host, ssl = True)

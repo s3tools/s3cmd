@@ -74,8 +74,7 @@ def getSignatureKey(key, dateStamp, regionName, serviceName):
     kSigning = sign(kService, 'aws4_request')
     return kSigning
 
-def sign_string_v4(method='GET', host='', canonical_uri='/', params={}, region='us-east-1', cur_headers={}, body=''):
-    service = 's3'
+def sign_string_v4(service, method='GET', host='', canonical_uri='/', params={}, region='us-east-1', cur_headers={}, body=''):
 
     cfg = Config.Config()
     access_key = cfg.access_key
@@ -100,18 +99,19 @@ def sign_string_v4(method='GET', host='', canonical_uri='/', params={}, region='
     canonical_headers = 'host:' + host + '\n' + 'x-amz-content-sha256:' + payload_hash + '\n' + 'x-amz-date:' + amzdate + '\n'
     signed_headers = 'host;x-amz-content-sha256;x-amz-date'
 
-    for header in cur_headers.keys():
+    for key,value in cur_headers.items():
         # avoid duplicate headers and previous Authorization
-        if header == 'Authorization' or header in signed_headers.split(';'):
+        if key == 'Authorization' or key in signed_headers.split(';'):
             continue
-        canonical_headers += header.strip() + ':' + str(cur_headers[header]).strip() + '\n'
-        signed_headers += ';' + header.strip()
+        normalized_key = key.strip().lower()
+        canonical_headers += normalized_key + ':' + value.strip() + '\n'
+        signed_headers += ';' + normalized_key
 
     # sort headers
-    canonical_headers = '\n'.join(sorted(canonical_headers.split())) + '\n'
+    canonical_headers = '\n'.join(sorted(canonical_headers.split('\n'))) + '\n'
     signed_headers = ';'.join(sorted(signed_headers.split(';')))
 
-    canonical_request = method + '\n' + canonical_uri + '\n' + canonical_querystring + '\n' + canonical_headers + '\n' + signed_headers + '\n' + payload_hash
+    canonical_request = method + '\n' + canonical_uri + '\n' + canonical_querystring  + canonical_headers + '\n' + signed_headers + '\n' + payload_hash
     debug('Canonical Request:\n%s\n----------------------' % canonical_request)
 
     algorithm = 'AWS4-HMAC-SHA256'
