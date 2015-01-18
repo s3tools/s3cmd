@@ -97,18 +97,26 @@ def sign_string_v4(method='GET', host='', canonical_uri='/', params={}, region='
     else:
         payload_hash = sha256(body).hexdigest()
 
-    canonical_headers = 'host:' + host + '\n' + 'x-amz-content-sha256:' + payload_hash + '\n' + 'x-amz-date:' + amzdate + '\n'
+    canonical_headers = {'host' : host,
+                         'x-amz-content-sha256': payload_hash,
+                         'x-amz-date' : amzdate
+                         }
     signed_headers = 'host;x-amz-content-sha256;x-amz-date'
 
     for header in cur_headers.keys():
         # avoid duplicate headers and previous Authorization
         if header == 'Authorization' or header in signed_headers.split(';'):
             continue
-        canonical_headers += header.strip() + ':' + str(cur_headers[header]).strip() + '\n'
+        canonical_headers[header.strip()] = str(cur_headers[header]).strip()
         signed_headers += ';' + header.strip()
 
-    # sort headers
-    canonical_headers = '\n'.join(sorted(canonical_headers.split())) + '\n'
+    # sort headers into a string
+    canonical_headers_str = ''
+    for k, v in sorted(canonical_headers.items()):
+        canonical_headers_str += k + ":" + v + "\n"
+
+    canonical_headers = canonical_headers_str
+    debug(u"canonical_headers = %s" % canonical_headers)
     signed_headers = ';'.join(sorted(signed_headers.split(';')))
 
     canonical_request = method + '\n' + canonical_uri + '\n' + canonical_querystring + '\n' + canonical_headers + '\n' + signed_headers + '\n' + payload_hash

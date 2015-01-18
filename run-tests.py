@@ -508,7 +508,7 @@ test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucke
                      "ACL:.*\*anon\*: READ",
                      "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
 
-test_s3cmd("Add cache-control header", ['modify', '--add-header=cache-control: max-age=3600', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+test_s3cmd("Add cache-control header", ['modify', '--add-header=cache-control: max-age=3600, public', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "File .* modified" ])
 
 if have_wget:
