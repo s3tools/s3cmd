@@ -33,7 +33,7 @@ from Exceptions import *
 from MultiPart import MultiPartUpload
 from S3Uri import S3Uri
 from ConnMan import ConnMan
-from Crypto import sign_string_v2, sign_string_v4, checksum_sha256
+from Crypto import sign_string_v2, sign_string_v4, checksum_sha256_file, checksum_sha256_buffer
 from ExitCodes import *
 
 try:
@@ -604,7 +604,7 @@ class S3(object):
             for key in key_list:
                 uri = S3Uri(key)
                 if uri.type != "s3":
-                    raise ValueError("Excpected URI type 's3', got '%s'" % uri.type)
+                    raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
                 if not uri.has_object():
                     raise ValueError("URI '%s' has no object" % key)
                 if uri.bucket() != bucket:
@@ -1068,7 +1068,10 @@ class S3(object):
             info("Sending file '%s', please wait..." % file.name)
         timestamp_start = time.time()
 
-        sha256_hash = checksum_sha256(file.name, offset, size_total)
+        if file == sys.stdin and buffer:
+            sha256_hash = checksum_sha256_buffer(buffer, offset, size_total)
+        else:
+            sha256_hash = checksum_sha256_file(file.name, offset, size_total)
         request.body = sha256_hash
         method_string, resource, headers = request.get_triplet()
         try:

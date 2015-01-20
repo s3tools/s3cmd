@@ -139,8 +139,7 @@ def quote_param(param, quote_backslashes=True):
         quoted = quoted.replace('%2F', '/')
     return quoted
 
-def checksum_sha256(filename, offset=0, size=None):
-    canonical_uri = urllib.quote_plus(filename, safe='~').replace('%2F', '/')
+def checksum_sha256_file(filename, offset=0, size=None):
     try:
         hash = sha256()
     except:
@@ -154,4 +153,16 @@ def checksum_sha256(filename, offset=0, size=None):
             f.seek(offset)
             chunk = f.read(size)
             hash.update(chunk)
+    return hash
+
+def checksum_sha256_buffer(buffer, offset=0, size=None):
+    try:
+        hash = sha256()
+    except:
+        # fallback to Crypto SHA256 module
+        hash = sha256.new()
+    if size is None:
+        hash.update(buffer)
+    else:
+        hash.update(buffer[offset:offset+size])
     return hash
