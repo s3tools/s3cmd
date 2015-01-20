@@ -117,7 +117,7 @@ class MultiPartUpload(object):
         else:
             while True:
                 buffer = self.file.read(self.chunk_size)
-                offset = self.chunk_size * (seq - 1)
+                offset = 0 # send from start of the buffer
                 current_chunk_size = len(buffer)
                 labels = {
                     'source' : unicodise(self.file.name),
