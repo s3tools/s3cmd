@@ -353,6 +353,13 @@ os.system('dd if=/dev/urandom of=testsuite-out/urandom.bin bs=1M count=16')
 test_s3cmd("Put multipart", ['put', '--multipart-chunk-size-mb=5', 'testsuite-out/urandom.bin', '%s/urandom.bin' % pbucket(1)],
            must_not_find = 'abortmp')
 
+## ====== Multipart put from stdin
+cmd_args = ['cat', 'testsuite-out/urandom.bin', '|', 'python2', 's3cmd', 'put', '--multipart-chunk-size-mb=5', '-', '%s/urandom2.bin' % pbucket(1), '> /dev/null 2>&1']
+# hack - execute using os.system to match user's usage of s3cmd exactly
+os.system(' '.join(cmd_args))
+test_s3cmd("Multipart large put from stdin", ['ls', '%s/urandom2.bin' % pbucket(1)],
+           must_find = ['%s/urandom2.bin' % pbucket(1)])
+
 ## ====== Clean up local destination dir
 test_flushdir("Clean testsuite-out/", "testsuite-out")
 
