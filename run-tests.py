@@ -348,6 +348,14 @@ os.system(' '.join(cmd_args))
 test_s3cmd("Put from stdin", ['ls', '%s/single-file/single-file.txt' % pbucket(1)],
            must_find = ['%s/single-file/single-file.txt' % pbucket(1)])
 
+## ====== Multipart put
+os.system('dd if=/dev/urandom of=testsuite-out/urandom.bin bs=1M count=16')
+test_s3cmd("Put multipart", ['put', '--multipart-chunk-size-mb=5', 'testsuite-out/urandom.bin', '%s/urandom.bin' % pbucket(1)],
+           must_not_find = 'abortmp')
+
+## ====== Clean up local destination dir
+test_flushdir("Clean testsuite-out/", "testsuite-out")
+
 ## ====== Sync from S3
 must_find = [ "File '%s/xyz/binary/random-crap.md5' stored as 'testsuite-out/xyz/binary/random-crap.md5'" % pbucket(1) ]
 if have_encoding:
