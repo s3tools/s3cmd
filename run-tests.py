@@ -341,6 +341,12 @@ test_s3cmd("List bucket recursive", ['ls', '--recursive', pbucket(1)],
 ## ====== Clean up local destination dir
 test_flushdir("Clean testsuite-out/", "testsuite-out")
 
+## ====== Put from stdin
+cmd_args = ['cat', 'testsuite/single-file/single-file.txt', '|', 'python2', 's3cmd', 'put', '-', '%s/single-file/single-file.txt' % pbucket(1), '> /dev/null 2>&1']
+# hack - execute using os.system to match user's usage of s3cmd exactly
+os.system(' '.join(cmd_args))
+test_s3cmd("Put from stdin", ['ls', '%s/single-file/single-file.txt' % pbucket(1)],
+           must_find = ['%s/single-file/single-file.txt' % pbucket(1)])
 
 ## ====== Sync from S3
 must_find = [ "File '%s/xyz/binary/random-crap.md5' stored as 'testsuite-out/xyz/binary/random-crap.md5'" % pbucket(1) ]
