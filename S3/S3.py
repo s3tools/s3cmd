@@ -1068,7 +1068,7 @@ class S3(object):
             info("Sending file '%s', please wait..." % file.name)
         timestamp_start = time.time()
 
-        if file == sys.stdin and buffer:
+        if buffer:
             sha256_hash = checksum_sha256_buffer(buffer, offset, size_total)
         else:
             sha256_hash = checksum_sha256_file(file.name, offset, size_total)
