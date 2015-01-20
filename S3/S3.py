@@ -1096,7 +1096,9 @@ class S3(object):
                 else:
                     data = buffer
 
-                start_time = time.time()
+                if self.config.limitrate > 0:
+                    start_time = time.time()
+
                 md5_hash.update(data)
                 conn.c.send(data)
                 if self.config.progress_meter:
@@ -1291,7 +1293,9 @@ class S3(object):
             while (current_position < size_total):
                 this_chunk = size_left > self.config.recv_chunk and self.config.recv_chunk or size_left
 
-                start_time = time.time()
+                if self.config.limitrate > 0:
+                    start_time = time.time()
+
                 data = http_response.read(this_chunk)
                 if len(data) == 0:
                     raise S3Error("EOF from S3!")
