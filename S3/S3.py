@@ -471,11 +471,21 @@ class S3(object):
             content_type = self.config.default_mime_type
         return (content_type, content_charset)
 
+    def stdin_content_type(self):
+        content_type = self.config.mime_type
+        if content_type == '':
+            content_type = self.config.default_mime_type
+
+        content_type += "; charset=" + self.config.encoding.upper()
+        return content_type
+
     def content_type(self, filename=None):
         # explicit command line argument always wins
         content_type = self.config.mime_type
         content_charset = None
 
+        if filename == u'-':
+            return self.stdin_content_type()
         if not content_type:
             (content_type, content_charset) = self._guess_content_type(filename)
 
