@@ -14,6 +14,11 @@ from logging import debug, info, warning, error
 from Config import Config
 from Exceptions import ParameterError
 
+if not 'CertificateError ' in ssl.__dict__:
+    class CertificateError(Exception):
+        pass
+    ssl.CertificateError = CertificateError
+
 __all__ = [ "ConnMan" ]
 
 class http_connection(object):
@@ -50,8 +55,7 @@ class http_connection(object):
         http_connection.context_set = True
         return context
 
-    @staticmethod
-    def match_hostname_aws(cert, hostname, e):
+    def match_hostname_aws(self, cert, e):
         """
         Wildcard matching for *.s3.amazonaws.com and similar per region.
 
@@ -72,18 +76,19 @@ class http_connection(object):
         san = cert.get('subjectAltName', ())
         for key, value in san:
             if key == 'DNS':
-                if value.startswith('*.s3') and value.endswith('.amazonaws.com') and hostname.endswith('.amazonaws.com'):
+                if value.startswith('*.s3') and value.endswith('.amazonaws.com') and self.c.host.endswith('.amazonaws.com'):
                     return
         raise e
 
-    @staticmethod
-    def match_hostname(conn):
-        cert = conn.c.sock.getpeercert()
-        hostname = conn.c.sock.server_hostname
+    def match_hostname(self):
+        cert = self.c.sock.getpeercert()
         try:
-            ssl.match_hostname(cert, hostname)
+            ssl.match_hostname(cert, self.c.host)
+
+        except AttributeError: # old ssl module doesn't have this function
+            return
         except ssl.CertificateError, e:
-            http_connection.match_hostname_aws(cert, hostname, e)
+            self.match_hostname_aws(cert, e)
 
     @staticmethod
     def _https_connection(hostname, port=None):
@@ -102,7 +107,6 @@ class http_connection(object):
         return conn
 
     def __init__(self, id, hostname, ssl, cfg):
-        self.hostname = hostname
         self.ssl = ssl
         self.id = id
         self.counter = 0
@@ -154,7 +158,7 @@ class ConnMan(object):
             conn = http_connection(conn_id, hostname, ssl, cfg)
             conn.c.connect()
             if conn.ssl:
-                http_connection.match_hostname(conn)
+                conn.match_hostname()
         conn.counter += 1
         return conn
 
