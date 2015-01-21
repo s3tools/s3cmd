@@ -87,7 +87,7 @@ if not os.path.isdir('testsuite/crappy-file-name'):
     # TODO: also unpack if the tarball is newer than the directory timestamp
     #       for instance when a new version was pulled from SVN.
 
-def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = []):
+def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = [], stdin = None):
     def command_output():
         print "----"
         print " ".join([" " in arg and "'%s'" % arg or arg for arg in cmd_args])
@@ -137,7 +137,7 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
     if not cmd_args:
         return skip()
 
-    p = Popen(cmd_args, stdout = PIPE, stderr = STDOUT, universal_newlines = True, close_fds = True)
+    p = Popen(cmd_args, stdin = stdin, stdout = PIPE, stderr = STDOUT, universal_newlines = True, close_fds = True)
     stdout, stderr = p.communicate()
     if type(retcode) not in [list, tuple]: retcode = [retcode]
     if p.returncode not in retcode:
@@ -342,23 +342,24 @@ test_s3cmd("List bucket recursive", ['ls', '--recursive', pbucket(1)],
 test_flushdir("Clean testsuite-out/", "testsuite-out")
 
 ## ====== Put from stdin
-cmd_args = ['cat', 'testsuite/single-file/single-file.txt', '|', 'python2', 's3cmd', 'put', '-', '%s/single-file/single-file.txt' % pbucket(1), '> /dev/null 2>&1']
-# hack - execute using os.system to match user's usage of s3cmd exactly
-os.system(' '.join(cmd_args))
-test_s3cmd("Put from stdin", ['ls', '%s/single-file/single-file.txt' % pbucket(1)],
-           must_find = ['%s/single-file/single-file.txt' % pbucket(1)])
+f = open('testsuite/single-file/single-file.txt', 'r')
+test_s3cmd("Put from stdin", ['put', '-', '%s/single-file/single-file.txt' % pbucket(1)],
+           must_find = ["File '-' stored as '%s/single-file/single-file.txt'" % pbucket(1)],
+           stdin = f)
+f.close()
 
 ## ====== Multipart put
-os.system('dd if=/dev/urandom of=testsuite-out/urandom.bin bs=1M count=16')
+os.system('dd if=/dev/urandom of=testsuite-out/urandom.bin bs=1M count=16 > /dev/null 2>&1')
 test_s3cmd("Put multipart", ['put', '--multipart-chunk-size-mb=5', 'testsuite-out/urandom.bin', '%s/urandom.bin' % pbucket(1)],
-           must_not_find = 'abortmp')
+           must_not_find = ['abortmp'])
 
 ## ====== Multipart put from stdin
-cmd_args = ['cat', 'testsuite-out/urandom.bin', '|', 'python2', 's3cmd', 'put', '--multipart-chunk-size-mb=5', '-', '%s/urandom2.bin' % pbucket(1), '> /dev/null 2>&1']
-# hack - execute using os.system to match user's usage of s3cmd exactly
-os.system(' '.join(cmd_args))
-test_s3cmd("Multipart large put from stdin", ['ls', '%s/urandom2.bin' % pbucket(1)],
-           must_find = ['%s/urandom2.bin' % pbucket(1)])
+f = open('testsuite-out/urandom.bin', 'r')
+test_s3cmd("Multipart large put from stdin", ['put', '--multipart-chunk-size-mb=5', '-', '%s/urandom2.bin' % pbucket(1)],
+           must_find = ['%s/urandom2.bin' % pbucket(1)],
+           must_not_find = ['abortmp'],
+           stdin = f)
+f.close()
 
 ## ====== Clean up local destination dir
 test_flushdir("Clean testsuite-out/", "testsuite-out")
