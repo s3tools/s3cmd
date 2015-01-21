@@ -137,7 +137,7 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
     if not cmd_args:
         return skip()
 
-    p = Popen(cmd_args, stdout = PIPE, stderr = STDOUT, universal_newlines = True)
+    p = Popen(cmd_args, stdout = PIPE, stderr = STDOUT, universal_newlines = True, close_fds = True)
     stdout, stderr = p.communicate()
     if type(retcode) not in [list, tuple]: retcode = [retcode]
     if p.returncode not in retcode:

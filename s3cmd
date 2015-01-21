@@ -1742,7 +1742,8 @@ def resolve_list(lst, args):
 
 def gpg_command(command, passphrase = ""):
     debug("GPG command: " + " ".join(command))
-    p = subprocess.Popen(command, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
+    p = subprocess.Popen(command, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.STDOUT,
+                         close_fds = True)
     p_stdout, p_stderr = p.communicate(passphrase + "\n")
     debug("GPG output:")
     for line in p_stdout.split("\n"):
