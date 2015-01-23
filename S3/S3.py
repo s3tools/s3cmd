@@ -947,7 +947,7 @@ class S3(object):
                 region = getTextFromXml(response['data'], 'Region')
                 if region is not None:
                     S3Request.region_map[request.resource['bucket']] = region
-                    warning('Forwarding request to %s' % region)
+                    info('Forwarding request to %s' % region)
                     return fn(*args, **kwargs)
                 else:
                     message = u'Could not determine bucket location. Please consider using --region parameter.'
