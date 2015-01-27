@@ -99,7 +99,7 @@ def handle_exclude_include_walk(root, dirs, files):
         excluded = False
         for r in cfg.exclude:
             # python versions end their patterns (from globs) differently, test for both styles.
-            if not (r.pattern.endswith(u'/') or r.pattern.endswith(u'\\/\\Z(?ms)')): continue # we only check for directory patterns here
+            if not (r.pattern.endswith(u'\\/$') or r.pattern.endswith(u'\\/\\Z(?ms)')): continue # we only check for directory patterns here
             if r.search(d):
                 excluded = True
                 debug(u"EXCL-MATCH: '%s'" % (cfg.debug_exclude[r]))
@@ -108,7 +108,7 @@ def handle_exclude_include_walk(root, dirs, files):
             ## No need to check for --include if not excluded
             for r in cfg.include:
                 # python versions end their patterns (from globs) differently, test for both styles.
-                if not (r.pattern.endswith(u'/') or r.pattern.endswith(u'\\/\\Z(?ms)')): continue # we only check for directory patterns here
+                if not (r.pattern.endswith(u'\\/$') or r.pattern.endswith(u'\\/\\Z(?ms)')): continue # we only check for directory patterns here
                 debug(u"INCL-TEST: %s ~ %s" % (d, r.pattern))
                 if r.search(d):
                     excluded = False
