@@ -133,7 +133,7 @@ def subcmd_all_buckets_list(s3):
 
     response = s3.list_all_buckets()
 
-    for bucket in response["list"]:
+    for bucket in sorted(response["list"], key=lambda b:b["Name"]):
         output(u"%s  s3://%s" % (formatDateTime(bucket["CreationDate"]),
                                  bucket["Name"]))
 
