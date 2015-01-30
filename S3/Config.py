@@ -17,6 +17,11 @@ try:
     import json
 except ImportError, e:
     pass
+try:
+    import keyring
+except ImportError, e:
+    pass
+
 
 class Config(object):
     _instance = None
@@ -119,6 +124,35 @@ class Config(object):
     expiry_prefix = ""
     signature_v2 = False
 
+    # placeholder string in config file for secrets stored in keyring
+    _KEYRING_REDACTION = "_KEYRING_"
+
+    # True: Secrets go in keyring
+    # False: Secrets stay in config files
+    keyring_enabled = True
+
+    # If the keyring package is missing, and this option is...
+    # True: Throw an exception
+    # False: Fall back to storing secrets in the config file
+    keyring_required = False
+
+    """
+    keyring's API is a key/value store.  The key is a tuple of two strings,
+    service and account.  For example, popular hip-hop entertainer @MCHammer
+    might store his Twitter credentials as
+    service="twitter.com", acct="MCHammer".  However, this is only a
+    convention.  Applications are free to use whatever strings they want for
+    service & acccount.
+
+    To avoid namespace collisions with other apps running as the same user on
+    localhost, we go with service=s3cmd, but set acct to access_key
+    """
+    keyring_service_name = "s3cmd"
+    keyring_acct_name = "%(access_key)s"
+
+    # List of config options that should go in keyring
+    keyring_secret_names = ["secret_key", "gpg_passphrase"]
+
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None):
         if self._instance is None:
@@ -146,6 +180,55 @@ class Config(object):
                     self.secret_key = env_secret_key
                 else:
                     self.role_config()
+
+            self.keyring_get_secrets()
+
+    def keyring_get_acct(self):
+        return self.keyring_acct_name % {"access_key": self.access_key}
+
+    def keyring_is_enabled(self):
+        """Boolean: Return True if we should use keyring"""
+
+        enabled = self.keyring_enabled
+        if not enabled: return False
+        if ('keyring' not in sys.modules):
+            enabled = False
+            if self.keyring_required:
+                raise S3CmdConfigError("keyring_required=True, but package is missing.  Try `pip install keyring`")
+        if (not self.keyring_get_acct()):
+            enabled = False
+            if self.keyring_required:
+                raise S3CmdConfigError("keyring_required=True, but unable to determine account.  Try looking at keyring_acct_name")
+        return enabled
+
+    def keyring_set_secrets(self):
+        """Take self's secrets; serialize as JSON; save to Keyring"""
+        if not self.keyring_is_enabled(): return
+        secrets = {}
+        for s in self.keyring_secret_names:
+            secrets[s] = getattr(self, s)
+        keyring.set_password(self.keyring_service_name,
+            self.keyring_get_acct(), json.dumps(secrets))
+
+    def keyring_get_secrets(self):
+        """Read JSON blob from keyring; deserialize it; add secrets to self"""
+        if not self.keyring_is_enabled(): return False
+        blob = keyring.get_password(self.keyring_service_name,
+            self.keyring_get_acct())
+        if not blob: return False
+        try:
+            secrets = json.loads(blob)
+        except Exception, e:
+            return False
+        for s in self.keyring_secret_names:
+            if s not in secrets: continue
+            # self may already have the real secrets if they were passed in
+            # as shell env vars or on the command line.  Don't use keyring
+            # version unless it has the special redaction string.
+            if getattr(self, s) and str(getattr(self, s)) != self._KEYRING_REDACTION:
+                continue
+            if type(secrets[s]) == unicode: secrets[s] = str(secrets[s])
+            setattr(self, s, str(secrets[s]))
 
     def role_config(self):
         if sys.version_info[0] * 10 + sys.version_info[1] < 26:
@@ -242,6 +325,7 @@ class Config(object):
 
     def dump_config(self, stream):
         ConfigDumper(stream).dump("default", self)
+        self.keyring_set_secrets()
 
     def update_option(self, option, value):
         if value is None:
@@ -346,6 +430,9 @@ class ConfigDumper(object):
                 if isinstance(value,int) and value in logging._levelNames:
                     value = logging._levelNames[value]
 
+            # If we're using keyring, don't store secrets in the config file
+            if config.keyring_is_enabled() and (option in config.keyring_secret_names):
+                value = config._KEYRING_REDACTION
             self.stream.write("%s = %s\n" % (option, value))
 
 # vim:et:ts=4:sts=4:ai
