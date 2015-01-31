@@ -1652,7 +1652,7 @@ def cmd_accesslog(args):
 def cmd_sign(args):
     string_to_sign = args.pop()
     debug("string-to-sign: %r" % string_to_sign)
-    signature = Utils.sign_string(string_to_sign)
+    signature = Crypto.sign_string_v2(string_to_sign)
     output("Signature: %s" % signature)
     return EX_OK
 
