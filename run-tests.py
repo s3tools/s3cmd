@@ -10,6 +10,7 @@
 import sys
 import os
 import re
+import time
 from subprocess import Popen, PIPE, STDOUT
 import locale
 import getpass
@@ -544,6 +545,10 @@ if have_wget:
     test_wget_HEAD("HEAD check Cache-Control not present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
                    must_not_find_re = [ "Cache-Control: max-age=3600" ])
 
+## ====== sign
+test_s3cmd("sign string", ['sign', 's3cmd'], must_find_re = ["Signature:"])
+test_s3cmd("signurl time", ['signurl', '%s/copy/etc2/Logo.PNG' % pbucket(2), str(int(time.time()) + 60)], must_find_re = ["http://"])
+test_s3cmd("signurl time offset", ['signurl', '%s/copy/etc2/Logo.PNG' % pbucket(2), '+60'], must_find_re = ["http://"])
 
 ## ====== Rename within S3
 test_s3cmd("Rename within S3", ['mv', '%s/copy/etc2/Logo.PNG' % pbucket(2), '%s/copy/etc/logo.png' % pbucket(2)],
