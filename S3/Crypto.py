@@ -10,6 +10,7 @@ import base64
 
 import Config
 from logging import debug
+import Utils
 
 import os
 import datetime
@@ -54,7 +55,7 @@ __all__.append("sign_url_v2")
 
 def sign_url_base_v2(**parms):
     """Shared implementation of sign_url methods. Takes a hash of 'bucket', 'object' and 'expiry' as args."""
-    parms['expiry']=time_to_epoch(parms['expiry'])
+    parms['expiry']=Utils.time_to_epoch(parms['expiry'])
     parms['access_key']=Config.Config().access_key
     parms['host_base']=Config.Config().host_base
     debug("Expiry interpreted as epoch time %s", parms['expiry'])
