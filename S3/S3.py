@@ -1026,6 +1026,8 @@ class S3(object):
             return self._http_400_handler(request, response, self.send_request, request)
         if response["status"] == 403:
             return self._http_403_handler(request, response, self.send_request, request)
+        if response["status"] == 405: # Method Not Allowed.  Don't retry.
+            raise S3Error(response)
 
         if response["status"] == 307:
             ## RedirectPermanent
@@ -1272,6 +1274,8 @@ class S3(object):
             return self._http_400_handler(request, response, self.recv_file, request, stream, labels)
         if response["status"] == 403:
             return self._http_403_handler(request, response, self.recv_file, request, stream, labels)
+        if response["status"] == 405: # Method Not Allowed.  Don't retry.
+            raise S3Error(response)
 
         if response["status"] < 200 or response["status"] > 299:
             raise S3Error(response)
