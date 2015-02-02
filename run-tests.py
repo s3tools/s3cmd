@@ -603,6 +603,10 @@ test_s3cmd("Verify move", ['ls', '-r', pbucket(2)],
                       "%s/copy/etc/AtomicClockRadio.ttf" % pbucket(2),
                       "%s/copy/etc/TypeRa.ttf" % pbucket(2) ])
 
+## ====== List all
+test_s3cmd("List all", ['la'],
+           must_find = [ "%s/urandom.bin" % pbucket(1)])
+
 ## ====== Simple delete
 test_s3cmd("Simple delete", ['del', '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
     must_find = [ "File %s/xyz/etc2/Logo.PNG deleted" % pbucket(1) ])
