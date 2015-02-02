@@ -27,6 +27,7 @@ run_tests = []
 exclude_tests = []
 
 verbose = False
+configfile = None
 
 if os.name == "posix":
     have_wget = True
@@ -178,6 +179,9 @@ def test_s3cmd(label, cmd_args = [], **kwargs):
     if not cmd_args[0].endswith("s3cmd"):
         cmd_args.insert(0, "python2")
         cmd_args.insert(1, "s3cmd")
+        if configfile:
+            cmd_args.insert(2, "-c")
+            cmd_args.insert(3, configfile)
 
     return test(label, cmd_args, **kwargs)
 
@@ -238,6 +242,10 @@ while argv:
         print "%s A B K..O -N" % sys.argv[0]
         print "Run tests number A, B and K through to O, except for N"
         sys.exit(0)
+
+    if arg in ("-c", "--config"):
+        configfile = argv.pop(0)
+        continue
     if arg in ("-l", "--list"):
         exclude_tests = range(0, 999)
         break
