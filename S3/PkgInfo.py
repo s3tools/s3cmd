@@ -7,7 +7,7 @@
 package = "s3cmd"
 version = "1.5.0"
 url = "http://s3tools.org"
-license = "GPL version 2"
+license = "GNU GPL v2+"
 short_description = "Command line tool for managing Amazon S3 and CloudFront services"
 long_description = """
 S3cmd lets you copy files from/to Amazon S3

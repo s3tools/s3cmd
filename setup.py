@@ -68,6 +68,8 @@ setup(
     ## Packaging details
     author = "Michal Ludvig",
     author_email = "michal@logix.cz",
+    maintainer = "github.com/mdomsch, github.com/matteobar",
+    maintainer_email = "s3tools-bugs@lists.sourceforge.net",
     url = S3.PkgInfo.url,
     license = S3.PkgInfo.license,
     description = S3.PkgInfo.short_description,
@@ -78,7 +80,28 @@ Authors:
 --------
     Michal Ludvig  <michal@logix.cz>
 """ % (S3.PkgInfo.long_description),
-    install_requires=["python-dateutil"]
+
+    classifiers = [
+        'Development Status :: 5 - Production/Stable',
+        'Environment :: Console',
+        'Environment :: MacOS X',
+        'Environment :: Win32 (MS Windows)',
+        'Intended Audience :: End Users/Desktop',
+        'Intended Audience :: System Administrators',
+        'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
+        'Natural Language :: English',
+        'Operating System :: MacOS :: MacOS X',
+        'Operating System :: Microsoft :: Windows',
+        'Operating System :: POSIX',
+        'Operating System :: Unix',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 2 :: Only',
+        'Topic :: System :: Archiving',
+        'Topic :: Utilities',
+    ],
+
+    install_requires = ["python-dateutil"]
     )
 
 # vim:et:ts=4:sts=4:ai
