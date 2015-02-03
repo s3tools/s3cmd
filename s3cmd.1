@@ -77,13 +77,13 @@ s3cmd \fBdelpolicy\fR \fIs3://BUCKET\fR
 Delete Bucket Policy
 .TP
 s3cmd \fBmultipart\fR \fIs3://BUCKET [Id]\fR
-show multipart uploads
+Show multipart uploads
 .TP
 s3cmd \fBabortmp\fR \fIs3://BUCKET/OBJECT Id\fR
-abort a multipart upload
+Abort a multipart upload
 .TP
 s3cmd \fBlistmp\fR \fIs3://BUCKET/OBJECT Id\fR
-list parts of a multipart upload
+List parts of a multipart upload
 .TP
 s3cmd \fBaccesslog\fR \fIs3://BUCKET\fR
 Enable/disable bucket access logging
@@ -91,7 +91,7 @@ Enable/disable bucket access logging
 s3cmd \fBsign\fR \fISTRING-TO-SIGN\fR
 Sign arbitrary string using the secret key
 .TP
-s3cmd \fBsignurl\fR \fIs3://BUCKET/OBJECT expiry_epoch\fR
+s3cmd \fBsignurl\fR \fIs3://BUCKET/OBJECT <expiry_epoch|+expiry_offset>\fR
 Sign an S3 URL to provide limited public access with expiry
 .TP
 s3cmd \fBfixbucket\fR \fIs3://BUCKET[/PREFIX]\fR
