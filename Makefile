@@ -6,7 +6,7 @@ SHORTCOMMIT := $(shell git rev-parse --short=8 HEAD)
 TARBALL = s3cmd-$(VERSION)-$(SHORTCOMMIT).tar.gz
 
 release:
-	python2 setup.py register sdist upload
+	python2 setup.py register sdist upload --sign
 
 clean:
 	-rm -rf s3cmd-*.tar.gz *.rpm *~ $(SPEC)
