@@ -75,7 +75,7 @@ Authors:
 --------
     Michal Ludvig  <michal@logix.cz>
 """ % (S3.PkgInfo.long_description),
-    install_requires=["dateutil"]
+    install_requires=["python-dateutil"]
     )
 
 # vim:et:ts=4:sts=4:ai
