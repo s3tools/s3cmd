@@ -59,7 +59,10 @@ class S3Error (S3Exception):
             except XmlParseError:
                 debug("Not an XML response")
             else:
-                self.info.update(self.parse_error_xml(tree))
+                try:
+                    self.info.update(self.parse_error_xml(tree))
+                except Exception, e:
+                    error("Error parsing xml: %s.  ErrorXML: %s" % (e, response["data"]))
 
         self.code = self.info["Code"]
         self.message = self.info["Message"]
@@ -104,8 +107,7 @@ class S3Error (S3Exception):
                         debug("ErrorXML: " + child.tag + ": " + repr(child.text))
                         info[child.tag] = child.text
             else:
-                warning("Malformed error XML returned from remote server.  Use --debug to see it.")
-                debug("ErrorXML: " + repr(tree))
+                raise S3ResponseError("Malformed error XML returned from remote server.")
         return info
 
 
