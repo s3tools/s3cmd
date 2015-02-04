@@ -1,3 +1,20 @@
+s3cmd-1.5.1        - 2015-02-04
+===============
+
+* Sort s3cmd ls output by bucket name (Andrew Gaul)
+* Support relative expiry times in signurl. (Chris Lamb)
+* Fixed issue with mixed path separators with s3cmd get --recursive on
+  Windows. (Luke Winslow)
+* fix S3 wildcard certificate checking
+* Handle headers with spaces in their values properly (#460)
+* Fix lack of SSL certificate checking libraries on older python
+* set content-type header for stdin from command line or Config()
+* fix uploads from stdin (#464)
+* Fix directory exclusions (#467)
+* fix signurl
+* Don't retry in response to HTTP 405 error (#422)
+* Don't crash when a proxy returns an invalid XML error document
+
 s3cmd-1.5.0        - 2015-01-12
 ===============
 * add support for newer regions such as Frankfurt that
