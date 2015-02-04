@@ -323,6 +323,9 @@ def fetch_local_list(args, is_src = False, recursive = None):
 def fetch_remote_list(args, require_attribs = False, recursive = None, uri_params = {}):
     def _get_remote_attribs(uri, remote_item):
         response = S3(cfg).object_info(uri)
+        if not response.get('headers'):
+            return
+
         remote_item.update({
         'size': int(response['headers']['content-length']),
         'md5': response['headers']['etag'].strip('"\''),
