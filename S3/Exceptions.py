@@ -101,13 +101,13 @@ class S3Error (S3Exception):
         error_node = tree
         if not error_node.tag == "Error":
             error_node = tree.find(".//Error")
-            if error_node is not None:
-                for child in error_node.getchildren():
-                    if child.text != "":
-                        debug("ErrorXML: " + child.tag + ": " + repr(child.text))
-                        info[child.tag] = child.text
-            else:
-                raise S3ResponseError("Malformed error XML returned from remote server.")
+        if error_node is not None:
+            for child in error_node.getchildren():
+                if child.text != "":
+                    debug("ErrorXML: " + child.tag + ": " + repr(child.text))
+                    info[child.tag] = child.text
+        else:
+            raise S3ResponseError("Malformed error XML returned from remote server.")
         return info
 
 
