@@ -84,8 +84,9 @@ class http_connection(object):
         cert = self.c.sock.getpeercert()
         try:
             ssl.match_hostname(cert, self.c.host)
-
         except AttributeError: # old ssl module doesn't have this function
+            return
+        except ValueError: # empty SSL cert means underlying SSL library didn't validate it, we don't either.
             return
         except ssl.CertificateError, e:
             self.match_hostname_aws(cert, e)
