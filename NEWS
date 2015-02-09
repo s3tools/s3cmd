@@ -1,3 +1,9 @@
+s3cmd-1.5.2      - 2015-02-08
+===============
+* Handle unvalidated SSL certificate.  Necessary on Ubuntu 14.04 for
+  SSL to function at all.
+* packaging fixes (require python-magic, drop ez_setup)
+
 s3cmd-1.5.1.2      - 2015-02-04
 ===============
 * fix PyPi install
