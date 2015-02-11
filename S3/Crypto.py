@@ -55,19 +55,15 @@ __all__.append("sign_url_v2")
 
 def sign_url_base_v2(**parms):
     """Shared implementation of sign_url methods. Takes a hash of 'bucket', 'object' and 'expiry' as args."""
-    cfg = Config.Config()
     parms['expiry']=Utils.time_to_epoch(parms['expiry'])
-    parms['access_key']=cfg.access_key
-    parms['host_base']=cfg.host_base
+    parms['access_key']=Config.Config().access_key
+    parms['host_base']=Config.Config().host_base
     debug("Expiry interpreted as epoch time %s", parms['expiry'])
     signtext = 'GET\n\n\n%(expiry)d\n/%(bucket)s/%(object)s' % parms
     debug("Signing plaintext: %r", signtext)
     parms['sig'] = urllib.quote_plus(sign_string_v2(signtext))
     debug("Urlencoded signature: %s", parms['sig'])
-    parms['protocol'] = 'http'
-    if cfg.use_https:
-        parms['protocol'] = 'https'
-    return "%(protocol)s://%(bucket)s.%(host_base)s/%(object)s?AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s" % parms
+    return "http://%(bucket)s.%(host_base)s/%(object)s?AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s" % parms
 
 def sign(key, msg):
     return hmac.new(key, msg.encode('utf-8'), sha256).digest()
