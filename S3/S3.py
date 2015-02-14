@@ -310,7 +310,7 @@ class S3(object):
     def bucket_create(self, bucket, bucket_location = None):
         headers = SortedDict(ignore_case = True)
         body = ""
-        if bucket_location and bucket_location.strip().upper() != "US":
+        if bucket_location and bucket_location.strip().upper() != "US" and bucket_location.strip().lower() != "us-east-1":
             bucket_location = bucket_location.strip()
             if bucket_location.upper() == "EU":
                 bucket_location = bucket_location.upper()
