@@ -1039,6 +1039,11 @@ class S3(object):
 
         if response["status"] >= 500:
             e = S3Error(response)
+
+            if response["status"] == 501:
+                ## NotImplemented server error - no need to retry
+                retries = 0
+
             if retries:
                 warning(u"Retrying failed request: %s" % resource['uri'])
                 warning(unicode(e))
