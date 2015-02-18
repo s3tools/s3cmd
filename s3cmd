@@ -2576,7 +2576,7 @@ if __name__ == '__main__':
         sys.exit(EX_BREAK)
 
     except IOError, e:
-        error(e)
+        report_exception(e)
         sys.exit(EX_IOERR)
 
     except OSError, e:

@@ -1245,11 +1245,17 @@ class S3(object):
             debug("Response: %s" % response)
         except ParameterError, e:
             raise
-        except (IOError, OSError), e:
+        except OSError, e:
             raise
-        except Exception, e:
+        except (IOError, Exception), e:
             if self.config.progress_meter:
                 progress.done("failed")
+            if hasattr(e, 'errno') and e.errno != errno.EPIPE:
+                raise
+            # close the connection and re-establish
+            conn.counter = ConnMan.conn_max_counter
+            ConnMan.put(conn)
+
             if retries:
                 warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
