@@ -179,9 +179,10 @@ class ACL(object):
         permission = permission.upper()
 
         if "ALL" == permission:
-            self.grantees = [g for g in self.grantees if not g.name.lower() == name]
+            self.grantees = [g for g in self.grantees if not (g.name.lower() == name or g.display_name.lower() == name)]
         else:
-            self.grantees = [g for g in self.grantees if not (g.name.lower() == name and g.permission.upper() ==  permission)]
+            self.grantees = [g for g in self.grantees if not ((g.display_name.lower() == name and g.permission.upper() == permission)\
+				 or (g.name.lower() == name and g.permission.upper() ==  permission))]
 
 
     def __str__(self):
