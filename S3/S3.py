@@ -154,6 +154,8 @@ class S3Request(object):
         for header in sorted(self.headers.keys()):
             if header.startswith("x-amz-"):
                 h += header+":"+str(self.headers[header])+"\n"
+            if header.startswith("x-emc-"):
+                h += header+":"+str(self.headers[header])+"\n"
         if self.resource['bucket']:
             h += "/" + self.resource['bucket']
         h += self.resource['uri']
