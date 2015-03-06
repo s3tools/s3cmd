@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 ## Create and compare lists of files/objects
 ## Author: Michal Ludvig <michal@logix.cz>
 ##         http://www.logix.cz/michal

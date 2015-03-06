@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # patterned on /usr/include/sysexits.h
 
 EX_OK               = 0

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 ## Amazon S3 Multipart upload support
 ## Author: Jerome Leclanche <jerome.leclanche@gmail.com>
 ## License: GPL Version 2

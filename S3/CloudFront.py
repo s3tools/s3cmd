@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 ## Amazon CloudFront support
 ## Author: Michal Ludvig <michal@logix.cz>
 ##         http://www.logix.cz/michal
