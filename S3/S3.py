@@ -572,7 +572,7 @@ class S3(object):
                 info = None
 
             if info is not None:
-                remote_size = int(info['headers']['content-length'])
+                remote_size = long(info['headers']['content-length'])
                 remote_checksum = info['headers']['etag'].strip('"\'')
                 if size == remote_size:
                     checksum = calculateChecksum('', file, 0, size, self.config.send_chunk)
@@ -586,7 +586,7 @@ class S3(object):
                     warning("MultiPart: size (%d vs %d) does not match for %s, reuploading."
                             % (remote_size, size, uri))
 
-        headers["content-length"] = size
+        headers["content-length"] = str(size)
         request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
         labels = { 'source' : unicodise(filename), 'destination' : unicodise(uri.uri()), 'extra' : extra_label }
         response = self.send_file(request, file, labels)
@@ -1068,7 +1068,7 @@ class S3(object):
             if region is not None:
                 S3Request.region_map[request.resource['bucket']] = region
 
-        size_left = size_total = headers.get("content-length")
+        size_left = size_total = long(headers["content-length"])
         if self.config.progress_meter:
             progress = self.config.progress_class(labels, size_total)
         else:
@@ -1305,7 +1305,7 @@ class S3(object):
             # Only compute MD5 on the fly if we're downloading from beginning
             # Otherwise we'd get a nonsense.
             md5_hash = md5()
-        size_left = int(response["headers"]["content-length"])
+        size_left = long(response["headers"]["content-length"])
         size_total = start_position + size_left
         current_position = start_position
 
@@ -1393,7 +1393,7 @@ class S3(object):
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
         if response["size"] != start_position + long(response["headers"]["content-length"]):
             warning("Reported size (%s) does not match received size (%s)" % (
-                start_position + response["headers"]["content-length"], response["size"]))
+                start_position + long(response["headers"]["content-length"]), response["size"]))
         debug("ReceiveFile: Computed MD5 = %s" % response["md5"])
         if not response["md5match"]:
             warning("MD5 signatures do not match: computed=%s, received=%s" % (
