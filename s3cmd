@@ -823,6 +823,11 @@ def cmd_info(args):
             if acl.isAnonRead():
                 output(u"   URL:       %s" % uri.public_url())
 
+            if uri.has_object():
+                for header, value in info['headers'].iteritems():
+                    if header.startswith('x-amz-meta-'):
+                        output(u"   %s: %s" % (header, value))
+
         except S3Error, e:
             if S3.codes.has_key(e.info["Code"]):
                 error(S3.codes[e.info["Code"]] % uri.bucket())
