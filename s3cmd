@@ -814,9 +814,9 @@ def cmd_info(args):
             acl_grant_list = acl.getGrantList()
             try:
                 policy = s3.get_policy(uri)
-                output(u"   policy: %s" % policy)
+                output(u"   policy:    %s" % policy)
             except:
-                output(u"   policy: none")
+                output(u"   policy:    none")
 
             for grant in acl_grant_list:
                 output(u"   ACL:       %s: %s" % (grant['grantee'], grant['permission']))
