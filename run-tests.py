@@ -27,7 +27,6 @@ run_tests = []
 exclude_tests = []
 
 verbose = False
-configfile = None
 
 if os.name == "posix":
     have_wget = True
@@ -43,7 +42,6 @@ if os.getenv("HOME"):
 elif os.name == "nt" and os.getenv("USERPROFILE"):
     config_file = os.path.join(os.getenv("USERPROFILE").decode('mbcs'), os.getenv("APPDATA").decode('mbcs') or 'Application Data', "s3cmd.ini")
 
-cfg = S3.Config.Config(config_file)
 
 ## Unpack testsuite/ directory
 if not os.path.isdir('testsuite') and os.path.isfile('testsuite.tar.gz'):
@@ -179,9 +177,9 @@ def test_s3cmd(label, cmd_args = [], **kwargs):
     if not cmd_args[0].endswith("s3cmd"):
         cmd_args.insert(0, "python2")
         cmd_args.insert(1, "s3cmd")
-        if configfile:
+        if config_file:
             cmd_args.insert(2, "-c")
-            cmd_args.insert(3, configfile)
+            cmd_args.insert(3, config_file)
 
     return test(label, cmd_args, **kwargs)
 
@@ -244,7 +242,7 @@ while argv:
         sys.exit(0)
 
     if arg in ("-c", "--config"):
-        configfile = argv.pop(0)
+        config_file = argv.pop(0)
         continue
     if arg in ("-l", "--list"):
         exclude_tests = range(0, 999)
@@ -268,6 +266,8 @@ while argv:
         exclude_tests.append(int(arg[1:]))
     else:
         run_tests.append(int(arg))
+
+cfg = S3.Config.Config(config_file)
 
 if not run_tests:
     run_tests = range(0, 999)
