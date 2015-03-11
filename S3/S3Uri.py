@@ -10,7 +10,7 @@ import os
 import re
 import sys
 from BidirMap import BidirMap
-from logging import debug, error
+from logging import debug
 import S3
 from Utils import unicodise, deunicodise, check_bucket_name_dns_conformity, check_bucket_name_dns_support
 import Config
