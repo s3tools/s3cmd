@@ -32,22 +32,22 @@ def _fswalk_follow_symlinks(path):
     If a symlink directory loop is detected, emit a warning and skip.
     E.g.: dir1/dir2/sym-dir -> ../dir2
     '''
-    assert os.path.isdir(path) # only designed for directory argument
+    assert os.path.isdir(deunicodise(path)) # only designed for directory argument
     walkdirs = set([path])
-    for dirpath, dirnames, filenames in os.walk(path):
+    for dirpath, dirnames, filenames in os.walk(deunicodise(path)):
         handle_exclude_include_walk(dirpath, dirnames, [])
-        real_dirpath = os.path.realpath(dirpath)
+        real_dirpath = unicodise(os.path.realpath(deunicodise(dirpath)))
         for dirname in dirnames:
             current = os.path.join(dirpath, dirname)
-            real_current = os.path.realpath(current)
-            if os.path.islink(current):
+            real_current = unicodise(os.path.realpath(deunicodise(current)))
+            if os.path.islink(deunicodise(current)):
                 if (real_dirpath == real_current or
                     real_dirpath.startswith(real_current + os.path.sep)):
                     warning("Skipping recursively symlinked directory %s" % dirname)
                 else:
                     walkdirs.add(current)
     for walkdir in walkdirs:
-        for dirpath, dirnames, filenames in os.walk(walkdir):
+        for dirpath, dirnames, filenames in os.walk(deunicodise(walkdir)):
             handle_exclude_include_walk(dirpath, dirnames, [])
             yield (dirpath, dirnames, filenames)
 
@@ -57,7 +57,7 @@ def _fswalk_no_symlinks(path):
 
     path (str) is the root of the directory tree to walk
     '''
-    for dirpath, dirnames, filenames in os.walk(path):
+    for dirpath, dirnames, filenames in os.walk(deunicodise(path)):
         handle_exclude_include_walk(dirpath, dirnames, filenames)
         yield (dirpath, dirnames, filenames)
 
@@ -138,7 +138,7 @@ def _get_filelist_from_file(cfg, local_path):
             f = sys.stdin
         else:
             try:
-                f = open(fname, 'r')
+                f = open(deunicodise(fname), 'r')
             except IOError, e:
                 warning(u"--files-from input file %s could not be opened for reading (%s), skipping." % (fname, e.strerror))
                 continue
@@ -146,8 +146,8 @@ def _get_filelist_from_file(cfg, local_path):
         for line in f:
             line = line.strip()
             line = os.path.normpath(os.path.join(local_path, line))
-            dirname = os.path.dirname(line)
-            basename = os.path.basename(line)
+            dirname = unicodise(os.path.dirname(deunicodise(line)))
+            basename = unicodise(os.path.basename(deunicodise(line)))
             _append(filelist, dirname, basename)
         if f != sys.stdin:
             f.close()
@@ -177,7 +177,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
 
             full_name = loc_list[relative_file]['full_name']
             try:
-                sr = os.stat_result(os.stat(full_name))
+                sr = os.stat_result(os.stat(deunicodise(full_name)))
             except OSError, e:
                 if e.errno == errno.ENOENT:
                     # file was removed async to us getting the list
@@ -247,9 +247,9 @@ def fetch_local_list(args, is_src = False, recursive = None):
             rel_root = root.replace(local_path, local_base, 1)
             for f in files:
                 full_name = os.path.join(root, f)
-                if not os.path.isfile(full_name):
+                if not os.path.isfile(deunicodise(full_name)):
                     continue
-                if os.path.islink(full_name):
+                if os.path.islink(deunicodise(full_name)):
                                     if not cfg.follow_symlinks:
                                             continue
                 relative_file = unicodise(os.path.join(rel_root, f))
@@ -367,14 +367,14 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
         remote_uri_original = remote_uri
         if rem_base != '' and rem_base[-1] != '/':
             rem_base = rem_base[:rem_base.rfind('/')+1]
-            remote_uri = S3Uri("s3://%s/%s" % (remote_uri.bucket(), rem_base))
+            remote_uri = S3Uri(u"s3://%s/%s" % (remote_uri.bucket(), rem_base))
         rem_base_len = len(rem_base)
         rem_list = FileDict(ignore_case = False)
         break_now = False
         for object in response['list']:
             if object['Key'] == rem_base_original and object['Key'][-1] != "/":
                 ## We asked for one file and we got that file :-)
-                key = os.path.basename(object['Key'])
+                key = unicodise(os.path.basename(deunicodise(object['Key'])))
                 object_uri_str = remote_uri_original.uri()
                 break_now = True
                 rem_list = FileDict(ignore_case = False)   ## Remove whatever has already been put to rem_list
@@ -427,7 +427,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
                 remote_list.record_md5(key, objectlist.get_md5(key))
     else:
         for uri in remote_uris:
-            uri_str = unicode(uri)
+            uri_str = uri.uri()
             ## Wildcards used in remote URI?
             ## If yes we'll need a bucket listing...
             wildcard_split_result = re.split("\*|\?", uri_str, maxsplit=1)
@@ -443,12 +443,12 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
                         remote_list[key] = objectlist[key]
             else:
                 ## No wildcards - simply append the given URI to the list
-                key = os.path.basename(uri.object())
+                key = unicodise(os.path.basename(deunicodise(uri.object())))
                 if not key:
                     raise ParameterError(u"Expecting S3 URI with a filename or --recursive: %s" % uri.uri())
                 remote_item = {
                     'base_uri': uri,
-                    'object_uri_str': unicode(uri),
+                    'object_uri_str': uri.uri(),
                     'object_key': uri.object()
                 }
                 if require_attribs:

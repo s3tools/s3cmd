@@ -7,7 +7,7 @@
 ## Copyright: TGRMN Software and contributors
 
 import sys
-import os, os.path
+import os
 import time
 import errno
 import base64
@@ -19,6 +19,7 @@ from xml.sax import saxutils
 import base64
 from logging import debug, info, warning, error
 from stat import ST_SIZE
+from urllib import quote_plus
 
 try:
     from hashlib import md5
@@ -522,15 +523,15 @@ class S3(object):
         if uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 
-        if filename != "-" and not os.path.isfile(filename):
+        if filename != "-" and not os.path.isfile(deunicodise(filename)):
             raise InvalidFileError(u"%s is not a regular file" % unicodise(filename))
         try:
             if filename == "-":
                 file = sys.stdin
                 size = 0
             else:
-                file = open(filename, "rb")
-                size = os.stat(filename)[ST_SIZE]
+                file = open(deunicodise(filename), "rb")
+                size = os.stat(deunicodise(filename))[ST_SIZE]
         except (IOError, OSError), e:
             raise InvalidFileError(u"%s: %s" % (unicodise(filename), e.strerror))
 
@@ -678,7 +679,7 @@ class S3(object):
         if dst_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
         headers = SortedDict(ignore_case = True)
-        headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object()))
+        headers['x-amz-copy-source'] = ("/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object()))).encode("UTF-8")
         headers['x-amz-metadata-directive'] = "COPY"
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
@@ -697,8 +698,9 @@ class S3(object):
         request = self.create_request("OBJECT_PUT", uri = dst_uri, headers = headers)
         response = self.send_request(request)
         return response
-        
+
     def object_modify(self, src_uri, dst_uri, extra_headers = None):
+
         if src_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
         if dst_uri.type != "s3":
@@ -709,7 +711,7 @@ class S3(object):
         headers = self._sanitize_headers(headers)
         acl = self.get_acl(src_uri)
 
-        headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object()))
+        headers['x-amz-copy-source'] = deunicodise("/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object())))
         headers['x-amz-metadata-directive'] = "REPLACE"
 
         # cannot change between standard and reduced redundancy with a REPLACE.
@@ -854,7 +856,7 @@ class S3(object):
         except S3Error, e:
             if e.info['Code'] == "InvalidTargetBucketForLogging":
                 info("Setting up log-delivery ACL for target bucket.")
-                self.set_accesslog_acl(S3Uri("s3://%s" % log_target_prefix_uri.bucket()))
+                self.set_accesslog_acl(S3Uri(u"s3://%s" % log_target_prefix_uri.bucket()))
                 response = self.send_request(request)
             else:
                 raise
@@ -872,43 +874,7 @@ class S3(object):
             ## Don't do any pre-processing
             return string
 
-        encoded = ""
-        ## List of characters that must be escaped for S3
-        ## Haven't found this in any official docs
-        ## but my tests show it's more less correct.
-        ## If you start getting InvalidSignature errors
-        ## from S3 check the error headers returned
-        ## from S3 to see whether the list hasn't
-        ## changed.
-        for c in string:    # I'm not sure how to know in what encoding
-                    # 'object' is. Apparently "type(object)==str"
-                    # but the contents is a string of unicode
-                    # bytes, e.g. '\xc4\x8d\xc5\xafr\xc3\xa1k'
-                    # Don't know what it will do on non-utf8
-                    # systems.
-                    #           [hope that sounds reassuring ;-)]
-            o = ord(c)
-            if (o < 0x20 or o == 0x7f):
-                if urlencoding_mode == "fixbucket":
-                    encoded += "%%%02X" % o
-                else:
-                    error(u"Non-printable character 0x%02x in: %s" % (o, string))
-                    error(u"Please report it to s3tools-bugs@lists.sourceforge.net")
-                    encoded += replace_nonprintables(c)
-            elif (o == 0x20 or  # Space and below
-                o == 0x22 or    # "
-                o == 0x23 or    # #
-                o == 0x25 or    # % (escape character)
-                o == 0x26 or    # &
-                o == 0x2B or    # + (or it would become <space>)
-                o == 0x3C or    # <
-                o == 0x3E or    # >
-                o == 0x3F or    # ?
-                o == 0x60 or    # `
-                o >= 123):      # { and above, including >= 128 for UTF-8
-                encoded += "%%%02X" % o
-            else:
-                encoded += c
+        encoded = quote_plus(string, safe="~/")
         debug("String '%s' encoded to '%s'" % (string, encoded))
         return encoded
 
@@ -1065,7 +1031,7 @@ class S3(object):
     def send_file(self, request, file, labels, buffer = '', throttle = 0, retries = _max_retries, offset = 0, chunk_size = -1):
         method_string, resource, headers = request.get_triplet()
         if S3Request.region_map.get(request.resource['bucket'], None) is None:
-            s3_uri = S3Uri('s3://' + request.resource['bucket'])
+            s3_uri = S3Uri(u's3://' + request.resource['bucket'])
             region = self.get_bucket_location(s3_uri)
             if region is not None:
                 S3Request.region_map[request.resource['bucket']] = region

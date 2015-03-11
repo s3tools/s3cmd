@@ -46,7 +46,7 @@ class AccessLog(object):
     def targetPrefix(self):
         if self.isLoggingEnabled():
             el = self.tree.find(".//LoggingEnabled")
-            target_prefix = "s3://%s/%s" % (
+            target_prefix = u"s3://%s/%s" % (
                 self.tree.find(".//LoggingEnabled//TargetBucket").text,
                 self.tree.find(".//LoggingEnabled//TargetPrefix").text)
             return S3Uri.S3Uri(target_prefix)
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     from S3Uri import S3Uri
     log = AccessLog()
     print log
-    log.enableLogging(S3Uri("s3://targetbucket/prefix/log-"))
+    log.enableLogging(S3Uri(u"s3://targetbucket/prefix/log-"))
     print log
     log.setAclPublic(True)
     print log

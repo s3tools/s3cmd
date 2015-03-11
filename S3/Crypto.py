@@ -14,7 +14,6 @@ import Config
 from logging import debug
 import Utils
 
-import os
 import datetime
 import urllib
 
@@ -148,7 +147,7 @@ def checksum_sha256_file(filename, offset=0, size=None):
     except:
         # fallback to Crypto SHA256 module
         hash = sha256.new()
-    with open(filename,'rb') as f:
+    with open(Utils.deunicodise(filename),'rb') as f:
         if size is None:
             for chunk in iter(lambda: f.read(8192), b''):
                 hash.update(chunk)

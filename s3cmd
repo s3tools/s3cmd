@@ -50,6 +50,7 @@ def output(message):
     sys.stdout.flush()
 
 def check_args_type(args, type, verbose_type):
+    """NOTE: This function looks like to not be used."""
     for arg in args:
         if S3Uri(arg).type != type:
             raise ParameterError("Expecting %s instead of '%s'" % (verbose_type, arg))
@@ -323,7 +324,7 @@ def cmd_object_put(args):
     destination_base_uri = S3Uri(args.pop())
     if destination_base_uri.type != 's3':
         raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
-    destination_base = unicode(destination_base_uri)
+    destination_base = destination_base_uri.uri()
 
     if len(args) == 0:
         raise ParameterError("Nothing to upload. Expecting a local file or directory.")
@@ -398,7 +399,7 @@ def cmd_object_put(args):
                    (uri_final.public_url()))
         if Config().encrypt and full_name != full_name_orig:
             debug(u"Removing temporary encrypted file: %s" % unicodise(full_name))
-            os.remove(full_name)
+            os.remove(deunicodise(full_name))
     return EX_OK
 
 def cmd_object_get(args):
@@ -459,12 +460,12 @@ def cmd_object_get(args):
             ## stdout is ok for multiple remote files!
             for key in remote_list:
                 remote_list[key]['local_filename'] = "-"
-        elif not os.path.isdir(destination_base):
+        elif not os.path.isdir(deunicodise(destination_base)):
             ## We were either given a file name (existing or not)
             if remote_count > 1:
                 raise ParameterError("Destination must be a directory or stdout when downloading multiple sources.")
             remote_list[remote_list.keys()[0]]['local_filename'] = deunicodise(destination_base)
-        elif os.path.isdir(destination_base):
+        elif os.path.isdir(deunicodise(destination_base)):
             if destination_base[-1] != os.path.sep:
                 destination_base += os.path.sep
             for key in remote_list:
@@ -502,15 +503,15 @@ def cmd_object_get(args):
         else:
             ## File
             try:
-                file_exists = os.path.exists(destination)
+                file_exists = os.path.exists(deunicodise(destination))
                 try:
-                    dst_stream = open(destination, "ab")
+                    dst_stream = open(deunicodise(destination), "ab")
                 except IOError, e:
                     if e.errno == errno.ENOENT:
                         basename = destination[:destination.rindex(os.path.sep)]
                         info(u"Creating directory: %s" % basename)
-                        os.makedirs(basename)
-                        dst_stream = open(destination, "ab")
+                        os.makedirs(deunicodise(basename))
+                        dst_stream = open(deunicodise(destination), "ab")
                     else:
                         raise
                 if file_exists:
@@ -535,20 +536,20 @@ def cmd_object_get(args):
             error(u"%s: Skipping that file.  This is usually a transient error, please try again later." % e)
             if not file_exists: # Delete, only if file didn't exist before!
                 debug(u"object_get failed for '%s', deleting..." % (destination,))
-                os.unlink(destination)
+                os.unlink(deunicodise(destination))
             continue
         except S3Error, e:
             if not file_exists: # Delete, only if file didn't exist before!
                 debug(u"object_get failed for '%s', deleting..." % (destination,))
-                os.unlink(destination)
+                os.unlink(deunicodise(destination))
             raise
 
         if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
             gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
-            response["size"] = os.stat(destination)[6]
+            response["size"] = os.stat(deunicodise(destination))[6]
         if response["headers"].has_key("last-modified") and destination != "-":
             last_modified = time.mktime(time.strptime(response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"))
-            os.utime(destination, (last_modified, last_modified))
+            os.utime(deunicodise(destination), (last_modified, last_modified))
             debug("set mtime to %s" % last_modified)
         if not Config().progress_meter and destination != "-":
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
@@ -847,7 +848,7 @@ def cmd_sync_remote2remote(args):
     s3 = S3(Config())
 
     # Normalise s3://uri (e.g. assert trailing slash)
-    destination_base = unicode(S3Uri(args[-1]))
+    destination_base = S3Uri(args[-1]).uri()
 
     src_list, src_exclude_list = fetch_remote_list(args[:-1], recursive = True, require_attribs = True)
     dst_list, dst_exclude_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
@@ -946,7 +947,7 @@ def cmd_sync_remote2local(args):
             warning(u"delete: maximum requested number of deletes would be exceeded, none performed.")
             return
         for key in local_list:
-            os.unlink(local_list[key]['full_name'])
+            os.unlink(deunicodise(local_list[key]['full_name']))
             output(u"deleted: %s" % local_list[key]['full_name_unicode'])
 
     s3 = S3(Config())
@@ -973,7 +974,7 @@ def cmd_sync_remote2local(args):
     def _set_local_filename(remote_list, destination_base):
         if len(remote_list) == 0:
             return
-        if not os.path.isdir(destination_base):
+        if not os.path.isdir(deunicodise(destination_base)):
             ## We were either given a file name (existing or not) or want STDOUT
             if len(remote_list) > 1:
                 raise ParameterError("Destination must be a directory when downloading multiple sources.")
@@ -1030,7 +1031,7 @@ def cmd_sync_remote2local(args):
             is_empty_directory = dst_file.endswith('/')
             seq_label = "[%d of %d]" % (seq, total)
             try:
-                dst_dir = os.path.dirname(dst_file)
+                dst_dir = unicodise(os.path.dirname(deunicodise(dst_file)))
                 if not dir_cache.has_key(dst_dir):
                     dir_cache[dst_dir] = Utils.mkdir_with_parents(dst_dir)
                 if dir_cache[dst_dir] == False:
@@ -1042,13 +1043,13 @@ def cmd_sync_remote2local(args):
                         debug(u"dst_file=%s" % unicodise(dst_file))
                         # create temporary files (of type .s3cmd.XXXX.tmp) in the same directory
                         # for downloading and then rename once downloaded
-                        chkptfd, chkptfname = tempfile.mkstemp(".tmp",".s3cmd.",os.path.dirname(dst_file))
+                        chkptfd, chkptfname = tempfile.mkstemp(".tmp",".s3cmd.",os.path.dirname(deunicodise(dst_file)))
                         debug(u"created chkptfname=%s" % unicodise(chkptfname))
                         dst_stream = os.fdopen(chkptfd, "wb")
                         response = s3.object_get(uri, dst_stream, extra_label = seq_label)
                         dst_stream.close()
                         # download completed, rename the file to destination
-                        os.rename(chkptfname, dst_file)
+                        os.rename(deunicodise(chkptfname), deunicodise(dst_file))
                         debug(u"renamed chkptfname=%s to dst_file=%s" % (unicodise(chkptfname), unicodise(dst_file)))
                 except OSError, e:
                     if e.errno == errno.EISDIR:
@@ -1056,13 +1057,13 @@ def cmd_sync_remote2local(args):
                         continue
                     elif e.errno == errno.ETXTBSY:
                         warning(u"%s is currently open for execute, cannot be overwritten.  Skipping over." % unicodise(dst_file))
-                        os.unlink(chkptfname)
+                        os.unlink(deunicodise(chkptfname))
                         continue
                     else:
                         raise
                 except S3DownloadError, e:
                     error(u"%s: Skipping that file.  This is usually a transient error, please try again later." % e)
-                    os.unlink(chkptfname)
+                    os.unlink(deunicodise(chkptfname))
                     continue
                 except S3Error, e:
                     warning(u"Remote file %s S3Error: %s" % (e.resource, e))
@@ -1075,7 +1076,7 @@ def cmd_sync_remote2local(args):
                     else: # an empty directory, make them readable/executable
                         mode = 0775
                     debug(u"mode=%s" % oct(mode))
-                    os.chmod(dst_file, mode);
+                    os.chmod(deunicodise(dst_file), mode);
                 except:
                     raise
 
@@ -1089,23 +1090,23 @@ def cmd_sync_remote2local(args):
                     if response.has_key('s3cmd-attrs') and cfg.preserve_attrs:
                         attrs = response['s3cmd-attrs']
                         if attrs.has_key('mode'):
-                            os.chmod(dst_file, int(attrs['mode']))
+                            os.chmod(deunicodise(dst_file), int(attrs['mode']))
                         if attrs.has_key('mtime') or attrs.has_key('atime'):
                             mtime = attrs.has_key('mtime') and int(attrs['mtime']) or int(time.time())
                             atime = attrs.has_key('atime') and int(attrs['atime']) or int(time.time())
-                            os.utime(dst_file, (atime, mtime))
+                            os.utime(deunicodise(dst_file), (atime, mtime))
                         if attrs.has_key('uid') and attrs.has_key('gid'):
                             uid = int(attrs['uid'])
                             gid = int(attrs['gid'])
-                            os.lchown(dst_file,uid,gid)
+                            os.lchown(deunicodise(dst_file),uid,gid)
                     elif response["headers"].has_key("last-modified"):
                         last_modified = time.mktime(time.strptime(response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"))
-                        os.utime(dst_file, (last_modified, last_modified))
+                        os.utime(deunicodise(dst_file), (last_modified, last_modified))
                         debug("set mtime to %s" % last_modified)
                 except OSError, e:
                     try:
                         dst_stream.close()
-                        os.remove(chkptfname)
+                        os.remove(deunicodise(chkptfname))
                     except: pass
                     if e.errno == errno.EEXIST:
                         warning(u"%s exists - not overwriting" % unicodise(dst_file))
@@ -1117,14 +1118,14 @@ def cmd_sync_remote2local(args):
                 except KeyboardInterrupt:
                     try:
                         dst_stream.close()
-                        os.remove(chkptfname)
+                        os.remove(deunicodise(chkptfname))
                     except: pass
                     warning(u"Exiting after keyboard interrupt")
                     return
                 except Exception, e:
                     try:
                         dst_stream.close()
-                        os.remove(chkptfname)
+                        os.remove(deunicodise(chkptfname))
                     except: pass
                     error(u"%s: %s" % (file, e))
                     continue
@@ -1133,7 +1134,7 @@ def cmd_sync_remote2local(args):
                 # construction :-(
                 try:
                     dst_stream.close()
-                    os.remove(chkptfname)
+                    os.remove(deunicodise(chkptfname))
                 except: pass
             except S3DownloadError, e:
                 error(u"%s: download failed too many times. Skipping that file.  This is usually a transient error, please try again later." % file)
@@ -1179,18 +1180,17 @@ def cmd_sync_remote2local(args):
 def local_copy(copy_pairs, destination_base):
     # Do NOT hardlink local files by default, that'd be silly
     # For instance all empty files would become hardlinked together!
-    encoding = sys.getfilesystemencoding()
     failed_copy_list = FileDict()
     for (src_obj, dst1, relative_file) in copy_pairs:
         src_file = os.path.join(destination_base, dst1)
         dst_file = os.path.join(destination_base, relative_file)
-        dst_dir = os.path.dirname(dst_file)
+        dst_dir = os.path.dirname(deunicodise(dst_file))
         try:
-            if not os.path.isdir(dst_dir):
+            if not os.path.isdir(deunicodise(dst_dir)):
                 debug("MKDIR %s" % dst_dir)
-                os.makedirs(dst_dir)
+                os.makedirs(deunicodise(dst_dir))
             debug(u"Copying %s to %s" % (src_file, dst_file))
-            shutil.copy2(src_file.encode(encoding), dst_file.encode(encoding))
+            shutil.copy2(deunicodise(src_file), deunicodise(dst_file))
         except (IOError, OSError), e:
             warning(u'Unable to hardlink or copy files %s -> %s: %s' % (src_file, dst_file, e))
             failed_copy_list[relative_file] = src_obj
@@ -1263,7 +1263,7 @@ def cmd_sync_local2remote(args):
             destination_base_uri = S3Uri(dest)
             if destination_base_uri.type != 's3':
                 raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
-            destination_base = str(destination_base_uri)
+            destination_base = unicodise(destination_base_uri.uri())
             rc = _child(destination_base, local_list)
             if rc:
                 any_child_failed = True
@@ -1281,7 +1281,7 @@ def cmd_sync_local2remote(args):
             destination_base_uri = S3Uri(dest)
             if destination_base_uri.type != 's3':
                 raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
-            destination_base = str(destination_base_uri)
+            destination_base = unicodise(destination_base_uri.uri())
             child_pid = os.fork()
             if child_pid == 0:
                 _child(destination_base, local_list)
@@ -1536,7 +1536,7 @@ def cmd_setpolicy(args):
     s3 = S3(cfg)
     uri = S3Uri(args[1])
     policy_file = args[0]
-    policy = open(policy_file, 'r').read()
+    policy = open(deunicodise(policy_file), 'r').read()
 
     if cfg.dry_run: return EX_OK
 
@@ -1564,7 +1564,7 @@ def cmd_setlifecycle(args):
     s3 = S3(cfg)
     uri = S3Uri(args[1])
     lifecycle_policy_file = args[0]
-    lifecycle_policy = open(lifecycle_policy_file, 'r').read()
+    lifecycle_policy = open(deunicodise(lifecycle_policy_file), 'r').read()
 
     if cfg.dry_run: return EX_OK
 
@@ -1748,9 +1748,10 @@ def resolve_list(lst, args):
 
 def gpg_command(command, passphrase = ""):
     debug("GPG command: " + " ".join(command))
+    command = [deunicodise(cmd_entry) for cmd_entry in command]
     p = subprocess.Popen(command, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.STDOUT,
                          close_fds = True)
-    p_stdout, p_stderr = p.communicate(passphrase + "\n")
+    p_stdout, p_stderr = p.communicate(deunicodise(passphrase) + "\n")
     debug("GPG output:")
     for line in p_stdout.split("\n"):
         debug("GPG: " + line)
@@ -1783,8 +1784,8 @@ def gpg_decrypt(filename, gpgenc_header = "", in_place = True):
     code = gpg_command(command, cfg.gpg_passphrase)
     if code == 0 and in_place:
         debug(u"Renaming %s to %s" % (tmp_filename, unicodise(filename)))
-        os.unlink(filename)
-        os.rename(tmp_filename, filename)
+        os.unlink(deunicodise(filename))
+        os.rename(deunicodise(tmp_filename), deunicodise(filename))
         tmp_filename = filename
     return (code, tmp_filename)
 
@@ -1872,10 +1873,10 @@ def run_configure(config_file, args):
                     else:
                         if not getattr(cfg, "gpg_command"):
                             raise Exception("Path to GPG program not set")
-                        if not os.path.isfile(getattr(cfg, "gpg_command")):
+                        if not os.path.isfile(deunicodise(getattr(cfg, "gpg_command"))):
                             raise Exception("GPG program not found")
                         filename = Utils.mktmpfile()
-                        f = open(filename, "w")
+                        f = open(deunicodise(filename), "w")
                         f.write(os.sys.copyright)
                         f.close()
                         ret_enc = gpg_encrypt(filename)
@@ -1885,9 +1886,9 @@ def run_configure(config_file, args):
                             Utils.hash_file_md5(ret_enc[1]),
                             Utils.hash_file_md5(ret_dec[1]),
                         ]
-                        os.unlink(filename)
-                        os.unlink(ret_enc[1])
-                        os.unlink(ret_dec[1])
+                        os.unlink(deunicodise(filename))
+                        os.unlink(deunicodise(ret_enc[1]))
+                        os.unlink(deunicodise(ret_dec[1]))
                         if hash[0] == hash[2] and hash[0] != hash[1]:
                             output ("Success. Encryption and decryption worked fine :-)")
                         else:
@@ -1917,7 +1918,7 @@ def run_configure(config_file, args):
         ## Overwrite existing config file, make it user-readable only
         old_mask = os.umask(0077)
         try:
-            os.remove(config_file)
+            os.remove(deunicodise(config_file))
         except OSError, e:
             if e.errno != errno.ENOENT:
                 raise
@@ -1937,7 +1938,7 @@ def run_configure(config_file, args):
 
 def process_patterns_from_file(fname, patterns_list):
     try:
-        fn = open(fname, "rt")
+        fn = open(deunicodise(fname), "rt")
     except IOError, e:
         error(e)
         sys.exit(EX_IOERR)

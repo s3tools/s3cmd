@@ -61,11 +61,12 @@ def parseNodes(nodes):
     for node in nodes:
         retval_item = {}
         for child in node.getchildren():
-            name = child.tag
+            name = unicode(child.tag)
             if child.getchildren():
                 retval_item[name] = parseNodes([child])
             else:
-                retval_item[name] = node.findtext(".//%s" % child.tag)
+                found_text = node.findtext(".//%s" % child.tag)
+                retval_item[name] = unicode(found_text) if found_text is not None else None
         retval.append(retval_item)
     return retval
 __all__.append("parseNodes")
@@ -110,27 +111,29 @@ def getDictFromTree(tree):
             ## Complex-type child. Recurse
             content = getDictFromTree(child)
         else:
-            content = child.text
-        if ret_dict.has_key(child.tag):
-            if not type(ret_dict[child.tag]) == list:
-                ret_dict[child.tag] = [ret_dict[child.tag]]
-            ret_dict[child.tag].append(content or "")
+            content = unicode(child.text) if child.text is not None else None
+        child_tag = unicode(child.tag)
+        if ret_dict.has_key(child_tag):
+            if not type(ret_dict[child_tag]) == list:
+                ret_dict[child_tag] = [ret_dict[child_tag]]
+            ret_dict[child_tag].append(content or "")
         else:
-            ret_dict[child.tag] = content or ""
+            ret_dict[child_tag] = content or ""
     return ret_dict
 __all__.append("getDictFromTree")
 
 def getTextFromXml(xml, xpath):
     tree = getTreeFromXml(xml)
     if tree.tag.endswith(xpath):
-        return tree.text
+        return unicode(tree.text) if tree.text is not None else None
     else:
-        return tree.findtext(xpath)
+        result = tree.findtext(xpath)
+        return unicode(result) if result is not None else None
 __all__.append("getTextFromXml")
 
 def getRootTagName(xml):
     tree = getTreeFromXml(xml)
-    return tree.tag
+    return unicode(tree.tag) if tree.tag is not None else None
 __all__.append("getRootTagName")
 
 def xmlTextNode(tag_name, text):
@@ -228,13 +231,13 @@ def mktmpdir(prefix = os.getenv('TMP','/tmp') + "/tmpdir-", randchars = 10):
 __all__.append("mktmpdir")
 
 def mktmpfile(prefix = os.getenv('TMP','/tmp') + "/tmpfile-", randchars = 20):
-    createfunc = lambda filename : os.close(os.open(filename, os.O_CREAT | os.O_EXCL))
+    createfunc = lambda filename : os.close(os.open(deunicodise(filename), os.O_CREAT | os.O_EXCL))
     return mktmpsomething(prefix, randchars, createfunc)
 __all__.append("mktmpfile")
 
 def hash_file_md5(filename):
     h = md5()
-    f = open(filename, "rb")
+    f = open(deunicodise(filename), "rb")
     while True:
         # Hash 32kB chunks
         data = f.read(32*1024)
@@ -255,14 +258,14 @@ def mkdir_with_parents(dir_name):
     """
     pathmembers = dir_name.split(os.sep)
     tmp_stack = []
-    while pathmembers and not os.path.isdir(os.sep.join(pathmembers)):
+    while pathmembers and not os.path.isdir(deunicodise(os.sep.join(pathmembers))):
         tmp_stack.append(pathmembers.pop())
     while tmp_stack:
         pathmembers.append(tmp_stack.pop())
         cur_dir = os.sep.join(pathmembers)
         try:
             debug("mkdir(%s)" % cur_dir)
-            os.mkdir(cur_dir)
+            os.mkdir(deunicodise(cur_dir))
         except (OSError, IOError), e:
             warning("%s: can not make directory: %s" % (cur_dir, e.strerror))
             return False
@@ -376,11 +379,11 @@ def time_to_epoch(t):
 
 def check_bucket_name(bucket, dns_strict = True):
     if dns_strict:
-        invalid = re.search("([^a-z0-9\.-])", bucket)
+        invalid = re.search("([^a-z0-9\.-])", bucket, re.UNICODE)
         if invalid:
             raise Exceptions.ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: lowercase us-ascii letters (a-z), digits (0-9), dot (.) and hyphen (-)." % (bucket, invalid.groups()[0]))
     else:
-        invalid = re.search("([^A-Za-z0-9\._-])", bucket)
+        invalid = re.search("([^A-Za-z0-9\._-])", bucket, re.UNICODE)
         if invalid:
             raise Exceptions.ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: us-ascii letters (a-z, A-Z), digits (0-9), dot (.), hyphen (-) and underscore (_)." % (bucket, invalid.groups()[0]))
 
@@ -391,13 +394,13 @@ def check_bucket_name(bucket, dns_strict = True):
     if dns_strict:
         if len(bucket) > 63:
             raise Exceptions.ParameterError("Bucket name '%s' is too long (max 63 characters)" % bucket)
-        if re.search("-\.", bucket):
+        if re.search("-\.", bucket, re.UNICODE):
             raise Exceptions.ParameterError("Bucket name '%s' must not contain sequence '-.' for DNS compatibility" % bucket)
-        if re.search("\.\.", bucket):
+        if re.search("\.\.", bucket, re.UNICODE):
             raise Exceptions.ParameterError("Bucket name '%s' must not contain sequence '..' for DNS compatibility" % bucket)
-        if not re.search("^[0-9a-z]", bucket):
+        if not re.search("^[0-9a-z]", bucket, re.UNICODE):
             raise Exceptions.ParameterError("Bucket name '%s' must start with a letter or a digit" % bucket)
-        if not re.search("[0-9a-z]$", bucket):
+        if not re.search("[0-9a-z]$", bucket, re.UNICODE):
             raise Exceptions.ParameterError("Bucket name '%s' must end with a letter or a digit" % bucket)
     return True
 __all__.append("check_bucket_name")
@@ -435,7 +438,7 @@ def getBucketFromHostname(hostname):
 
     # Create RE pattern from Config.host_bucket
     pattern = Config.Config().host_bucket % { 'bucket' : '(?P<bucket>.*)' }
-    m = re.match(pattern, hostname)
+    m = re.match(pattern, hostname, re.UNICODE)
     if not m:
         return (hostname, False)
     return m.groups()[0], True
