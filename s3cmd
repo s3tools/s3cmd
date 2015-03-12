@@ -346,17 +346,17 @@ def cmd_object_put(args):
         elif not destination_base.endswith("/"):
             if not single_file_local:
                 raise ParameterError("Destination S3 URI must end with '/' (ie must refer to a directory on the remote side).")
-            local_list[local_list.keys()[0]]['remote_uri'] = unicodise(destination_base)
+            local_list[local_list.keys()[0]]['remote_uri'] = destination_base
         else:
             for key in local_list:
-                local_list[key]['remote_uri'] = unicodise(destination_base + key)
+                local_list[key]['remote_uri'] = destination_base + key
 
     if cfg.dry_run:
         for key in exclude_list:
-            output(u"exclude: %s" % unicodise(key))
+            output(u"exclude: %s" % key)
         for key in local_list:
             if key != "-":
-                nicekey = local_list[key]['full_name_unicode']
+                nicekey = local_list[key]['full_name']
             else:
                 nicekey = "<stdin>"
             output(u"upload: %s -> %s" % (nicekey, local_list[key]['remote_uri']))
@@ -392,13 +392,13 @@ def cmd_object_put(args):
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
             if not Config().progress_meter:
                 output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
-                       (unicodise(full_name_orig), uri_final, response["size"], response["elapsed"],
+                       (full_name_orig, uri_final, response["size"], response["elapsed"],
                         speed_fmt[0], speed_fmt[1], seq_label))
         if Config().acl_public:
             output(u"Public URL of the object is: %s" %
                    (uri_final.public_url()))
         if Config().encrypt and full_name != full_name_orig:
-            debug(u"Removing temporary encrypted file: %s" % unicodise(full_name))
+            debug(u"Removing temporary encrypted file: %s" % full_name)
             os.remove(deunicodise(full_name))
     return EX_OK
 
@@ -464,7 +464,7 @@ def cmd_object_get(args):
             ## We were either given a file name (existing or not)
             if remote_count > 1:
                 raise ParameterError("Destination must be a directory or stdout when downloading multiple sources.")
-            remote_list[remote_list.keys()[0]]['local_filename'] = deunicodise(destination_base)
+            remote_list[remote_list.keys()[0]]['local_filename'] = destination_base
         elif os.path.isdir(deunicodise(destination_base)):
             if destination_base[-1] != os.path.sep:
                 destination_base += os.path.sep
@@ -472,13 +472,13 @@ def cmd_object_get(args):
                 local_filename = destination_base + key
                 if os.path.sep != "/":
                     local_filename = os.path.sep.join(local_filename.split("/"))
-                remote_list[key]['local_filename'] = deunicodise(local_filename)
+                remote_list[key]['local_filename'] = local_filename
         else:
             raise InternalError("WTF? Is it a dir or not? -- %s" % destination_base)
 
     if cfg.dry_run:
         for key in exclude_list:
-            output(u"exclude: %s" % unicodise(key))
+            output(u"exclude: %s" % key)
         for key in remote_list:
             output(u"download: %s -> %s" % (remote_list[key]['object_uri_str'], remote_list[key]['local_filename']))
 
@@ -645,7 +645,7 @@ def subcmd_object_del_uri(uri_str, recursive = None):
 
     if cfg.dry_run:
         for key in exclude_list:
-            output(u"exclude: %s" % unicodise(key))
+            output(u"exclude: %s" % key)
         for key in remote_list:
             output(u"delete: %s" % remote_list[key]['object_uri_str'])
 
@@ -672,7 +672,7 @@ def cmd_object_restore(args):
 
     if cfg.dry_run:
         for key in exclude_list:
-            output(u"exclude: %s" % unicodise(key))
+            output(u"exclude: %s" % key)
         for key in remote_list:
             output(u"restore: %s" % remote_list[key]['object_uri_str'])
 
@@ -725,7 +725,7 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
 
     if cfg.dry_run:
         for key in exclude_list:
-            output(u"exclude: %s" % unicodise(key))
+            output(u"exclude: %s" % key)
         for key in remote_list:
             output(u"%s: %s -> %s" % (action_str, remote_list[key]['object_uri_str'], remote_list[key]['dest_name']))
 
@@ -876,7 +876,7 @@ def cmd_sync_remote2remote(args):
     if cfg.dry_run:
         keys = filedicts_to_keys(src_exclude_list, dst_exclude_list)
         for key in keys:
-            output(u"exclude: %s" % unicodise(key))
+            output(u"exclude: %s" % key)
         if cfg.delete_removed:
             for key in dst_list:
                 output(u"delete: %s" % dst_list[key]['object_uri_str'])
@@ -948,7 +948,7 @@ def cmd_sync_remote2local(args):
             return
         for key in local_list:
             os.unlink(deunicodise(local_list[key]['full_name']))
-            output(u"deleted: %s" % local_list[key]['full_name_unicode'])
+            output(u"deleted: %s" % local_list[key]['full_name'])
 
     s3 = S3(Config())
 
@@ -978,7 +978,7 @@ def cmd_sync_remote2local(args):
             ## We were either given a file name (existing or not) or want STDOUT
             if len(remote_list) > 1:
                 raise ParameterError("Destination must be a directory when downloading multiple sources.")
-            remote_list[remote_list.keys()[0]]['local_filename'] = deunicodise(destination_base)
+            remote_list[remote_list.keys()[0]]['local_filename'] = destination_base
         else:
             if destination_base[-1] != os.path.sep:
                 destination_base += os.path.sep
@@ -986,7 +986,7 @@ def cmd_sync_remote2local(args):
                 local_filename = destination_base + key
                 if os.path.sep != "/":
                     local_filename = os.path.sep.join(local_filename.split("/"))
-                remote_list[key]['local_filename'] = deunicodise(local_filename)
+                remote_list[key]['local_filename'] = local_filename
 
     _set_local_filename(remote_list, destination_base)
     _set_local_filename(update_list, destination_base)
@@ -994,12 +994,12 @@ def cmd_sync_remote2local(args):
     if cfg.dry_run:
         keys = filedicts_to_keys(src_exclude_list, dst_exclude_list)
         for key in keys:
-            output(u"exclude: %s" % unicodise(key))
+            output(u"exclude: %s" % key)
         if cfg.delete_removed:
             for key in local_list:
-                output(u"delete: %s" % local_list[key]['full_name_unicode'])
+                output(u"delete: %s" % local_list[key]['full_name'])
         for key in remote_list:
-            output(u"download: %s -> %s" % (unicodise(remote_list[key]['object_uri_str']), unicodise(remote_list[key]['local_filename'])))
+            output(u"download: %s -> %s" % (remote_list[key]['object_uri_str'], remote_list[key]['local_filename']))
         for key in update_list:
             output(u"download: %s -> %s" % (update_list[key]['object_uri_str'], update_list[key]['local_filename']))
 
@@ -1035,28 +1035,29 @@ def cmd_sync_remote2local(args):
                 if not dir_cache.has_key(dst_dir):
                     dir_cache[dst_dir] = Utils.mkdir_with_parents(dst_dir)
                 if dir_cache[dst_dir] == False:
-                    warning(u"%s: destination directory not writable: %s" % (unicodise(file), unicodise(dst_dir)))
+                    warning(u"%s: destination directory not writable: %s" % (file, dst_dir))
                     continue
 
                 try:
                     if not is_empty_directory: # ignore empty directory at S3:
-                        debug(u"dst_file=%s" % unicodise(dst_file))
+                        debug(u"dst_file=%s" % dst_file)
                         # create temporary files (of type .s3cmd.XXXX.tmp) in the same directory
                         # for downloading and then rename once downloaded
                         chkptfd, chkptfname = tempfile.mkstemp(".tmp",".s3cmd.",os.path.dirname(deunicodise(dst_file)))
-                        debug(u"created chkptfname=%s" % unicodise(chkptfname))
+                        chkptfname = unicodise(chkptfname)
+                        debug(u"created chkptfname=%s" % chkptfname)
                         dst_stream = os.fdopen(chkptfd, "wb")
                         response = s3.object_get(uri, dst_stream, extra_label = seq_label)
                         dst_stream.close()
                         # download completed, rename the file to destination
                         os.rename(deunicodise(chkptfname), deunicodise(dst_file))
-                        debug(u"renamed chkptfname=%s to dst_file=%s" % (unicodise(chkptfname), unicodise(dst_file)))
+                        debug(u"renamed chkptfname=%s to dst_file=%s" % (chkptfname, dst_file))
                 except OSError, e:
                     if e.errno == errno.EISDIR:
-                        warning(u"%s is a directory - skipping over" % unicodise(dst_file))
+                        warning(u"%s is a directory - skipping over" % dst_file)
                         continue
                     elif e.errno == errno.ETXTBSY:
-                        warning(u"%s is currently open for execute, cannot be overwritten.  Skipping over." % unicodise(dst_file))
+                        warning(u"%s is currently open for execute, cannot be overwritten.  Skipping over." % dst_file)
                         os.unlink(deunicodise(chkptfname))
                         continue
                     else:
@@ -1109,10 +1110,10 @@ def cmd_sync_remote2local(args):
                         os.remove(deunicodise(chkptfname))
                     except: pass
                     if e.errno == errno.EEXIST:
-                        warning(u"%s exists - not overwriting" % unicodise(dst_file))
+                        warning(u"%s exists - not overwriting" % dst_file)
                         continue
                     if e.errno in (errno.EPERM, errno.EACCES):
-                        warning(u"%s not writable: %s" % (unicodise(dst_file), e.strerror))
+                        warning(u"%s not writable: %s" % (dst_file, e.strerror))
                         continue
                     raise e
                 except KeyboardInterrupt:
@@ -1142,7 +1143,7 @@ def cmd_sync_remote2local(args):
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
             if not Config().progress_meter:
                 output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
-                    (uri, unicodise(dst_file), response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
+                    (uri, dst_file, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
                     seq_label))
             total_size += response["size"]
             if Config().delete_after_fetch:
@@ -1263,7 +1264,7 @@ def cmd_sync_local2remote(args):
             destination_base_uri = S3Uri(dest)
             if destination_base_uri.type != 's3':
                 raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
-            destination_base = unicodise(destination_base_uri.uri())
+            destination_base = destination_base_uri.uri()
             rc = _child(destination_base, local_list)
             if rc:
                 any_child_failed = True
@@ -1281,7 +1282,7 @@ def cmd_sync_local2remote(args):
             destination_base_uri = S3Uri(dest)
             if destination_base_uri.type != 's3':
                 raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
-            destination_base = unicodise(destination_base_uri.uri())
+            destination_base = destination_base_uri.uri()
             child_pid = os.fork()
             if child_pid == 0:
                 _child(destination_base, local_list)
@@ -1304,10 +1305,10 @@ def cmd_sync_local2remote(args):
                 if not destination_base.endswith("/"):
                     if not single_file_local:
                         raise ParameterError("Destination S3 URI must end with '/' (ie must refer to a directory on the remote side).")
-                    local_list[local_list.keys()[0]]['remote_uri'] = unicodise(destination_base)
+                    local_list[local_list.keys()[0]]['remote_uri'] = destination_base
                 else:
                     for key in local_list:
-                        local_list[key]['remote_uri'] = unicodise(destination_base + key)
+                        local_list[key]['remote_uri'] = destination_base + key
 
         def _upload(local_list, seq, total, total_size):
             file_list = local_list.keys()
@@ -1329,12 +1330,12 @@ def cmd_sync_local2remote(args):
                     warning(u"File can not be uploaded: %s" % e)
                     continue
                 except S3UploadError, e:
-                    error(u"%s: upload failed too many times. Skipping that file." % item['full_name_unicode'])
+                    error(u"%s: upload failed too many times. Skipping that file." % item['full_name'])
                     continue
                 speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
                 if not cfg.progress_meter:
                     output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
-                        (item['full_name_unicode'], uri, response["size"], response["elapsed"],
+                        (item['full_name'], uri, response["size"], response["elapsed"],
                         speed_fmt[0], speed_fmt[1], seq_label))
                 total_size += response["size"]
                 uploaded_objects_list.append(uri.object())
@@ -1371,11 +1372,11 @@ def cmd_sync_local2remote(args):
         if cfg.dry_run:
             keys = filedicts_to_keys(src_exclude_list, dst_exclude_list)
             for key in keys:
-                output(u"exclude: %s" % unicodise(key))
+                output(u"exclude: %s" % key)
             for key in local_list:
-                output(u"upload: %s -> %s" % (local_list[key]['full_name_unicode'], local_list[key]['remote_uri']))
+                output(u"upload: %s -> %s" % (local_list[key]['full_name'], local_list[key]['remote_uri']))
             for key in update_list:
-                output(u"upload: %s -> %s" % (update_list[key]['full_name_unicode'], update_list[key]['remote_uri']))
+                output(u"upload: %s -> %s" % (update_list[key]['full_name'], update_list[key]['remote_uri']))
             for (src_obj, dst1, dst2) in copy_pairs:
                 output(u"remote copy: %s -> %s" % (dst1, dst2))
             if cfg.delete_removed:
@@ -1517,7 +1518,7 @@ def cmd_setacl(args):
 
     if cfg.dry_run:
         for key in exclude_list:
-            output(u"exclude: %s" % unicodise(key))
+            output(u"exclude: %s" % key)
         for key in remote_list:
             output(u"setacl: %s" % remote_list[key]['object_uri_str'])
 
@@ -1714,8 +1715,7 @@ def cmd_fixbucket(args):
             raise ParameterError("Expecting S3Uri instead of: %s" % arg)
         response = s3.bucket_list_noparse(culprit.bucket(), culprit.object(), recursive = True)
         r_xent = re.compile("&#x[\da-fA-F]+;")
-        response['data'] = unicode(response['data'], 'UTF-8')
-        keys = re.findall("<Key>(.*?)</Key>", response['data'], re.MULTILINE)
+        keys = re.findall("<Key>(.*?)</Key>", response['data'], re.MULTILINE | re.UNICODE)
         debug("Keys: %r" % keys)
         for key in keys:
             if r_xent.search(key):
@@ -1766,7 +1766,7 @@ def gpg_encrypt(filename):
         "input_file" : filename,
         "output_file" : tmp_filename,
     }
-    info(u"Encrypting file %s to %s..." % (unicodise(filename), tmp_filename))
+    info(u"Encrypting file %s to %s..." % (filename, tmp_filename))
     command = resolve_list(cfg.gpg_encrypt.split(" "), args)
     code = gpg_command(command, cfg.gpg_passphrase)
     return (code, tmp_filename, "gpg")
@@ -1779,11 +1779,11 @@ def gpg_decrypt(filename, gpgenc_header = "", in_place = True):
         "input_file" : filename,
         "output_file" : tmp_filename,
     }
-    info(u"Decrypting file %s to %s..." % (unicodise(filename), tmp_filename))
+    info(u"Decrypting file %s to %s..." % (filename, tmp_filename))
     command = resolve_list(cfg.gpg_decrypt.split(" "), args)
     code = gpg_command(command, cfg.gpg_passphrase)
     if code == 0 and in_place:
-        debug(u"Renaming %s to %s" % (tmp_filename, unicodise(filename)))
+        debug(u"Renaming %s to %s" % (tmp_filename, filename))
         os.unlink(deunicodise(filename))
         os.rename(deunicodise(tmp_filename), deunicodise(filename))
         tmp_filename = filename

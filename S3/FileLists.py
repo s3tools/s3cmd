@@ -25,6 +25,66 @@ import errno
 
 __all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists"]
 
+def _os_walk_unicode(top):
+    '''
+    Reimplementation of python's os.walk to nicely support unicode in input as in output.
+    '''
+    try:
+        names = os.listdir(deunicodise(top))
+    except:
+        return
+
+    dirs, nondirs = [], []
+    for name in names:
+        name = unicodise(name)
+        if os.path.isdir(deunicodise(os.path.join(top, name))):
+            if not handle_exclude_include_walk_dir(top, name):
+                dirs.append(name)
+        else:
+            nondirs.append(name)
+
+    yield top, dirs, nondirs
+    for name in dirs:
+        new_path = os.path.join(top, name)
+        if not os.path.islink(deunicodise(new_path)):
+            for x in _os_walk_unicode(new_path):
+                yield x
+
+def handle_exclude_include_walk_dir(root, dirname):
+    '''
+    Should this root/dirname directory be excluded? (otherwise included by default)
+    Exclude dir matches in the current directory
+    This prevents us from recursing down trees we know we want to ignore
+    return True for including, and False for excluding
+    '''
+    cfg = Config()
+    d = os.path.join(root, dirname, '')
+    debug(u"CHECK: %r" % d)
+    excluded = False
+    for r in cfg.exclude:
+        # python versions end their patterns (from globs) differently, test for both styles.
+        if not (r.pattern.endswith(u'\\/$') or r.pattern.endswith(u'\\/\\Z(?ms)')): continue # we only check for directory patterns here
+        if r.search(d):
+            excluded = True
+            debug(u"EXCL-MATCH: '%s'" % (cfg.debug_exclude[r]))
+            break
+    if excluded:
+        ## No need to check for --include if not excluded
+        for r in cfg.include:
+            # python versions end their patterns (from globs) differently, test for both styles.
+            if not (r.pattern.endswith(u'\\/$') or r.pattern.endswith(u'\\/\\Z(?ms)')): continue # we only check for directory patterns here
+            debug(u"INCL-TEST: %s ~ %s" % (d, r.pattern))
+            if r.search(d):
+                excluded = False
+                debug(u"INCL-MATCH: '%s'" % (cfg.debug_include[r]))
+                break
+    if excluded:
+        ## Still excluded - ok, action it
+        debug(u"EXCLUDE: %r" % d)
+    else:
+        debug(u"PASS: %r" % d)
+    return excluded
+
 def _fswalk_follow_symlinks(path):
     '''
     Walk filesystem, following symbolic links (but without recursion), on python2.4 and later
@@ -34,8 +94,7 @@ def _fswalk_follow_symlinks(path):
     '''
     assert os.path.isdir(deunicodise(path)) # only designed for directory argument
     walkdirs = set([path])
-    for dirpath, dirnames, filenames in os.walk(deunicodise(path)):
-        handle_exclude_include_walk(dirpath, dirnames, [])
+    for dirpath, dirnames, filenames in _os_walk_unicode(path):
         real_dirpath = unicodise(os.path.realpath(deunicodise(dirpath)))
         for dirname in dirnames:
             current = os.path.join(dirpath, dirname)
@@ -47,8 +106,7 @@ def _fswalk_follow_symlinks(path):
                 else:
                     walkdirs.add(current)
     for walkdir in walkdirs:
-        for dirpath, dirnames, filenames in os.walk(deunicodise(walkdir)):
-            handle_exclude_include_walk(dirpath, dirnames, [])
+        for dirpath, dirnames, filenames in _os_walk_unicode(walkdir):
             yield (dirpath, dirnames, filenames)
 
 def _fswalk_no_symlinks(path):
@@ -57,8 +115,7 @@ def _fswalk_no_symlinks(path):
 
     path (str) is the root of the directory tree to walk
     '''
-    for dirpath, dirnames, filenames in os.walk(deunicodise(path)):
-        handle_exclude_include_walk(dirpath, dirnames, filenames)
+    for dirpath, dirnames, filenames in _os_walk_unicode(path):
         yield (dirpath, dirnames, filenames)
 
 def filter_exclude_include(src_list):
@@ -90,40 +147,6 @@ def filter_exclude_include(src_list):
             debug(u"PASS: %r" % (file))
     return src_list, exclude_list
 
-def handle_exclude_include_walk(root, dirs, files):
-    cfg = Config()
-    copydirs = copy.copy(dirs)
-    # exclude dir matches in the current directory
-    # this prevents us from recursing down trees we know we want to ignore
-    for x in copydirs:
-        d = os.path.join(root, x, '')
-        debug(u"CHECK: %r" % d)
-        excluded = False
-        for r in cfg.exclude:
-            # python versions end their patterns (from globs) differently, test for both styles.
-            if not (r.pattern.endswith(u'\\/$') or r.pattern.endswith(u'\\/\\Z(?ms)')): continue # we only check for directory patterns here
-            if r.search(d):
-                excluded = True
-                debug(u"EXCL-MATCH: '%s'" % (cfg.debug_exclude[r]))
-                break
-        if excluded:
-            ## No need to check for --include if not excluded
-            for r in cfg.include:
-                # python versions end their patterns (from globs) differently, test for both styles.
-                if not (r.pattern.endswith(u'\\/$') or r.pattern.endswith(u'\\/\\Z(?ms)')): continue # we only check for directory patterns here
-                debug(u"INCL-TEST: %s ~ %s" % (d, r.pattern))
-                if r.search(d):
-                    excluded = False
-                    debug(u"INCL-MATCH: '%s'" % (cfg.debug_include[r]))
-                    break
-        if excluded:
-            ## Still excluded - ok, action it
-            debug(u"EXCLUDE: %r" % d)
-            dirs.remove(x)
-            continue
-        else:
-            debug(u"PASS: %r" % (d))
-
 
 def _get_filelist_from_file(cfg, local_path):
     def _append(d, key, value):
@@ -144,7 +167,7 @@ def _get_filelist_from_file(cfg, local_path):
                 continue
 
         for line in f:
-            line = line.strip()
+            line = unicodise(line).strip()
             line = os.path.normpath(os.path.join(local_path, line))
             dirname = unicodise(os.path.dirname(deunicodise(line)))
             basename = unicodise(os.path.basename(deunicodise(line)))
@@ -208,7 +231,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
     def _get_filelist_local(loc_list, local_uri, cache):
         info(u"Compiling list of local files...")
 
-        if deunicodise(local_uri.basename()) == "-":
+        if local_uri.basename() == "-":
             try:
                 uid = os.geteuid()
                 gid = os.getegid()
@@ -216,7 +239,6 @@ def fetch_local_list(args, is_src = False, recursive = None):
                 uid = 0
                 gid = 0
             loc_list["-"] = {
-                'full_name_unicode' : '-',
                 'full_name' : '-',
                 'size' : -1,
                 'mtime' : -1,
@@ -227,8 +249,8 @@ def fetch_local_list(args, is_src = False, recursive = None):
             }
             return loc_list, True
         if local_uri.isdir():
-            local_base = deunicodise(local_uri.basename())
-            local_path = deunicodise(local_uri.path())
+            local_base = local_uri.basename()
+            local_path = local_uri.path()
             if is_src and len(cfg.files_from):
                 filelist = _get_filelist_from_file(cfg, local_path)
                 single_file = False
@@ -240,8 +262,8 @@ def fetch_local_list(args, is_src = False, recursive = None):
                 single_file = False
         else:
             local_base = ""
-            local_path = deunicodise(local_uri.dirname())
-            filelist = [( local_path, [], [deunicodise(local_uri.basename())] )]
+            local_path = local_uri.dirname()
+            filelist = [( local_path, [], [local_uri.basename()] )]
             single_file = True
         for root, dirs, files in filelist:
             rel_root = root.replace(local_path, local_base, 1)
@@ -250,9 +272,9 @@ def fetch_local_list(args, is_src = False, recursive = None):
                 if not os.path.isfile(deunicodise(full_name)):
                     continue
                 if os.path.islink(deunicodise(full_name)):
-                                    if not cfg.follow_symlinks:
-                                            continue
-                relative_file = unicodise(os.path.join(rel_root, f))
+                    if not cfg.follow_symlinks:
+                        continue
+                relative_file = os.path.join(rel_root, f)
                 if os.path.sep != "/":
                     # Convert non-unix dir separators to '/'
                     relative_file = "/".join(relative_file.split(os.path.sep))
@@ -261,7 +283,6 @@ def fetch_local_list(args, is_src = False, recursive = None):
                 if relative_file.startswith('./'):
                     relative_file = relative_file[2:]
                 loc_list[relative_file] = {
-                    'full_name_unicode' : unicodise(full_name),
                     'full_name' : full_name,
                 }
 

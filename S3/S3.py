@@ -524,7 +524,7 @@ class S3(object):
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 
         if filename != "-" and not os.path.isfile(deunicodise(filename)):
-            raise InvalidFileError(u"%s is not a regular file" % unicodise(filename))
+            raise InvalidFileError(u"%s is not a regular file" % filename)
         try:
             if filename == "-":
                 file = sys.stdin
@@ -533,7 +533,7 @@ class S3(object):
                 file = open(deunicodise(filename), "rb")
                 size = os.stat(deunicodise(filename))[ST_SIZE]
         except (IOError, OSError), e:
-            raise InvalidFileError(u"%s: %s" % (unicodise(filename), e.strerror))
+            raise InvalidFileError(u"%s: %s" % (filename, e.strerror))
 
         headers = SortedDict(ignore_case = True)
         if extra_headers:
@@ -591,7 +591,7 @@ class S3(object):
 
         headers["content-length"] = str(size)
         request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
-        labels = { 'source' : unicodise(filename), 'destination' : unicodise(uri.uri()), 'extra' : extra_label }
+        labels = { 'source' : filename, 'destination' : uri.uri(), 'extra' : extra_label }
         response = self.send_file(request, file, labels)
         return response
 
@@ -599,7 +599,7 @@ class S3(object):
         if uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
         request = self.create_request("OBJECT_GET", uri = uri)
-        labels = { 'source' : unicodise(uri.uri()), 'destination' : unicodise(stream.name), 'extra' : extra_label }
+        labels = { 'source' : uri.uri(), 'destination' : stream.name, 'extra' : extra_label }
         response = self.recv_file(request, stream, labels, start_position)
         return response
 
@@ -711,7 +711,7 @@ class S3(object):
         headers = self._sanitize_headers(headers)
         acl = self.get_acl(src_uri)
 
-        headers['x-amz-copy-source'] = deunicodise("/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object())))
+        headers['x-amz-copy-source'] = deunicodise("/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object())), encoding="UTF-8")
         headers['x-amz-metadata-directive'] = "REPLACE"
 
         # cannot change between standard and reduced redundancy with a REPLACE.

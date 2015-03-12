@@ -8,7 +8,7 @@ import os
 import sys
 from stat import ST_SIZE
 from logging import debug, info, warning, error
-from Utils import getTextFromXml, getTreeFromXml, formatSize, unicodise, deunicodise, calculateChecksum, parseNodes
+from Utils import getTextFromXml, getTreeFromXml, formatSize, deunicodise, calculateChecksum, parseNodes
 from Exceptions import S3UploadError
 
 class MultiPartUpload(object):
@@ -105,8 +105,8 @@ class MultiPartUpload(object):
                 current_chunk_size = min(file_size - offset, self.chunk_size)
                 size_left -= current_chunk_size
                 labels = {
-                    'source' : unicodise(self.file.name),
-                    'destination' : unicodise(self.uri.uri()),
+                    'source' : self.file.name,
+                    'destination' : self.uri.uri(),
                     'extra' : "[part %d of %d, %s]" % (seq, nr_parts, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
                 }
                 try:
@@ -122,8 +122,8 @@ class MultiPartUpload(object):
                 offset = 0 # send from start of the buffer
                 current_chunk_size = len(buffer)
                 labels = {
-                    'source' : unicodise(self.file.name),
-                    'destination' : unicodise(self.uri.uri()),
+                    'source' : self.file.name,
+                    'destination' : self.uri.uri(),
                     'extra' : "[part %d, %s]" % (seq, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
                 }
                 if len(buffer) == 0: # EOF

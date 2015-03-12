@@ -454,7 +454,7 @@ class CloudFront(object):
             try:
                 tmp_filename = Utils.mktmpfile()
                 f = open(deunicodise(tmp_filename), "w")
-                f.write("\n".join(paths)+"\n")
+                f.write(deunicodise("\n".join(paths)+"\n"))
                 f.close()
                 warning("Request to invalidate %d paths (max 999 supported)" % len(paths))
                 warning("All the paths are now saved in: %s" % tmp_filename)
