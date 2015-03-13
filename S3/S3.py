@@ -689,6 +689,13 @@ class S3(object):
 
         request = self.create_request("OBJECT_PUT", uri = dst_uri, headers = headers)
         response = self.send_request(request)
+        if response["data"] and getRootTagName(response["data"]) == "Error":
+            #http://doc.s3.amazonaws.com/proposals/copy.html
+            # Error during copy, status will be 200, so force error code 500
+            response["status"] = 500
+            error("Server error during the COPY operation. Overwrite response status to 500")
+            raise S3Error(response)
+
         return response
 
     def object_modify(self, src_uri, dst_uri, extra_headers = None):
@@ -720,6 +727,12 @@ class S3(object):
 
         request = self.create_request("OBJECT_PUT", uri = src_uri, headers = headers)
         response = self.send_request(request)
+        if response["data"] and getRootTagName(response["data"]) == "Error":
+            #http://doc.s3.amazonaws.com/proposals/copy.html
+            # Error during modify, status will be 200, so force error code 500
+            response["status"] = 500
+            error("Server error during the MODIFY operation. Overwrite response status to 500")
+            raise S3Error(response)
 
         self.set_acl(src_uri, acl)
 
@@ -728,7 +741,7 @@ class S3(object):
     def object_move(self, src_uri, dst_uri, extra_headers = None):
         response_copy = self.object_copy(src_uri, dst_uri, extra_headers)
         debug("Object %s copied to %s" % (src_uri, dst_uri))
-        if getRootTagName(response_copy["data"]) == "CopyObjectResult":
+        if not response_copy["data"] or getRootTagName(response_copy["data"]) == "CopyObjectResult":
             self.object_delete(src_uri)
             debug("Object %s deleted" % src_uri)
         return response_copy
