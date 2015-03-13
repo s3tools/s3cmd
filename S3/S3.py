@@ -679,7 +679,7 @@ class S3(object):
         if dst_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
         headers = SortedDict(ignore_case = True)
-        headers['x-amz-copy-source'] = ("/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object()))).encode("UTF-8")
+        headers['x-amz-copy-source'] = deunicodise("/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object())), encoding="UTF-8")
         headers['x-amz-metadata-directive'] = "COPY"
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
