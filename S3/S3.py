@@ -1378,7 +1378,7 @@ class S3(object):
                 response["md5"] = response["headers"]["etag"]
 
         md5_hash = response["headers"]["etag"]
-        if not 'x-amz-meta-s3tools-gpgenc' in response["headers"]:
+        if (not 'x-amz-meta-s3tools-gpgenc' in response["headers"]) and (not 'x-amz-server-side-encryption-aws-kms-key-id' in response["headers"]):
             # we can't trust our stored md5 because we
             # encrypted the file after calculating it but before
             # uploading it.
