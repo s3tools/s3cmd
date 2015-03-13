@@ -1707,32 +1707,41 @@ def cmd_fixbucket(args):
     s3 = S3(cfg)
 
     count = 0
+    marker = None
     for arg in args:
         culprit = S3Uri(arg)
         if culprit.type != "s3":
             raise ParameterError("Expecting S3Uri instead of: %s" % arg)
-        response = s3.bucket_list_noparse(culprit.bucket(), culprit.object(), recursive = True)
-        r_xent = re.compile("&#x[\da-fA-F]+;")
-        response['data'] = unicode(response['data'], 'UTF-8')
-        keys = re.findall("<Key>(.*?)</Key>", response['data'], re.MULTILINE)
-        debug("Keys: %r" % keys)
-        for key in keys:
-            if r_xent.search(key):
-                info("Fixing: %s" % key)
-                debug("Step 1: Transforming %s" % key)
-                key_bin = _unescape(key)
-                debug("Step 2:       ... to %s" % key_bin)
-                key_new = replace_nonprintables(key_bin)
-                debug("Step 3:  ... then to %s" % key_new)
-                src = S3Uri("s3://%s/%s" % (culprit.bucket(), key_bin))
-                dst = S3Uri("s3://%s/%s" % (culprit.bucket(), key_new))
-                resp_move = s3.object_move(src, dst)
-                if resp_move['status'] == 200:
-                    output("File %r renamed to %s" % (key_bin, key_new))
-                    count += 1
-                else:
-                    error("Something went wrong for: %r" % key)
-                    error("Please report the problem to s3tools-bugs@lists.sourceforge.net")
+        truncated = True
+        while truncated:
+            response = s3.bucket_list_noparse(culprit.bucket(), culprit.object(), recursive=True, uri_params={'marker': marker})
+            truncated = '<IsTruncated>true</IsTruncated>' in response['data']
+            r_xent = re.compile("&#x[\da-fA-F]+;")
+            response['data'] = unicode(response['data'], 'UTF-8')
+            keys = re.findall("<Key>(.*?)</Key>", response['data'], re.MULTILINE)
+            debug("Keys: %r" % keys)
+            marker = s3.urlencode_string(keys[-1])
+            for key in keys:
+                if r_xent.search(key):
+                    info("Fixing: %s" % key)
+                    debug("Step 1: Transforming %s" % key)
+                    key_bin = _unescape(key)
+                    debug("Step 2:       ... to %s" % key_bin)
+                    key_new = replace_nonprintables(key_bin)
+                    debug("Step 3:  ... then to %s" % key_new)
+                    src = S3Uri("s3://%s/%s" % (culprit.bucket(), key_bin))
+                    dst = S3Uri("s3://%s/%s" % (culprit.bucket(), key_new))
+                    try:
+                        resp_move = s3.object_move(src, dst)
+                        if resp_move['status'] == 200:
+                            output("File %r renamed to %s" % (key_bin, key_new))
+                            count += 1
+                        else:
+                            error("Something went wrong for: %r" % key)
+                            error("Please report the problem to s3tools-bugs@lists.sourceforge.net")
+                    except S3Error, e:
+                        warning("S3 caused an exception: %s", e)
+
     if count > 0:
         warning("Fixed %d files' names. Their ACL were reset to Private." % count)
         warning("Use 's3cmd setacl --acl-public s3://...' to make")
