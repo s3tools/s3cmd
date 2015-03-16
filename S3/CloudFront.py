@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 ## Amazon CloudFront support
 ## Author: Michal Ludvig <michal@logix.cz>
 ##         http://www.logix.cz/michal
@@ -19,7 +21,7 @@ except ImportError:
 from S3 import S3
 from Config import Config
 from Exceptions import *
-from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, getBucketFromHostname, getHostnameFromBucket
+from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, getBucketFromHostname, getHostnameFromBucket, deunicodise
 from Crypto import sign_string_v2
 from S3Uri import S3Uri, S3UriS3
 from FileLists import fetch_remote_list
@@ -65,7 +67,7 @@ class DistributionSummary(object):
             self.info['CNAME'] = [self.info['CNAME']]
 
     def uri(self):
-        return S3Uri("cf://%s" % self.info['Id'])
+        return S3Uri(u"cf://%s" % self.info['Id'])
 
 class DistributionList(object):
     ## Example:
@@ -121,7 +123,7 @@ class Distribution(object):
         self.info['DistributionConfig'] = DistributionConfig(tree = tree.find(".//DistributionConfig"))
 
     def uri(self):
-        return S3Uri("cf://%s" % self.info['Id'])
+        return S3Uri(u"cf://%s" % self.info['Id'])
 
 class DistributionConfig(object):
     ## Example:
@@ -169,7 +171,7 @@ class DistributionConfig(object):
             logging_dict['Bucket'], success = getBucketFromHostname(logging_dict['Bucket'])
             if not success:
                 warning("Logging to unparsable bucket name: %s" % logging_dict['Bucket'])
-            self.info['Logging'] = S3UriS3("s3://%(Bucket)s/%(Prefix)s" % logging_dict)
+            self.info['Logging'] = S3UriS3(u"s3://%(Bucket)s/%(Prefix)s" % logging_dict)
         else:
             self.info['Logging'] = None
 
@@ -451,8 +453,8 @@ class CloudFront(object):
         if len(paths) > 999:
             try:
                 tmp_filename = Utils.mktmpfile()
-                f = open(tmp_filename, "w")
-                f.write("\n".join(paths)+"\n")
+                f = open(deunicodise(tmp_filename), "w")
+                f.write(deunicodise("\n".join(paths)+"\n"))
                 f.close()
                 warning("Request to invalidate %d paths (max 999 supported)" % len(paths))
                 warning("All the paths are now saved in: %s" % tmp_filename)

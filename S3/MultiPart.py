@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 ## Amazon S3 Multipart upload support
 ## Author: Jerome Leclanche <jerome.leclanche@gmail.com>
 ## License: GPL Version 2
@@ -6,7 +8,7 @@ import os
 import sys
 from stat import ST_SIZE
 from logging import debug, info, warning, error
-from Utils import getTextFromXml, getTreeFromXml, formatSize, unicodise, calculateChecksum, parseNodes
+from Utils import getTextFromXml, getTreeFromXml, formatSize, deunicodise, calculateChecksum, parseNodes, encode_to_s3
 from Exceptions import S3UploadError
 
 class MultiPartUpload(object):
@@ -86,7 +88,7 @@ class MultiPartUpload(object):
         self.chunk_size = self.s3.config.multipart_chunk_size_mb * 1024 * 1024
 
         if self.file.name != "<stdin>":
-                size_left = file_size = os.stat(self.file.name)[ST_SIZE]
+                size_left = file_size = os.stat(deunicodise(self.file.name))[ST_SIZE]
                 nr_parts = file_size / self.chunk_size + (file_size % self.chunk_size and 1)
                 debug("MultiPart: Uploading %s in %d parts" % (self.file.name, nr_parts))
         else:
@@ -103,8 +105,8 @@ class MultiPartUpload(object):
                 current_chunk_size = min(file_size - offset, self.chunk_size)
                 size_left -= current_chunk_size
                 labels = {
-                    'source' : unicodise(self.file.name),
-                    'destination' : unicodise(self.uri.uri()),
+                    'source' : self.file.name,
+                    'destination' : self.uri.uri(),
                     'extra' : "[part %d of %d, %s]" % (seq, nr_parts, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
                 }
                 try:
@@ -120,8 +122,8 @@ class MultiPartUpload(object):
                 offset = 0 # send from start of the buffer
                 current_chunk_size = len(buffer)
                 labels = {
-                    'source' : unicodise(self.file.name),
-                    'destination' : unicodise(self.uri.uri()),
+                    'source' : self.file.name,
+                    'destination' : self.uri.uri(),
                     'extra' : "[part %d, %s]" % (seq, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
                 }
                 if len(buffer) == 0: # EOF
@@ -160,7 +162,7 @@ class MultiPartUpload(object):
                         % (int(remote_status['size']), chunk_size, self.uri, seq))
 
         headers = { "content-length": str(chunk_size) }
-        query_string = "?partNumber=%i&uploadId=%s" % (seq, self.upload_id)
+        query_string = "?partNumber=%i&uploadId=%s" % (seq, encode_to_s3(self.upload_id))
         request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
         response = self.s3.send_file(request, self.file, labels, buffer, offset = offset, chunk_size = chunk_size)
         self.parts[seq] = response["headers"]["etag"]
@@ -180,7 +182,7 @@ class MultiPartUpload(object):
         body = "<CompleteMultipartUpload>%s</CompleteMultipartUpload>" % ("".join(parts_xml))
 
         headers = { "content-length": str(len(body)) }
-        request = self.s3.create_request("OBJECT_POST", uri = self.uri, headers = headers, extra = "?uploadId=%s" % (self.upload_id), body = body)
+        request = self.s3.create_request("OBJECT_POST", uri = self.uri, headers = headers, extra = "?uploadId=%s" % encode_to_s3(self.upload_id), body = body)
         response = self.s3.send_request(request)
 
         return response
