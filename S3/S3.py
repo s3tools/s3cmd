@@ -1315,6 +1315,11 @@ class S3(object):
             progress.current_position = current_position
 
         try:
+            # Fix for issue #432. Even when content size is 0, httplib expect the response to be read.
+            if size_left == 0:
+                data = http_response.read(1)
+                # It is not supposed to be some data returned in that case
+                assert(len(data) == 0)
             while (current_position < size_total):
                 this_chunk = size_left > self.config.recv_chunk and self.config.recv_chunk or size_left
 
@@ -1323,7 +1328,7 @@ class S3(object):
 
                 data = http_response.read(this_chunk)
                 if len(data) == 0:
-                    raise S3Error("EOF from S3!")
+                    raise S3ResponseError("EOF from S3!")
 
                 #throttle
                 if self.config.limitrate > 0:
