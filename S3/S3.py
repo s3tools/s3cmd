@@ -1328,7 +1328,7 @@ class S3(object):
 
                 data = http_response.read(this_chunk)
                 if len(data) == 0:
-                    raise S3Error("EOF from S3!")
+                    raise S3ResponseError("EOF from S3!")
 
                 #throttle
                 if self.config.limitrate > 0:
