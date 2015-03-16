@@ -61,12 +61,12 @@ def parseNodes(nodes):
     for node in nodes:
         retval_item = {}
         for child in node.getchildren():
-            name = unicode(child.tag)
+            name = decode_from_s3(child.tag)
             if child.getchildren():
                 retval_item[name] = parseNodes([child])
             else:
                 found_text = node.findtext(".//%s" % child.tag)
-                retval_item[name] = unicode(found_text) if found_text is not None else None
+                retval_item[name] = decode_from_s3(found_text) if found_text is not None else None
         retval.append(retval_item)
     return retval
 __all__.append("parseNodes")
@@ -111,8 +111,8 @@ def getDictFromTree(tree):
             ## Complex-type child. Recurse
             content = getDictFromTree(child)
         else:
-            content = unicode(child.text) if child.text is not None else None
-        child_tag = unicode(child.tag)
+            content = decode_from_s3(child.text) if child.text is not None else None
+        child_tag = decode_from_s3(child.tag)
         if ret_dict.has_key(child_tag):
             if not type(ret_dict[child_tag]) == list:
                 ret_dict[child_tag] = [ret_dict[child_tag]]
@@ -125,20 +125,20 @@ __all__.append("getDictFromTree")
 def getTextFromXml(xml, xpath):
     tree = getTreeFromXml(xml)
     if tree.tag.endswith(xpath):
-        return unicode(tree.text) if tree.text is not None else None
+        return decode_from_s3(tree.text) if tree.text is not None else None
     else:
         result = tree.findtext(xpath)
-        return unicode(result) if result is not None else None
+        return decode_from_s3(result) if result is not None else None
 __all__.append("getTextFromXml")
 
 def getRootTagName(xml):
     tree = getTreeFromXml(xml)
-    return unicode(tree.tag) if tree.tag is not None else None
+    return decode_from_s3(tree.tag) if tree.tag is not None else None
 __all__.append("getRootTagName")
 
 def xmlTextNode(tag_name, text):
     el = ET.Element(tag_name)
-    el.text = unicode(text)
+    el.text = decode_from_s3(text)
     return el
 __all__.append("xmlTextNode")
 
@@ -287,7 +287,7 @@ def unicodise(string, encoding = None, errors = "replace"):
         return string
     debug("Unicodising %r using %s" % (string, encoding))
     try:
-        return string.decode(encoding, errors)
+        return unicode(string, encoding, errors)
     except UnicodeDecodeError:
         raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
 __all__.append("unicodise")
@@ -318,6 +318,35 @@ def unicodise_safe(string, encoding = None):
 
     return unicodise(deunicodise(string, encoding), encoding).replace(u'\ufffd', '?')
 __all__.append("unicodise_safe")
+
+def decode_from_s3(string, errors = "replace"):
+    """
+    Convert S3 UTF-8 'string' to Unicode or raise an exception.
+    """
+    if type(string) == unicode:
+        return string
+    # Be quiet by default
+    #debug("Decoding string from S3: %r" % string)
+    try:
+        return unicode(string, "UTF-8", errors)
+    except UnicodeDecodeError:
+        raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
+__all__.append("decode_from_s3")
+
+def encode_to_s3(string, errors = "replace"):
+    """
+    Convert Unicode to S3 UTF-8 'string', by default replacing
+    all invalid characters with '?' or raise an exception.
+    """
+    if type(string) != unicode:
+        return str(string)
+    # Be quiet by default
+    #debug("Encoding string to S3: %r" % string)
+    try:
+        return string.encode("UTF-8", errors)
+    except UnicodeEncodeError:
+        raise UnicodeEncodeError("Conversion from unicode failed: %r" % string)
+__all__.append("encode_to_s3")
 
 def replace_nonprintables(string):
     """

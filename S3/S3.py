@@ -617,7 +617,7 @@ class S3(object):
                 object = saxutils.escape(uri.object())
                 body += u"<Object><Key>%s</Key></Object>" % object
             body += u"</Delete>"
-            body = body.encode('utf-8')
+            body = encode_to_s3(body)
             return body
 
         batch = [remote_list[item]['object_uri_str'] for item in remote_list]
@@ -679,7 +679,7 @@ class S3(object):
         if dst_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
         headers = SortedDict(ignore_case = True)
-        headers['x-amz-copy-source'] = deunicodise("/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object())), encoding="UTF-8")
+        headers['x-amz-copy-source'] = encode_to_s3("/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object())))
         headers['x-amz-metadata-directive'] = "COPY"
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
@@ -711,7 +711,7 @@ class S3(object):
         headers = self._sanitize_headers(headers)
         acl = self.get_acl(src_uri)
 
-        headers['x-amz-copy-source'] = deunicodise("/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object())), encoding="UTF-8")
+        headers['x-amz-copy-source'] = encode_to_s3("/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object())))
         headers['x-amz-metadata-directive'] = "REPLACE"
 
         # cannot change between standard and reduced redundancy with a REPLACE.

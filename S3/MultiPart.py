@@ -8,7 +8,7 @@ import os
 import sys
 from stat import ST_SIZE
 from logging import debug, info, warning, error
-from Utils import getTextFromXml, getTreeFromXml, formatSize, deunicodise, calculateChecksum, parseNodes
+from Utils import getTextFromXml, getTreeFromXml, formatSize, deunicodise, calculateChecksum, parseNodes, encode_to_s3
 from Exceptions import S3UploadError
 
 class MultiPartUpload(object):
@@ -162,7 +162,7 @@ class MultiPartUpload(object):
                         % (int(remote_status['size']), chunk_size, self.uri, seq))
 
         headers = { "content-length": str(chunk_size) }
-        query_string = "?partNumber=%i&uploadId=%s" % (seq, self.upload_id.encode("UTF-8"))
+        query_string = "?partNumber=%i&uploadId=%s" % (seq, encode_to_s3(self.upload_id))
         request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
         response = self.s3.send_file(request, self.file, labels, buffer, offset = offset, chunk_size = chunk_size)
         self.parts[seq] = response["headers"]["etag"]
@@ -182,7 +182,7 @@ class MultiPartUpload(object):
         body = "<CompleteMultipartUpload>%s</CompleteMultipartUpload>" % ("".join(parts_xml))
 
         headers = { "content-length": str(len(body)) }
-        request = self.s3.create_request("OBJECT_POST", uri = self.uri, headers = headers, extra = "?uploadId=%s" % (self.upload_id.encode("UTF-8")), body = body)
+        request = self.s3.create_request("OBJECT_POST", uri = self.uri, headers = headers, extra = "?uploadId=%s" % encode_to_s3(self.upload_id), body = body)
         response = self.s3.send_request(request)
 
         return response

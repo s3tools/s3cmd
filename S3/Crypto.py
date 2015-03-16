@@ -12,7 +12,7 @@ import base64
 
 import Config
 from logging import debug
-import Utils
+from Utils import encode_to_s3, time_to_epoch, deunicodise
 
 import datetime
 import urllib
@@ -56,7 +56,7 @@ __all__.append("sign_url_v2")
 
 def sign_url_base_v2(**parms):
     """Shared implementation of sign_url methods. Takes a hash of 'bucket', 'object' and 'expiry' as args."""
-    parms['expiry']=Utils.time_to_epoch(parms['expiry'])
+    parms['expiry']=time_to_epoch(parms['expiry'])
     parms['access_key']=Config.Config().access_key
     parms['host_base']=Config.Config().host_base
     debug("Expiry interpreted as epoch time %s", parms['expiry'])
@@ -67,10 +67,10 @@ def sign_url_base_v2(**parms):
     return "http://%(bucket)s.%(host_base)s/%(object)s?AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s" % parms
 
 def sign(key, msg):
-    return hmac.new(key, msg.encode('utf-8'), sha256).digest()
+    return hmac.new(key, encode_to_s3(msg), sha256).digest()
 
 def getSignatureKey(key, dateStamp, regionName, serviceName):
-    kDate = sign(('AWS4' + key).encode('utf-8'), dateStamp)
+    kDate = sign(encode_to_s3('AWS4' + key), dateStamp)
     kRegion = sign(kDate, regionName)
     kService = sign(kRegion, serviceName)
     kSigning = sign(kService, 'aws4_request')
@@ -128,7 +128,7 @@ def sign_string_v4(method='GET', host='', canonical_uri='/', params={}, region='
     credential_scope = datestamp + '/' + region + '/' + service + '/' + 'aws4_request'
     string_to_sign = algorithm + '\n' +  amzdate + '\n' +  credential_scope + '\n' +  sha256(canonical_request).hexdigest()
     signing_key = getSignatureKey(secret_key, datestamp, region, service)
-    signature = hmac.new(signing_key, (string_to_sign).encode('utf-8'), sha256).hexdigest()
+    signature = hmac.new(signing_key, encode_to_s3(string_to_sign), sha256).hexdigest()
     authorization_header = algorithm + ' ' + 'Credential=' + access_key + '/' + credential_scope + ',' +  'SignedHeaders=' + signed_headers + ',' + 'Signature=' + signature
     headers = dict(cur_headers.items() + {'x-amz-date':amzdate, 'Authorization':authorization_header, 'x-amz-content-sha256': payload_hash}.items())
     debug("signature-v4 headers: %s" % headers)
@@ -147,7 +147,7 @@ def checksum_sha256_file(filename, offset=0, size=None):
     except:
         # fallback to Crypto SHA256 module
         hash = sha256.new()
-    with open(Utils.deunicodise(filename),'rb') as f:
+    with open(deunicodise(filename),'rb') as f:
         if size is None:
             for chunk in iter(lambda: f.read(8192), b''):
                 hash.update(chunk)
