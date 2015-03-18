@@ -194,10 +194,6 @@ For the most up to date list of options run:
 .br
 For more info about usage, examples and other related info visit project homepage at:
 .B http://s3tools.org
-.SH DONATIONS
-Please consider a donation if you have found s3cmd useful:
-.br
-.B http://s3tools.org/donate
 .SH AUTHOR
 Written by Michal Ludvig and contributors
 .SH CONTACT, SUPPORT

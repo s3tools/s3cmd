@@ -2259,7 +2259,6 @@ def main():
         '"objects" from these buckets.')
     optparser.epilog = format_commands(optparser.get_prog_name(), commands_list)
     optparser.epilog += ("\nFor more information, updates and news, visit the s3cmd website:\n%s\n" % PkgInfo.url)
-    optparser.epilog += ("\nConsider a donation if you have found s3cmd useful:\n%s/donate\n" % PkgInfo.url)
 
     (options, args) = optparser.parse_args()
 
