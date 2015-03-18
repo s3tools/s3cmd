@@ -281,7 +281,7 @@ def cmd_expiration_set(args):
     return EX_OK
 
 def cmd_bucket_delete(args):
-    def _bucket_delete_one(uri):
+    def _bucket_delete_one(uri, retry=True):
         try:
             response = s3.bucket_delete(uri.bucket())
             output(u"Bucket '%s' removed" % uri.uri())
@@ -291,11 +291,11 @@ def cmd_bucket_delete(args):
                     return EX_OK
                 else:
                     return EX_USAGE
-            if e.info['Code'] == 'BucketNotEmpty' and (cfg.force or cfg.recursive):
+            if e.info['Code'] == 'BucketNotEmpty' and retry and (cfg.force or cfg.recursive):
                 warning(u"Bucket is not empty. Removing all the objects from it first. This may take some time...")
                 rc = subcmd_batch_del(uri_str = uri.uri())
                 if rc == EX_OK:
-                    return _bucket_delete_one(uri)
+                    return _bucket_delete_one(uri, False)
                 else:
                     output(u"Bucket was not removed")
             elif S3.codes.has_key(e.info["Code"]):
@@ -365,6 +365,7 @@ def cmd_object_put(args):
         return EX_OK
 
     seq = 0
+    ret = EX_OK
     for key in local_list:
         seq += 1
 
@@ -384,9 +385,11 @@ def cmd_object_put(args):
             response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label)
         except S3UploadError, e:
             error(u"Upload of '%s' failed too many times. Skipping that file." % full_name_orig)
+            ret = EX_SOMEFAILED
             continue
         except InvalidFileError, e:
             warning(u"File can not be uploaded: %s" % e)
+            ret = EX_SOMEFAILED
             continue
         if response is not None:
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
@@ -400,7 +403,7 @@ def cmd_object_put(args):
         if Config().encrypt and full_name != full_name_orig:
             debug(u"Removing temporary encrypted file: %s" % full_name)
             os.remove(deunicodise(full_name))
-    return EX_OK
+    return ret
 
 def cmd_object_get(args):
     cfg = Config()
