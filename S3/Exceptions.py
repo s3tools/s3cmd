@@ -7,14 +7,8 @@
 ## Copyright: TGRMN Software and contributors
 
 from Utils import getTreeFromXml, unicodise, deunicodise
-from logging import debug, info, warning, error
+from logging import debug, error
 import ExitCodes
-
-try:
-    import xml.etree.ElementTree as ET
-except ImportError:
-    # xml.etree.ElementTree was only added in python 2.5
-    import elementtree.ElementTree as ET
 
 try:
     from xml.etree.ElementTree import ParseError as XmlParseError

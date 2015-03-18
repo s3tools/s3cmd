@@ -11,12 +11,8 @@ import os
 import time
 import errno
 import base64
-import httplib
-import logging
 import mimetypes
-import re
 from xml.sax import saxutils
-import base64
 from logging import debug, info, warning, error
 from stat import ST_SIZE
 from urllib import quote_plus
@@ -357,7 +353,6 @@ class S3(object):
         return response
 
     def website_info(self, uri, bucket_location = None):
-        headers = SortedDict(ignore_case = True)
         bucket = uri.bucket()
 
         request = self.create_request("BUCKET_LIST", bucket = bucket, extra="?website")
@@ -376,7 +371,6 @@ class S3(object):
             raise
 
     def website_create(self, uri, bucket_location = None):
-        headers = SortedDict(ignore_case = True)
         bucket = uri.bucket()
         body = '<WebsiteConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
         body += '  <IndexDocument>'
@@ -395,7 +389,6 @@ class S3(object):
         return response
 
     def website_delete(self, uri, bucket_location = None):
-        headers = SortedDict(ignore_case = True)
         bucket = uri.bucket()
 
         request = self.create_request("BUCKET_DELETE", bucket = bucket, extra="?website")
@@ -408,7 +401,6 @@ class S3(object):
         return response
 
     def expiration_info(self, uri, bucket_location = None):
-        headers = SortedDict(ignore_case = True)
         bucket = uri.bucket()
 
         request = self.create_request("BUCKET_LIST", bucket = bucket, extra="?lifecycle")
@@ -729,7 +721,7 @@ class S3(object):
         request = self.create_request("OBJECT_PUT", uri = src_uri, headers = headers)
         response = self.send_request(request)
 
-        acl_response = self.set_acl(src_uri, acl)
+        self.set_acl(src_uri, acl)
 
         return response
 
@@ -737,7 +729,7 @@ class S3(object):
         response_copy = self.object_copy(src_uri, dst_uri, extra_headers)
         debug("Object %s copied to %s" % (src_uri, dst_uri))
         if getRootTagName(response_copy["data"]) == "CopyObjectResult":
-            response_delete = self.object_delete(src_uri)
+            self.object_delete(src_uri)
             debug("Object %s deleted" % src_uri)
         return response_copy
 
@@ -766,9 +758,9 @@ class S3(object):
 
         headers = {'content-type': 'application/xml'}
         if uri.has_object():
-            request = self.create_request("OBJECT_PUT", uri = uri, extra = "?acl", body = body)
+            request = self.create_request("OBJECT_PUT", uri = uri, extra = "?acl", headers = headers, body = body)
         else:
-            request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(), extra = "?acl", body = body)
+            request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(), extra = "?acl", headers = headers, body = body)
 
         response = self.send_request(request)
         return response
@@ -1192,7 +1184,6 @@ class S3(object):
         return response
 
     def send_file_multipart(self, file, headers, uri, size):
-        chunk_size = self.config.multipart_chunk_size_mb * 1024 * 1024
         timestamp_start = time.time()
         upload = MultiPartUpload(self, file, uri, headers)
         upload.upload_all_parts()

@@ -7,7 +7,6 @@
 ## Copyright: TGRMN Software and contributors
 
 from BidirMap import BidirMap
-import Utils
 
 class SortedDictIterator(object):
     def __init__(self, sorted_dict, keys):

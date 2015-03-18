@@ -9,10 +9,7 @@
 import os
 import re
 import sys
-from BidirMap import BidirMap
-from logging import debug
-import S3
-from Utils import unicodise, deunicodise, check_bucket_name_dns_conformity, check_bucket_name_dns_support
+from Utils import unicodise, deunicodise, check_bucket_name_dns_support
 import Config
 
 class S3Uri(object):
@@ -34,7 +31,7 @@ class S3Uri(object):
                 instance = object.__new__(subclass)
                 instance.__init__(string)
                 return instance
-            except ValueError, e:
+            except ValueError:
                 continue
         raise ValueError("%s: not a recognized URI" % string)
 

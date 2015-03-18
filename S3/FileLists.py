@@ -14,12 +14,11 @@ from Utils import *
 from Exceptions import ParameterError
 from HashCache import HashCache
 
-from logging import debug, info, warning, error
+from logging import debug, info, warning
 
 import os
 import sys
 import glob
-import copy
 import re
 import errno
 
@@ -513,7 +512,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
             try:
                 src_md5 = src_list.get_md5(file)
                 dst_md5 = dst_list.get_md5(file)
-            except (IOError,OSError), e:
+            except (IOError,OSError):
                 # md5 sum verification failed - ignore that file altogether
                 debug(u"IGNR: %s (disappeared)" % (file))
                 warning(u"%s: file disappeared, ignoring." % (file))
@@ -553,7 +552,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates 
 
             try:
                 same_file = _compare(src_list, dst_list, src_remote, dst_remote, relative_file)
-            except (IOError,OSError), e:
+            except (IOError,OSError):
                 debug(u"IGNR: %s (disappeared)" % (relative_file))
                 warning(u"%s: file disappeared, ignoring." % (relative_file))
                 del(src_list[relative_file])

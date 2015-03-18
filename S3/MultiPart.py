@@ -9,7 +9,6 @@ import sys
 from stat import ST_SIZE
 from logging import debug, info, warning, error
 from Utils import getTextFromXml, getTreeFromXml, formatSize, deunicodise, calculateChecksum, parseNodes, encode_to_s3
-from Exceptions import S3UploadError
 
 class MultiPartUpload(object):
 

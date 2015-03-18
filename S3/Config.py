@@ -7,7 +7,7 @@
 ## Copyright: TGRMN Software and contributors
 
 import logging
-from logging import debug, info, warning, error
+from logging import debug, warning, error
 import re
 import os
 import sys
@@ -17,7 +17,7 @@ import httplib
 import locale
 try:
     import json
-except ImportError, e:
+except ImportError:
     pass
 
 class Config(object):
@@ -132,7 +132,7 @@ class Config(object):
         if configfile:
             try:
                 self.read_config_file(configfile)
-            except IOError, e:
+            except IOError:
                 if 'AWS_CREDENTIAL_FILE' in os.environ:
                     self.env_config()
 
@@ -260,7 +260,7 @@ class Config(object):
             # support integer verboisities
             try:
                 value = int(value)
-            except ValueError, e:
+            except ValueError:
                 try:
                     # otherwise it must be a key known to the logging module
                     value = logging._levelNames[value]
@@ -295,7 +295,7 @@ class Config(object):
         elif type(getattr(Config, option)) is type(42):     # int
             try:
                 value = int(value)
-            except ValueError, e:
+            except ValueError:
                 error("Config: value of option '%s' must be an integer, not '%s'" % (option, value))
                 return
 

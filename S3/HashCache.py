@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import cPickle as pickle
+from Utils import deunicodise
 
 class HashCache(object):
     def __init__(self):
@@ -48,7 +49,7 @@ class HashCache(object):
     def save(self, f):
         d = dict(inodes=self.inodes, version=1)
         f = open(deunicodise(f), 'w')
-        p = pickle.dump(d, f)
+        pickle.dump(d, f)
         f.close()
 
     def load(self, f):

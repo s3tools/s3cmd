@@ -8,7 +8,6 @@
 
 import sys
 import time
-import httplib
 import random
 from datetime import datetime
 from logging import debug, info, warning, error
@@ -24,7 +23,6 @@ from Exceptions import *
 from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, getBucketFromHostname, getHostnameFromBucket, deunicodise
 from Crypto import sign_string_v2
 from S3Uri import S3Uri, S3UriS3
-from FileLists import fetch_remote_list
 from ConnMan import ConnMan
 
 cloudfront_api_version = "2010-11-01"
@@ -725,7 +723,7 @@ class Cmd(object):
             raise ParameterError("Too many parameters. Modify one Distribution at a time.")
         try:
             cfuri = Cmd._parse_args(args)[0]
-        except IndexError, e:
+        except IndexError:
             raise ParameterError("No valid Distribution URI found.")
         response = cf.ModifyDistribution(cfuri,
                                          cnames_add = Cmd.options.cf_cnames_add,
