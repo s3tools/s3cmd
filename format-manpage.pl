@@ -19,6 +19,7 @@ while (<>) {
 			($desc = $_) =~ s/^\s*(.*?)\s*$/$1/;
 			($cmdline = <>) =~ s/^\s*s3cmd (.*?) (.*?)\s*$/s3cmd \\fB$1\\fR \\fI$2\\fR/;
 			$cmd = $1;
+			$cmdline =~ s/-/\\-/g;
 			if ($cmd =~ /^cf/) {
 				$cfcommands .= ".TP\n$cmdline\n$desc\n";
 			} elsif ($cmd =~ /^ws/) {
@@ -41,11 +42,16 @@ while (<>) {
 					($opt, $desc) = split(/\s\s+/, $opt, 2);
 				}
 				$opt =~ s/(-[^ ,=\.]+)/\\fB$1\\fR/g;
+				# escape all single dashes
 				$opt =~ s/-/\\-/g;
 				$options .= ".TP\n$opt\n";
 			} else {
 				$_ =~ s/\s*(.*?)\s*$/$1/;
 				$_ =~ s/(--[^ ,=\.]+)/\\fB$1\\fR/g;
+				# escape word 'Cache-Control'
+				$_ =~ s/'(\S+-\S+)'/\\&'$1'/g;
+				# escape all single dashes
+				$_ =~ s/-/\\-/g;
 				$desc .= $_;
 			}
 			if ($desc) {
@@ -55,8 +61,8 @@ while (<>) {
 	}
 }
 print "
-.\\\" !!! IMPORTANT: This file is generated from s3cmd --help output using format-manpage.pl
-.\\\" !!!            Do your changes either in s3cmd file or in 'format-manpage.pl' otherwise
+.\\\" !!! IMPORTANT: This file is generated from s3cmd \\-\\-help output using format-manpage.pl
+.\\\" !!!            Do your changes either in s3cmd file or in 'format\\-manpage.pl' otherwise
 .\\\" !!!            they will be overwritten!
 
 .TH s3cmd 1
@@ -104,11 +110,11 @@ synchronising complete directory trees to or from remote S3 storage. To some ext
 .PP
 Basic usage common in backup scenarios is as simple as:
 .nf
-	s3cmd sync /local/path/ s3://test-bucket/backup/
+	s3cmd sync /local/path/ s3://test\\-bucket/backup/
 .fi
 .PP
 This command will find all files under /local/path directory and copy them 
-to corresponding paths under s3://test-bucket/backup on the remote side.
+to corresponding paths under s3://test\\-bucket/backup on the remote side.
 For example:
 .nf
 	/local/path/\\fBfile1.ext\\fR         \\->  s3://bucket/backup/\\fBfile1.ext\\fR
@@ -118,7 +124,7 @@ For example:
 However if the local path doesn't end with a slash the last directory's name
 is used on the remote side as well. Compare these with the previous example:
 .nf
-	s3cmd sync /local/path s3://test-bucket/backup/
+	s3cmd sync /local/path s3://test\\-bucket/backup/
 .fi
 will sync:
 .nf
@@ -128,7 +134,7 @@ will sync:
 .PP
 To retrieve the files back from S3 use inverted syntax:
 .nf
-	s3cmd sync s3://test-bucket/backup/ /tmp/restore/
+	s3cmd sync s3://test\\-bucket/backup/ /tmp/restore/
 .fi
 that will download files:
 .nf
@@ -139,7 +145,7 @@ that will download files:
 Without the trailing slash on source the behaviour is similar to 
 what has been demonstrated with upload:
 .nf
-	s3cmd sync s3://test-bucket/backup /tmp/restore/
+	s3cmd sync s3://test\\-bucket/backup /tmp/restore/
 .fi
 will download the files as:
 .nf
@@ -155,8 +161,8 @@ For the purpose of \\fB\\-\\-exclude\\fR and \\fB\\-\\-include\\fR matching only
 bold file names above are used. For instance only \\fBpath/file1.ext\\fR is tested
 against the patterns, not \\fI/local/\\fBpath/file1.ext\\fR
 .PP
-Both \\fB\\-\\-exclude\\fR and \\fB\\-\\-include\\fR work with shell-style wildcards (a.k.a. GLOB).
-For a greater flexibility s3cmd provides Regular-expression versions of the two exclude options 
+Both \\fB\\-\\-exclude\\fR and \\fB\\-\\-include\\fR work with shell\\-style wildcards (a.k.a. GLOB).
+For a greater flexibility s3cmd provides Regular\\-expression versions of the two exclude options 
 named \\fB\\-\\-rexclude\\fR and \\fB\\-\\-rinclude\\fR. 
 The options with ...\\fB\\-from\\fR suffix (eg \\-\\-rinclude\\-from) expect a filename as
 an argument. Each line of such a file is treated as one pattern.
@@ -171,7 +177,7 @@ about matching file names against exclude and include rules.
 .PP
 For example to exclude all files with \".jpg\" extension except those beginning with a number use:
 .PP
-	\\-\\-exclude '*.jpg' \\-\\-rinclude '[0-9].*\\.jpg'
+	\\-\\-exclude '*.jpg' \\-\\-rinclude '[0\\-9].*\\.jpg'
 .PP
 To exclude all files except \"*.jpg\" extension, use:
 .PP
@@ -206,7 +212,7 @@ or visit the project homepage:
 Report bugs to 
 .I s3tools\\-bugs\@lists.sourceforge.net
 .SH COPYRIGHT
-Copyright \\(co 2007-2014 TGRMN Software - http://www.tgrmn.com - and contributors
+Copyright \\(co 2007\\-2014 TGRMN Software \\- http://www.tgrmn.com \\- and contributors
 .br
 .SH LICENSE
 This program is free software; you can redistribute it and/or modify
