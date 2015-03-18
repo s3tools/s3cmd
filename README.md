@@ -268,15 +268,15 @@ part is empty and s3cmd will only create 'dir1' and 'dir2'
 without the 'somewhere/' prefix:
 
 ```
-$ s3cmd get --recursive s3://public.s3tools.org/somewhere /tmp
+$ s3cmd get --recursive s3://public.s3tools.org/somewhere ~/
 
-File s3://public.s3tools.org/somewhere/dir1/file1-1.txt saved as '/tmp/dir1/file1-1.txt'
-File s3://public.s3tools.org/somewhere/dir1/file1-2.txt saved as '/tmp/dir1/file1-2.txt'
-File s3://public.s3tools.org/somewhere/dir1/file1-3.log saved as '/tmp/dir1/file1-3.log'
-File s3://public.s3tools.org/somewhere/dir2/file2-1.bin saved as '/tmp/dir2/file2-1.bin'
+File s3://public.s3tools.org/somewhere/dir1/file1-1.txt saved as '~/dir1/file1-1.txt'
+File s3://public.s3tools.org/somewhere/dir1/file1-2.txt saved as '~/dir1/file1-2.txt'
+File s3://public.s3tools.org/somewhere/dir1/file1-3.log saved as '~/dir1/file1-3.log'
+File s3://public.s3tools.org/somewhere/dir2/file2-1.bin saved as '~/dir2/file2-1.bin'
 ```
 
-See? It's `/tmp/dir1` and not `/tmp/somewhere/dir1` as it was in the previous example.
+See? It's `~/dir1` and not `~/somewhere/dir1` as it was in the previous example.
 
 10) Clean up - delete the remote files and remove the bucket:
 

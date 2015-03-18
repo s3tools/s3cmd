@@ -50,7 +50,7 @@ s3cmd \fBrestore\fR \fIs3://BUCKET/OBJECT\fR
 Restore file from Glacier storage
 .TP
 s3cmd \fBsync\fR \fILOCAL_DIR s3://BUCKET[/PREFIX] or s3://BUCKET[/PREFIX] LOCAL_DIR\fR
-Synchronize a directory tree to S3 (checks files freshness using size and md5 checksum, unless overriden by options, see below)
+Synchronize a directory tree to S3 (checks files freshness using size and md5 checksum, unless overridden by options, see below)
 .TP
 s3cmd \fBdu\fR \fI[s3://BUCKET[/PREFIX]]\fR
 Disk usage by buckets
@@ -88,7 +88,7 @@ List parts of a multipart upload
 s3cmd \fBaccesslog\fR \fIs3://BUCKET\fR
 Enable/disable bucket access logging
 .TP
-s3cmd \fBsign\fR \fISTRING-TO-SIGN\fR
+s3cmd \fBsign\fR \fISTRING\-TO\-SIGN\fR
 Sign arbitrary string using the secret key
 .TP
 s3cmd \fBsignurl\fR \fIs3://BUCKET/OBJECT <expiry_epoch|+expiry_offset>\fR
@@ -156,7 +156,7 @@ show this help message and exit
 .TP
 \fB\-\-configure\fR
 Invoke interactive (re)configuration tool. Optionally
-use as '\fB--configure\fR s3://some-bucket' to test access
+use as '\fB\-\-configure\fR s3://some-bucket' to test access
 to a specific bucket instead of attempting to list
 them all.
 .TP
@@ -286,29 +286,29 @@ Filenames and paths matching GLOB will be excluded
 from sync
 .TP
 \fB\-\-exclude\-from\fR=FILE
-Read --exclude GLOBs from FILE
+Read \-\-exclude GLOBs from FILE
 .TP
 \fB\-\-rexclude\fR=REGEXP
 Filenames and paths matching REGEXP (regular
 expression) will be excluded from sync
 .TP
 \fB\-\-rexclude\-from\fR=FILE
-Read --rexclude REGEXPs from FILE
+Read \-\-rexclude REGEXPs from FILE
 .TP
 \fB\-\-include\fR=GLOB
 Filenames and paths matching GLOB will be included
 even if previously excluded by one of
-\fB--(r)exclude(-from)\fR patterns
+\fB\-\-(r)exclude(\-from)\fR patterns
 .TP
 \fB\-\-include\-from\fR=FILE
-Read --include GLOBs from FILE
+Read \-\-include GLOBs from FILE
 .TP
 \fB\-\-rinclude\fR=REGEXP
-Same as --include but uses REGEXP (regular expression)
+Same as \-\-include but uses REGEXP (regular expression)
 instead of GLOB
 .TP
 \fB\-\-rinclude\-from\fR=FILE
-Read --rinclude REGEXPs from FILE
+Read \-\-rinclude REGEXPs from FILE
 .TP
 \fB\-\-ignore\-failed\-copy\fR
 Don't exit unsuccessfully because of missing keys
@@ -344,9 +344,9 @@ Default MIME-type for stored objects. Application
 default is binary/octet-stream.
 .TP
 \fB\-M\fR, \fB\-\-guess\-mime\-type\fR
-Guess MIME-type of files by their extension or mime
-magic. Fall back to default MIME-Type as specified by
-\fB--default-mime-type\fR option
+Guess MIME\-type of files by their extension or mime
+magic. Fall back to default MIME\-Type as specified by
+\fB\-\-default-mime-type\fR option
 .TP
 \fB\-\-no\-guess\-mime\-type\fR
 Don't guess MIME-type and use the default type
@@ -356,13 +356,13 @@ instead.
 Don't use mime magic when guessing MIME-type.
 .TP
 \fB\-m\fR MIME/TYPE, \fB\-\-mime\-type\fR=MIME/TYPE
-Force MIME-type. Override both \fB--default-mime-type\fR and
-\fB--guess-mime-type\fR.
+Force MIME\-type. Override both \fB\-\-default\-mime\-type\fR
+and \fB\-\-guess\-mime\-type\fR.
 .TP
 \fB\-\-add\-header\fR=NAME:VALUE
 Add a given HTTP header to the upload request. Can be
 used multiple times. For instance set 'Expires' or
-'Cache-Control' headers (or both) using this option.
+\&'Cache-Control' headers (or both) using this option.
 .TP
 \fB\-\-remove\-header\fR=NAME
 Remove a given HTTP header.  Can be used multiple
