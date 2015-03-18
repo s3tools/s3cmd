@@ -134,23 +134,23 @@ will sync:
 .PP
 To retrieve the files back from S3 use inverted syntax:
 .nf
-	s3cmd sync s3://test\\-bucket/backup/ /tmp/restore/
+	s3cmd sync s3://test\\-bucket/backup/ ~/restore/
 .fi
 that will download files:
 .nf
-	s3://bucket/backup/\\fBfile1.ext\\fR         \\->  /tmp/restore/\\fBfile1.ext\\fR       
-	s3://bucket/backup/\\fBdir123/file2.bin\\fR  \\->  /tmp/restore/\\fBdir123/file2.bin\\fR
+	s3://bucket/backup/\\fBfile1.ext\\fR         \\->  ~/restore/\\fBfile1.ext\\fR
+	s3://bucket/backup/\\fBdir123/file2.bin\\fR  \\->  ~/restore/\\fBdir123/file2.bin\\fR
 .fi
 .PP
 Without the trailing slash on source the behaviour is similar to 
 what has been demonstrated with upload:
 .nf
-	s3cmd sync s3://test\\-bucket/backup /tmp/restore/
+	s3cmd sync s3://test\\-bucket/backup ~/restore/
 .fi
 will download the files as:
 .nf
-	s3://bucket/\\fBbackup/file1.ext\\fR         \\->  /tmp/restore/\\fBbackup/file1.ext\\fR       
-	s3://bucket/\\fBbackup/dir123/file2.bin\\fR  \\->  /tmp/restore/\\fBbackup/dir123/file2.bin\\fR
+	s3://bucket/\\fBbackup/file1.ext\\fR         \\->  ~/restore/\\fBbackup/file1.ext\\fR
+	s3://bucket/\\fBbackup/dir123/file2.bin\\fR  \\->  ~/restore/\\fBbackup/dir123/file2.bin\\fR
 .fi
 .PP
 All source file names, the bold ones above, are matched against \\fBexclude\\fR 
