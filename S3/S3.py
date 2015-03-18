@@ -591,7 +591,7 @@ class S3(object):
         if uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
         request = self.create_request("OBJECT_GET", uri = uri)
-        labels = { 'source' : uri.uri(), 'destination' : stream.name, 'extra' : extra_label }
+        labels = { 'source' : uri.uri(), 'destination' : unicodise(stream.name), 'extra' : extra_label }
         response = self.recv_file(request, stream, labels, start_position)
         return response
 
@@ -1029,16 +1029,17 @@ class S3(object):
                 S3Request.region_map[request.resource['bucket']] = region
 
         size_left = size_total = long(headers["content-length"])
+        filename = unicodise(file.name)
         if self.config.progress_meter:
             progress = self.config.progress_class(labels, size_total)
         else:
-            info("Sending file '%s', please wait..." % file.name)
+            info("Sending file '%s', please wait..." % filename)
         timestamp_start = time.time()
 
         if buffer:
             sha256_hash = checksum_sha256_buffer(buffer, offset, size_total)
         else:
-            sha256_hash = checksum_sha256_file(file.name, offset, size_total)
+            sha256_hash = checksum_sha256_file(filename, offset, size_total)
         request.body = sha256_hash
         method_string, resource, headers = request.get_triplet()
         try:
@@ -1066,7 +1067,7 @@ class S3(object):
 
         try:
             while (size_left > 0):
-                #debug("SendFile: Reading up to %d bytes from '%s' - remaining bytes: %s" % (self.config.send_chunk, file.name, size_left))
+                #debug("SendFile: Reading up to %d bytes from '%s' - remaining bytes: %s" % (self.config.send_chunk, filename, size_left))
                 l = min(self.config.send_chunk, size_left)
                 if buffer == '':
                     data = file.read(l)
@@ -1115,7 +1116,7 @@ class S3(object):
                 # Connection error -> same throttle value
                 return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
             else:
-                debug("Giving up on '%s' %s" % (file.name, e))
+                debug("Giving up on '%s' %s" % (filename, e))
                 raise S3UploadError("Upload failed for: %s" % resource['uri'])
 
         timestamp_end = time.time()
@@ -1165,7 +1166,7 @@ class S3(object):
                     time.sleep(self._fail_wait(retries))
                     return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
                 else:
-                    warning("Too many failures. Giving up on '%s'" % (file.name))
+                    warning("Too many failures. Giving up on '%s'" % (filename))
                     raise S3UploadError
 
             ## Non-recoverable error
@@ -1175,10 +1176,10 @@ class S3(object):
         if response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
             warning("MD5 Sums don't match!")
             if retries:
-                warning("Retrying upload of %s" % (file.name))
+                warning("Retrying upload of %s" % (filename))
                 return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
             else:
-                warning("Too many failures. Giving up on '%s'" % (file.name))
+                warning("Too many failures. Giving up on '%s'" % (filename))
                 raise S3UploadError
 
         return response
@@ -1196,10 +1197,11 @@ class S3(object):
 
     def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
         method_string, resource, headers = request.get_triplet()
+        filename = unicodise(stream.name)
         if self.config.progress_meter:
             progress = self.config.progress_class(labels, 0)
         else:
-            info("Receiving file '%s', please wait..." % stream.name)
+            info("Receiving file '%s', please wait..." % filename)
         timestamp_start = time.time()
         try:
             conn = ConnMan.get(self.get_hostname(resource['bucket']))
@@ -1334,10 +1336,10 @@ class S3(object):
         else:
             # Otherwise try to compute MD5 of the output file
             try:
-                response["md5"] = hash_file_md5(stream.name)
+                response["md5"] = hash_file_md5(filename)
             except IOError, e:
                 if e.errno != errno.ENOENT:
-                    warning("Unable to open file: %s: %s" % (stream.name, e))
+                    warning("Unable to open file: %s: %s" % (filename, e))
                 warning("Unable to verify MD5. Assume it matches.")
                 response["md5"] = response["headers"]["etag"]
 
