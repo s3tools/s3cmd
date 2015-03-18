@@ -197,7 +197,7 @@ Minor features and bugfixes:
 * Don't print nasty backtrace on KeyboardInterrupt.
 * Should work fine on non-UTF8 systems, provided all
   the files are in current system encoding.
-* System encoding can be overriden using --encoding.
+* System encoding can be overridden using --encoding.
 * Improved resistance to communication errors (Connection 
   reset by peer, etc.)
 
