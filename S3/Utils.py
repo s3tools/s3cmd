@@ -358,7 +358,7 @@ def replace_nonprintables(string):
         if (o <= 31):
             new_string += "^" + chr(ord('@') + o)
             modified += 1
-        elif (o == 127):
+        elif (o == 127) or (u'\ud800' <= c <= u'\udfff') or (c == u'\ufffE') or (c == u'\uffff') or (c >= u'\u110000'):
             new_string += "^?"
             modified += 1
         else:
