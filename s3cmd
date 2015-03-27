@@ -930,7 +930,7 @@ def cmd_sync_remote2remote(args):
     failed_copy_count = len (failed_copy_files)
     for key in failed_copy_files:
         failed_copy_files[key]['target_uri'] = destination_base + key
-    seq = _upload(failed_copy_files, seq, failed_copy_count)
+    seq = _upload(failed_copy_files, seq, src_count + update_count + failed_copy_count)
 
     total_elapsed = max(1.0, time.time() - timestamp_start)
     outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s" % (seq, total_elapsed, seq/total_elapsed)
@@ -1412,7 +1412,7 @@ def cmd_sync_local2remote(args):
         debug("Process files that was not remote copied")
         failed_copy_count = len(failed_copy_files)
         _set_remote_uri(failed_copy_files, destination_base, single_file_local)
-        n, total_size = _upload(failed_copy_files, n, failed_copy_count, total_size)
+        n, total_size = _upload(failed_copy_files, n, upload_count + failed_copy_count, total_size)
 
         if cfg.delete_removed and cfg.delete_after and remote_list:
             subcmd_batch_del(remote_list = remote_list)
