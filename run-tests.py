@@ -639,6 +639,23 @@ test_s3cmd("Get current expiration setting", ['info', pbucket(1)],
 test_s3cmd("Delete expiration rule", ['expire', pbucket(1)],
     must_find = [ "Bucket '%s/': expiration configuration is deleted." % pbucket(1)])
 
+## ====== set Requester Pays flag
+test_s3cmd("Set requester pays", ['payer', '--requester-pays', pbucket(2)])
+
+## ====== get Requester Pays flag
+test_s3cmd("Get requester pays flag", ['info', pbucket(2)],
+    must_find = [ "Payer: Requester"])
+
+## ====== ls using Requester Pays flag
+test_s3cmd("ls using requester pays flag", ['ls', '--requester-pays', pbucket(2)])
+
+## ====== clear Requester Pays flag
+test_s3cmd("Clear requester pays", ['payer', pbucket(2)])
+
+## ====== get Requester Pays flag
+test_s3cmd("Get requester pays flag", ['info', pbucket(2)],
+    must_find = [ "Payer: BucketOwner"])
+
 ## ====== Recursive delete maximum exceeed
 test_s3cmd("Recursive delete maximum exceeded", ['del', '--recursive', '--max-delete=1', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],
     must_not_find = [ "File %s/xyz/etc/TypeRa.ttf deleted" % pbucket(1) ])
