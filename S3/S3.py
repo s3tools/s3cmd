@@ -1214,6 +1214,8 @@ class S3(object):
         return response
 
     def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
+        if self.config.requester_pays:
+            request.headers['x-amz-request-payer'] = 'requester'
         method_string, resource, headers = request.get_triplet()
         filename = unicodise(stream.name)
         if self.config.progress_meter:

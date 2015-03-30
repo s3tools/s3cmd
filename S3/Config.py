@@ -121,6 +121,7 @@ class Config(object):
     expiry_prefix = ""
     signature_v2 = False
     limitrate = 0
+    requester_pays = False
 
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None):
