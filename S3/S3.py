@@ -346,10 +346,16 @@ class S3(object):
             location = "eu-west-1"
         return location
 
+    def get_bucket_requester_pays(self, uri):
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?requestPayment")
+        response = self.send_request(request)
+        payer = getTextFromXml(response['data'], "Payer")
+        return payer
+
     def bucket_info(self, uri):
-        # For now reports only "Location". One day perhaps more.
         response = {}
         response['bucket-location'] = self.get_bucket_location(uri)
+        response['requester-pays'] = self.get_bucket_requester_pays(uri)
         return response
 
     def website_info(self, uri, bucket_location = None):

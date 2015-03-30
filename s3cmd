@@ -800,6 +800,7 @@ def cmd_info(args):
                 info = s3.bucket_info(uri)
                 output(u"%s (bucket):" % uri.uri())
                 output(u"   Location:  %s" % info['bucket-location'])
+                output(u"   Payer: %s" % info['requester-pays'])
                 try:
                     expiration = s3.expiration_info(uri, cfg.bucket_location)
                     expiration_desc = "Expiration Rule: "
