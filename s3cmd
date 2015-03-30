@@ -800,6 +800,7 @@ def cmd_info(args):
                 info = s3.bucket_info(uri)
                 output(u"%s (bucket):" % uri.uri())
                 output(u"   Location:  %s" % info['bucket-location'])
+                output(u"   Payer: %s" % info['requester-pays'])
                 try:
                     expiration = s3.expiration_info(uri, cfg.bucket_location)
                     expiration_desc = "Expiration Rule: "
@@ -2256,6 +2257,7 @@ def main():
     optparser.add_option("--no-check-certificate", dest="check_ssl_certificate", action="store_false", help="Check SSL certificate validity")
     optparser.add_option("--signature-v2", dest="signature_v2", action="store_true", help="Use AWS Signature version 2 instead of newer signature methods. Helpful for S3-like systems that don't have AWS Signature v4 yet.")
     optparser.add_option("--limit-rate", dest="limitrate", action="store", type="string", help="Limit the upload or download speed to amount bytes per second.  Amount may be expressed in bytes, kilobytes with the k suffix, or megabytes with the m suffix")
+    optparser.add_option("--requester-pays", dest="requester_pays", action="store_true", help="Download files from a REQUESTER PAYS-configured bucket")
 
     optparser.set_usage(optparser.usage + " COMMAND [parameters]")
     optparser.set_description('S3cmd is a tool for managing objects in '+

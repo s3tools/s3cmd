@@ -114,6 +114,12 @@ class S3Request(object):
         self.method_string = method_string
         self.params = params
         self.body = body
+        self.set_requester_pays()
+
+    def set_requester_pays(self):
+        if self.method_string == "GET" or self.method_string == "POST":
+            if self.s3.config.requester_pays:
+                self.headers['x-amz-request-payer'] = 'requester'
 
     def update_timestamp(self):
         if self.headers.has_key("date"):
@@ -346,10 +352,16 @@ class S3(object):
             location = "eu-west-1"
         return location
 
+    def get_bucket_requester_pays(self, uri):
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?requestPayment")
+        response = self.send_request(request)
+        payer = getTextFromXml(response['data'], "Payer")
+        return payer
+
     def bucket_info(self, uri):
-        # For now reports only "Location". One day perhaps more.
         response = {}
         response['bucket-location'] = self.get_bucket_location(uri)
+        response['requester-pays'] = self.get_bucket_requester_pays(uri)
         return response
 
     def website_info(self, uri, bucket_location = None):
