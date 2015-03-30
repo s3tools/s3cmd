@@ -114,9 +114,9 @@ class S3Request(object):
         self.method_string = method_string
         self.params = params
         self.body = body
-        self.set_requester_pays()
+        self.requester_pays()
 
-    def set_requester_pays(self):
+    def requester_pays(self):
         if self.method_string == "GET" or self.method_string == "POST":
             if self.s3.config.requester_pays:
                 self.headers['x-amz-request-payer'] = 'requester'
@@ -816,6 +816,20 @@ class S3(object):
         request = self.create_request("BUCKET_CREATE", uri = uri,
                                       extra = "?lifecycle", headers=headers, body = policy)
         debug(u"set_lifecycle_policy(%s): policy-xml: %s" % (uri))
+        response = self.send_request(request)
+        return response
+
+    def set_payer(self, uri):
+        headers = {}
+        headers['content-type'] = 'application/xml'
+        body = '<RequestPaymentConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">\n'
+        if self.config.requester_pays:
+            body += '<Payer>Requester</Payer>\n'
+        else:
+            body += '<Payer>BucketOwner</Payer>\n'
+        body += '</RequestPaymentConfiguration>\n'
+        request = self.create_request("BUCKET_CREATE", uri = uri,
+                                      extra = "?requestPayment", body = body)
         response = self.send_request(request)
         return response
 

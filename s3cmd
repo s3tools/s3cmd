@@ -1565,6 +1565,20 @@ def cmd_delpolicy(args):
     output(u"%s: Policy deleted" % uri)
     return EX_OK
 
+def cmd_set_payer(args):
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+
+    if cfg.dry_run: return EX_OK
+
+    response = s3.set_payer(uri)
+    if response['status'] == 200:
+        output(u"%s: Payer updated" % uri)
+        return EX_OK
+    else:
+        output(u"%s: Payer NOT updated" % uri)
+        return EX_CONFLICT
+
 def cmd_setlifecycle(args):
     s3 = S3(cfg)
     uri = S3Uri(args[1])
@@ -2012,7 +2026,7 @@ def get_commands_list():
 
     {"cmd":"setpolicy", "label":"Modify Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_setpolicy, "argc":2},
     {"cmd":"delpolicy", "label":"Delete Bucket Policy", "param":"s3://BUCKET", "func":cmd_delpolicy, "argc":1},
-
+    {"cmd":"payer",     "label":"Modify Bucket Requester Pays policy", "param":"s3://BUCKET", "func":cmd_set_payer, "argc":1},
     {"cmd":"multipart", "label":"Show multipart uploads", "param":"s3://BUCKET [Id]", "func":cmd_multipart, "argc":1},
     {"cmd":"abortmp",   "label":"Abort a multipart upload", "param":"s3://BUCKET/OBJECT Id", "func":cmd_abort_multipart, "argc":2},
 
@@ -2257,7 +2271,7 @@ def main():
     optparser.add_option("--no-check-certificate", dest="check_ssl_certificate", action="store_false", help="Check SSL certificate validity")
     optparser.add_option("--signature-v2", dest="signature_v2", action="store_true", help="Use AWS Signature version 2 instead of newer signature methods. Helpful for S3-like systems that don't have AWS Signature v4 yet.")
     optparser.add_option("--limit-rate", dest="limitrate", action="store", type="string", help="Limit the upload or download speed to amount bytes per second.  Amount may be expressed in bytes, kilobytes with the k suffix, or megabytes with the m suffix")
-    optparser.add_option("--requester-pays", dest="requester_pays", action="store_true", help="Download files from a REQUESTER PAYS-configured bucket")
+    optparser.add_option("--requester-pays", dest="requester_pays", action="store_true", help="Set the REQUESTER PAYS flag for operations")
 
     optparser.set_usage(optparser.usage + " COMMAND [parameters]")
     optparser.set_description('S3cmd is a tool for managing objects in '+
