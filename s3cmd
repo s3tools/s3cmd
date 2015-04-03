@@ -168,16 +168,22 @@ def subcmd_bucket_list(s3, uri):
     else:
         format_string = u"%(timestamp)16s %(size)9s%(coeff)1s  %(uri)s"
 
+    if cfg.list_storageclass:
+        format_string += "  %(storageclass)s"
+
     for prefix in response['common_prefixes']:
         output(format_string % {
             "timestamp": "",
             "size": "DIR",
             "coeff": "",
             "md5": "",
+            "storageclass": "",
             "uri": uri.compose_uri(bucket, prefix["Prefix"])})
 
     for object in response["list"]:
         md5 = object['ETag'].strip('"\'')
+        storageclass = object['StorageClass']
+
         if cfg.list_md5:
             if '-' in md5: # need to get md5 from the object
                 object_uri = uri.compose_uri(bucket, object["Key"])
@@ -193,6 +199,7 @@ def subcmd_bucket_list(s3, uri):
             "size" : str(size),
             "coeff": size_coeff,
             "md5" : md5,
+            "storageclass" : storageclass,
             "uri": uri.compose_uri(bucket, object["Key"]),
             })
 
