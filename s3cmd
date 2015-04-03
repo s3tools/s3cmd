@@ -163,13 +163,12 @@ def subcmd_bucket_list(s3, uri):
             error(S3.codes[e.info["Code"]] % bucket)
         raise
 
-    if cfg.list_md5:
+    if cfg.long_listing:
+        format_string = u"%(timestamp)16s %(size)9s%(coeff)1s  %(md5)32s  %(storageclass)s  %(uri)s"
+    elif cfg.list_md5:
         format_string = u"%(timestamp)16s %(size)9s%(coeff)1s  %(md5)32s  %(uri)s"
     else:
         format_string = u"%(timestamp)16s %(size)9s%(coeff)1s  %(uri)s"
-
-    if cfg.list_storageclass:
-        format_string += "  %(storageclass)s"
 
     for prefix in response['common_prefixes']:
         output(format_string % {
@@ -182,7 +181,7 @@ def subcmd_bucket_list(s3, uri):
 
     for object in response["list"]:
         md5 = object['ETag'].strip('"\'')
-        storageclass = object['StorageClass']
+        storageclass = object.get('StorageClass','')
 
         if cfg.list_md5:
             if '-' in md5: # need to get md5 from the object
@@ -2273,12 +2272,13 @@ def main():
     optparser.add_option("-F", "--follow-symlinks", dest="follow_symlinks", action="store_true", default=False, help="Follow symbolic links as if they are regular files")
     optparser.add_option(      "--cache-file", dest="cache_file", action="store", default="",  metavar="FILE", help="Cache FILE containing local source MD5 values")
     optparser.add_option("-q", "--quiet", dest="quiet", action="store_true", default=False, help="Silence output on stdout")
-    optparser.add_option("--ca-certs", dest="ca_certs_file", action="store", default=None, help="Path to SSL CA certificate FILE (instead of system default)")
-    optparser.add_option("--check-certificate", dest="check_ssl_certificate", action="store_true", help="Check SSL certificate validity")
-    optparser.add_option("--no-check-certificate", dest="check_ssl_certificate", action="store_false", help="Check SSL certificate validity")
-    optparser.add_option("--signature-v2", dest="signature_v2", action="store_true", help="Use AWS Signature version 2 instead of newer signature methods. Helpful for S3-like systems that don't have AWS Signature v4 yet.")
-    optparser.add_option("--limit-rate", dest="limitrate", action="store", type="string", help="Limit the upload or download speed to amount bytes per second.  Amount may be expressed in bytes, kilobytes with the k suffix, or megabytes with the m suffix")
-    optparser.add_option("--requester-pays", dest="requester_pays", action="store_true", help="Set the REQUESTER PAYS flag for operations")
+    optparser.add_option(      "--ca-certs", dest="ca_certs_file", action="store", default=None, help="Path to SSL CA certificate FILE (instead of system default)")
+    optparser.add_option(      "--check-certificate", dest="check_ssl_certificate", action="store_true", help="Check SSL certificate validity")
+    optparser.add_option(      "--no-check-certificate", dest="check_ssl_certificate", action="store_false", help="Check SSL certificate validity")
+    optparser.add_option(      "--signature-v2", dest="signature_v2", action="store_true", help="Use AWS Signature version 2 instead of newer signature methods. Helpful for S3-like systems that don't have AWS Signature v4 yet.")
+    optparser.add_option(      "--limit-rate", dest="limitrate", action="store", type="string", help="Limit the upload or download speed to amount bytes per second.  Amount may be expressed in bytes, kilobytes with the k suffix, or megabytes with the m suffix")
+    optparser.add_option(      "--requester-pays", dest="requester_pays", action="store_true", help="Set the REQUESTER PAYS flag for operations")
+    optparser.add_option("-l", "--long-listing", dest="long_listing", action="store_true", help="Produce long listing [ls]")
 
     optparser.set_usage(optparser.usage + " COMMAND [parameters]")
     optparser.set_description('S3cmd is a tool for managing objects in '+

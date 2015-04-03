@@ -37,7 +37,7 @@ class Config(object):
     send_chunk = 4096
     recv_chunk = 4096
     list_md5 = False
-    list_storageclass = False
+    long_listing = False
     human_readable_sizes = False
     extra_headers = SortedDict(ignore_case = True)
     force = False
