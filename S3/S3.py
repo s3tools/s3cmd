@@ -36,6 +36,7 @@ from Crypto import sign_string_v2, sign_string_v4, checksum_sha256_file, checksu
 from ExitCodes import *
 
 try:
+    from ctypes import ArgumentError
     import magic
     try:
         ## https://github.com/ahupp/python-magic
@@ -83,7 +84,7 @@ def mime_magic(file):
         magictype = None
         try:
             magictype = mime_magic_file(file)
-        except UnicodeDecodeError:
+        except (UnicodeDecodeError, UnicodeEncodeError, ArgumentError):
             magictype = mime_magic_file(unicodise(file))
         return magictype
 
