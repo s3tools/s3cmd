@@ -555,6 +555,8 @@ class S3(object):
             headers["x-amz-acl"] = "public-read"
         if self.config.reduced_redundancy:
             headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
+        else:
+            headers["x-amz-storage-class"] = "STANDARD"
 
         ## Multipart decision
         multipart = False
@@ -724,8 +726,10 @@ class S3(object):
 
         headers['x-amz-copy-source'] = encode_to_s3("/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object())))
         headers['x-amz-metadata-directive'] = "REPLACE"
-
-        # cannot change between standard and reduced redundancy with a REPLACE.
+        if self.config.reduced_redundancy:
+            headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
+        else:
+            headers["x-amz-storage-class"] = "STANDARD"
 
         ## Set server side encryption
         if self.config.server_side_encryption:
