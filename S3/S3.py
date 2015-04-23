@@ -815,7 +815,7 @@ class S3(object):
         headers['content-md5'] = compute_content_md5(policy)
         request = self.create_request("BUCKET_CREATE", uri = uri,
                                       extra = "?lifecycle", headers=headers, body = policy)
-        debug(u"set_lifecycle_policy(%s): policy-xml: %s" % (uri))
+        debug(u"set_lifecycle_policy(%s): policy-xml: %s" % (uri, policy))
         response = self.send_request(request)
         return response
 
