@@ -483,7 +483,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
     return remote_list, exclude_list
 
 
-def compare_filelists(src_list, dst_list, src_remote, dst_remote, delay_updates = False):
+def compare_filelists(src_list, dst_list, src_remote, dst_remote):
     def __direction_str(is_remote):
         return is_remote and "remote" or "local"
 
