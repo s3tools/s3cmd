@@ -34,8 +34,8 @@ class Config(object):
     verbosity = logging.WARNING
     progress_meter = True
     progress_class = Progress.ProgressCR
-    send_chunk = 4096
-    recv_chunk = 4096
+    send_chunk = 64 * 1024
+    recv_chunk = 64 * 1024
     list_md5 = False
     long_listing = False
     human_readable_sizes = False
