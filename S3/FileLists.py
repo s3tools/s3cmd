@@ -351,7 +351,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
         remote_item.update({
         'size': int(response['headers']['content-length']),
         'md5': response['headers']['etag'].strip('"\''),
-        'timestamp' : dateRFC822toUnix(response['headers']['date'])
+        'timestamp' : dateRFC822toUnix(response['headers']['last-modified'])
         })
         try:
             md5 = response['s3cmd-attrs']['md5']
