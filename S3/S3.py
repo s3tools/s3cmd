@@ -682,7 +682,8 @@ class S3(object):
             raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
         if dst_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
-        acl = self.get_acl(src_uri)
+        if self.config.acl_public is None:
+            acl = self.get_acl(src_uri)
         headers = SortedDict(ignore_case = True)
         headers['x-amz-copy-source'] = encode_to_s3("/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object())))
         headers['x-amz-metadata-directive'] = "COPY"
@@ -709,7 +710,8 @@ class S3(object):
             error("Server error during the COPY operation. Overwrite response status to 500")
             raise S3Error(response)
 
-        self.set_acl(dst_uri, acl)
+        if self.config.acl_public is None:
+            self.set_acl(dst_uri, acl)
         return response
 
     def object_modify(self, src_uri, dst_uri, extra_headers = None):
