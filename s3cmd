@@ -2614,6 +2614,11 @@ if __name__ == '__main__':
         sys.exit(EX_BREAK)
 
     except IOError, e:
+        if e.errno == errno.EPIPE:
+            # Fail silently on SIGPIPE. This likely means we wrote to a closed
+            # pipe and user does not care for any more output.
+            sys.exit(EX_IOERR)
+
         report_exception(e)
         sys.exit(EX_IOERR)
 
