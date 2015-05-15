@@ -1926,7 +1926,7 @@ def run_configure(config_file, args):
                 except S3Error, e:
                     error(u"Test failed: %s" % (e))
                     if e.code == "AccessDenied":
-                        error(u"Are you sure your keys have ListAllMyBuckets permissions?")
+                        error(u"Are you sure your keys have s3:ListAllMyBuckets permissions?")
                     val = raw_input("\nRetry configuration? [Y/n] ")
                     if val.lower().startswith("y") or val == "":
                         continue

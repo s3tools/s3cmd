@@ -122,11 +122,18 @@ Alternatively the ACL can be altered for existing remote files with `s3cmd setac
 
 Go to http://aws.amazon.com/s3, click the "Sign up for web service" button in the right column and work through the registration. You will have to supply your Credit Card details in order to allow Amazon charge you for S3 usage. At the end you should have your Access and Secret Keys.
 
+If you set up a separate IAM user, that user's access key must have at least the following permissions to do anything:
+-  s3:ListAllMyBuckets
+-  s3:GetBucketLocation
+-  s3:ListBucket
+
+Other example policies can be found at https://docs.aws.amazon.com/AmazonS3/latest/dev/example-policies-s3.html
+
 2) Run `s3cmd --configure`
 
 You will be asked for the two keys - copy and paste them from your confirmation email or from your Amazon account page. Be careful when copying them! They are case sensitive and must be entered accurately or you'll keep getting errors about invalid signatures or similar.
 
-Remember to add ListAllMyBuckets permissions to the keys or you will get an AccessDenied error while testing access.
+Remember to add s3:ListAllMyBuckets permissions to the keys or you will get an AccessDenied error while testing access.
 
 3) Run `s3cmd ls` to list all your buckets.
 
