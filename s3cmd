@@ -869,7 +869,7 @@ def cmd_sync_remote2remote(args):
 
     info(u"Found %d source files, %d destination files" % (src_count, dst_count))
 
-    src_list, dst_list, update_list, copy_pairs = compare_filelists(src_list, dst_list, src_remote = True, dst_remote = True, delay_updates = cfg.delay_updates)
+    src_list, dst_list, update_list, copy_pairs = compare_filelists(src_list, dst_list, src_remote = True, dst_remote = True)
 
     src_count = len(src_list)
     update_count = len(update_list)
@@ -972,7 +972,7 @@ def cmd_sync_remote2local(args):
 
     info(u"Found %d remote files, %d local files" % (remote_count, local_count))
 
-    remote_list, local_list, update_list, copy_pairs = compare_filelists(remote_list, local_list, src_remote = True, dst_remote = False, delay_updates = cfg.delay_updates)
+    remote_list, local_list, update_list, copy_pairs = compare_filelists(remote_list, local_list, src_remote = True, dst_remote = False)
 
     local_count = len(local_list)
     remote_count = len(remote_list)
@@ -1366,7 +1366,7 @@ def cmd_sync_local2remote(args):
             remote_list = FileDict()
             remote_list[local_list.keys()[0]] =  remote_list_entry
 
-        local_list, remote_list, update_list, copy_pairs = compare_filelists(local_list, remote_list, src_remote = False, dst_remote = True, delay_updates = cfg.delay_updates)
+        local_list, remote_list, update_list, copy_pairs = compare_filelists(local_list, remote_list, src_remote = False, dst_remote = True)
 
         local_count = len(local_list)
         update_count = len(update_list)
@@ -1491,6 +1491,8 @@ def cmd_sync_local2remote(args):
 def cmd_sync(args):
     if (len(args) < 2):
         raise ParameterError("Too few parameters! Expected: %s" % commands['sync']['param'])
+    if cfg.delay_updates:
+        warning(u"`delay-updates` is obsolete.")
 
     if S3Uri(args[0]).type == "file" and S3Uri(args[-1]).type == "s3":
         return cmd_sync_local2remote(args)
@@ -2201,7 +2203,7 @@ def main():
     optparser.add_option(      "--delete-removed", dest="delete_removed", action="store_true", help="Delete remote objects with no corresponding local file [sync]")
     optparser.add_option(      "--no-delete-removed", dest="delete_removed", action="store_false", help="Don't delete remote objects.")
     optparser.add_option(      "--delete-after", dest="delete_after", action="store_true", help="Perform deletes after new uploads [sync]")
-    optparser.add_option(      "--delay-updates", dest="delay_updates", action="store_true", help="Put all updated files into place at end [sync]")
+    optparser.add_option(      "--delay-updates", dest="delay_updates", action="store_true", help="*OBSOLETE* Put all updated files into place at end [sync]")  # OBSOLETE
     optparser.add_option(      "--max-delete", dest="max_delete", action="store", help="Do not delete more than NUM files. [del] and [sync]", metavar="NUM")
     optparser.add_option(      "--add-destination", dest="additional_destinations", action="append", help="Additional destination for parallel uploads, in addition to last arg.  May be repeated.")
     optparser.add_option(      "--delete-after-fetch", dest="delete_after_fetch", action="store_true", help="Delete remote objects after fetching to local file (only for [get] and [sync] commands).")
