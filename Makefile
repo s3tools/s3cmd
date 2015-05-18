@@ -21,7 +21,7 @@ $(SPEC): $(SPEC).in
 
 # fixme: python setup.py sdist also generates a PKG-INFO file which we don't have using straight git archive
 git-tarball:
-	git archive --format tar --prefix s3cmd-$(COMMIT)/ HEAD S3/ s3cmd NEWS README INSTALL setup.cfg s3cmd.1 setup.py| gzip -c > $(TARBALL)
+	git archive --format tar --prefix s3cmd-$(COMMIT)/ HEAD S3/ s3cmd NEWS README.md INSTALL setup.cfg s3cmd.1 setup.py| gzip -c > $(TARBALL)
 
 # Use older digest algorithms for local rpmbuilds, as EPEL5 and
 # earlier releases need this.  When building using mock for a
