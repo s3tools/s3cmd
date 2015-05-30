@@ -26,7 +26,7 @@ class Config(object):
     _doc = {}
     access_key = ""
     secret_key = ""
-    access_token = ""
+    session_token = ""
     host_base = "s3.amazonaws.com"
     host_bucket = "%(bucket)s.s3.amazonaws.com"
     simpledb_host = "sdb.amazonaws.com"
@@ -123,6 +123,8 @@ class Config(object):
     signature_v2 = False
     limitrate = 0
     requester_pays = False
+    always_use_iam_role = False
+    used_role_config = None
 
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None):
@@ -138,21 +140,28 @@ class Config(object):
                 if 'AWS_CREDENTIAL_FILE' in os.environ:
                     self.env_config()
 
+            # let creds from environment variables override config values
+            env_access_key = os.environ.get('AWS_ACCESS_KEY', os.environ.get('AWS_ACCESS_KEY_ID', ''))
+            env_secret_key = os.environ.get('AWS_SECRET_KEY', os.environ.get('AWS_SECRET_ACCESS_KEY', ''))
+            if env_access_key and env_secret_key:
+                self.access_key = env_access_key
+                self.secret_key = env_secret_key
+            env_session_token = os.environ.get('AWS_SESSION_TOKEN', '')
+            if env_session_token:
+                self.session_token = env_session_token
+
+            # if no creds in config or environment (or if told to explicitly), try to use an IAM role
+            if not (self.access_key and self.secret_key) or self.always_use_iam_role:
+                self.role_config()
+
             # override these if passed on the command-line
             if access_key and secret_key:
                 self.access_key = access_key
                 self.secret_key = secret_key
 
-            if len(self.access_key)==0:
-                env_access_key = os.environ.get("AWS_ACCESS_KEY", None) or os.environ.get("AWS_ACCESS_KEY_ID", None)
-                env_secret_key = os.environ.get("AWS_SECRET_KEY", None) or os.environ.get("AWS_SECRET_ACCESS_KEY", None)
-                if env_access_key:
-                    self.access_key = env_access_key
-                    self.secret_key = env_secret_key
-                else:
-                    self.role_config()
-
     def role_config(self):
+        self.used_role_config = True
+
         if sys.version_info[0] * 10 + sys.version_info[1] < 26:
             error("IAM authentication requires Python 2.6 or newer")
             raise
@@ -171,7 +180,7 @@ class Config(object):
                     creds=json.load(resp)
                     Config().update_option('access_key', creds['AccessKeyId'].encode('ascii'))
                     Config().update_option('secret_key', creds['SecretAccessKey'].encode('ascii'))
-                    Config().update_option('access_token', creds['Token'].encode('ascii'))
+                    Config().update_option('session_token', creds['Token'].encode('ascii'))
                 else:
                     raise IOError
             else:

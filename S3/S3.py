@@ -107,9 +107,10 @@ class S3Request(object):
     def __init__(self, s3, method_string, resource, headers, body, params = {}):
         self.s3 = s3
         self.headers = SortedDict(headers or {}, ignore_case = True)
-        if len(self.s3.config.access_token)>0:
+        if self.s3.config.used_role_config:
             self.s3.config.role_refresh()
-            self.headers['x-amz-security-token']=self.s3.config.access_token
+        if self.s3.config.session_token:
+            self.headers['x-amz-security-token']=self.s3.config.session_token
         self.resource = resource
         self.method_string = method_string
         self.params = params
