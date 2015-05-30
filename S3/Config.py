@@ -293,6 +293,10 @@ class Config(object):
                 error("Config: value of option %s must have suffix m, k, or nothing, not '%s'" % (option, value))
                 return
 
+        ## access_token was renamed to session_token
+        elif option == 'access_token':
+            option = 'session_token'
+
         ## allow yes/no, true/false, on/off and 1/0 for boolean options
         elif type(getattr(Config, option)) is type(True):   # bool
             if str(value).lower() in ("true", "yes", "on", "1"):
