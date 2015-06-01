@@ -150,14 +150,14 @@ class Config(object):
             if env_session_token:
                 self.session_token = env_session_token
 
-            # if no creds in config or environment (or if told to explicitly), try to use an IAM role
-            if not (self.access_key and self.secret_key) or self.always_use_iam_role:
-                self.role_config()
-
             # override these if passed on the command-line
             if access_key and secret_key:
                 self.access_key = access_key
                 self.secret_key = secret_key
+
+            # if no creds in config or environment (or if told to explicitly), try to use an IAM role
+            if not (self.access_key and self.secret_key) or self.always_use_iam_role:
+                self.role_config()
 
     def role_config(self):
         self.used_role_config = True
