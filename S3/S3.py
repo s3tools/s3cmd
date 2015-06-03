@@ -268,6 +268,18 @@ class S3(object):
         return response
 
     def bucket_list(self, bucket, prefix = None, recursive = None, uri_params = {}):
+        item_list = []
+        prefixes = []
+        for is_dir, obj in self.bucket_list_streaming(bucket, prefix, recursive, uri_params):
+            (prefixes if is_dir else item_list).append(obj)
+
+        response = {}
+        response['list'] = item_list
+        response['common_prefixes'] = prefixes
+        return response
+
+    def bucket_list_streaming(self, bucket, prefix = None, recursive = None, uri_params = {}):
+        """ Generator that produces <is_dir>, <dir or object> pairs of the contents of a specified bucket. """
         def _list_truncated(data):
             ## <IsTruncated> can either be "true" or "false" or be missing completely
             is_truncated = getTextFromXml(data, ".//IsTruncated") or "false"
@@ -279,10 +291,8 @@ class S3(object):
         def _get_common_prefixes(data):
             return getListFromXml(data, "CommonPrefixes")
 
-
         uri_params = uri_params.copy()
         truncated = True
-        list = []
         prefixes = []
 
         while truncated:
@@ -297,17 +307,15 @@ class S3(object):
                     uri_params['marker'] = self.urlencode_string(current_prefixes[-1]["Prefix"])
                 debug("Listing continues after '%s'" % uri_params['marker'])
 
-            list += current_list
-            prefixes += current_prefixes
-
-        response['list'] = list
-        response['common_prefixes'] = prefixes
-        return response
+            for pfix in current_prefixes:
+                yield True, pfix
+            for item in current_list:
+                yield False, item
 
     def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = {}):
         if prefix:
             uri_params['prefix'] = self.urlencode_string(prefix)
-        if not self.config.recursive and not recursive:
+        if (not self.config.recursive) and not recursive:
             uri_params['delimiter'] = "/"
         request = self.create_request("BUCKET_LIST", bucket = bucket, **uri_params)
         response = self.send_request(request)
@@ -608,6 +616,12 @@ class S3(object):
         return response
 
     def object_batch_delete(self, remote_list):
+        """ Batch delete given a remote_list """
+        uris = [remote_list[item]['object_uri_str'] for item in remote_list]
+        self.object_batch_delete_uri_strs(self, uris)
+
+    def object_batch_delete_uri_strs(self, uris):
+        """ Batch delete given a list of object uris """
         def compose_batch_del_xml(bucket, key_list):
             body = u"<?xml version=\"1.0\" encoding=\"UTF-8\"?><Delete>"
             for key in key_list:
@@ -624,7 +638,7 @@ class S3(object):
             body = encode_to_s3(body)
             return body
 
-        batch = [remote_list[item]['object_uri_str'] for item in remote_list]
+        batch = uris
         if len(batch) == 0:
             raise ValueError("Key list is empty")
         bucket = S3Uri(batch[0]).bucket()
