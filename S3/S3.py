@@ -1066,7 +1066,7 @@ class S3(object):
 
     def send_file(self, request, file, labels, buffer = '', throttle = 0, retries = _max_retries, offset = 0, chunk_size = -1):
         method_string, resource, headers = request.get_triplet()
-        if S3Request.region_map.get(request.resource['bucket'], None) is None:
+        if S3Request.region_map.get(request.resource['bucket'], Config().bucket_location) is None:
             s3_uri = S3Uri(u's3://' + request.resource['bucket'])
             region = self.get_bucket_location(s3_uri)
             if region is not None:
