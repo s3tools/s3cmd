@@ -1753,6 +1753,9 @@ def cmd_fixbucket(args):
                 debug("Step 3:  ... then to %s" % key_new)
                 src = S3Uri("s3://%s/%s" % (culprit.bucket(), key_bin))
                 dst = S3Uri("s3://%s/%s" % (culprit.bucket(), key_new))
+		if cfg.dry_run:
+		    output("[--dry-run] File %r would be renamed to %s" % (key_bin, key_new))
+		    continue
                 try:
                     resp_move = s3.object_move(src, dst)
                     if resp_move['status'] == 200:
