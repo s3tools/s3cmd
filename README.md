@@ -275,7 +275,7 @@ part is empty and s3cmd will only create 'dir1' and 'dir2'
 without the 'somewhere/' prefix:
 
 ```
-$ s3cmd get --recursive s3://public.s3tools.org/somewhere ~/
+$ s3cmd get --recursive s3://public.s3tools.org/somewhere/ ~/
 
 File s3://public.s3tools.org/somewhere/dir1/file1-1.txt saved as '~/dir1/file1-1.txt'
 File s3://public.s3tools.org/somewhere/dir1/file1-2.txt saved as '~/dir1/file1-2.txt'
