@@ -2184,8 +2184,8 @@ def main():
 
     optparser.add_option("-n", "--dry-run", dest="dry_run", action="store_true", help="Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though (only for file transfer commands)")
 
-    optparser.add_option("-s", "--ssl", dest="use_https", action="store_true", help="Use HTTPS connection when communicating with S3.")
-    optparser.add_option(      "--no-ssl", dest="use_https", action="store_false", help="Don't use HTTPS. (default)")
+    optparser.add_option("-s", "--ssl", dest="use_https", action="store_true", help="Use HTTPS connection when communicating with S3. (default)")
+    optparser.add_option(      "--no-ssl", dest="use_https", action="store_false", help="Don't use HTTPS.")
     optparser.add_option("-e", "--encrypt", dest="encrypt", action="store_true", help="Encrypt files before uploading to S3.")
     optparser.add_option(      "--no-encrypt", dest="encrypt", action="store_false", help="Don't encrypt files.")
     optparser.add_option("-f", "--force", dest="force", action="store_true", help="Force overwrite and other dangerous operations.")

@@ -80,7 +80,7 @@ class Config(object):
     gpg_command = ""
     gpg_encrypt = "%(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
     gpg_decrypt = "%(gpg_command)s -d --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
-    use_https = False
+    use_https = True
     ca_certs_file = ""
     check_ssl_certificate = True
     bucket_location = "US"
