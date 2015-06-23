@@ -112,17 +112,13 @@ def subcmd_bucket_usage(s3, uri):
     Raises: S3Error
     """
     bucket_size = 0
-    dirs = 0
     objects = 0
-    # iterate and store directories to traverse, while summing objects:
     try:
         for is_dir, obj in recurse(s3, uri, recursive=True):
             if not is_dir:
                 # objects in the current scope
                 bucket_size += int(obj["Size"])
                 objects += 1
-            else:
-                dirs +=1
 
     except KeyboardInterrupt, e:
         total_size, size_coeff = formatSize(bucket_size, Config().human_readable_sizes)
