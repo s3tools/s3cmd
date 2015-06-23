@@ -599,7 +599,7 @@ def cmd_object_del(args):
 
         if not recursive:
             rc = subcmd_object_del_uri(uri_str)
-        elif Config.exclude:
+        elif Config().exclude:
             rc = subcmd_batch_del(uri_str = uri_str)
         else:
             rc = subcmd_batch_del_iterative(uri_str = uri_str)
