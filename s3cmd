@@ -98,7 +98,6 @@ def recurse(s3, uri, recursive = None):
             for is_dir, obj in s3.bucket_list_streaming(bucket, prefix=dirs.pop(), recursive=recursive):
                 if is_dir:
                     dirs.append(obj["Prefix"])
-                    print obj["Prefix"]
                 yield is_dir, obj
 
         except S3Error, e:
