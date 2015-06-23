@@ -599,6 +599,8 @@ def cmd_object_del(args):
 
         if not recursive:
             rc = subcmd_object_del_uri(uri_str)
+        elif Config.exclude:
+            rc = subcmd_batch_del(uri_str = uri_str)
         else:
             rc = subcmd_batch_del_iterative(uri_str = uri_str)
         if not rc:
@@ -606,7 +608,15 @@ def cmd_object_del(args):
     return EX_OK
 
 def subcmd_batch_del_iterative(uri_str = None, bucket = None):
-    """ Streaming version of batch deletion (doesn't realize whole list in memory before deleting) """
+    """ Streaming version of batch deletion (doesn't realize whole list in memory before deleting). 
+
+    Differences from subcmd_batch_del:
+      - Obeys cfg.max_delete, but if it is >1000, will delete files until we are sure that at least 
+        that many files are to be deleted
+      - Only prints out individual file names if <1000 files are to be deleted
+      - Does not obey --exclude directives (use subcmd_batch_del in those cases)
+
+    """
     if bucket and uri_str:
         raise ValueError("Pass only one of uri_str or bucket")
     if bucket: # bucket specified
@@ -632,19 +642,35 @@ def subcmd_batch_del_iterative(uri_str = None, bucket = None):
         to_delete[:] = []
         _status()
 
+    def _check_max_delete():
+        """ Return True if ok to delete """
+        if cfg.max_delete > 0 and len(to_delete) + deleted[0] > cfg.max_delete:
+            warning(u"delete: maximum requested number of deletes would be exceeded, %s performed." % deleted[0])
+            to_delete[:] = []
+            return False
+        return True
+
+    deleted_at_least_1000 = False
     for is_dir, obj in recurse(s3, uri, recursive=True):
         if is_dir:
             continue
         to_delete.append(obj)
         if len(to_delete) >= 1000:
-            if cfg.max_delete > 0 and len(to_delete) + deleted[0] > cfg.max_delete:
-                warning(u"delete: maximum requested number of deletes would be exceeded, %s performed." % deleted[0])
-                to_delete[:] = []
-                break
-            _delete()
+            if _check_max_delete():
+                deleted_at_least_1000 = True
+                _delete()
+            else:
+                return False
 
     if to_delete:
-        _delete()
+        if _check_max_delete():
+            if not deleted_at_least_1000:
+                output('\n'.join(u"File %s deleted" % uri.compose_uri(bucket, p['Key']) for p in to_delete))
+            _delete()
+        else:
+            return False
+
+    return EX_OK
 
 def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
     """
