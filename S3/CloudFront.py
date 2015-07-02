@@ -539,9 +539,10 @@ class CloudFront(object):
         if not headers.has_key("x-amz-date"):
             headers["x-amz-date"] = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
 
-        if len(self.config.access_token)>0:
+        if self.config.used_role_config:
             self.config.role_refresh()
-            headers['x-amz-security-token']=self.config.access_token
+        if self.config.session_token:
+            headers['x-amz-security-token']=self.config.session_token
 
         signature = self.sign_request(headers)
         headers["Authorization"] = "AWS "+self.config.access_key+":"+signature
