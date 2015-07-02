@@ -36,30 +36,47 @@ from Crypto import sign_string_v2, sign_string_v4, checksum_sha256_file, checksu
 from ExitCodes import *
 
 try:
+    from ctypes import ArgumentError
     import magic
     try:
         ## https://github.com/ahupp/python-magic
+        ## Always expect unicode for python 2
+        ## (has Magic class but no "open()" function)
         magic_ = magic.Magic(mime=True)
         def mime_magic_file(file):
             return magic_.from_file(file)
     except TypeError:
-        ## http://pypi.python.org/pypi/filemagic
         try:
-            magic_ = magic.Magic(flags=magic.MAGIC_MIME)
-            def mime_magic_file(file):
-                return magic_.id_filename(file)
-        except TypeError:
             ## file-5.11 built-in python bindings
+            ## Sources: http://www.darwinsys.com/file/
+            ## Expects unicode since version 5.19, encoded strings before
+            ## we can't tell if a given copy of the magic library will take a
+            ## filesystem-encoded string or a unicode value, so try first
+            ## with the unicode, then with the encoded string.
+            ## (has Magic class and "open()" function)
             magic_ = magic.open(magic.MAGIC_MIME)
             magic_.load()
             def mime_magic_file(file):
-                return magic_.file(file)
+                try:
+                    return magic_.file(file)
+                except (UnicodeDecodeError, UnicodeEncodeError, ArgumentError):
+                    return magic_.file(deunicodise(file))
+        except AttributeError:
+            ## http://pypi.python.org/pypi/filemagic
+            ## Accept gracefully both unicode and encoded
+            ## (has Magic class but not "mime" argument and no "open()" function )
+            magic_ = magic.Magic(flags=magic.MAGIC_MIME)
+            def mime_magic_file(file):
+                return magic_.id_filename(file)
+
     except AttributeError:
-        ## Older python-magic versions
+        ## Older python-magic versions doesn't have a "Magic" method
+        ## Only except encoded strings
+        ## (has no Magic class but "open()" function)
         magic_ = magic.open(magic.MAGIC_MIME)
         magic_.load()
         def mime_magic_file(file):
-            return magic_.file(file)
+            return magic_.file(deunicodise(file))
 
 except ImportError, e:
     if 'magic' in str(e):
@@ -76,15 +93,9 @@ except ImportError, e:
         return mimetypes.guess_type(file)[0]
 
 def mime_magic(file):
-    # we can't tell if a given copy of the magic library will take a
-    # filesystem-encoded string or a unicode value, so try first
-    # with the encoded string, then unicode.
+    ## NOTE: So far in the code, "file" var is already unicode
     def _mime_magic(file):
-        magictype = None
-        try:
-            magictype = mime_magic_file(file)
-        except UnicodeDecodeError:
-            magictype = mime_magic_file(unicodise(file))
+        magictype = mime_magic_file(file)
         return magictype
 
     result = _mime_magic(file)
