@@ -165,8 +165,14 @@ def _get_filelist_from_file(cfg, local_path):
                 warning(u"--files-from input file %s could not be opened for reading (%s), skipping." % (fname, e.strerror))
                 continue
 
-        for line in f:
-            line = unicodise(line).strip()
+        data = f.read()
+        if cfg.from0:
+            files = data.split('\0')
+        else:
+            files = [line.strip() for line in data.split('\n')]
+
+        for fpath in files:
+            line = unicodise(fpath)
             line = os.path.normpath(os.path.join(local_path, line))
             dirname = unicodise(os.path.dirname(deunicodise(line)))
             basename = unicodise(os.path.basename(deunicodise(line)))
