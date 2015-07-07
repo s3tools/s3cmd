@@ -194,7 +194,11 @@ def fetch_local_list(args, is_src = False, recursive = None):
 
     def _fetch_local_list_info(loc_list):
         len_loc_list = len(loc_list)
-        info(u"Running stat() and reading/calculating MD5 values on %d files, this may take some time..." % len_loc_list)
+        calculate_md5 = 'md5' in cfg.sync_checks
+        extra_info = ''
+        if calculate_md5:
+            extra_info = ' and reading/calculating MD5 values'
+        info(u"Running stat()%s on %d files, this may take some time..." % (extra_info, len_loc_list))
         counter = 0
         for relative_file in loc_list:
             counter += 1
@@ -222,7 +226,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
                 'sr': sr # save it all, may need it in preserve_attrs_list
                 ## TODO: Possibly more to save here...
             })
-            if 'md5' in cfg.sync_checks:
+            if calculate_md5:
                 md5 = cache.md5(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size)
                 if md5 is None:
                         try:
