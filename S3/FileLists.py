@@ -332,7 +332,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
         uri = S3Uri(arg)
         if not uri.type == 'file':
             raise ParameterError("Expecting filename or directory instead of: %s" % arg)
-        if uri.isdir() and not recursive:
+        if uri.isdir() and not recursive and not cfg.files_from:
             raise ParameterError("Use --recursive to upload a directory: %s" % arg)
         local_uris.append(uri)
 
