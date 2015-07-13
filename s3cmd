@@ -392,10 +392,14 @@ def cmd_object_put(args):
         except S3UploadError, e:
             error(u"Upload of '%s' failed too many times. Skipping that file." % full_name_orig)
             ret = EX_PARTIAL
+            if cfg.stop_on_error:
+                break
             continue
         except InvalidFileError, e:
             warning(u"File can not be uploaded: %s" % e)
             ret = EX_PARTIAL
+            if cfg.stop_on_error:
+                break
             continue
         if response is not None:
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
@@ -495,6 +499,7 @@ def cmd_object_get(args):
         return EX_OK
 
     seq = 0
+    ret = EX_OK
     for key in remote_list:
         seq += 1
         item = remote_list[key]
@@ -546,6 +551,9 @@ def cmd_object_get(args):
             if not file_exists: # Delete, only if file didn't exist before!
                 debug(u"object_get failed for '%s', deleting..." % (destination,))
                 os.unlink(deunicodise(destination))
+                ret = EX_PARTIAL
+                if cfg.stop_on_error:
+                    break
             continue
         except S3Error, e:
             if not file_exists: # Delete, only if file didn't exist before!
@@ -923,6 +931,8 @@ def cmd_sync_remote2remote(args):
                 output("File %(src)s copied to %(dst)s" % { "src" : src_uri, "dst" : dst_uri })
             except S3Error, e:
                 error("File %(src)s could not be copied: %(e)s" % { "src" : src_uri, "e" : e })
+                if cfg.stop_on_error:
+                    raise
         return seq
 
     # Perform the synchronization of files
@@ -1075,9 +1085,13 @@ def cmd_sync_remote2local(args):
                 except S3DownloadError, e:
                     error(u"%s: Skipping that file.  This is usually a transient error, please try again later." % e)
                     os.unlink(deunicodise(chkptfname))
+                    if cfg.stop_on_error:
+                        raise
                     continue
                 except S3Error, e:
                     warning(u"Remote file %s S3Error: %s" % (e.resource, e))
+                    if cfg.stop_on_error:
+                        raise
                     continue
 
                 try:
@@ -1149,6 +1163,8 @@ def cmd_sync_remote2local(args):
                 except: pass
             except S3DownloadError, e:
                 error(u"%s: download failed too many times. Skipping that file.  This is usually a transient error, please try again later." % file)
+                if cfg.stop_on_error:
+                    raise
                 continue
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
             if not Config().progress_meter:
@@ -1338,9 +1354,13 @@ def cmd_sync_local2remote(args):
                     response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
                 except InvalidFileError, e:
                     warning(u"File can not be uploaded: %s" % e)
+                    if cfg.stop_on_error:
+                        raise
                     continue
                 except S3UploadError, e:
                     error(u"%s: upload failed too many times. Skipping that file." % item['full_name'])
+                    if cfg.stop_on_error:
+                        raise
                     continue
                 speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
                 if not cfg.progress_meter:
@@ -2284,6 +2304,7 @@ def main():
     optparser.add_option(      "--limit-rate", dest="limitrate", action="store", type="string", help="Limit the upload or download speed to amount bytes per second.  Amount may be expressed in bytes, kilobytes with the k suffix, or megabytes with the m suffix")
     optparser.add_option(      "--requester-pays", dest="requester_pays", action="store_true", help="Set the REQUESTER PAYS flag for operations")
     optparser.add_option("-l", "--long-listing", dest="long_listing", action="store_true", help="Produce long listing [ls]")
+    optparser.add_option(      "--stop-on-error", dest="stop_on_error", action="store", type="string", help="stop if error in transfer")
 
     optparser.set_usage(optparser.usage + " COMMAND [parameters]")
     optparser.set_description('S3cmd is a tool for managing objects in '+
@@ -2477,6 +2498,10 @@ def main():
         # 'args' may contain the test-bucket URI
         run_configure(options.config, args)
         sys.exit(EX_OK)
+
+    ## set config if stop_on_error is set
+    if options.stop_on_error:
+        cfg.stop_on_error = options.stop_on_error
 
     if len(args) < 1:
         optparser.print_help()
