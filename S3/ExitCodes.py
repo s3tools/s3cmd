@@ -12,6 +12,7 @@ EX_CONFLICT         = 13   # 409: Conflict (ex: bucket error)
 EX_PRECONDITION     = 14   # 412: Precondition failed
 EX_SERVICE          = 15   # 503: Service not available or slow down
 EX_USAGE            = 64   # The command was used incorrectly (e.g. bad command line syntax)
+EX_DATAERR          = 65   # Failed file transfer, upload or download
 EX_SOFTWARE         = 70   # internal software error (e.g. S3 error of unknown specificity)
 EX_OSERR            = 71   # system error (e.g. out of memory)
 EX_OSFILE           = 72   # OS error (e.g. invalid Python version)
