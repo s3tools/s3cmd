@@ -152,8 +152,12 @@ def checksum_sha256_file(filename, offset=0, size=None):
                 hash.update(chunk)
         else:
             f.seek(offset)
-            chunk = f.read(size)
-            hash.update(chunk)
+            size_left = size
+            while size_left > 0:
+                chunk = f.read(min(8192, size_left))
+                size_left -= len(chunk)
+                hash.update(chunk)
+
     return hash
 
 def checksum_sha256_buffer(buffer, offset=0, size=None):
