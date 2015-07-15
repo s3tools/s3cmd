@@ -1343,7 +1343,7 @@ def cmd_sync_local2remote(args):
             (pid, status) = os.wait()
             child_pids.remove(pid)
             if ret == EX_OK:
-                ret = status >> 8
+                ret = os.WEXITSTATUS(status)
 
         return ret
 
