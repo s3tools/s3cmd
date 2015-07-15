@@ -390,11 +390,12 @@ def cmd_object_put(args):
         try:
             response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label)
         except S3UploadError, e:
-            error(u"Upload of '%s' failed too many times. Skipping that file." % full_name_orig)
-            ret = EX_PARTIAL
             if cfg.stop_on_error:
                 ret = EX_DATAERR
+                error(u"Upload of '%s' failed too many times. Exiting." % full_name_orig)
                 break
+            ret = EX_PARTIAL
+            error(u"Upload of '%s' failed too many times. Skipping that file." % full_name_orig)
             continue
         except InvalidFileError, e:
             warning(u"File can not be uploaded: %s" % e)
@@ -922,6 +923,7 @@ def cmd_sync_remote2remote(args):
     def _upload(src_list, seq, src_count):
         file_list = src_list.keys()
         file_list.sort()
+        ret = EX_OK
         for file in file_list:
             seq += 1
             item = src_list[file]
@@ -933,16 +935,19 @@ def cmd_sync_remote2remote(args):
                 response = s3.object_copy(src_uri, dst_uri, extra_headers)
                 output("File %(src)s copied to %(dst)s" % { "src" : src_uri, "dst" : dst_uri })
             except S3Error, e:
+                ret = EX_PARTIAL
                 error("File %(src)s could not be copied: %(e)s" % { "src" : src_uri, "e" : e })
                 if cfg.stop_on_error:
                     raise
-        return seq
+        return ret, seq
 
     # Perform the synchronization of files
     timestamp_start = time.time()
     seq = 0
-    seq = _upload(src_list, seq, src_count + update_count)
-    seq = _upload(update_list, seq, src_count + update_count)
+    ret, seq = _upload(src_list, seq, src_count + update_count)
+    status, seq = _upload(update_list, seq, src_count + update_count)
+    if ret == EX_OK:
+        ret = status
     n_copied, bytes_saved, failed_copy_files = remote_copy(s3, copy_pairs, destination_base)
 
     #process files not copied
@@ -950,7 +955,9 @@ def cmd_sync_remote2remote(args):
     failed_copy_count = len (failed_copy_files)
     for key in failed_copy_files:
         failed_copy_files[key]['target_uri'] = destination_base + key
-    seq = _upload(failed_copy_files, seq, src_count + update_count + failed_copy_count)
+    status, seq = _upload(failed_copy_files, seq, src_count + update_count + failed_copy_count)
+    if ret == EX_OK:
+        ret = status
 
     total_elapsed = max(1.0, time.time() - timestamp_start)
     outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s" % (seq, total_elapsed, seq/total_elapsed)
@@ -962,7 +969,7 @@ def cmd_sync_remote2remote(args):
     # Delete items in destination that are not in source
     if cfg.delete_removed and cfg.delete_after:
         subcmd_batch_del(remote_list = dst_list)
-    return EX_OK
+    return ret
 
 def cmd_sync_remote2local(args):
     def _do_deletes(local_list):
@@ -1046,6 +1053,7 @@ def cmd_sync_remote2local(args):
         os.umask(original_umask);
         file_list = remote_list.keys()
         file_list.sort()
+        ret = EX_OK
         for file in file_list:
             seq += 1
             item = remote_list[file]
@@ -1061,6 +1069,7 @@ def cmd_sync_remote2local(args):
                     if cfg.stop_on_error:
                         raise OSError("%s: destination directory not writable: %s" % (file, dst_dir))
                     warning(u"%s: destination directory not writable: %s" % (file, dst_dir))
+                    ret = EX_PARTIAL
                     continue
 
                 try:
@@ -1078,6 +1087,7 @@ def cmd_sync_remote2local(args):
                         os.rename(deunicodise(chkptfname), deunicodise(dst_file))
                         debug(u"renamed chkptfname=%s to dst_file=%s" % (chkptfname, dst_file))
                 except OSError, e:
+                    ret = EX_PARTIAL
                     if e.errno == errno.EISDIR:
                         warning(u"%s is a directory - skipping over" % dst_file)
                         continue
@@ -1092,11 +1102,13 @@ def cmd_sync_remote2local(args):
                     os.unlink(deunicodise(chkptfname))
                     if cfg.stop_on_error:
                         raise
+                    ret = EX_PARTIAL
                     continue
                 except S3Error, e:
                     warning(u"Remote file %s S3Error: %s" % (e.resource, e))
                     if cfg.stop_on_error:
                         raise
+                    ret = EX_PARTIAL
                     continue
 
                 try:
@@ -1138,6 +1150,7 @@ def cmd_sync_remote2local(args):
                         dst_stream.close()
                         os.remove(deunicodise(chkptfname))
                     except: pass
+                    ret = EX_PARTIAL
                     if e.errno == errno.EEXIST:
                         warning(u"%s exists - not overwriting" % dst_file)
                         continue
@@ -1159,6 +1172,7 @@ def cmd_sync_remote2local(args):
                         dst_stream.close()
                         os.remove(deunicodise(chkptfname))
                     except: pass
+                    ret = EX_PARTIAL
                     error(u"%s: %s" % (file, e))
                     if cfg.stop_on_error:
                         raise OSError, e
@@ -1171,6 +1185,7 @@ def cmd_sync_remote2local(args):
                     os.remove(deunicodise(chkptfname))
                 except: pass
             except S3DownloadError, e:
+                ret = EX_PARTIAL
                 error(u"%s: download failed too many times. Skipping that file.  This is usually a transient error, please try again later." % file)
                 if cfg.stop_on_error:
                     raise
@@ -1184,19 +1199,23 @@ def cmd_sync_remote2local(args):
             if Config().delete_after_fetch:
                 s3.object_delete(uri)
                 output(u"File '%s' removed after syncing" % (uri))
-        return seq, total_size
+        return ret, seq, total_size
 
     total_size = 0
     total_elapsed = 0.0
     timestamp_start = time.time()
     dir_cache = {}
     seq = 0
-    seq, total_size = _download(remote_list, seq, remote_count + update_count, total_size, dir_cache)
-    seq, total_size = _download(update_list, seq, remote_count + update_count, total_size, dir_cache)
+    ret, seq, total_size = _download(remote_list, seq, remote_count + update_count, total_size, dir_cache)
+    status, seq, total_size = _download(update_list, seq, remote_count + update_count, total_size, dir_cache)
+    if ret == EX_OK:
+        ret = status
 
     failed_copy_list = local_copy(copy_pairs, destination_base)
     _set_local_filename(failed_copy_list, destination_base)
-    seq, total_size = _download(failed_copy_list, seq, len(failed_copy_list) + remote_count + update_count, total_size, dir_cache)
+    status, seq, total_size = _download(failed_copy_list, seq, len(failed_copy_list) + remote_count + update_count, total_size, dir_cache)
+    if ret == EX_OK:
+        ret = status
 
     total_elapsed = max(1.0, time.time() - timestamp_start)
     speed_fmt = formatSize(total_size/total_elapsed, human_readable = True, floating_point = True)
@@ -1211,7 +1230,7 @@ def cmd_sync_remote2local(args):
 
     if cfg.delete_removed and cfg.delete_after:
         _do_deletes(local_list)
-    return EX_OK
+    return ret
 
 def local_copy(copy_pairs, destination_base):
     # Do NOT hardlink local files by default, that'd be silly
@@ -1293,24 +1312,20 @@ def _build_attr_header(local_list, src):
 
 def cmd_sync_local2remote(args):
     def _single_process(local_list):
-        any_child_failed = False
         for dest in destinations:
             ## Normalize URI to convert s3://bkt to s3://bkt/ (trailing slash)
             destination_base_uri = S3Uri(dest)
             if destination_base_uri.type != 's3':
                 raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
             destination_base = destination_base_uri.uri()
-            rc = _child(destination_base, local_list)
-            if rc:
-                any_child_failed = True
-        return any_child_failed
+        return _child(destination_base, local_list)
 
     def _parent():
         # Now that we've done all the disk I/O to look at the local file system and
         # calculate the md5 for each file, fork for each destination to upload to them separately
         # and in parallel
         child_pids = []
-        any_child_failed = False
+        ret = EX_OK
 
         for dest in destinations:
             ## Normalize URI to convert s3://bkt to s3://bkt/ (trailing slash)
@@ -1320,18 +1335,17 @@ def cmd_sync_local2remote(args):
             destination_base = destination_base_uri.uri()
             child_pid = os.fork()
             if child_pid == 0:
-                _child(destination_base, local_list)
-                os._exit(0)
+                os._exit(_child(destination_base, local_list))
             else:
                 child_pids.append(child_pid)
 
         while len(child_pids):
             (pid, status) = os.wait()
             child_pids.remove(pid)
-            if status:
-                any_child_failed = True
+            if ret == EX_OK:
+                ret = status >> 8
 
-        return any_child_failed
+        return ret
 
     def _child(destination_base, local_list):
         def _set_remote_uri(local_list, destination_base, single_file_local):
@@ -1348,6 +1362,7 @@ def cmd_sync_local2remote(args):
         def _upload(local_list, seq, total, total_size):
             file_list = local_list.keys()
             file_list.sort()
+            ret = EX_OK
             for file in file_list:
                 seq += 1
                 item = local_list[file]
@@ -1363,11 +1378,13 @@ def cmd_sync_local2remote(args):
                     response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
                 except InvalidFileError, e:
                     warning(u"File can not be uploaded: %s" % e)
+                    ret = EX_PARTIAL
                     if cfg.stop_on_error:
                         raise
                     continue
                 except S3UploadError, e:
                     error(u"%s: upload failed too many times. Skipping that file." % item['full_name'])
+                    ret = EX_PARTIAL
                     if cfg.stop_on_error:
                         raise
                     continue
@@ -1378,7 +1395,7 @@ def cmd_sync_local2remote(args):
                         speed_fmt[0], speed_fmt[1], seq_label))
                 total_size += response["size"]
                 uploaded_objects_list.append(uri.object())
-            return seq, total_size
+            return ret, seq, total_size
 
         remote_list, dst_exclude_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
 
@@ -1440,15 +1457,19 @@ def cmd_sync_local2remote(args):
         total_size = 0
         total_elapsed = 0.0
         timestamp_start = time.time()
-        n, total_size = _upload(local_list, 0, upload_count, total_size)
-        n, total_size = _upload(update_list, n, upload_count, total_size)
+        ret, n, total_size = _upload(local_list, 0, upload_count, total_size)
+        status, n, total_size = _upload(update_list, n, upload_count, total_size)
+        if ret == EX_OK:
+            ret = status
         n_copies, saved_bytes, failed_copy_files  = remote_copy(s3, copy_pairs, destination_base)
 
         #upload file that could not be copied
         debug("Process files that was not remote copied")
         failed_copy_count = len(failed_copy_files)
         _set_remote_uri(failed_copy_files, destination_base, single_file_local)
-        n, total_size = _upload(failed_copy_files, n, upload_count + failed_copy_count, total_size)
+        status, n, total_size = _upload(failed_copy_files, n, upload_count + failed_copy_count, total_size)
+        if ret == EX_OK:
+            ret = status
 
         if cfg.delete_removed and cfg.delete_after and remote_list:
             subcmd_batch_del(remote_list = remote_list)
@@ -1464,7 +1485,7 @@ def cmd_sync_local2remote(args):
         else:
             info(outstr)
 
-        return EX_OK
+        return ret
 
     def _invalidate_on_cf(destination_base_uri):
         cf = CloudFront(cfg)
@@ -1499,7 +1520,7 @@ def cmd_sync_local2remote(args):
         destinations = destinations + cfg.additional_destinations
 
     if 'fork' not in os.__all__ or len(destinations) < 2:
-        any_child_failed = _single_process(local_list)
+        ret = _single_process(local_list)
         destination_base_uri = S3Uri(destinations[-1])
         if cfg.invalidate_on_cf:
             if len(uploaded_objects_list) == 0:
@@ -1507,15 +1528,12 @@ def cmd_sync_local2remote(args):
             else:
                 _invalidate_on_cf(destination_base_uri)
     else:
-        any_child_failed = _parent()
+        ret = _parent()
         if cfg.invalidate_on_cf:
             error(u"You cannot use both --cf-invalidate and --add-destination.")
             return(EX_USAGE)
 
-    if any_child_failed:
-        return EX_SOFTWARE
-    else:
-        return EX_OK
+    return ret
 
 def cmd_sync(args):
     if (len(args) < 2):
