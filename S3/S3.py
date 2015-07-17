@@ -1248,6 +1248,14 @@ class S3(object):
         response["elapsed"] = timestamp_end - timestamp_start
         response["size"] = size
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
+        if response["data"] and getRootTagName(response["data"]) == "Error":
+            #http://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadComplete.html
+            # Error Complete Multipart UPLOAD, status may be 200,
+            # so force error code 500
+            response["status"] = 500
+            response["reason"] = getTextFromXml(response["data"], 'Message')
+            error("Server error during UPLOAD operation. Overwrite response status to 500")
+            raise S3Error(response)
         return response
 
     def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
