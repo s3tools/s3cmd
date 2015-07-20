@@ -116,7 +116,6 @@ class Config(object):
     cache_file = ""
     add_headers = ""
     remove_headers = []
-    ignore_failed_copy = False
     expiry_days = ""
     expiry_date = ""
     expiry_prefix = ""
