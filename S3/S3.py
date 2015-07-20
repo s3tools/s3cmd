@@ -1248,6 +1248,11 @@ class S3(object):
         response["elapsed"] = timestamp_end - timestamp_start
         response["size"] = size
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
+        if response["data"] and getRootTagName(response["data"]) == "Error":
+            #http://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadComplete.html
+            # Error Complete Multipart UPLOAD, status may be 200
+            # raise S3UploadError
+            raise S3UploadError(getTextFromXml(response["data"], 'Message'))
         return response
 
     def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
