@@ -622,11 +622,6 @@ def subcmd_batch_del_iterative(uri_str = None, bucket = None):
     deleted = [0]
     deleted_bytes = [0]
 
-    def _status():
-        total_size, size_coeff = formatSize(deleted_bytes[0], Config().human_readable_sizes)
-        total_size_str = str(total_size) + size_coeff
-        info(u"Deleted %s objects (%s) from %s" % (deleted[0], total_size_str, uri))
-
     def _delete():
         if not cfg.dry_run:
             response = s3.object_batch_delete_uri_strs([uri.compose_uri(bucket, item['Key']) for item in to_delete])
@@ -634,7 +629,10 @@ def subcmd_batch_del_iterative(uri_str = None, bucket = None):
         deleted[0] += len(to_delete)
         output('\n'.join(u"File %s deleted" % uri.compose_uri(bucket, p['Key']) for p in to_delete))
         to_delete[:] = []
-        _status()
+        # display summary data of deleted files
+        total_size, size_coeff = formatSize(deleted_bytes[0], Config().human_readable_sizes)
+        total_size_str = str(total_size) + size_coeff
+        info(u"Deleted %s objects (%s) from %s" % (deleted[0], total_size_str, uri))
 
     for is_dir, obj in recurse(s3, uri, recursive=True):
         if is_dir:
