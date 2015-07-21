@@ -323,6 +323,8 @@ You can increase the level of verbosity with `-v` option and if you're really ke
 
 After configuring it with `--configure` all available options are spitted into your `~/.s3cfg` file. It's a text file ready to be modified in your favourite text editor.
 
+The Transfer commands (put, get, cp, mv, and sync) continue transferring even if an object fails. If a failure occurs the failure is output to stderr and the exit status will be EX_PARTIAL (2). If the option `--stop-on-error` is specified, or the config option stop_on_error is true, the transfers stop and an appropriate error code is returned.
+
 For more information refer to the [S3cmd / S3tools homepage](http://s3tools.org).
 
 ### License
