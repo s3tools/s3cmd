@@ -594,7 +594,9 @@ def cmd_object_del(args):
 
         if not recursive:
             rc = subcmd_object_del_uri(uri_str)
-        elif Config().exclude:
+        elif Config().exclude or cfg.max_delete > 0:
+            # subcmd_batch_del_iterative does not support file exclusion and can't
+            # accurately know how many total files will be deleted, so revert to batch delete.
             rc = subcmd_batch_del(uri_str = uri_str)
         else:
             rc = subcmd_batch_del_iterative(uri_str = uri_str)
@@ -603,14 +605,10 @@ def cmd_object_del(args):
     return EX_OK
 
 def subcmd_batch_del_iterative(uri_str = None, bucket = None):
-    """ Streaming version of batch deletion (doesn't realize whole list in memory before deleting). 
+    """ Streaming version of batch deletion (doesn't realize whole list in memory before deleting).
 
     Differences from subcmd_batch_del:
-      - Obeys cfg.max_delete, but if it is >1000, will delete files until we are sure that at least 
-        that many files are to be deleted
-      - Only prints out individual file names if <1000 files are to be deleted
-      - Does not obey --exclude directives (use subcmd_batch_del in those cases)
-
+      - Does not obey --exclude directives or obey cfg.max_delete (use subcmd_batch_del in those cases)
     """
     if bucket and uri_str:
         raise ValueError("Pass only one of uri_str or bucket")
@@ -627,43 +625,26 @@ def subcmd_batch_del_iterative(uri_str = None, bucket = None):
     def _status():
         total_size, size_coeff = formatSize(deleted_bytes[0], Config().human_readable_sizes)
         total_size_str = str(total_size) + size_coeff
-        output(u"Deleted %s -> %s from %s" % (str(deleted[0]).ljust(8), total_size_str.ljust(8), uri))
+        info(u"Deleted %s objects (%s) from %s" % (deleted[0], total_size_str, uri))
 
     def _delete():
         if not cfg.dry_run:
             response = s3.object_batch_delete_uri_strs([uri.compose_uri(bucket, item['Key']) for item in to_delete])
         deleted_bytes[0] += sum(int(item["Size"]) for item in to_delete)
         deleted[0] += len(to_delete)
+        output('\n'.join(u"File %s deleted" % uri.compose_uri(bucket, p['Key']) for p in to_delete))
         to_delete[:] = []
         _status()
 
-    def _check_max_delete():
-        """ Return True if ok to delete """
-        if cfg.max_delete > 0 and len(to_delete) + deleted[0] > cfg.max_delete:
-            warning(u"delete: maximum requested number of deletes would be exceeded, %s performed." % deleted[0])
-            to_delete[:] = []
-            return False
-        return True
-
-    deleted_at_least_1000 = False
     for is_dir, obj in recurse(s3, uri, recursive=True):
         if is_dir:
             continue
         to_delete.append(obj)
         if len(to_delete) >= 1000:
-            if _check_max_delete():
-                deleted_at_least_1000 = True
-                _delete()
-            else:
-                return False
+            _delete()
 
     if to_delete:
-        if _check_max_delete():
-            if not deleted_at_least_1000:
-                output('\n'.join(u"File %s deleted" % uri.compose_uri(bucket, p['Key']) for p in to_delete))
-            _delete()
-        else:
-            return False
+        _delete()
 
     return EX_OK
 
