@@ -2383,10 +2383,6 @@ def main():
         cfg.verbosity = options.verbosity
     logging.root.setLevel(cfg.verbosity)
 
-    ## Default to --progress on TTY devices, --no-progress elsewhere
-    ## Can be overridden by actual --(no-)progress parameter
-    cfg.update_option('progress_meter', sys.stdout.isatty())
-
     ## Unsupported features on Win32 platform
     if os.name == "nt":
         if cfg.preserve_attrs:
