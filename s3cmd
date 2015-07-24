@@ -92,7 +92,7 @@ def subcmd_bucket_usage(s3, uri):
     objects = 0
     extra_info = u''
     try:
-        for is_dir, obj in s3.bucket_list_streaming(bucket, prefix=uri.object(), recursive=True):
+        for is_dir, obj in s3.bucket_list_streaming(uri.bucket(), prefix=uri.object(), recursive=True):
             if not is_dir:
                 # objects in the current scope
                 bucket_size += int(obj["Size"])
@@ -600,29 +600,33 @@ def subcmd_batch_del_iterative(uri_str = None, bucket = None):
     bucket = uri.bucket()
 
     to_delete = []
-    deleted = [0]
-    deleted_bytes = [0]
+    deleted_count = 0
+    deleted_bytes = 0
 
-    def _delete():
+    def _delete(to_delete, deleted_count, deleted_bytes):
+        """ Returns (deleted_count, deleted_bytes) tuple """
         if not cfg.dry_run:
             response = s3.object_batch_delete_uri_strs([uri.compose_uri(bucket, item['Key']) for item in to_delete])
-        deleted_bytes[0] += sum(int(item["Size"]) for item in to_delete)
-        deleted[0] += len(to_delete)
+        delta_count, delta_bytes = len(to_delete), sum(int(item["Size"]) for item in to_delete)
         output('\n'.join(u"File %s deleted" % uri.compose_uri(bucket, p['Key']) for p in to_delete))
-        to_delete[:] = []
+
         # display summary data of deleted files
-        total_size, size_coeff = formatSize(deleted_bytes[0], Config().human_readable_sizes)
+        total_size, size_coeff = formatSize(deleted_bytes + delta_bytes, Config().human_readable_sizes)
         total_size_str = str(total_size) + size_coeff
-        info(u"Deleted %s objects (%s) from %s" % (deleted[0], total_size_str, uri))
+        info(u"Deleted %s objects (%s) from %s" % (deleted_count + delta_count, total_size_str, uri))
+        return delta_count, delta_bytes
 
     for is_dir, obj in s3.bucket_list_streaming(bucket, prefix=uri.object(), recursive=True):
         if not is_dir: # is_dir should always be false since recursive=True
             to_delete.append(obj)
             if len(to_delete) >= 1000:
-                _delete()
+                cnt, bytes = _delete(to_delete, deleted_count, deleted_bytes)
+                deleted_count += cnt
+                deleted_bytes += bytes
+                to_delete = []
 
     if to_delete:
-        _delete()
+        _delete(to_delete, deleted_count, deleted_bytes)
 
     return EX_OK
 
