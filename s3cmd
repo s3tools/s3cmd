@@ -83,28 +83,6 @@ def subcmd_bucket_usage_all(s3):
     output(u"%s Total" % (total_size_str.ljust(8)))
     return size
 
-def recurse(s3, uri, recursive = None):
-    """ Generator that produces all dirs and items from a given prefix, recursively """
-    bucket = uri.bucket()
-    object = uri.object()
-
-    if object.endswith('*'):
-        object = object[:-1]
-
-    # iterate and store directories to traverse
-    dirs = [object]
-    while dirs:
-        try:
-            for is_dir, obj in s3.bucket_list_streaming(bucket, prefix=dirs.pop(), recursive=recursive):
-                if is_dir:
-                    dirs.append(obj["Prefix"])
-                yield is_dir, obj
-
-        except S3Error, e:
-            if S3.codes.has_key(e.info["Code"]):
-                error(S3.codes[e.info["Code"]] % bucket)
-            raise
-
 def subcmd_bucket_usage(s3, uri):
     """
     Returns: bucket size as integer
@@ -112,22 +90,25 @@ def subcmd_bucket_usage(s3, uri):
     """
     bucket_size = 0
     objects = 0
+    extra_info = u''
     try:
-        for is_dir, obj in recurse(s3, uri, recursive=True):
+        for is_dir, obj in s3.bucket_list_streaming(bucket, prefix=uri.object(), recursive=True):
             if not is_dir:
                 # objects in the current scope
                 bucket_size += int(obj["Size"])
                 objects += 1
 
-    except KeyboardInterrupt, e:
-        total_size, size_coeff = formatSize(bucket_size, Config().human_readable_sizes)
-        total_size_str = str(total_size) + size_coeff
-        output(u"At least: %s %s objects %s" % (total_size_str.ljust(8), objects, uri))
+    except S3Error, e:
+        if S3.codes.has_key(e.info["Code"]):
+            error(S3.codes[e.info["Code"]] % bucket)
         raise
+
+    except KeyboardInterrupt, e:
+        extra_info = u' [interrupted]'
 
     total_size, size_coeff = formatSize(bucket_size, Config().human_readable_sizes)
     total_size_str = str(total_size) + size_coeff
-    output(u"%s %s objects %s" % (total_size_str.ljust(8), objects, uri))
+    output(u"%s %s objects %s%s" % (total_size_str.ljust(8), objects, uri, extra_info))
     return bucket_size
 
 def cmd_ls(args):
@@ -634,12 +615,11 @@ def subcmd_batch_del_iterative(uri_str = None, bucket = None):
         total_size_str = str(total_size) + size_coeff
         info(u"Deleted %s objects (%s) from %s" % (deleted[0], total_size_str, uri))
 
-    for is_dir, obj in recurse(s3, uri, recursive=True):
-        if is_dir:
-            continue
-        to_delete.append(obj)
-        if len(to_delete) >= 1000:
-            _delete()
+    for is_dir, obj in s3.bucket_list_streaming(bucket, prefix=uri.object(), recursive=True):
+        if not is_dir: # is_dir should always be false since recursive=True
+            to_delete.append(obj)
+            if len(to_delete) >= 1000:
+                _delete()
 
     if to_delete:
         _delete()
