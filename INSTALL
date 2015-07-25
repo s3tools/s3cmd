@@ -33,6 +33,15 @@ You may be informed about missing dependencies
 on Python or some libraries. Please consult your 
 distribution documentation on ways to solve the problem.
 
+Installation from PyPA (Python Package Authority)
+---------------------
+S3cmd can be installed from the PyPA using PIP (the recommended tool for PyPA).
+
+1) Confirm you have PIP installed. PIP home page is here: https://pypi.python.org/pypi/pip 
+   Example install on a RHEL yum based machine
+	sudo yum install python-pip
+2) Install with pip
+	sudo pip install s3cmd
 
 Installation from zip file 
 --------------------------
