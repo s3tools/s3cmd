@@ -269,9 +269,11 @@ def fetch_local_list(args, is_src = False, recursive = None):
             for f in files:
                 full_name = os.path.join(root, f)
                 if not os.path.isfile(deunicodise(full_name)):
+                    warning(u"Skipping over non-existing file: %s" % full_name)
                     continue
                 if os.path.islink(deunicodise(full_name)):
                     if not cfg.follow_symlinks:
+                        warning(u"Skipping over symbolic link: %s" % full_name)
                         continue
                 relative_file = os.path.join(rel_root, f)
                 if os.path.sep != "/":
