@@ -299,7 +299,7 @@ def cmd_bucket_delete(args):
                     return EX_USAGE
             if e.info['Code'] == 'BucketNotEmpty' and retry and (cfg.force or cfg.recursive):
                 warning(u"Bucket is not empty. Removing all the objects from it first. This may take some time...")
-                rc = subcmd_batch_del(uri_str = uri.uri())
+                rc = subcmd_batch_del(uri_str = uri.uri(), versioned = True)
                 if rc == EX_OK:
                     return _bucket_delete_one(uri, False)
                 else:
@@ -601,7 +601,7 @@ def cmd_object_del(args):
             return rc
     return EX_OK
 
-def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
+def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None, versioned = False):
     """
     Returns: EX_OK
     Raises: ValueError
@@ -615,7 +615,7 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
             debug(u"Batch delete %d, remaining %d" % (len(to_delete), len(remote_list)))
             if not cfg.dry_run:
                 response = s3.object_batch_delete(to_delete)
-            output('\n'.join((u"File %s deleted" % to_delete[p]['object_uri_str']) for p in to_delete))
+            output('\n'.join((u"File %s deleted" % p['object_uri_str']) for p in to_delete))
             to_delete = remote_list[:1000]
             remote_list = remote_list[1000:]
 
@@ -628,7 +628,10 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
     if bucket: # bucket specified
         uri_str = "s3://%s" % bucket
     if remote_list is None: # uri_str specified
-        remote_list, exclude_list = fetch_remote_list(uri_str, require_attribs = False)
+        if versioned:
+            remote_list = fetch_bucket_versions(uri_str)
+        else:
+            remote_list, exclude_list = fetch_remote_list(uri_str, require_attribs = False)
 
     if len(remote_list) == 0:
         warning(u"Remote list is empty.")

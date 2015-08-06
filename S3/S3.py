@@ -150,7 +150,7 @@ class S3Request(object):
                 param_str += "&%s=%s" % (param, self.params[param])
             else:
                 param_str += "&%s" % param
-        return param_str and "?" + param_str[1:]
+        return param_str
 
     def use_signature_v2(self):
         if self.s3.endpoint_requires_signature_v4:
@@ -195,7 +195,10 @@ class S3Request(object):
         self.update_timestamp()
         self.sign()
         resource = dict(self.resource)  ## take a copy
-        resource['uri'] += self.format_param_str()
+        param_str = self.format_param_str()
+        if '?' not in resource['uri']:
+            param_str = '?' + param_str[1:]
+        resource['uri'] += param_str
         return (self.method_string, resource, self.headers)
 
 class S3(object):
@@ -297,7 +300,7 @@ class S3(object):
         prefixes = []
 
         while truncated:
-            response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params)
+            response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params=uri_params)
             current_list = _get_contents(response["data"])
             current_prefixes = _get_common_prefixes(response["data"])
             truncated = _list_truncated(response["data"])
@@ -315,15 +318,43 @@ class S3(object):
         response['common_prefixes'] = prefixes
         return response
 
-    def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = {}):
+    def bucket_list_noparse(self, bucket, prefix = None, recursive = None, extra = None, uri_params = {}):
         if prefix:
             uri_params['prefix'] = self.urlencode_string(prefix)
         if not self.config.recursive and not recursive:
             uri_params['delimiter'] = "/"
-        request = self.create_request("BUCKET_LIST", bucket = bucket, **uri_params)
+        request = self.create_request("BUCKET_LIST", bucket = bucket, extra = extra, **uri_params)
         response = self.send_request(request)
         #debug(response)
         return response
+
+    def bucket_versions(self, bucket):
+        def _list_truncated(data):
+            ## <IsTruncated> can either be "true" or "false" or be missing completely
+            is_truncated = getTextFromXml(data, ".//IsTruncated") or "false"
+            return is_truncated.lower() != "false"
+
+        def _get_versions(data):
+            return getListFromXml(data, "Version")
+
+        def _get_delete_marker(data):
+            return getListFromXml(data, "DeleteMarker")
+
+        def _get_marker(data):
+            return getTextFromXml(data, "NextKeyMarker")
+
+        truncated = True
+        response_data = {}
+        uri_params = {}
+        while truncated:
+            response = self.bucket_list_noparse(bucket, recursive = True, extra = '?versions', uri_params=uri_params)
+            response_data["Version"] = response_data.get("Version", []) + _get_versions(response["data"])
+            response_data["DeleteMarker"] = response_data.get("DeleteMarker", []) + _get_delete_marker(response["data"])
+            truncated = _list_truncated(response["data"])
+            if truncated:
+                uri_params["key-marker"] = _get_marker(response["data"])
+                debug("Listing continues after '%s'" % uri_params['key-marker'])
+        return response_data
 
     def bucket_create(self, bucket, bucket_location = None):
         headers = SortedDict(ignore_case = True)
@@ -621,7 +652,8 @@ class S3(object):
     def object_batch_delete(self, remote_list):
         def compose_batch_del_xml(bucket, key_list):
             body = u"<?xml version=\"1.0\" encoding=\"UTF-8\"?><Delete>"
-            for key in key_list:
+            for obj in key_list:
+                key = obj['object_uri_str']
                 uri = S3Uri(key)
                 if uri.type != "s3":
                     raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
@@ -630,16 +662,21 @@ class S3(object):
                 if uri.bucket() != bucket:
                     raise ValueError("The batch should contain keys from the same bucket")
                 object = saxutils.escape(uri.object())
-                body += u"<Object><Key>%s</Key></Object>" % object
+                if obj.get('version_id', None):
+                    body += (u"<Object>"
+                             u"<Key>%s</Key>"
+                             u"<VersionId>%s</VersionId>"
+                             u"</Object>" % (object, obj["version_id"]))
+                else:
+                    body += u"<Object><Key>%s</Key></Object>" % object
             body += u"</Delete>"
             body = encode_to_s3(body)
             return body
 
-        batch = [remote_list[item]['object_uri_str'] for item in remote_list]
-        if len(batch) == 0:
+        if len(remote_list) == 0:
             raise ValueError("Key list is empty")
-        bucket = S3Uri(batch[0]).bucket()
-        request_body = compose_batch_del_xml(bucket, batch)
+        bucket = S3Uri(remote_list[0]['object_uri_str']).bucket()
+        request_body = compose_batch_del_xml(bucket, remote_list)
         md5_hash = md5()
         md5_hash.update(request_body)
         headers = {'content-md5': base64.b64encode(md5_hash.digest()),
