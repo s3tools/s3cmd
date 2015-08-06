@@ -118,7 +118,7 @@ class http_connection(object):
                 self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
                 debug(u'proxied HTTPConnection(%s, %s)' % (cfg.proxy_host, cfg.proxy_port))
             else:
-                self.c = httplib.HTTPConnection(hostname)
+                self.c = httplib.HTTPConnection(hostname, cfg.host_port)
                 debug(u'non-proxied HTTPConnection(%s)' % hostname)
         else:
             if cfg.proxy_host != "":
