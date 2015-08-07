@@ -89,14 +89,13 @@ def subcmd_bucket_usage(s3, uri):
     Raises: S3Error
     """
     bucket_size = 0
-    objects = 0
+    object_count = 0
     extra_info = u''
     try:
-        for is_dir, obj in s3.bucket_list_streaming(uri.bucket(), prefix=uri.object(), recursive=True):
-            if not is_dir:
-                # objects in the current scope
+        for _, objects in s3.bucket_list_streaming(uri.bucket(), prefix=uri.object(), recursive=True):
+            for obj in objects:
                 bucket_size += int(obj["Size"])
-                objects += 1
+                object_count += 1
 
     except S3Error, e:
         if S3.codes.has_key(e.info["Code"]):
@@ -108,7 +107,7 @@ def subcmd_bucket_usage(s3, uri):
 
     total_size, size_coeff = formatSize(bucket_size, Config().human_readable_sizes)
     total_size_str = str(total_size) + size_coeff
-    output(u"%s %s objects %s%s" % (total_size_str.ljust(8), objects, uri, extra_info))
+    output(u"%s %s objects %s%s" % (total_size_str.ljust(8), object_count, uri, extra_info))
     return bucket_size
 
 def cmd_ls(args):
@@ -599,34 +598,19 @@ def subcmd_batch_del_iterative(uri_str = None, bucket = None):
     uri = S3Uri(uri_str)
     bucket = uri.bucket()
 
-    to_delete = []
-    deleted_count = 0
-    deleted_bytes = 0
+    deleted_bytes = deleted_count = 0
 
-    def _delete(to_delete, deleted_count, deleted_bytes):
-        """ Returns (deleted_count, deleted_bytes) tuple """
+    for _, to_delete in s3.bucket_list_streaming(bucket, prefix=uri.object(), recursive=True):
         if not cfg.dry_run:
             response = s3.object_batch_delete_uri_strs([uri.compose_uri(bucket, item['Key']) for item in to_delete])
-        delta_count, delta_bytes = len(to_delete), sum(int(item["Size"]) for item in to_delete)
+        deleted_bytes += sum(int(item["Size"]) for item in to_delete)
+        deleted_count += len(to_delete)
         output('\n'.join(u"File %s deleted" % uri.compose_uri(bucket, p['Key']) for p in to_delete))
 
         # display summary data of deleted files
-        total_size, size_coeff = formatSize(deleted_bytes + delta_bytes, Config().human_readable_sizes)
+        total_size, size_coeff = formatSize(deleted_bytes, Config().human_readable_sizes)
         total_size_str = str(total_size) + size_coeff
-        info(u"Deleted %s objects (%s) from %s" % (deleted_count + delta_count, total_size_str, uri))
-        return delta_count, delta_bytes
-
-    for is_dir, obj in s3.bucket_list_streaming(bucket, prefix=uri.object(), recursive=True):
-        if not is_dir: # is_dir should always be false since recursive=True
-            to_delete.append(obj)
-            if len(to_delete) >= 1000:
-                cnt, bytes = _delete(to_delete, deleted_count, deleted_bytes)
-                deleted_count += cnt
-                deleted_bytes += bytes
-                to_delete = []
-
-    if to_delete:
-        _delete(to_delete, deleted_count, deleted_bytes)
+        info(u"Deleted %s objects (%s) from %s" % (deleted_count, total_size_str, uri))
 
     return EX_OK
 

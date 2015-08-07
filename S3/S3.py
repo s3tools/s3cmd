@@ -279,7 +279,7 @@ class S3(object):
         return response
 
     def bucket_list_streaming(self, bucket, prefix = None, recursive = None, uri_params = {}):
-        """ Generator that produces <is_dir>, <dir or object> pairs of the contents of a specified bucket. """
+        """ Generator that produces <dir_list>, <object_list> pairs of groups of content of a specified bucket. """
         def _list_truncated(data):
             ## <IsTruncated> can either be "true" or "false" or be missing completely
             is_truncated = getTextFromXml(data, ".//IsTruncated") or "false"
@@ -307,10 +307,7 @@ class S3(object):
                     uri_params['marker'] = self.urlencode_string(current_prefixes[-1]["Prefix"])
                 debug("Listing continues after '%s'" % uri_params['marker'])
 
-            for pfix in current_prefixes:
-                yield True, pfix
-            for item in current_list:
-                yield False, item
+            yield current_prefixes, current_list
 
     def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = {}):
         if prefix:
