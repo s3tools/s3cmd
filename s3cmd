@@ -88,35 +88,26 @@ def subcmd_bucket_usage(s3, uri):
     Returns: bucket size as integer
     Raises: S3Error
     """
-
-    bucket = uri.bucket()
-    object = uri.object()
-
-    if object.endswith('*'):
-        object = object[:-1]
-
     bucket_size = 0
-    # iterate and store directories to traverse, while summing objects:
-    dirs = [object]
-    while dirs:
-        try:
-            response = s3.bucket_list(bucket, prefix=dirs.pop())
-        except S3Error, e:
-            if S3.codes.has_key(e.info["Code"]):
-                error(S3.codes[e.info["Code"]] % bucket)
-            raise
+    object_count = 0
+    extra_info = u''
+    try:
+        for _, objects in s3.bucket_list_streaming(uri.bucket(), prefix=uri.object(), recursive=True):
+            for obj in objects:
+                bucket_size += int(obj["Size"])
+                object_count += 1
 
-        # objects in the current scope:
-        for obj in response["list"]:
-            bucket_size += int(obj["Size"])
+    except S3Error, e:
+        if S3.codes.has_key(e.info["Code"]):
+            error(S3.codes[e.info["Code"]] % bucket)
+        raise
 
-        # directories found in current scope:
-        for obj in response["common_prefixes"]:
-            dirs.append(obj["Prefix"])
+    except KeyboardInterrupt, e:
+        extra_info = u' [interrupted]'
 
     total_size, size_coeff = formatSize(bucket_size, Config().human_readable_sizes)
     total_size_str = str(total_size) + size_coeff
-    output(u"%s %s" % (total_size_str.ljust(8), uri))
+    output(u"%s %s objects %s%s" % (total_size_str.ljust(8), object_count, uri, extra_info))
     return bucket_size
 
 def cmd_ls(args):
@@ -595,10 +586,44 @@ def cmd_object_del(args):
 
         if not recursive:
             rc = subcmd_object_del_uri(uri_str)
-        else:
+        elif Config().exclude or cfg.max_delete > 0:
+            # subcmd_batch_del_iterative does not support file exclusion and can't
+            # accurately know how many total files will be deleted, so revert to batch delete.
             rc = subcmd_batch_del(uri_str = uri_str)
+        else:
+            rc = subcmd_batch_del_iterative(uri_str = uri_str)
         if not rc:
             return rc
+    return EX_OK
+
+def subcmd_batch_del_iterative(uri_str = None, bucket = None):
+    """ Streaming version of batch deletion (doesn't realize whole list in memory before deleting).
+
+    Differences from subcmd_batch_del:
+      - Does not obey --exclude directives or obey cfg.max_delete (use subcmd_batch_del in those cases)
+    """
+    if bucket and uri_str:
+        raise ValueError("Pass only one of uri_str or bucket")
+    if bucket: # bucket specified
+        uri_str = "s3://%s" % bucket
+    s3 = S3(cfg)
+    uri = S3Uri(uri_str)
+    bucket = uri.bucket()
+
+    deleted_bytes = deleted_count = 0
+
+    for _, to_delete in s3.bucket_list_streaming(bucket, prefix=uri.object(), recursive=True):
+        if not cfg.dry_run:
+            response = s3.object_batch_delete_uri_strs([uri.compose_uri(bucket, item['Key']) for item in to_delete])
+        deleted_bytes += sum(int(item["Size"]) for item in to_delete)
+        deleted_count += len(to_delete)
+        output('\n'.join(u"File %s deleted" % uri.compose_uri(bucket, p['Key']) for p in to_delete))
+
+        # display summary data of deleted files
+        total_size, size_coeff = formatSize(deleted_bytes, Config().human_readable_sizes)
+        total_size_str = str(total_size) + size_coeff
+        info(u"Deleted %s objects (%s) from %s" % (deleted_count, total_size_str, uri))
+
     return EX_OK
 
 def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
