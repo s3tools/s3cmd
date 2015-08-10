@@ -270,8 +270,9 @@ class S3(object):
     def bucket_list(self, bucket, prefix = None, recursive = None, uri_params = {}):
         item_list = []
         prefixes = []
-        for is_dir, obj in self.bucket_list_streaming(bucket, prefix, recursive, uri_params):
-            (prefixes if is_dir else item_list).append(obj)
+        for dirs, objects in self.bucket_list_streaming(bucket, prefix, recursive, uri_params):
+            item_list.extend(objects)
+            prefixes.extend(dirs)
 
         response = {}
         response['list'] = item_list
