@@ -317,15 +317,16 @@ test_s3cmd("Buckets list", ["ls"],
 
 ## ====== Sync to S3
 test_s3cmd("Sync to S3", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude', 'demo/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings' ],
-    must_find = [ "WARNING: 32 non-printable characters replaced in: crappy-file-name/non-printables ^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_^? +-[\]^<>%%\"'#{}`&?.end",
-                  "WARNING: File can not be uploaded: testsuite/permission-tests/permission-denied.txt: Permission denied",
-                  "stored as '%s/xyz/crappy-file-name/non-printables ^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_^? +-[\\]^<>%%%%\"'#{}`&?.end'" % pbucket(1) ],
-    must_not_find_re = [ "demo/", "\.png$", "permission-denied-dir" ])
+           must_find = [ "WARNING: File can not be uploaded: testsuite/permission-tests/permission-denied.txt: Permission denied",
+                         "WARNING: 32 non-printable characters replaced in: crappy-file-name/non-printables",
+           ],
+           must_not_find_re = [ "demo/", "\.png$", "permission-denied-dir" ],
+           retcode = EX_PARTIAL)
 
 if have_encoding:
     ## ====== Sync UTF-8 / GBK / ... to S3
     test_s3cmd("Sync %s to S3" % encoding, ['sync', 'testsuite/encodings/' + encoding, '%s/xyz/encodings/' % pbucket(1), '--exclude', 'demo/*', '--no-encrypt' ],
-        must_find = [ u"File 'testsuite/encodings/%(encoding)s/%(pattern)s' stored as '%(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s'" % { 'encoding' : encoding, 'pattern' : enc_pattern , 'pbucket' : pbucket(1)} ])
+        must_find = [ u"testsuite/encodings/%(encoding)s/%(pattern)s -> %(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s" % { 'encoding' : encoding, 'pattern' : enc_pattern , 'pbucket' : pbucket(1)} ])
 
 
 ## ====== List bucket content
@@ -353,7 +354,7 @@ test_flushdir("Clean testsuite-out/", "testsuite-out")
 ## ====== Put from stdin
 f = open('testsuite/single-file/single-file.txt', 'r')
 test_s3cmd("Put from stdin", ['put', '-', '%s/single-file/single-file.txt' % pbucket(1)],
-           must_find = ["File '-' stored as '%s/single-file/single-file.txt'" % pbucket(1)],
+           must_find = ["<stdin> -> %s/single-file/single-file.txt" % pbucket(1)],
            stdin = f)
 f.close()
 
@@ -374,9 +375,9 @@ f.close()
 test_flushdir("Clean testsuite-out/", "testsuite-out")
 
 ## ====== Sync from S3
-must_find = [ "File '%s/xyz/binary/random-crap.md5' stored as 'testsuite-out/xyz/binary/random-crap.md5'" % pbucket(1) ]
+must_find = [ "%s/xyz/binary/random-crap.md5 -> testsuite-out/xyz/binary/random-crap.md5" % pbucket(1) ]
 if have_encoding:
-    must_find.append(u"File '%(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s' stored as 'testsuite-out/xyz/encodings/%(encoding)s/%(pattern)s' " % { 'encoding' : encoding, 'pattern' : enc_pattern, 'pbucket' : pbucket(1) })
+    must_find.append(u"%(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s -> testsuite-out/xyz/encodings/%(encoding)s/%(pattern)s " % { 'encoding' : encoding, 'pattern' : enc_pattern, 'pbucket' : pbucket(1) })
 test_s3cmd("Sync from S3", ['sync', '%s/xyz' % pbucket(1), 'testsuite-out'],
     must_find = must_find)
 
@@ -391,7 +392,8 @@ test_mkdir("Create file-dir dir", "testsuite-out/xyz/dir-test/file-dir")
 
 ## ====== Skip dst dirs
 test_s3cmd("Skip over dir", ['sync', '%s/xyz' % pbucket(1), 'testsuite-out'],
-    must_find = "WARNING: testsuite-out/xyz/dir-test/file-dir is a directory - skipping over")
+           must_find = "WARNING: testsuite-out/xyz/dir-test/file-dir is a directory - skipping over",
+           retcode = EX_PARTIAL)
 
 
 ## ====== Clean up local destination dir
@@ -400,7 +402,7 @@ test_flushdir("Clean testsuite-out/", "testsuite-out")
 
 ## ====== Put public, guess MIME
 test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public', 'testsuite/etc/logo.png', '%s/xyz/etc/logo.png' % pbucket(1)],
-    must_find = [ "stored as '%s/xyz/etc/logo.png'" % pbucket(1) ])
+    must_find = [ "-> %s/xyz/etc/logo.png" % pbucket(1) ])
 
 
 ## ====== Retrieve from URL
@@ -434,21 +436,24 @@ if have_wget:
 
 ## ====== Sync more to S3
 test_s3cmd("Sync more to S3", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt' ],
-    must_find = [ "File 'testsuite/demo/some-file.xml' stored as '%s/xyz/demo/some-file.xml' " % pbucket(1) ],
-    must_not_find = [ "File 'testsuite/etc/linked.png' stored as '%s/xyz/etc/linked.png" % pbucket(1) ])
+           must_find = [ "testsuite/demo/some-file.xml -> %s/xyz/demo/some-file.xml " % pbucket(1) ],
+           must_not_find = [ "testsuite/etc/linked.png -> %s/xyz/etc/linked.png" % pbucket(1) ],
+           retcode = EX_PARTIAL)
 
 
 ## ====== Don't check MD5 sum on Sync
 test_copy("Change file cksum1.txt", "testsuite/checksum/cksum2.txt", "testsuite/checksum/cksum1.txt")
 test_copy("Change file cksum33.txt", "testsuite/checksum/cksum2.txt", "testsuite/checksum/cksum33.txt")
 test_s3cmd("Don't check MD5", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--no-check-md5'],
-    must_find = [ "cksum33.txt" ],
-    must_not_find = [ "cksum1.txt" ])
+           must_find = [ "cksum33.txt" ],
+           must_not_find = [ "cksum1.txt" ],
+           retcode = EX_PARTIAL)
 
 
 ## ====== Check MD5 sum on Sync
 test_s3cmd("Check MD5", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--check-md5'],
-    must_find = [ "cksum1.txt" ])
+           must_find = [ "cksum1.txt" ],
+           retcode = EX_PARTIAL)
 
 
 ## ====== Rename within S3
@@ -469,8 +474,8 @@ test_s3cmd("Sync more from S3 (invalid src)", ['sync', '--delete-removed', '%s/x
 ## ====== Sync more from S3
 test_s3cmd("Sync more from S3", ['sync', '--delete-removed', '%s/xyz' % pbucket(1), 'testsuite-out'],
     must_find = [ "deleted: testsuite-out/logo.png",
-                  "File '%s/xyz/etc2/Logo.PNG' stored as 'testsuite-out/xyz/etc2/Logo.PNG' (22059 bytes" % pbucket(1),
-                  "File '%s/xyz/demo/some-file.xml' stored as 'testsuite-out/xyz/demo/some-file.xml' " % pbucket(1) ],
+                  "%s/xyz/etc2/Logo.PNG -> testsuite-out/xyz/etc2/Logo.PNG" % pbucket(1),
+                  "%s/xyz/demo/some-file.xml -> testsuite-out/xyz/demo/some-file.xml" % pbucket(1) ],
     must_not_find_re = [ "not-deleted.*etc/logo.png" ])
 
 
@@ -486,7 +491,7 @@ test_s3cmd("Get multiple files", ['get', '%s/xyz/etc2/Logo.PNG' % pbucket(1), '%
 ## ====== put/get non-ASCII filenames
 test_s3cmd("Put unicode filenames", ['put', u'testsuite/encodings/UTF-8/ŪņЇЌœđЗ/Žůžo',  u'%s/xyz/encodings/UTF-8/ŪņЇЌœđЗ/Žůžo' % pbucket(1)],
            retcode = 0,
-           must_find = [ 'stored as' ])
+           must_find = [ '->' ])
 
 
 ## ====== Make dst dir for get
@@ -496,12 +501,13 @@ test_mkdir("Make dst dir for get", "testsuite-out")
 ## ====== put/get non-ASCII filenames
 test_s3cmd("Get unicode filenames", ['get', u'%s/xyz/encodings/UTF-8/ŪņЇЌœđЗ/Žůžo' % pbucket(1), 'testsuite-out'],
            retcode = 0,
-           must_find = [ 'saved as' ])
+           must_find = [ '->' ])
 
 
 ## ====== Get multiple files
 test_s3cmd("Get multiple files", ['get', '%s/xyz/etc2/Logo.PNG' % pbucket(1), '%s/xyz/etc/AtomicClockRadio.ttf' % pbucket(1), 'testsuite-out'],
-    must_find = [ u"saved as 'testsuite-out/Logo.PNG'", u"saved as 'testsuite-out/AtomicClockRadio.ttf'" ])
+    must_find = [ u"-> testsuite-out/Logo.PNG",
+                  u"-> testsuite-out/AtomicClockRadio.ttf" ])
 
 ## ====== Upload files differing in capitalisation
 test_s3cmd("blah.txt / Blah.txt", ['put', '-r', 'testsuite/blahBlah', pbucket(1)],
@@ -576,7 +582,7 @@ test_s3cmd("Don't put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3:
 
 ## ====== Put symbolic link
 test_s3cmd("Put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),'--follow-symlinks' ],
-           must_find = [ "File 'testsuite/etc/linked1.png' stored as '%s/xyz/linked1.png'" % pbucket(1)])
+           must_find = [ "testsuite/etc/linked1.png -> %s/xyz/linked1.png" % pbucket(1)])
 
 ## ====== Sync symbolic links
 test_s3cmd("Sync symbolic links", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--follow-symlinks' ],
@@ -584,7 +590,7 @@ test_s3cmd("Sync symbolic links", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket
            # Don't want to recursively copy linked directories!
            must_not_find_re = ["etc/more/linked-dir/more/give-me-more.txt",
                                "etc/brokenlink.png"],
-           )
+           retcode = EX_PARTIAL)
 
 ## ====== Multi source move
 test_s3cmd("Multi-source move", ['mv', '-r', '%s/copy/blahBlah/Blah.txt' % pbucket(2), '%s/copy/etc/' % pbucket(2), '%s/moved/' % pbucket(2)],
