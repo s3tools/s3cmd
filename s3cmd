@@ -539,7 +539,7 @@ def cmd_object_get(args):
                 error(u"Skipping %s: %s" % (destination, e.strerror))
                 continue
         try:
-            response = s3.object_get(uri, dst_stream, start_position = start_position, extra_label = seq_label)
+            response = s3.object_get(uri, dst_stream, destination, start_position = start_position, extra_label = seq_label)
         except S3DownloadError, e:
             error(u"%s: Skipping that file.  This is usually a transient error, please try again later." % e)
             if not file_exists: # Delete, only if file didn't exist before!
@@ -1108,7 +1108,7 @@ def cmd_sync_remote2local(args):
                         chkptfname = unicodise(chkptfname)
                         debug(u"created chkptfname=%s" % chkptfname)
                         dst_stream = os.fdopen(chkptfd, "wb")
-                        response = s3.object_get(uri, dst_stream, extra_label = seq_label)
+                        response = s3.object_get(uri, dst_stream, dst_file, extra_label = seq_label)
                         dst_stream.close()
                         # download completed, rename the file to destination
                         os.rename(deunicodise(chkptfname), deunicodise(dst_file))
