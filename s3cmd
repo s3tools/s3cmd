@@ -747,6 +747,7 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
     else:
         dst_base_uri = S3Uri(args[-1])
 
+    scoreboard = ExitScoreboard()
     if dst_base_uri.type != "s3":
         raise ParameterError("Destination must be S3 URI. To download a file use 'get' or 'sync'.")
     destination_base = dst_base_uri.uri()
@@ -779,7 +780,6 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
         return EX_OK
 
     seq = 0
-    ret = EX_OK
     for key in remote_list:
         seq += 1
         seq_label = "[%d of %d]" % (seq, remote_count)
@@ -794,13 +794,15 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
             output(message % { "src" : src_uri, "dst" : dst_uri })
             if Config().acl_public:
                 info(u"Public URL is: %s" % dst_uri.public_url())
+            scoreboard.success()
         except S3Error, e:
-            if not cfg.stop_on_error and e.code == "NoSuchKey":
-                ret = EX_PARTIAL
+            if e.code == "NoSuchKey":
+                scoreboard.notfound()
                 warning(u"Key not found %s" % item['object_uri_str'])
-            else:
-                raise
-    return ret
+            else: scoreboard.failed()
+            if not cfg.stop_on_error: continue
+            else: raise
+    return scoreboard.rc()
 
 def cmd_cp(args):
     s3 = S3(Config())
