@@ -464,7 +464,7 @@ test_s3cmd("Rename within S3", ['mv', '%s/xyz/etc/logo.png' % pbucket(1), '%s/xy
 ## ====== Rename (NoSuchKey)
 test_s3cmd("Rename (NoSuchKey)", ['mv', '%s/xyz/etc/logo.png' % pbucket(1), '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
     retcode = EX_NOTFOUND,
-    must_find_re = [ 'ERROR:.*NoSuchKey' ],
+    must_find_re = [ 'Key not found' ],
     must_not_find = [ 'File %s/xyz/etc/logo.png moved to %s/xyz/etc2/Logo.PNG' % (pbucket(1), pbucket(1)) ])
 
 ## ====== Sync more from S3 (invalid src)
