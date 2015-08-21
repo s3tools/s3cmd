@@ -1408,40 +1408,41 @@ class S3(object):
             progress.update()
             progress.done("done")
 
-        if start_position == 0:
-            # Only compute MD5 on the fly if we were downloading from the beginning
-            response["md5"] = md5_hash.hexdigest()
-        else:
-            # Otherwise try to compute MD5 of the output file
-            try:
-                response["md5"] = hash_file_md5(filename)
-            except IOError, e:
-                if e.errno != errno.ENOENT:
-                    warning("Unable to open file: %s: %s" % (filename, e))
-                warning("Unable to verify MD5. Assume it matches.")
-                response["md5"] = response["headers"]["etag"]
-
-        md5_hash = response["headers"]["etag"]
+        md5_from_s3 = response["headers"]["etag"].strip('"')
         if not 'x-amz-meta-s3tools-gpgenc' in response["headers"]:
             # we can't trust our stored md5 because we
             # encrypted the file after calculating it but before
             # uploading it.
             try:
-                md5_hash = response["s3cmd-attrs"]["md5"]
+                md5_from_s3 = response["s3cmd-attrs"]["md5"]
             except KeyError:
                 pass
+        # we must have something to compare against to bother with the calculation
+        if '-' not in md5_from_s3:
+            if start_position == 0:
+                # Only compute MD5 on the fly if we were downloading from the beginning
+                response["md5"] = md5_hash.hexdigest()
+            else:
+                # Otherwise try to compute MD5 of the output file
+                try:
+                    response["md5"] = hash_file_md5(filename)
+                except IOError, e:
+                    if e.errno != errno.ENOENT:
+                        warning("Unable to open file: %s: %s" % (filename, e))
+                    warning("Unable to verify MD5. Assume it matches.")
 
-        response["md5match"] = response["md5"] in md5_hash
+        response["md5match"] = response.get("md5") == md5_from_s3
         response["elapsed"] = timestamp_end - timestamp_start
         response["size"] = current_position
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
         if response["size"] != start_position + long(response["headers"]["content-length"]):
             warning("Reported size (%s) does not match received size (%s)" % (
                 start_position + long(response["headers"]["content-length"]), response["size"]))
-        debug("ReceiveFile: Computed MD5 = %s" % response["md5"])
-        if not response["md5match"]:
+        debug("ReceiveFile: Computed MD5 = %s" % response.get("md5"))
+        # avoid ETags from multipart uploads that aren't the real md5
+        if '-' not in md5_from_s3 and not response["md5match"]:
             warning("MD5 signatures do not match: computed=%s, received=%s" % (
-                response["md5"], md5_hash))
+                response.get("md5"), md5_from_s3))
         return response
 __all__.append("S3")
 
