@@ -833,6 +833,27 @@ class S3(object):
         response = self.send_request(request)
         return response
 
+    def get_cors(self, uri):
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?cors")
+        response = self.send_request(request)
+        return response['data']
+
+    def set_cors(self, uri, cors):
+        headers = {}
+        # TODO check cors is proper json string
+        headers['content-type'] = 'application/xml'
+        headers['content-md5'] = compute_content_md5(cors)
+        request = self.create_request("BUCKET_CREATE", uri = uri,
+                                      extra = "?cors", headers=headers, body = cors)
+        response = self.send_request(request)
+        return response
+
+    def delete_cors(self, uri):
+        request = self.create_request("BUCKET_DELETE", uri = uri, extra = "?cors")
+        debug(u"delete_cors(%s)" % uri)
+        response = self.send_request(request)
+        return response
+
     def set_lifecycle_policy(self, uri, policy):
         headers = SortedDict(ignore_case = True)
         headers['content-md5'] = compute_content_md5(policy)

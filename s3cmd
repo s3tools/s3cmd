@@ -868,6 +868,11 @@ def cmd_info(args):
                 output(u"   policy:    %s" % policy)
             except:
                 output(u"   policy:    none")
+            try:
+                cors = s3.get_cors(uri)
+                output(u"   cors:      %s" % cors)
+            except:
+                output(u"   cors:      none")
 
             for grant in acl_grant_list:
                 output(u"   ACL:       %s: %s" % (grant['grantee'], grant['permission']))
@@ -1647,6 +1652,34 @@ def cmd_delpolicy(args):
     output(u"%s: Policy deleted" % uri)
     return EX_OK
 
+def cmd_setcors(args):
+    s3 = S3(cfg)
+    uri = S3Uri(args[1])
+    cors_file = args[0]
+    cors = open(deunicodise(cors_file), 'r').read()
+
+    if cfg.dry_run: return EX_OK
+
+    response = s3.set_cors(uri, cors)
+
+    #if retsponse['status'] == 200:
+    debug(u"response - %s" % response['status'])
+    if response['status'] == 204:
+        output(u"%s: CORS updated" % uri)
+    return EX_OK
+
+def cmd_delcors(args):
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+    if cfg.dry_run: return EX_OK
+
+    response = s3.delete_cors(uri)
+
+    #if retsponse['status'] == 200:
+    debug(u"response - %s" % response['status'])
+    output(u"%s: CORS deleted" % uri)
+    return EX_OK
+
 def cmd_set_payer(args):
     s3 = S3(cfg)
     uri = S3Uri(args[0])
@@ -2111,6 +2144,9 @@ def get_commands_list():
 
     {"cmd":"setpolicy", "label":"Modify Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_setpolicy, "argc":2},
     {"cmd":"delpolicy", "label":"Delete Bucket Policy", "param":"s3://BUCKET", "func":cmd_delpolicy, "argc":1},
+    {"cmd":"setcors", "label":"Modify Bucket CORS", "param":"FILE s3://BUCKET", "func":cmd_setcors, "argc":2},
+    {"cmd":"delcors", "label":"Delete Bucket CORS", "param":"s3://BUCKET", "func":cmd_delcors, "argc":1},
+
     {"cmd":"payer",     "label":"Modify Bucket Requester Pays policy", "param":"s3://BUCKET", "func":cmd_set_payer, "argc":1},
     {"cmd":"multipart", "label":"Show multipart uploads", "param":"s3://BUCKET [Id]", "func":cmd_multipart, "argc":1},
     {"cmd":"abortmp",   "label":"Abort a multipart upload", "param":"s3://BUCKET/OBJECT Id", "func":cmd_abort_multipart, "argc":2},
