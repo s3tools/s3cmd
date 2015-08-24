@@ -799,9 +799,9 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
             if e.code == "NoSuchKey":
                 scoreboard.notfound()
                 warning(u"Key not found %s" % item['object_uri_str'])
-            else: scoreboard.failed()
-            if not cfg.stop_on_error: continue
-            else: raise
+            else:
+                scoreboard.failed()
+            if cfg.stop_on_error: break
     return scoreboard.rc()
 
 def cmd_cp(args):
