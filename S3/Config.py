@@ -32,7 +32,7 @@ class Config(object):
     simpledb_host = "sdb.amazonaws.com"
     cloudfront_host = "cloudfront.amazonaws.com"
     verbosity = logging.WARNING
-    progress_meter = True
+    progress_meter = sys.stdout.isatty()
     progress_class = Progress.ProgressCR
     send_chunk = 64 * 1024
     recv_chunk = 64 * 1024
@@ -116,7 +116,6 @@ class Config(object):
     cache_file = ""
     add_headers = ""
     remove_headers = []
-    ignore_failed_copy = False
     expiry_days = ""
     expiry_date = ""
     expiry_prefix = ""

@@ -88,35 +88,26 @@ def subcmd_bucket_usage(s3, uri):
     Returns: bucket size as integer
     Raises: S3Error
     """
-
-    bucket = uri.bucket()
-    object = uri.object()
-
-    if object.endswith('*'):
-        object = object[:-1]
-
     bucket_size = 0
-    # iterate and store directories to traverse, while summing objects:
-    dirs = [object]
-    while dirs:
-        try:
-            response = s3.bucket_list(bucket, prefix=dirs.pop())
-        except S3Error, e:
-            if S3.codes.has_key(e.info["Code"]):
-                error(S3.codes[e.info["Code"]] % bucket)
-            raise
+    object_count = 0
+    extra_info = u''
+    try:
+        for _, objects in s3.bucket_list_streaming(uri.bucket(), prefix=uri.object(), recursive=True):
+            for obj in objects:
+                bucket_size += int(obj["Size"])
+                object_count += 1
 
-        # objects in the current scope:
-        for obj in response["list"]:
-            bucket_size += int(obj["Size"])
+    except S3Error, e:
+        if S3.codes.has_key(e.info["Code"]):
+            error(S3.codes[e.info["Code"]] % bucket)
+        raise
 
-        # directories found in current scope:
-        for obj in response["common_prefixes"]:
-            dirs.append(obj["Prefix"])
+    except KeyboardInterrupt, e:
+        extra_info = u' [interrupted]'
 
     total_size, size_coeff = formatSize(bucket_size, Config().human_readable_sizes)
     total_size_str = str(total_size) + size_coeff
-    output(u"%s %s" % (total_size_str.ljust(8), uri))
+    output(u"%s %s objects %s%s" % (total_size_str.ljust(8), object_count, uri, extra_info))
     return bucket_size
 
 def cmd_ls(args):
@@ -595,10 +586,44 @@ def cmd_object_del(args):
 
         if not recursive:
             rc = subcmd_object_del_uri(uri_str)
-        else:
+        elif Config().exclude or cfg.max_delete > 0:
+            # subcmd_batch_del_iterative does not support file exclusion and can't
+            # accurately know how many total files will be deleted, so revert to batch delete.
             rc = subcmd_batch_del(uri_str = uri_str)
+        else:
+            rc = subcmd_batch_del_iterative(uri_str = uri_str)
         if not rc:
             return rc
+    return EX_OK
+
+def subcmd_batch_del_iterative(uri_str = None, bucket = None):
+    """ Streaming version of batch deletion (doesn't realize whole list in memory before deleting).
+
+    Differences from subcmd_batch_del:
+      - Does not obey --exclude directives or obey cfg.max_delete (use subcmd_batch_del in those cases)
+    """
+    if bucket and uri_str:
+        raise ValueError("Pass only one of uri_str or bucket")
+    if bucket: # bucket specified
+        uri_str = "s3://%s" % bucket
+    s3 = S3(cfg)
+    uri = S3Uri(uri_str)
+    bucket = uri.bucket()
+
+    deleted_bytes = deleted_count = 0
+
+    for _, to_delete in s3.bucket_list_streaming(bucket, prefix=uri.object(), recursive=True):
+        if not cfg.dry_run:
+            response = s3.object_batch_delete_uri_strs([uri.compose_uri(bucket, item['Key']) for item in to_delete])
+        deleted_bytes += sum(int(item["Size"]) for item in to_delete)
+        deleted_count += len(to_delete)
+        output('\n'.join(u"File %s deleted" % uri.compose_uri(bucket, p['Key']) for p in to_delete))
+
+        # display summary data of deleted files
+        total_size, size_coeff = formatSize(deleted_bytes, Config().human_readable_sizes)
+        total_size_str = str(total_size) + size_coeff
+        info(u"Deleted %s objects (%s) from %s" % (deleted_count, total_size_str, uri))
+
     return EX_OK
 
 def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
@@ -754,6 +779,7 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
         return EX_OK
 
     seq = 0
+    ret = EX_OK
     for key in remote_list:
         seq += 1
         seq_label = "[%d of %d]" % (seq, remote_count)
@@ -769,11 +795,12 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
             if Config().acl_public:
                 info(u"Public URL is: %s" % dst_uri.public_url())
         except S3Error, e:
-            if cfg.ignore_failed_copy and e.code == "NoSuchKey":
+            if not cfg.stop_on_error and e.code == "NoSuchKey":
+                ret = EX_PARTIAL
                 warning(u"Key not found %s" % item['object_uri_str'])
             else:
                 raise
-    return EX_OK
+    return ret
 
 def cmd_cp(args):
     s3 = S3(Config())
@@ -841,6 +868,11 @@ def cmd_info(args):
                 output(u"   policy:    %s" % policy)
             except:
                 output(u"   policy:    none")
+            try:
+                cors = s3.get_cors(uri)
+                output(u"   cors:      %s" % cors)
+            except:
+                output(u"   cors:      none")
 
             for grant in acl_grant_list:
                 output(u"   ACL:       %s: %s" % (grant['grantee'], grant['permission']))
@@ -1620,6 +1652,34 @@ def cmd_delpolicy(args):
     output(u"%s: Policy deleted" % uri)
     return EX_OK
 
+def cmd_setcors(args):
+    s3 = S3(cfg)
+    uri = S3Uri(args[1])
+    cors_file = args[0]
+    cors = open(deunicodise(cors_file), 'r').read()
+
+    if cfg.dry_run: return EX_OK
+
+    response = s3.set_cors(uri, cors)
+
+    #if retsponse['status'] == 200:
+    debug(u"response - %s" % response['status'])
+    if response['status'] == 204:
+        output(u"%s: CORS updated" % uri)
+    return EX_OK
+
+def cmd_delcors(args):
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+    if cfg.dry_run: return EX_OK
+
+    response = s3.delete_cors(uri)
+
+    #if retsponse['status'] == 200:
+    debug(u"response - %s" % response['status'])
+    output(u"%s: CORS deleted" % uri)
+    return EX_OK
+
 def cmd_set_payer(args):
     s3 = S3(cfg)
     uri = S3Uri(args[0])
@@ -2084,6 +2144,9 @@ def get_commands_list():
 
     {"cmd":"setpolicy", "label":"Modify Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_setpolicy, "argc":2},
     {"cmd":"delpolicy", "label":"Delete Bucket Policy", "param":"s3://BUCKET", "func":cmd_delpolicy, "argc":1},
+    {"cmd":"setcors", "label":"Modify Bucket CORS", "param":"FILE s3://BUCKET", "func":cmd_setcors, "argc":2},
+    {"cmd":"delcors", "label":"Delete Bucket CORS", "param":"s3://BUCKET", "func":cmd_delcors, "argc":1},
+
     {"cmd":"payer",     "label":"Modify Bucket Requester Pays policy", "param":"s3://BUCKET", "func":cmd_set_payer, "argc":1},
     {"cmd":"multipart", "label":"Show multipart uploads", "param":"s3://BUCKET [Id]", "func":cmd_multipart, "argc":1},
     {"cmd":"abortmp",   "label":"Abort a multipart upload", "param":"s3://BUCKET/OBJECT Id", "func":cmd_abort_multipart, "argc":2},
@@ -2267,7 +2330,6 @@ def main():
     optparser.add_option(      "--include-from", dest="include_from", action="append", metavar="FILE", help="Read --include GLOBs from FILE")
     optparser.add_option(      "--rinclude", dest="rinclude", action="append", metavar="REGEXP", help="Same as --include but uses REGEXP (regular expression) instead of GLOB")
     optparser.add_option(      "--rinclude-from", dest="rinclude_from", action="append", metavar="FILE", help="Read --rinclude REGEXPs from FILE")
-    optparser.add_option(      "--ignore-failed-copy", dest="ignore_failed_copy", action="store_true", help="Don't exit unsuccessfully because of missing keys")
 
     optparser.add_option(      "--files-from", dest="files_from", action="append", metavar="FILE", help="Read list of source-file names from FILE. Use - to read from stdin.")
     optparser.add_option(      "--region", "--bucket-location", metavar="REGION", dest="bucket_location", help="Region to create bucket in. As of now the regions are: us-east-1, us-west-1, us-west-2, eu-west-1, eu-central-1, ap-northeast-1, ap-southeast-1, ap-southeast-2, sa-east-1")
@@ -2381,10 +2443,6 @@ def main():
     if options.verbosity is not None:
         cfg.verbosity = options.verbosity
     logging.root.setLevel(cfg.verbosity)
-
-    ## Default to --progress on TTY devices, --no-progress elsewhere
-    ## Can be overridden by actual --(no-)progress parameter
-    cfg.update_option('progress_meter', sys.stdout.isatty())
 
     ## Unsupported features on Win32 platform
     if os.name == "nt":

@@ -278,6 +278,19 @@ class S3(object):
         return response
 
     def bucket_list(self, bucket, prefix = None, recursive = None, uri_params = {}):
+        item_list = []
+        prefixes = []
+        for dirs, objects in self.bucket_list_streaming(bucket, prefix, recursive, uri_params):
+            item_list.extend(objects)
+            prefixes.extend(dirs)
+
+        response = {}
+        response['list'] = item_list
+        response['common_prefixes'] = prefixes
+        return response
+
+    def bucket_list_streaming(self, bucket, prefix = None, recursive = None, uri_params = {}):
+        """ Generator that produces <dir_list>, <object_list> pairs of groups of content of a specified bucket. """
         def _list_truncated(data):
             ## <IsTruncated> can either be "true" or "false" or be missing completely
             is_truncated = getTextFromXml(data, ".//IsTruncated") or "false"
@@ -289,10 +302,8 @@ class S3(object):
         def _get_common_prefixes(data):
             return getListFromXml(data, "CommonPrefixes")
 
-
         uri_params = uri_params.copy()
         truncated = True
-        list = []
         prefixes = []
 
         while truncated:
@@ -307,12 +318,7 @@ class S3(object):
                     uri_params['marker'] = self.urlencode_string(current_prefixes[-1]["Prefix"])
                 debug("Listing continues after '%s'" % uri_params['marker'])
 
-            list += current_list
-            prefixes += current_prefixes
-
-        response['list'] = list
-        response['common_prefixes'] = prefixes
-        return response
+            yield current_prefixes, current_list
 
     def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = {}):
         if prefix:
@@ -618,6 +624,12 @@ class S3(object):
         return response
 
     def object_batch_delete(self, remote_list):
+        """ Batch delete given a remote_list """
+        uris = [remote_list[item]['object_uri_str'] for item in remote_list]
+        self.object_batch_delete_uri_strs(uris)
+
+    def object_batch_delete_uri_strs(self, uris):
+        """ Batch delete given a list of object uris """
         def compose_batch_del_xml(bucket, key_list):
             body = u"<?xml version=\"1.0\" encoding=\"UTF-8\"?><Delete>"
             for key in key_list:
@@ -634,7 +646,7 @@ class S3(object):
             body = encode_to_s3(body)
             return body
 
-        batch = [remote_list[item]['object_uri_str'] for item in remote_list]
+        batch = uris
         if len(batch) == 0:
             raise ValueError("Key list is empty")
         bucket = S3Uri(batch[0]).bucket()
@@ -817,6 +829,27 @@ class S3(object):
     def delete_policy(self, uri):
         request = self.create_request("BUCKET_DELETE", uri = uri, extra = "?policy")
         debug(u"delete_policy(%s)" % uri)
+        response = self.send_request(request)
+        return response
+
+    def get_cors(self, uri):
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?cors")
+        response = self.send_request(request)
+        return response['data']
+
+    def set_cors(self, uri, cors):
+        headers = {}
+        # TODO check cors is proper json string
+        headers['content-type'] = 'application/xml'
+        headers['content-md5'] = compute_content_md5(cors)
+        request = self.create_request("BUCKET_CREATE", uri = uri,
+                                      extra = "?cors", headers=headers, body = cors)
+        response = self.send_request(request)
+        return response
+
+    def delete_cors(self, uri):
+        request = self.create_request("BUCKET_DELETE", uri = uri, extra = "?cors")
+        debug(u"delete_cors(%s)" % uri)
         response = self.send_request(request)
         return response
 
@@ -1247,6 +1280,11 @@ class S3(object):
         response["elapsed"] = timestamp_end - timestamp_start
         response["size"] = size
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
+        if response["data"] and getRootTagName(response["data"]) == "Error":
+            #http://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadComplete.html
+            # Error Complete Multipart UPLOAD, status may be 200
+            # raise S3UploadError
+            raise S3UploadError(getTextFromXml(response["data"], 'Message'))
         return response
 
     def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
@@ -1390,40 +1428,41 @@ class S3(object):
             progress.update()
             progress.done("done")
 
-        if start_position == 0:
-            # Only compute MD5 on the fly if we were downloading from the beginning
-            response["md5"] = md5_hash.hexdigest()
-        else:
-            # Otherwise try to compute MD5 of the output file
-            try:
-                response["md5"] = hash_file_md5(filename)
-            except IOError, e:
-                if e.errno != errno.ENOENT:
-                    warning("Unable to open file: %s: %s" % (filename, e))
-                warning("Unable to verify MD5. Assume it matches.")
-                response["md5"] = response["headers"]["etag"]
-
-        md5_hash = response["headers"]["etag"]
+        md5_from_s3 = response["headers"]["etag"].strip('"')
         if not 'x-amz-meta-s3tools-gpgenc' in response["headers"]:
             # we can't trust our stored md5 because we
             # encrypted the file after calculating it but before
             # uploading it.
             try:
-                md5_hash = response["s3cmd-attrs"]["md5"]
+                md5_from_s3 = response["s3cmd-attrs"]["md5"]
             except KeyError:
                 pass
+        # we must have something to compare against to bother with the calculation
+        if '-' not in md5_from_s3:
+            if start_position == 0:
+                # Only compute MD5 on the fly if we were downloading from the beginning
+                response["md5"] = md5_hash.hexdigest()
+            else:
+                # Otherwise try to compute MD5 of the output file
+                try:
+                    response["md5"] = hash_file_md5(filename)
+                except IOError, e:
+                    if e.errno != errno.ENOENT:
+                        warning("Unable to open file: %s: %s" % (filename, e))
+                    warning("Unable to verify MD5. Assume it matches.")
 
-        response["md5match"] = response["md5"] in md5_hash
+        response["md5match"] = response.get("md5") == md5_from_s3
         response["elapsed"] = timestamp_end - timestamp_start
         response["size"] = current_position
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
         if response["size"] != start_position + long(response["headers"]["content-length"]):
             warning("Reported size (%s) does not match received size (%s)" % (
                 start_position + long(response["headers"]["content-length"]), response["size"]))
-        debug("ReceiveFile: Computed MD5 = %s" % response["md5"])
-        if not response["md5match"]:
+        debug("ReceiveFile: Computed MD5 = %s" % response.get("md5"))
+        # avoid ETags from multipart uploads that aren't the real md5
+        if '-' not in md5_from_s3 and not response["md5match"]:
             warning("MD5 signatures do not match: computed=%s, received=%s" % (
-                response["md5"], md5_hash))
+                response.get("md5"), md5_from_s3))
         return response
 __all__.append("S3")
 
