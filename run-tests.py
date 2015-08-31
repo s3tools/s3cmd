@@ -98,8 +98,8 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
     def failure(message = ""):
         global count_fail
         if message:
-            message = "  (%r)" % message
-        print "\x1b[31;1mFAIL%s\x1b[0m" % (message)
+            message = u"  (%r)" % message
+        print u"\x1b[31;1mFAIL%s\x1b[0m" % (message)
         count_fail += 1
         command_output()
         #return 1
@@ -325,8 +325,8 @@ test_s3cmd("Sync to S3", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude
 
 if have_encoding:
     ## ====== Sync UTF-8 / GBK / ... to S3
-    test_s3cmd("Sync %s to S3" % encoding, ['sync', 'testsuite/encodings/' + encoding, '%s/xyz/encodings/' % pbucket(1), '--exclude', 'demo/*', '--no-encrypt' ],
-        must_find = [ u"testsuite/encodings/%(encoding)s/%(pattern)s -> %(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s" % { 'encoding' : encoding, 'pattern' : enc_pattern , 'pbucket' : pbucket(1)} ])
+    test_s3cmd(u"Sync %s to S3" % encoding, ['sync', 'testsuite/encodings/' + encoding, '%s/xyz/encodings/' % pbucket(1), '--exclude', 'demo/*', '--no-encrypt' ],
+        must_find = [ u"'testsuite/encodings/%(encoding)s/%(pattern)s' -> '%(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s'" % { 'encoding' : encoding, 'pattern' : enc_pattern , 'pbucket' : pbucket(1)} ])
 
 
 ## ====== List bucket content
@@ -354,7 +354,7 @@ test_flushdir("Clean testsuite-out/", "testsuite-out")
 ## ====== Put from stdin
 f = open('testsuite/single-file/single-file.txt', 'r')
 test_s3cmd("Put from stdin", ['put', '-', '%s/single-file/single-file.txt' % pbucket(1)],
-           must_find = ["<stdin> -> %s/single-file/single-file.txt" % pbucket(1)],
+           must_find = ["'-' -> '%s/single-file/single-file.txt'" % pbucket(1)],
            stdin = f)
 f.close()
 
@@ -375,9 +375,9 @@ f.close()
 test_flushdir("Clean testsuite-out/", "testsuite-out")
 
 ## ====== Sync from S3
-must_find = [ "%s/xyz/binary/random-crap.md5 -> testsuite-out/xyz/binary/random-crap.md5" % pbucket(1) ]
+must_find = [ "'%s/xyz/binary/random-crap.md5' -> 'testsuite-out/xyz/binary/random-crap.md5'" % pbucket(1) ]
 if have_encoding:
-    must_find.append(u"%(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s -> testsuite-out/xyz/encodings/%(encoding)s/%(pattern)s " % { 'encoding' : encoding, 'pattern' : enc_pattern, 'pbucket' : pbucket(1) })
+    must_find.append(u"'%(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s' -> 'testsuite-out/xyz/encodings/%(encoding)s/%(pattern)s' " % { 'encoding' : encoding, 'pattern' : enc_pattern, 'pbucket' : pbucket(1) })
 test_s3cmd("Sync from S3", ['sync', '%s/xyz' % pbucket(1), 'testsuite-out'],
     must_find = must_find)
 
@@ -402,7 +402,7 @@ test_flushdir("Clean testsuite-out/", "testsuite-out")
 
 ## ====== Put public, guess MIME
 test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public', 'testsuite/etc/logo.png', '%s/xyz/etc/logo.png' % pbucket(1)],
-    must_find = [ "-> %s/xyz/etc/logo.png" % pbucket(1) ])
+    must_find = [ "-> '%s/xyz/etc/logo.png'" % pbucket(1) ])
 
 
 ## ====== Retrieve from URL
@@ -436,8 +436,8 @@ if have_wget:
 
 ## ====== Sync more to S3
 test_s3cmd("Sync more to S3", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt' ],
-           must_find = [ "testsuite/demo/some-file.xml -> %s/xyz/demo/some-file.xml " % pbucket(1) ],
-           must_not_find = [ "testsuite/etc/linked.png -> %s/xyz/etc/linked.png" % pbucket(1) ],
+           must_find = [ "'testsuite/demo/some-file.xml' -> '%s/xyz/demo/some-file.xml' " % pbucket(1) ],
+           must_not_find = [ "'testsuite/etc/linked.png' -> '%s/xyz/etc/linked.png'" % pbucket(1) ],
            retcode = EX_PARTIAL)
 
 
@@ -458,24 +458,24 @@ test_s3cmd("Check MD5", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no
 
 ## ====== Rename within S3
 test_s3cmd("Rename within S3", ['mv', '%s/xyz/etc/logo.png' % pbucket(1), '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
-    must_find = [ 'File %s/xyz/etc/logo.png moved to %s/xyz/etc2/Logo.PNG' % (pbucket(1), pbucket(1))])
+    must_find = [ "move: '%s/xyz/etc/logo.png' -> '%s/xyz/etc2/Logo.PNG'" % (pbucket(1), pbucket(1))])
 
 
 ## ====== Rename (NoSuchKey)
 test_s3cmd("Rename (NoSuchKey)", ['mv', '%s/xyz/etc/logo.png' % pbucket(1), '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
     retcode = EX_NOTFOUND,
     must_find_re = [ 'Key not found' ],
-    must_not_find = [ 'File %s/xyz/etc/logo.png moved to %s/xyz/etc2/Logo.PNG' % (pbucket(1), pbucket(1)) ])
+    must_not_find = [ "move: '%s/xyz/etc/logo.png' -> '%s/xyz/etc2/Logo.PNG'" % (pbucket(1), pbucket(1)) ])
 
 ## ====== Sync more from S3 (invalid src)
 test_s3cmd("Sync more from S3 (invalid src)", ['sync', '--delete-removed', '%s/xyz/DOESNOTEXIST' % pbucket(1), 'testsuite-out'],
-    must_not_find = [ "deleted: testsuite-out/logo.png" ])
+    must_not_find = [ "delete: 'testsuite-out/logo.png'" ])
 
 ## ====== Sync more from S3
 test_s3cmd("Sync more from S3", ['sync', '--delete-removed', '%s/xyz' % pbucket(1), 'testsuite-out'],
-    must_find = [ "deleted: testsuite-out/logo.png",
-                  "%s/xyz/etc2/Logo.PNG -> testsuite-out/xyz/etc2/Logo.PNG" % pbucket(1),
-                  "%s/xyz/demo/some-file.xml -> testsuite-out/xyz/demo/some-file.xml" % pbucket(1) ],
+    must_find = [ "delete: 'testsuite-out/logo.png'",
+                  "'%s/xyz/etc2/Logo.PNG' -> 'testsuite-out/xyz/etc2/Logo.PNG'" % pbucket(1),
+                  "'%s/xyz/demo/some-file.xml' -> 'testsuite-out/xyz/demo/some-file.xml'" % pbucket(1) ],
     must_not_find_re = [ "not-deleted.*etc/logo.png" ])
 
 
@@ -506,8 +506,8 @@ test_s3cmd("Get unicode filenames", ['get', u'%s/xyz/encodings/UTF-8/ŪņЇЌœ�
 
 ## ====== Get multiple files
 test_s3cmd("Get multiple files", ['get', '%s/xyz/etc2/Logo.PNG' % pbucket(1), '%s/xyz/etc/AtomicClockRadio.ttf' % pbucket(1), 'testsuite-out'],
-    must_find = [ u"-> testsuite-out/Logo.PNG",
-                  u"-> testsuite-out/AtomicClockRadio.ttf" ])
+    must_find = [ u"-> 'testsuite-out/Logo.PNG'",
+                  u"-> 'testsuite-out/AtomicClockRadio.ttf'" ])
 
 ## ====== Upload files differing in capitalisation
 test_s3cmd("blah.txt / Blah.txt", ['put', '-r', 'testsuite/blahBlah', pbucket(1)],
@@ -515,13 +515,13 @@ test_s3cmd("blah.txt / Blah.txt", ['put', '-r', 'testsuite/blahBlah', pbucket(1)
 
 ## ====== Copy between buckets
 test_s3cmd("Copy between buckets", ['cp', '%s/xyz/etc2/Logo.PNG' % pbucket(1), '%s/xyz/etc2/logo.png' % pbucket(3)],
-    must_find = [ "File %s/xyz/etc2/Logo.PNG copied to %s/xyz/etc2/logo.png" % (pbucket(1), pbucket(3)) ])
+    must_find = [ "remote copy: '%s/xyz/etc2/Logo.PNG' -> '%s/xyz/etc2/logo.png'" % (pbucket(1), pbucket(3)) ])
 
 ## ====== Recursive copy
 test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % pbucket(1), '%s/copy' % pbucket(2), '--exclude', 'demo/dir?/*.txt', '--exclude', 'non-printables*'],
-    must_find = [ "File %s/xyz/etc2/Logo.PNG copied to %s/copy/etc2/Logo.PNG" % (pbucket(1), pbucket(2)),
-                  "File %s/xyz/blahBlah/Blah.txt copied to %s/copy/blahBlah/Blah.txt" % (pbucket(1), pbucket(2)),
-                  "File %s/xyz/blahBlah/blah.txt copied to %s/copy/blahBlah/blah.txt" % (pbucket(1), pbucket(2)) ],
+    must_find = [ "remote copy: '%s/xyz/etc2/Logo.PNG' -> '%s/copy/etc2/Logo.PNG'" % (pbucket(1), pbucket(2)),
+                  "remote copy: '%s/xyz/blahBlah/Blah.txt' -> '%s/copy/blahBlah/Blah.txt'" % (pbucket(1), pbucket(2)),
+                  "remote copy: '%s/xyz/blahBlah/blah.txt' -> '%s/copy/blahBlah/blah.txt'" % (pbucket(1), pbucket(2)) ],
     must_not_find = [ "demo/dir1/file1-1.txt" ])
 
 ## ====== Verify ACL and MIME type
@@ -546,14 +546,14 @@ test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucke
                      "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
 
 test_s3cmd("Add cache-control header", ['modify', '--add-header=cache-control: max-age=3600, public', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
-    must_find_re = [ "File .* modified" ])
+    must_find_re = [ "modify: .*" ])
 
 if have_wget:
     test_wget_HEAD("HEAD check Cache-Control present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
                    must_find_re = [ "Cache-Control: max-age=3600" ])
 
 test_s3cmd("Remove cache-control header", ['modify', '--remove-header=cache-control', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
-    must_find_re = [ "File .* modified" ])
+    must_find_re = [ "modify: .*" ])
 
 if have_wget:
     test_wget_HEAD("HEAD check Cache-Control not present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
@@ -566,13 +566,13 @@ test_s3cmd("signurl time offset", ['signurl', '%s/copy/etc2/Logo.PNG' % pbucket(
 
 ## ====== Rename within S3
 test_s3cmd("Rename within S3", ['mv', '%s/copy/etc2/Logo.PNG' % pbucket(2), '%s/copy/etc/logo.png' % pbucket(2)],
-    must_find = [ 'File %s/copy/etc2/Logo.PNG moved to %s/copy/etc/logo.png' % (pbucket(2), pbucket(2))])
+    must_find = [ "move: '%s/copy/etc2/Logo.PNG' -> '%s/copy/etc/logo.png'" % (pbucket(2), pbucket(2))])
 
 ## ====== Sync between buckets
 test_s3cmd("Sync remote2remote", ['sync', '%s/xyz/' % pbucket(1), '%s/copy/' % pbucket(2), '--delete-removed', '--exclude', 'non-printables*'],
-    must_find = [ "File %s/xyz/demo/dir1/file1-1.txt copied to %s/copy/demo/dir1/file1-1.txt" % (pbucket(1), pbucket(2)),
-                  "remote copy: etc/logo.png -> etc2/Logo.PNG",
-                  "File %s/copy/etc/logo.png deleted" % pbucket(2) ],
+    must_find = [ "remote copy: '%s/xyz/demo/dir1/file1-1.txt' -> '%s/copy/demo/dir1/file1-1.txt'" % (pbucket(1), pbucket(2)),
+                  "remote copy: 'etc/logo.png' -> 'etc2/Logo.PNG'",
+                  "delete: '%s/copy/etc/logo.png'" % pbucket(2) ],
     must_not_find = [ "blah.txt" ])
 
 ## ====== Don't Put symbolic link
@@ -582,11 +582,11 @@ test_s3cmd("Don't put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3:
 
 ## ====== Put symbolic link
 test_s3cmd("Put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),'--follow-symlinks' ],
-           must_find = [ "testsuite/etc/linked1.png -> %s/xyz/linked1.png" % pbucket(1)])
+           must_find = [ "'testsuite/etc/linked1.png' -> '%s/xyz/linked1.png'" % pbucket(1)])
 
 ## ====== Sync symbolic links
 test_s3cmd("Sync symbolic links", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--follow-symlinks' ],
-    must_find = ["remote copy: etc2/Logo.PNG -> etc/linked.png"],
+    must_find = ["remote copy: 'etc2/Logo.PNG' -> 'etc/linked.png'"],
            # Don't want to recursively copy linked directories!
            must_not_find_re = ["etc/more/linked-dir/more/give-me-more.txt",
                                "etc/brokenlink.png"],
@@ -594,9 +594,9 @@ test_s3cmd("Sync symbolic links", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket
 
 ## ====== Multi source move
 test_s3cmd("Multi-source move", ['mv', '-r', '%s/copy/blahBlah/Blah.txt' % pbucket(2), '%s/copy/etc/' % pbucket(2), '%s/moved/' % pbucket(2)],
-    must_find = [ "File %s/copy/blahBlah/Blah.txt moved to %s/moved/Blah.txt" % (pbucket(2), pbucket(2)),
-                  "File %s/copy/etc/AtomicClockRadio.ttf moved to %s/moved/AtomicClockRadio.ttf" % (pbucket(2), pbucket(2)),
-                  "File %s/copy/etc/TypeRa.ttf moved to %s/moved/TypeRa.ttf" % (pbucket(2), pbucket(2)) ],
+    must_find = [ "move: '%s/copy/blahBlah/Blah.txt' -> '%s/moved/Blah.txt'" % (pbucket(2), pbucket(2)),
+                  "move: '%s/copy/etc/AtomicClockRadio.ttf' -> '%s/moved/AtomicClockRadio.ttf'" % (pbucket(2), pbucket(2)),
+                  "move: '%s/copy/etc/TypeRa.ttf' -> '%s/moved/TypeRa.ttf'" % (pbucket(2), pbucket(2)) ],
     must_not_find = [ "blah.txt" ])
 
 ## ====== Verify move
@@ -615,11 +615,11 @@ test_s3cmd("List all", ['la'],
 
 ## ====== Simple delete
 test_s3cmd("Simple delete", ['del', '%s/xyz/etc2/Logo.PNG' % pbucket(1)],
-    must_find = [ "File %s/xyz/etc2/Logo.PNG deleted" % pbucket(1) ])
+    must_find = [ "delete: '%s/xyz/etc2/Logo.PNG'" % pbucket(1) ])
 
 ## ====== Simple delete with rm
 test_s3cmd("Simple delete with rm", ['rm', '%s/xyz/test_rm/TypeRa.ttf' % pbucket(1)],
-    must_find = [ "File %s/xyz/test_rm/TypeRa.ttf deleted" % pbucket(1) ])
+    must_find = [ "delete: '%s/xyz/test_rm/TypeRa.ttf'" % pbucket(1) ])
 
 ## ====== Create expiration rule with days and prefix
 test_s3cmd("Create expiration rule with days and prefix", ['expire', pbucket(1), '--expiry-days=365', '--expiry-prefix=log/'],
@@ -664,23 +664,23 @@ test_s3cmd("Get requester pays flag", ['info', pbucket(2)],
 
 ## ====== Recursive delete maximum exceeed
 test_s3cmd("Recursive delete maximum exceeded", ['del', '--recursive', '--max-delete=1', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],
-    must_not_find = [ "File %s/xyz/etc/TypeRa.ttf deleted" % pbucket(1) ])
+    must_not_find = [ "delete: '%s/xyz/etc/TypeRa.ttf'" % pbucket(1) ])
 
 ## ====== Recursive delete
 test_s3cmd("Recursive delete", ['del', '--recursive', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],
-    must_find = [ "File %s/xyz/etc/TypeRa.ttf deleted" % pbucket(1) ],
-    must_find_re = [ "File .*/etc/logo.png deleted" ],
+    must_find = [ "delete: '%s/xyz/etc/TypeRa.ttf'" % pbucket(1) ],
+    must_find_re = [ "delete: '.*/etc/logo.png'" ],
     must_not_find = [ "AtomicClockRadio.ttf" ])
 
 ## ====== Recursive delete with rm
 test_s3cmd("Recursive delete with rm", ['rm', '--recursive', '--exclude', 'Atomic*', '%s/xyz/test_rm' % pbucket(1)],
-    must_find = [ "File %s/xyz/test_rm/more/give-me-more.txt deleted" % pbucket(1) ],
-    must_find_re = [ "File .*/test_rm/logo.png deleted" ],
+    must_find = [ "delete: '%s/xyz/test_rm/more/give-me-more.txt'" % pbucket(1) ],
+    must_find_re = [ "delete: '.*/test_rm/logo.png'" ],
     must_not_find = [ "AtomicClockRadio.ttf" ])
 
 ## ====== Recursive delete all
 test_s3cmd("Recursive delete all", ['del', '--recursive', '--force', pbucket(1)],
-    must_find_re = [ "File .*binary/random-crap deleted" ])
+    must_find_re = [ "delete: '.*binary/random-crap'" ])
 
 ## ====== Remove empty bucket
 test_s3cmd("Remove empty bucket", ['rb', pbucket(1)],
