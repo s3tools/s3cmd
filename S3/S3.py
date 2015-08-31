@@ -616,11 +616,11 @@ class S3(object):
         response = self.send_file(request, file, labels)
         return response
 
-    def object_get(self, uri, stream, start_position = 0, extra_label = ""):
+    def object_get(self, uri, stream, dest_name, start_position = 0, extra_label = ""):
         if uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
         request = self.create_request("OBJECT_GET", uri = uri)
-        labels = { 'source' : uri.uri(), 'destination' : unicodise(stream.name), 'extra' : extra_label }
+        labels = { 'source' : uri.uri(), 'destination' : dest_name, 'extra' : extra_label }
         response = self.recv_file(request, stream, labels, start_position)
         return response
 
