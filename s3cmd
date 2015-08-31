@@ -356,7 +356,7 @@ def cmd_object_put(args):
                 nicekey = local_list[key]['full_name']
             else:
                 nicekey = "<stdin>"
-            output(u"upload: %s -> %s" % (nicekey, local_list[key]['remote_uri']))
+            output(u"upload: '%s' -> '%s'" % (nicekey, local_list[key]['remote_uri']))
 
         warning(u"Exiting now because of --dry-run")
         return EX_OK
@@ -398,7 +398,7 @@ def cmd_object_put(args):
         if response is not None:
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
             if not Config().progress_meter:
-                output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+                output(u"upload: '%s' -> '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
                        (full_name_orig, uri_final, response["size"], response["elapsed"],
                         speed_fmt[0], speed_fmt[1], seq_label))
         if Config().acl_public:
@@ -487,7 +487,7 @@ def cmd_object_get(args):
         for key in exclude_list:
             output(u"exclude: %s" % key)
         for key in remote_list:
-            output(u"download: %s -> %s" % (remote_list[key]['object_uri_str'], remote_list[key]['local_filename']))
+            output(u"download: '%s' -> '%s'" % (remote_list[key]['object_uri_str'], remote_list[key]['local_filename']))
 
         warning(u"Exiting now because of --dry-run")
         return EX_OK
@@ -565,11 +565,11 @@ def cmd_object_get(args):
             debug("set mtime to %s" % last_modified)
         if not Config().progress_meter and destination != "-":
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
-            output(u"File %s saved as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s)" %
+            output(u"download: '%s' -> '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s)" %
                 (uri, destination, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1]))
         if Config().delete_after_fetch:
             s3.object_delete(uri)
-            output(u"File %s removed after fetch" % (uri))
+            output(u"File '%s' removed after fetch" % (uri))
     return EX_OK
 
 def cmd_object_del(args):
@@ -617,7 +617,7 @@ def subcmd_batch_del_iterative(uri_str = None, bucket = None):
             response = s3.object_batch_delete_uri_strs([uri.compose_uri(bucket, item['Key']) for item in to_delete])
         deleted_bytes += sum(int(item["Size"]) for item in to_delete)
         deleted_count += len(to_delete)
-        output('\n'.join(u"File %s deleted" % uri.compose_uri(bucket, p['Key']) for p in to_delete))
+        output('\n'.join(u"delete: '%s'" % uri.compose_uri(bucket, p['Key']) for p in to_delete))
 
         # display summary data of deleted files
         total_size, size_coeff = formatSize(deleted_bytes, Config().human_readable_sizes)
@@ -640,7 +640,7 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
             debug(u"Batch delete %d, remaining %d" % (len(to_delete), len(remote_list)))
             if not cfg.dry_run:
                 response = s3.object_batch_delete(to_delete)
-            output('\n'.join((u"File %s deleted" % to_delete[p]['object_uri_str']) for p in to_delete))
+            output('\n'.join((u"delete: '%s'" % to_delete[p]['object_uri_str']) for p in to_delete))
             to_delete = remote_list[:1000]
             remote_list = remote_list[1000:]
 
@@ -701,7 +701,7 @@ def subcmd_object_del_uri(uri_str, recursive = None):
     for key in remote_list:
         item = remote_list[key]
         response = s3.object_delete(S3Uri(item['object_uri_str']))
-        output(u"File %s deleted" % item['object_uri_str'])
+        output(u"delete: '%s'" % item['object_uri_str'])
     return True
 
 def cmd_object_restore(args):
@@ -720,7 +720,7 @@ def cmd_object_restore(args):
         for key in exclude_list:
             output(u"exclude: %s" % key)
         for key in remote_list:
-            output(u"restore: %s" % remote_list[key]['object_uri_str'])
+            output(u"restore: '%s'" % remote_list[key]['object_uri_str'])
 
         warning(u"Exiting now because of --dry-run")
         return EX_OK
@@ -731,7 +731,7 @@ def cmd_object_restore(args):
         uri = S3Uri(item['object_uri_str'])
         if not item['object_uri_str'].endswith("/"):
             response = s3.object_restore(S3Uri(item['object_uri_str']))
-            output(u"File %s restoration started" % item['object_uri_str'])
+            output(u"restore: '%s'" % item['object_uri_str'])
         else:
             debug(u"Skipping directory since only files may be restored")
     return EX_OK
@@ -774,7 +774,7 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
         for key in exclude_list:
             output(u"exclude: %s" % key)
         for key in remote_list:
-            output(u"%s: %s -> %s" % (action_str, remote_list[key]['object_uri_str'], remote_list[key]['dest_name']))
+            output(u"%s: '%s' -> '%s'" % (action_str, remote_list[key]['object_uri_str'], remote_list[key]['dest_name']))
 
         warning(u"Exiting now because of --dry-run")
         return EX_OK
@@ -806,15 +806,15 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
 
 def cmd_cp(args):
     s3 = S3(Config())
-    return subcmd_cp_mv(args, s3.object_copy, "copy", u"File %(src)s copied to %(dst)s")
+    return subcmd_cp_mv(args, s3.object_copy, "copy", u"remote copy: '%(src)s' -> '%(dst)s'")
 
 def cmd_modify(args):
     s3 = S3(Config())
-    return subcmd_cp_mv(args, s3.object_modify, "modify", u"File %(src)s modified")
+    return subcmd_cp_mv(args, s3.object_modify, "modify", u"modify: '%(src)s'")
 
 def cmd_mv(args):
     s3 = S3(Config())
-    return subcmd_cp_mv(args, s3.object_move, "move", u"File %(src)s moved to %(dst)s")
+    return subcmd_cp_mv(args, s3.object_move, "move", u"move: '%(src)s' -> '%(dst)s'")
 
 def cmd_info(args):
     s3 = S3(Config())
@@ -935,9 +935,9 @@ def cmd_sync_remote2remote(args):
             output(u"exclude: %s" % key)
         if cfg.delete_removed:
             for key in dst_list:
-                output(u"delete: %s" % dst_list[key]['object_uri_str'])
+                output(u"delete: '%s'" % dst_list[key]['object_uri_str'])
         for key in src_list:
-            output(u"Sync: %s -> %s" % (src_list[key]['object_uri_str'], src_list[key]['target_uri']))
+            output(u"Sync: '%s' -> '%s'" % (src_list[key]['object_uri_str'], src_list[key]['target_uri']))
         warning(u"Exiting now because of --dry-run")
         return EX_OK
 
@@ -967,10 +967,10 @@ def cmd_sync_remote2remote(args):
             extra_headers = copy(cfg.extra_headers)
             try:
                 response = s3.object_copy(src_uri, dst_uri, extra_headers)
-                output("File %(src)s copied to %(dst)s" % { "src" : src_uri, "dst" : dst_uri })
+                output("remote copy: '%(src)s' -> '%(dst)s'" % { "src" : src_uri, "dst" : dst_uri })
             except S3Error, e:
                 ret = EX_PARTIAL
-                error("File %(src)s could not be copied: %(e)s" % { "src" : src_uri, "e" : e })
+                error("File '%(src)s' could not be copied: %(e)s" % { "src" : src_uri, "e" : e })
                 if cfg.stop_on_error:
                     raise
         return ret, seq
@@ -1012,7 +1012,7 @@ def cmd_sync_remote2local(args):
             return
         for key in local_list:
             os.unlink(deunicodise(local_list[key]['full_name']))
-            output(u"deleted: %s" % local_list[key]['full_name'])
+            output(u"delete: '%s'" % local_list[key]['full_name'])
 
     s3 = S3(Config())
 
@@ -1061,11 +1061,11 @@ def cmd_sync_remote2local(args):
             output(u"exclude: %s" % key)
         if cfg.delete_removed:
             for key in local_list:
-                output(u"delete: %s" % local_list[key]['full_name'])
+                output(u"delete: '%s'" % local_list[key]['full_name'])
         for key in remote_list:
-            output(u"download: %s -> %s" % (remote_list[key]['object_uri_str'], remote_list[key]['local_filename']))
+            output(u"download: '%s' -> '%s'" % (remote_list[key]['object_uri_str'], remote_list[key]['local_filename']))
         for key in update_list:
-            output(u"download: %s -> %s" % (update_list[key]['object_uri_str'], update_list[key]['local_filename']))
+            output(u"download: '%s' -> '%s'" % (update_list[key]['object_uri_str'], update_list[key]['local_filename']))
 
         warning(u"Exiting now because of --dry-run")
         return EX_OK
@@ -1226,7 +1226,7 @@ def cmd_sync_remote2local(args):
                 continue
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
             if not Config().progress_meter:
-                output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+                output(u"download: '%s' -> '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
                     (uri, dst_file, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
                     seq_label))
             total_size += response["size"]
@@ -1297,9 +1297,9 @@ def remote_copy(s3, copy_pairs, destination_base):
             s3.object_copy(dst1_uri, dst2_uri, extra_headers)
             info = s3.object_info(dst2_uri)
             saved_bytes = saved_bytes + long(info['headers']['content-length'])
-            output(u"remote copy: %s -> %s" % (dst1, dst2))
+            output(u"remote copy: '%s' -> '%s'" % (dst1, dst2))
         except:
-            warning(u'Unable to remote copy files %s -> %s' % (dst1_uri, dst2_uri))
+            warning(u"Unable to remote copy files '%s' -> '%s'" % (dst1_uri, dst2_uri))
             failed_copy_list[dst2] = src_obj
     return (len(copy_pairs), saved_bytes, failed_copy_list)
 
@@ -1424,7 +1424,7 @@ def cmd_sync_local2remote(args):
                     continue
                 speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
                 if not cfg.progress_meter:
-                    output(u"File '%s' stored as '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+                    output(u"upload: '%s' -> '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
                         (item['full_name'], uri, response["size"], response["elapsed"],
                         speed_fmt[0], speed_fmt[1], seq_label))
                 total_size += response["size"]
@@ -1464,14 +1464,14 @@ def cmd_sync_local2remote(args):
             for key in keys:
                 output(u"exclude: %s" % key)
             for key in local_list:
-                output(u"upload: %s -> %s" % (local_list[key]['full_name'], local_list[key]['remote_uri']))
+                output(u"upload: '%s' -> '%s'" % (local_list[key]['full_name'], local_list[key]['remote_uri']))
             for key in update_list:
-                output(u"upload: %s -> %s" % (update_list[key]['full_name'], update_list[key]['remote_uri']))
+                output(u"upload: '%s' -> '%s'" % (update_list[key]['full_name'], update_list[key]['remote_uri']))
             for (src_obj, dst1, dst2) in copy_pairs:
-                output(u"remote copy: %s -> %s" % (dst1, dst2))
+                output(u"remote copy: '%s' -> '%s'" % (dst1, dst2))
             if cfg.delete_removed:
                 for key in remote_list:
-                    output(u"delete: %s" % remote_list[key]['object_uri_str'])
+                    output(u"delete: '%s'" % remote_list[key]['object_uri_str'])
 
             warning(u"Exiting now because of --dry-run")
             return EX_OK
@@ -1613,7 +1613,7 @@ def cmd_setacl(args):
         for key in exclude_list:
             output(u"exclude: %s" % key)
         for key in remote_list:
-            output(u"setacl: %s" % remote_list[key]['object_uri_str'])
+            output(u"setacl: '%s'" % remote_list[key]['object_uri_str'])
 
         warning(u"Exiting now because of --dry-run")
         return EX_OK
@@ -1868,7 +1868,7 @@ def cmd_fixbucket(args):
                 try:
                     resp_move = s3.object_move(src, dst)
                     if resp_move['status'] == 200:
-                        output("File %r renamed to %s" % (key_bin, key_new))
+                        output("File '%r' renamed to '%s'" % (key_bin, key_new))
                         count += 1
                     else:
                         error("Something went wrong for: %r" % key)
