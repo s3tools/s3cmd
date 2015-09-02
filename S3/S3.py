@@ -33,7 +33,6 @@ from MultiPart import MultiPartUpload
 from S3Uri import S3Uri
 from ConnMan import ConnMan
 from Crypto import sign_string_v2, sign_string_v4, checksum_sha256_file, checksum_sha256_buffer
-from ExitCodes import *
 
 try:
     from ctypes import ArgumentError
@@ -1016,8 +1015,7 @@ class S3(object):
                 self.fallback_to_signature_v2 = True
                 return fn(*args, **kwargs)
 
-        error(u"S3 error: %s" % message)
-        sys.exit(ExitCodes.EX_GENERAL)
+        raise S3Error(response)
 
     def _http_403_handler(self, request, response, fn, *args, **kwargs):
         message = 'Unknown error'
@@ -1031,8 +1029,7 @@ class S3(object):
                         self.fallback_to_signature_v2 = True
                         return fn(*args, **kwargs)
 
-        error(u"S3 error: %s" % message)
-        sys.exit(ExitCodes.EX_GENERAL)
+        raise S3Error(response)
 
     def send_request(self, request, retries = _max_retries):
         method_string, resource, headers = request.get_triplet()
