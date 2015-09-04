@@ -159,7 +159,7 @@ class ConnMan(object):
             debug("ConnMan.get(): creating new connection: %s" % conn_id)
             conn = http_connection(conn_id, hostname, ssl, cfg)
             conn.c.connect()
-            if conn.ssl:
+            if conn.ssl and cfg.check_ssl_certificate:
                 conn.match_hostname()
         conn.counter += 1
         return conn
