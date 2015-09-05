@@ -563,6 +563,7 @@ if have_wget:
 test_s3cmd("sign string", ['sign', 's3cmd'], must_find_re = ["Signature:"])
 test_s3cmd("signurl time", ['signurl', '%s/copy/etc2/Logo.PNG' % pbucket(2), str(int(time.time()) + 60)], must_find_re = ["http://"])
 test_s3cmd("signurl time offset", ['signurl', '%s/copy/etc2/Logo.PNG' % pbucket(2), '+60'], must_find_re = ["https?://"])
+test_s3cmd("signurl content disposition and type", ['signurl', '%s/copy/etc2/Logo.PNG' % pbucket(2), '+60', '--content-disposition=inline; filename=video.mp4', '--content-type=video/mp4'], must_find_re = [ 'response-content-disposition', 'response-content-type' ] )
 
 ## ====== Rename within S3
 test_s3cmd("Rename within S3", ['mv', '%s/copy/etc2/Logo.PNG' % pbucket(2), '%s/copy/etc/logo.png' % pbucket(2)],

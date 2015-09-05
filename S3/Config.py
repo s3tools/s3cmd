@@ -123,6 +123,8 @@ class Config(object):
     limitrate = 0
     requester_pays = False
     stop_on_error = False
+    content_disposition = None
+    content_type = None
 
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None):
