@@ -473,10 +473,9 @@ test_s3cmd("Sync more from S3 (invalid src)", ['sync', '--delete-removed', '%s/x
 
 ## ====== Sync more from S3
 test_s3cmd("Sync more from S3", ['sync', '--delete-removed', '%s/xyz' % pbucket(1), 'testsuite-out'],
-    must_find = [ "delete: 'testsuite-out/logo.png'",
-                  "'%s/xyz/etc2/Logo.PNG' -> 'testsuite-out/xyz/etc2/Logo.PNG'" % pbucket(1),
+    must_find = [ "'%s/xyz/etc2/Logo.PNG' -> 'testsuite-out/xyz/etc2/Logo.PNG'" % pbucket(1),
                   "'%s/xyz/demo/some-file.xml' -> 'testsuite-out/xyz/demo/some-file.xml'" % pbucket(1) ],
-    must_not_find_re = [ "not-deleted.*etc/logo.png" ])
+    must_not_find_re = [ "not-deleted.*etc/logo.png", "delete: 'testsuite-out/logo.png'" ])
 
 
 ## ====== Make dst dir for get
