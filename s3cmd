@@ -906,8 +906,16 @@ def cmd_sync_remote2remote(args):
     # Normalise s3://uri (e.g. assert trailing slash)
     destination_base = S3Uri(args[-1]).uri()
 
+    destbase_with_source_list = set()
+    for source_arg in args[:-1]:
+        if source_arg.endswith('/'):
+            destbase_with_source_list.add(destination_base)
+        else:
+            destbase_with_source_list.add(os.path.join(destination_base,
+                                                  os.path.basename(source_arg)))
+
     src_list, src_exclude_list = fetch_remote_list(args[:-1], recursive = True, require_attribs = True)
-    dst_list, dst_exclude_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
+    dst_list, dst_exclude_list = fetch_remote_list(destbase_with_source_list, recursive = True, require_attribs = True)
 
     src_count = len(src_list)
     orig_src_count = src_count
@@ -1016,9 +1024,25 @@ def cmd_sync_remote2local(args):
 
     s3 = S3(Config())
 
-    destination_base = args[-1]
-    local_list, single_file_local, dst_exclude_list = fetch_local_list(destination_base, is_src = False, recursive = True)
     remote_list, src_exclude_list = fetch_remote_list(args[:-1], recursive = True, require_attribs = True)
+
+    destination_base = args[-1]
+
+    # - The source path is either like "/myPath/my_src_folder" and
+    # the user want to download this single folder and Optionally only delete
+    # things that have been removed inside this folder. For this case, we only
+    # have to look inside destination_base/my_src_folder and not at the root of
+    # destination_base.
+    # - Or like "/myPath/my_src_folder/" and the user want to have the sync
+    # with the content of this folder
+    destbase_with_source_list = set()
+    for source_arg in args[:-1]:
+        if not source_arg.endswith('/'):
+            destbase_with_source_list.add(os.path.join(destination_base,
+                                                  os.path.basename(source_arg)))
+        else:
+            destbase_with_source_list.add(destination_base)
+    local_list, single_file_local, dst_exclude_list = fetch_local_list(destbase_with_source_list, is_src = False, recursive = True)
 
     local_count = len(local_list)
     remote_count = len(remote_list)
@@ -1345,16 +1369,16 @@ def _build_attr_header(local_list, src):
 
 
 def cmd_sync_local2remote(args):
-    def _single_process(local_list):
+    def _single_process(source_args, local_list):
         for dest in destinations:
             ## Normalize URI to convert s3://bkt to s3://bkt/ (trailing slash)
             destination_base_uri = S3Uri(dest)
             if destination_base_uri.type != 's3':
                 raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
             destination_base = destination_base_uri.uri()
-        return _child(destination_base, local_list)
+        return _child(destination_base, source_args, local_list)
 
-    def _parent():
+    def _parent(source_args, local_list):
         # Now that we've done all the disk I/O to look at the local file system and
         # calculate the md5 for each file, fork for each destination to upload to them separately
         # and in parallel
@@ -1369,7 +1393,7 @@ def cmd_sync_local2remote(args):
             destination_base = destination_base_uri.uri()
             child_pid = os.fork()
             if child_pid == 0:
-                os._exit(_child(destination_base, local_list))
+                os._exit(_child(destination_base, source_args, local_list))
             else:
                 child_pids.append(child_pid)
 
@@ -1381,7 +1405,7 @@ def cmd_sync_local2remote(args):
 
         return ret
 
-    def _child(destination_base, local_list):
+    def _child(destination_base, source_args, local_list):
         def _set_remote_uri(local_list, destination_base, single_file_local):
             if len(local_list) > 0:
                 ## Populate 'remote_uri' only if we've got something to upload
@@ -1431,7 +1455,23 @@ def cmd_sync_local2remote(args):
                 uploaded_objects_list.append(uri.object())
             return ret, seq, total_size
 
-        remote_list, dst_exclude_list = fetch_remote_list(destination_base, recursive = True, require_attribs = True)
+
+        # - The source path is either like "/myPath/my_src_folder" and
+        # the user want to upload this single folder and optionally only delete
+        # things that have been removed inside this folder. For this case,
+        # we only have to look inside destination_base/my_src_folder and not at
+        # the root of destination_base.
+        # - Or like "/myPath/my_src_folder/" and the user want to have the sync
+        # with the content of this folder
+        destbase_with_source_list = set()
+        for source_arg in source_args:
+            if not source_arg.endswith('/'):
+                destbase_with_source_list.add(os.path.join(destination_base,
+                                                    os.path.basename(source_arg)))
+            else:
+                destbase_with_source_list.add(destination_base)
+
+        remote_list, dst_exclude_list = fetch_remote_list(destbase_with_source_list, recursive = True, require_attribs = True)
 
         local_count = len(local_list)
         orig_local_count = local_count
@@ -1554,7 +1594,7 @@ def cmd_sync_local2remote(args):
         destinations = destinations + cfg.additional_destinations
 
     if 'fork' not in os.__all__ or len(destinations) < 2:
-        ret = _single_process(local_list)
+        ret = _single_process(args[:-1], local_list)
         destination_base_uri = S3Uri(destinations[-1])
         if cfg.invalidate_on_cf:
             if len(uploaded_objects_list) == 0:
@@ -1562,7 +1602,7 @@ def cmd_sync_local2remote(args):
             else:
                 _invalidate_on_cf(destination_base_uri)
     else:
-        ret = _parent()
+        ret = _parent(args[:-1], local_list)
         if cfg.invalidate_on_cf:
             error(u"You cannot use both --cf-invalidate and --add-destination.")
             return(EX_USAGE)

@@ -312,7 +312,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
     local_list = FileDict(ignore_case = False)
     single_file = False
 
-    if type(args) not in (list, tuple):
+    if type(args) not in (list, tuple, set):
         args = [args]
 
     if recursive == None:
@@ -427,7 +427,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
     remote_uris = []
     remote_list = FileDict(ignore_case = False)
 
-    if type(args) not in (list, tuple):
+    if type(args) not in (list, tuple, set):
         args = [args]
 
     if recursive == None:
