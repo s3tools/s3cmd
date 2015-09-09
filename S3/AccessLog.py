@@ -28,7 +28,7 @@ class AccessLog(object):
         self.tree.attrib['xmlns'] = "http://doc.s3.amazonaws.com/2006-03-01"
 
     def isLoggingEnabled(self):
-        return bool(self.tree.find(".//LoggingEnabled"))
+        return (self.tree.find(".//LoggingEnabled") is not None)
 
     def disableLogging(self):
         el = self.tree.find(".//LoggingEnabled")
@@ -54,7 +54,7 @@ class AccessLog(object):
 
     def setAclPublic(self, acl_public):
         le = self.tree.find(".//LoggingEnabled")
-        if not le:
+        if le is None:
             raise ParameterError("Logging not enabled, can't set default ACL for logs")
         tg = le.find(".//TargetGrants")
         if not acl_public:
