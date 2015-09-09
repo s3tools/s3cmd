@@ -52,7 +52,7 @@ class S3Uri(object):
 
 class S3UriS3(S3Uri):
     type = "s3"
-    _re = re.compile("^s3://([^/]*)/?(.*)", re.IGNORECASE | re.UNICODE)
+    _re = re.compile("^s3:///*([^/]*)/?(.*)", re.IGNORECASE | re.UNICODE)
     def __init__(self, string):
         match = self._re.match(string)
         if not match:
@@ -120,7 +120,7 @@ class S3UriS3(S3Uri):
 
 class S3UriS3FS(S3Uri):
     type = "s3fs"
-    _re = re.compile("^s3fs://([^/]*)/?(.*)", re.IGNORECASE | re.UNICODE)
+    _re = re.compile("^s3fs:///*([^/]*)/?(.*)", re.IGNORECASE | re.UNICODE)
     def __init__(self, string):
         match = self._re.match(string)
         if not match:
