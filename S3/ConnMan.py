@@ -48,7 +48,7 @@ class http_connection(object):
 
         context = http_connection._ssl_verified_context(cafile)
 
-        if context and not cfg.check_ssl_certificate:
+        if context and not cfg.validate_hostname:
             context.check_hostname = False
             debug(u'Disabling hostname checking')
 
@@ -159,7 +159,7 @@ class ConnMan(object):
             debug("ConnMan.get(): creating new connection: %s" % conn_id)
             conn = http_connection(conn_id, hostname, ssl, cfg)
             conn.c.connect()
-            if conn.ssl:
+            if conn.ssl and cfg.validate_hostname:
                 conn.match_hostname()
         conn.counter += 1
         return conn
