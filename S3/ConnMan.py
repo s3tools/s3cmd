@@ -74,6 +74,7 @@ class http_connection(object):
         hostname for the *.s3.amazonaws.com wildcard cert, and for the
         region-specific *.s3-[region].amazonaws.com wildcard cert.
         """
+        debug(u'checking SSL subjectAltName against amazonaws.com')
         san = cert.get('subjectAltName', ())
         for key, value in san:
             if key == 'DNS':
@@ -159,7 +160,7 @@ class ConnMan(object):
             debug("ConnMan.get(): creating new connection: %s" % conn_id)
             conn = http_connection(conn_id, hostname, ssl, cfg)
             conn.c.connect()
-            if conn.ssl:
+            if conn.ssl and cfg.check_ssl_certificate:
                 conn.match_hostname()
         conn.counter += 1
         return conn
