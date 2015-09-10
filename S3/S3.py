@@ -962,12 +962,25 @@ class S3(object):
             bucket = uri.bucket()
             object = uri.has_object() and uri.object() or None
 
-        if bucket:
-            resource['bucket'] = str(bucket)
+        if self.config.service_path == '':
+            # AWS ...
+        # TODO: did this cause the error for Euca?
+            if bucket:
+                resource['bucket'] = str(bucket)
+                if object:
+                    resource['uri'] = "/" + self.urlencode_string(object)
+        else:
+            # Euca ...
+            if bucket:
+                resource['uri'] = "/" + self.urlencode_string(bucket)
             if object:
-                resource['uri'] = "/" + self.urlencode_string(object)
+                resource['uri'] = resource['uri'] + "/" + self.urlencode_string(object)
+
+
         if extra:
             resource['uri'] += extra
+        if self.config.service_path:
+            resource['uri'] = self.config.service_path + resource['uri']
 
         method_string = S3.http_methods.getkey(S3.operations[operation] & S3.http_methods["MASK"])
 
