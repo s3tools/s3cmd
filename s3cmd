@@ -45,6 +45,8 @@ from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatt
 from logging import debug, info, warning, error
 from distutils.spawn import find_executable
 
+from ssl import SSLError
+
 def output(message):
     sys.stdout.write(message + "\n")
     sys.stdout.flush()
@@ -2741,6 +2743,11 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         sys.stderr.write("See ya!\n")
         sys.exit(EX_BREAK)
+
+    except SSLError, e:
+        # SSLError is a subtype of IOError
+        error("SSL certificate verification failure: %s" % e)
+        sys.exit(EX_ACCESSDENIED)
 
     except IOError, e:
         if e.errno == errno.EPIPE:
