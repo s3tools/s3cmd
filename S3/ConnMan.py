@@ -9,6 +9,7 @@
 import sys
 import httplib
 import ssl
+from _ssl import CERT_NONE
 from threading import Semaphore
 from logging import debug
 
@@ -28,10 +29,26 @@ class http_connection(object):
 
     @staticmethod
     def _ssl_verified_context(cafile):
+        cfg = Config()
         context = None
         try:
             context = ssl.create_default_context(cafile=cafile)
         except AttributeError: # no ssl.create_default_context
+            pass
+        if context and not cfg.check_ssl_hostname:
+            context.check_hostname = False
+            debug(u'Disabling SSL certificate hostname checking')
+
+        return context
+
+    @staticmethod
+    def _ssl_unverified_context(cafile):
+        debug(u'Disabling SSL certificate checking')
+        context = None
+        try:
+            context = ssl._create_unverified_context(cafile=cafile,
+                                                     cert_reqs=CERT_NONE)
+        except AttributeError: # no ssl._create_unverified_context
             pass
         return context
 
@@ -46,11 +63,10 @@ class http_connection(object):
             cafile = None
         debug(u"Using ca_certs_file %s" % cafile)
 
-        context = http_connection._ssl_verified_context(cafile)
-
-        if context and not cfg.check_ssl_certificate:
-            context.check_hostname = False
-            debug(u'Disabling hostname checking')
+        if cfg.check_ssl_certificate:
+            context = http_connection._ssl_verified_context(cafile)
+        else:
+            context = http_connection._ssl_unverified_context(cafile)
 
         http_connection.context = context
         http_connection.context_set = True
@@ -160,7 +176,7 @@ class ConnMan(object):
             debug("ConnMan.get(): creating new connection: %s" % conn_id)
             conn = http_connection(conn_id, hostname, ssl, cfg)
             conn.c.connect()
-            if conn.ssl and cfg.check_ssl_certificate:
+            if conn.ssl and cfg.check_ssl_certificate and cfg.check_ssl_hostname:
                 conn.match_hostname()
         conn.counter += 1
         return conn
