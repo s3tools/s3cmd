@@ -9,7 +9,6 @@
 import sys
 import httplib
 import ssl
-from _ssl import CERT_NONE
 from threading import Semaphore
 from logging import debug
 
@@ -47,7 +46,7 @@ class http_connection(object):
         context = None
         try:
             context = ssl._create_unverified_context(cafile=cafile,
-                                                     cert_reqs=CERT_NONE)
+                                                     cert_reqs=ssl.CERT_NONE)
         except AttributeError: # no ssl._create_unverified_context
             pass
         return context
