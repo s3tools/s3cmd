@@ -83,6 +83,7 @@ class Config(object):
     use_https = True
     ca_certs_file = ""
     check_ssl_certificate = True
+    check_ssl_hostname = True
     bucket_location = "US"
     default_mime_type = "binary/octet-stream"
     guess_mime_type = True
