@@ -223,7 +223,7 @@ def test_copy(label, src_file, dst_file):
     return test(label, cmd)
 
 def test_curl_HEAD(label, src_file, **kwargs):
-    cmd = ['curl', '--head', '-i']
+    cmd = ['curl', '--silent', '--head', '-include', '--location']
     cmd.append(src_file)
     return test(label, cmd, **kwargs)
 
@@ -407,8 +407,8 @@ test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public'
 
 ## ====== Retrieve from URL
 if have_curl:
-    test("Retrieve from URL", ['curl', '--silent', '--head', '-i', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
-         must_find_re = ['Content-Length: 22059'])
+    test_curl_HEAD("Retrieve from URL", 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base),
+                   must_find_re = ['Content-Length: 22059'])
 
 ## ====== Change ACL to Private
 test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', '%s/xyz/etc/l*.png' % pbucket(1)],
@@ -417,8 +417,8 @@ test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', '%s/xyz/etc/l*.p
 
 ## ====== Verify Private ACL
 if have_curl:
-    test("Verify Private ACL", ['curl', '--silent', '-i', '--head', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
-         must_find_re = [ '403 Forbidden' ])
+    test_curl_HEAD("Verify Private ACL", 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base),
+                   must_find_re = [ '403 Forbidden' ])
 
 
 ## ====== Change ACL to Public
@@ -428,9 +428,9 @@ test_s3cmd("Change ACL to Public", ['setacl', '--acl-public', '--recursive', '%s
 
 ## ====== Verify Public ACL
 if have_curl:
-    test("Verify Public ACL", ['curl', '--silent', '-i', '--head', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
-        must_find_re = [ '200 OK',
-                         'Content-Length: 22059'])
+    test_curl_HEAD("Verify Public ACL", 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base),
+                   must_find_re = [ '200 OK',
+                                    'Content-Length: 22059'])
 
 
 ## ====== Sync more to S3
@@ -551,7 +551,7 @@ if have_curl:
                    must_find_re = [ "Cache-Control: max-age=3600" ])
 
 test_s3cmd("Remove cache-control header", ['modify', '--remove-header=cache-control', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
-    must_find_re = [ "modify: .*" ])
+           must_find_re = [ "modify: .*" ])
 
 if have_curl:
     test_curl_HEAD("HEAD check Cache-Control not present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
