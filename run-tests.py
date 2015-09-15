@@ -223,7 +223,7 @@ def test_copy(label, src_file, dst_file):
     return test(label, cmd)
 
 def test_curl_HEAD(label, src_file, **kwargs):
-    cmd = ['curl', '--head', '-i', '--no-keepalive']
+    cmd = ['curl', '--head', '-i']
     cmd.append(src_file)
     return test(label, cmd, **kwargs)
 
@@ -407,9 +407,8 @@ test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public'
 
 ## ====== Retrieve from URL
 if have_curl:
-    test("Retrieve from URL", ['curl', '-o', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
-        must_find_re = [ 'logo.png.*saved \[22059/22059\]' ])
-
+    test("Retrieve from URL", ['curl', '--silent', '--head', '-i', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
+         must_find_re = ['Content-Length: 22059'])
 
 ## ====== Change ACL to Private
 test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', '%s/xyz/etc/l*.png' % pbucket(1)],
@@ -418,9 +417,8 @@ test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', '%s/xyz/etc/l*.p
 
 ## ====== Verify Private ACL
 if have_curl:
-    test("Verify Private ACL", ['curl', '-o', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
-         retcode = [1, 8],
-         must_find_re = [ 'ERROR 403: Forbidden' ])
+    test("Verify Private ACL", ['curl', '--silent', '-i', '--head', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
+         must_find_re = [ '403 Forbidden' ])
 
 
 ## ====== Change ACL to Public
@@ -430,8 +428,9 @@ test_s3cmd("Change ACL to Public", ['setacl', '--acl-public', '--recursive', '%s
 
 ## ====== Verify Public ACL
 if have_curl:
-    test("Verify Public ACL", ['curl', '-o', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
-        must_find_re = [ 'logo.png.*saved \[22059/22059\]' ])
+    test("Verify Public ACL", ['curl', '--silent', '-i', '--head', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
+        must_find_re = [ '200 OK',
+                         'Content-Length: 22059'])
 
 
 ## ====== Sync more to S3
