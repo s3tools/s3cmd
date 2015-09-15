@@ -383,25 +383,30 @@ def cmd_object_put(args):
         try:
             response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label)
         except S3UploadError, exc:
+            error(u"Upload of '%s' failed too many times (Last reason: %s)" % (full_name_orig, exc))
             if cfg.stop_on_error:
                 ret = EX_DATAERR
-                error(u"Upload of '%s' failed too many times. Exiting. (Last reason: %s)" % (full_name_orig, exc))
+                error(u"Exiting now because of --stop-on-error")
                 break
             ret = EX_PARTIAL
-            error(u"Upload of '%s' failed too many times. Skipping that file. (Last reason: %s)" % (full_name_orig, exc))
             continue
         except InvalidFileError, exc:
-            warning(u"File can not be uploaded: %s" % exc)
+            error(u"Upload of '%s' is not possible (Reason: %s)" % (full_name_orig, exc))
             ret = EX_PARTIAL
             if cfg.stop_on_error:
                 ret = EX_OSFILE
+                error(u"Exiting now because of --stop-on-error")
                 break
             continue
         if response is not None:
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
             if not Config().progress_meter:
+                if full_name_orig != "-":
+                    nicekey = full_name_orig
+                else:
+                    nicekey = "<stdin>"
                 output(u"upload: '%s' -> '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
-                       (full_name_orig, uri_final, response["size"], response["elapsed"],
+                       (nicekey, uri_final, response["size"], response["elapsed"],
                         speed_fmt[0], speed_fmt[1], seq_label))
         if Config().acl_public:
             output(u"Public URL of the object is: %s" %
@@ -1121,135 +1126,171 @@ def cmd_sync_remote2local(args):
             dst_file = item['local_filename']
             is_empty_directory = dst_file.endswith('/')
             seq_label = "[%d of %d]" % (seq, total)
+
+            dst_dir = unicodise(os.path.dirname(deunicodise(dst_file)))
+            if not dir_cache.has_key(dst_dir):
+                dir_cache[dst_dir] = Utils.mkdir_with_parents(dst_dir)
+            if dir_cache[dst_dir] == False:
+                if cfg.stop_on_error:
+                    error(u"Exiting now because of --stop-on-error")
+                    raise OSError("Download of '%s' failed (Reason: %s destination directory is not writable)" % (file, dst_dir))
+                error(u"Download of '%s' failed (Reason: %s destination directory is not writable)" % (file, dst_dir))
+                ret = EX_PARTIAL
+                continue
+
             try:
-                dst_dir = unicodise(os.path.dirname(deunicodise(dst_file)))
-                if not dir_cache.has_key(dst_dir):
-                    dir_cache[dst_dir] = Utils.mkdir_with_parents(dst_dir)
-                if dir_cache[dst_dir] == False:
-                    if cfg.stop_on_error:
-                        raise OSError("%s: destination directory not writable: %s" % (file, dst_dir))
-                    warning(u"%s: destination directory not writable: %s" % (file, dst_dir))
-                    ret = EX_PARTIAL
-                    continue
+                chkptfname = ''
+                if not is_empty_directory: # ignore empty directory at S3:
+                    debug(u"dst_file=%s" % dst_file)
+                    # create temporary files (of type .s3cmd.XXXX.tmp) in the same directory
+                    # for downloading and then rename once downloaded
+                    chkptfd, chkptfname = tempfile.mkstemp(".tmp",".s3cmd.",os.path.dirname(deunicodise(dst_file)))
+                    chkptfname = unicodise(chkptfname)
+                    debug(u"created chkptfname=%s" % chkptfname)
+                    dst_stream = os.fdopen(chkptfd, "wb")
+                    response = s3.object_get(uri, dst_stream, dst_file, extra_label = seq_label)
+                    dst_stream.close()
+                    # download completed, rename the file to destination
+                    os.rename(deunicodise(chkptfname), deunicodise(dst_file))
+                    debug(u"renamed chkptfname=%s to dst_file=%s" % (chkptfname, dst_file))
+            except OSError, exc:
+                if (exc.errno == errno.EISDIR or
+                      exc.errno == errno.ETXTBSY or
+                      exc.errno == errno.EPERM or
+                      exc.errno == errno.EACCES or
+                      exc.errno == errno.EBUSY or
+                      exc.errno == errno.EFBIG or
+                      exc.errno == errno.ENAMETOOLONG):
 
-                try:
-                    if not is_empty_directory: # ignore empty directory at S3:
-                        debug(u"dst_file=%s" % dst_file)
-                        # create temporary files (of type .s3cmd.XXXX.tmp) in the same directory
-                        # for downloading and then rename once downloaded
-                        chkptfd, chkptfname = tempfile.mkstemp(".tmp",".s3cmd.",os.path.dirname(deunicodise(dst_file)))
-                        chkptfname = unicodise(chkptfname)
-                        debug(u"created chkptfname=%s" % chkptfname)
-                        dst_stream = os.fdopen(chkptfd, "wb")
-                        response = s3.object_get(uri, dst_stream, dst_file, extra_label = seq_label)
-                        dst_stream.close()
-                        # download completed, rename the file to destination
-                        os.rename(deunicodise(chkptfname), deunicodise(dst_file))
-                        debug(u"renamed chkptfname=%s to dst_file=%s" % (chkptfname, dst_file))
-                except OSError, e:
-                    ret = EX_PARTIAL
-                    if e.errno == errno.EISDIR:
-                        warning(u"%s is a directory - skipping over" % dst_file)
-                        continue
-                    elif e.errno == errno.ETXTBSY:
-                        warning(u"%s is currently open for execute, cannot be overwritten.  Skipping over." % dst_file)
-                        os.unlink(deunicodise(chkptfname))
-                        continue
-                    else:
-                        raise
-                except S3DownloadError, e:
-                    error(u"%s: Skipping that file.  This is usually a transient error, please try again later." % e)
-                    os.unlink(deunicodise(chkptfname))
-                    if cfg.stop_on_error:
-                        raise
-                    ret = EX_PARTIAL
-                    continue
-                except S3Error, e:
-                    warning(u"Remote file %s S3Error: %s" % (e.resource, e))
-                    if cfg.stop_on_error:
-                        raise
-                    ret = EX_PARTIAL
-                    continue
+                    if exc.errno == errno.EISDIR:
+                        error(u"Download of '%s' failed (Reason: %s is a directory)" % (file, dst_file))
+                    elif exc.errno == errno.ETXTBSY:
+                        error(u"Download of '%s' failed (Reason: %s is currently open for execute, cannot be overwritten)" % (file, dst_file))
+                    elif (exc.errno == errno.EPERM or
+                          exc.errno == errno.EACCES):
+                        error(u"Download of '%s' failed (Reason: %s permission denied)" % (file, dst_file))
+                    elif exc.errno == errno.EBUSY:
+                        error(u"Download of '%s' failed (Reason: %s is busy)" % (file, dst_file))
+                    elif exc.errno == errno.EFBIG:
+                        error(u"Download of '%s' failed (Reason: %s is too big)" % (file, dst_file))
+                    elif exc.errno == errno.ENAMETOOLONG:
+                        error(u"Download of '%s' failed (Reason: File Name is too long)" % file)
 
-                try:
-                    # set permissions on destination file
-                    if not is_empty_directory: # a normal file
-                        mode = 0777 - original_umask;
-                    else: # an empty directory, make them readable/executable
-                        mode = 0775
-                    debug(u"mode=%s" % oct(mode))
-                    os.chmod(deunicodise(dst_file), mode);
-                except:
+                    try:
+                        # Try to remove the temp file if it exists
+                        if chkptfname:
+                            os.unlink(deunicodise(chkptfname))
+                    except:
+                        pass
+                    if cfg.stop_on_error:
+                        ret = EX_OSFILE
+                        error(u"Exiting now because of --stop-on-error")
+                        raise
+                    ret = EX_PARTIAL
+                    continue
+                elif (exc.errno == errno.ENOSPC or
+                      exc.errno == errno.EDQUOT):
+                    error(u"Download of '%s' failed (Reason: No space left)" % file)
+                    try:
+                        # Try to remove the temp file if it exists
+                        if chkptfname:
+                            os.unlink(deunicodise(chkptfname))
+                    except:
+                        pass
                     raise
 
-                # because we don't upload empty directories,
-                # we can continue the loop here, we won't be setting stat info.
-                # if we do start to upload empty directories, we'll have to reconsider this.
-                if is_empty_directory:
-                    continue
+                raise
+            except S3DownloadError, exc:
+                error(u"Download of '%s' failed too many times (Last Reason: %s). "
+                      "This is usually a transient error, please try again "
+                      "later." % (file, exc))
+                os.unlink(deunicodise(chkptfname))
+                if cfg.stop_on_error:
+                    ret = EX_DATAERR
+                    error(u"Exiting now because of --stop-on-error")
+                    raise
+                ret = EX_PARTIAL
+                continue
+            except S3Error, exc:
+                warning(u"Remote file '%s'. S3Error: %s" % (exc.resource, exc))
+                if cfg.stop_on_error:
+                    raise
+                ret = EX_PARTIAL
+                continue
 
-                try:
-                    if response.has_key('s3cmd-attrs') and cfg.preserve_attrs:
-                        attrs = response['s3cmd-attrs']
-                        if attrs.has_key('mode'):
-                            os.chmod(deunicodise(dst_file), int(attrs['mode']))
-                        if attrs.has_key('mtime') or attrs.has_key('atime'):
-                            mtime = attrs.has_key('mtime') and int(attrs['mtime']) or int(time.time())
-                            atime = attrs.has_key('atime') and int(attrs['atime']) or int(time.time())
-                            os.utime(deunicodise(dst_file), (atime, mtime))
-                        if attrs.has_key('uid') and attrs.has_key('gid'):
-                            uid = int(attrs['uid'])
-                            gid = int(attrs['gid'])
-                            os.lchown(deunicodise(dst_file),uid,gid)
-                    elif response["headers"].has_key("last-modified"):
-                        last_modified = time.mktime(time.strptime(response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"))
-                        os.utime(deunicodise(dst_file), (last_modified, last_modified))
-                        debug("set mtime to %s" % last_modified)
-                except OSError, e:
-                    try:
-                        dst_stream.close()
-                        os.remove(deunicodise(chkptfname))
-                    except: pass
-                    ret = EX_PARTIAL
-                    if e.errno == errno.EEXIST:
-                        warning(u"%s exists - not overwriting" % dst_file)
-                        continue
-                    if e.errno in (errno.EPERM, errno.EACCES):
-                        warning(u"%s not writable: %s" % (dst_file, e.strerror))
-                        if cfg.stop_on_error:
-                            raise e
-                        continue
-                    raise e
-                except KeyboardInterrupt:
-                    try:
-                        dst_stream.close()
-                        os.remove(deunicodise(chkptfname))
-                    except: pass
-                    warning(u"Exiting after keyboard interrupt")
-                    return
-                except Exception, e:
-                    try:
-                        dst_stream.close()
-                        os.remove(deunicodise(chkptfname))
-                    except: pass
-                    ret = EX_PARTIAL
-                    error(u"%s: %s" % (file, e))
-                    if cfg.stop_on_error:
-                        raise OSError, e
-                    continue
-                # We have to keep repeating this call because
-                # Python 2.4 doesn't support try/except/finally
-                # construction :-(
+            try:
+                # set permissions on destination file
+                if not is_empty_directory: # a normal file
+                    mode = 0777 - original_umask;
+                else: # an empty directory, make them readable/executable
+                    mode = 0775
+                debug(u"mode=%s" % oct(mode))
+                os.chmod(deunicodise(dst_file), mode);
+            except:
+                raise
+
+            # because we don't upload empty directories,
+            # we can continue the loop here, we won't be setting stat info.
+            # if we do start to upload empty directories, we'll have to reconsider this.
+            if is_empty_directory:
+                continue
+
+            try:
+                if response.has_key('s3cmd-attrs') and cfg.preserve_attrs:
+                    attrs = response['s3cmd-attrs']
+                    if attrs.has_key('mode'):
+                        os.chmod(deunicodise(dst_file), int(attrs['mode']))
+                    if attrs.has_key('mtime') or attrs.has_key('atime'):
+                        mtime = attrs.has_key('mtime') and int(attrs['mtime']) or int(time.time())
+                        atime = attrs.has_key('atime') and int(attrs['atime']) or int(time.time())
+                        os.utime(deunicodise(dst_file), (atime, mtime))
+                    if attrs.has_key('uid') and attrs.has_key('gid'):
+                        uid = int(attrs['uid'])
+                        gid = int(attrs['gid'])
+                        os.lchown(deunicodise(dst_file),uid,gid)
+                elif response["headers"].has_key("last-modified"):
+                    last_modified = time.mktime(time.strptime(response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"))
+                    os.utime(deunicodise(dst_file), (last_modified, last_modified))
+                    debug("set mtime to %s" % last_modified)
+            except OSError, e:
                 try:
                     dst_stream.close()
                     os.remove(deunicodise(chkptfname))
                 except: pass
-            except S3DownloadError, e:
                 ret = EX_PARTIAL
-                error(u"%s: download failed too many times. Skipping that file.  This is usually a transient error, please try again later." % file)
+                if e.errno == errno.EEXIST:
+                    warning(u"%s exists - not overwriting" % dst_file)
+                    continue
+                if e.errno in (errno.EPERM, errno.EACCES):
+                    warning(u"%s not writable: %s" % (dst_file, e.strerror))
+                    if cfg.stop_on_error:
+                        raise e
+                    continue
+                raise e
+            except KeyboardInterrupt:
+                try:
+                    dst_stream.close()
+                    os.remove(deunicodise(chkptfname))
+                except: pass
+                warning(u"Exiting after keyboard interrupt")
+                return
+            except Exception, e:
+                try:
+                    dst_stream.close()
+                    os.remove(deunicodise(chkptfname))
+                except: pass
+                ret = EX_PARTIAL
+                error(u"%s: %s" % (file, e))
                 if cfg.stop_on_error:
-                    raise
+                    raise OSError, e
                 continue
+            # We have to keep repeating this call because
+            # Python 2.4 doesn't support try/except/finally
+            # construction :-(
+            try:
+                dst_stream.close()
+                os.remove(deunicodise(chkptfname))
+            except: pass
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
             if not Config().progress_meter:
                 output(u"download: '%s' -> '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
@@ -1307,7 +1348,7 @@ def local_copy(copy_pairs, destination_base):
             debug(u"Copying %s to %s" % (src_file, dst_file))
             shutil.copy2(deunicodise(src_file), deunicodise(dst_file))
         except (IOError, OSError), e:
-            warning(u'Unable to hardlink or copy files %s -> %s: %s' % (src_file, dst_file, e))
+            warning(u'Unable to hardlink or copy files %s -> %s (Reason: %s)' % (src_file, dst_file, e))
             failed_copy_list[relative_file] = src_obj
     return failed_copy_list
 
@@ -1436,16 +1477,20 @@ def cmd_sync_local2remote(args):
                         debug(u"attr_header: %s" % attr_header)
                         extra_headers.update(attr_header)
                     response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
-                except InvalidFileError, e:
-                    warning(u"File can not be uploaded: %s" % e)
-                    ret = EX_PARTIAL
+                except S3UploadError, exc:
+                    error(u"Upload of '%s' failed too many times (Last reason: %s)" % (item['full_name'], exc))
                     if cfg.stop_on_error:
+                        ret = EX_DATAERR
+                        error(u"Exiting now because of --stop-on-error")
                         raise
+                    ret = EX_PARTIAL
                     continue
-                except S3UploadError, e:
-                    error(u"%s: upload failed too many times. Skipping that file." % item['full_name'])
+                except InvalidFileError, exc:
+                    error(u"Upload of '%s' is not possible (Reason: %s)" % (item['full_name'], exc))
                     ret = EX_PARTIAL
                     if cfg.stop_on_error:
+                        ret = EX_OSFILE
+                        error(u"Exiting now because of --stop-on-error")
                         raise
                     continue
                 speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
