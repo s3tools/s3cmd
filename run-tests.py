@@ -29,9 +29,9 @@ exclude_tests = []
 verbose = False
 
 if os.name == "posix":
-    have_wget = True
+    have_curl = True
 elif os.name == "nt":
-    have_wget = False
+    have_curl = False
 else:
     print "Unknown platform: %s" % os.name
     sys.exit(1)
@@ -222,8 +222,8 @@ def test_copy(label, src_file, dst_file):
     cmd.append(dst_file)
     return test(label, cmd)
 
-def test_wget_HEAD(label, src_file, **kwargs):
-    cmd = ['wget', '-q', '-S', '--method=HEAD']
+def test_curl_HEAD(label, src_file, **kwargs):
+    cmd = ['curl', '--head', '-i', '--no-keepalive']
     cmd.append(src_file)
     return test(label, cmd, **kwargs)
 
@@ -406,8 +406,8 @@ test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public'
 
 
 ## ====== Retrieve from URL
-if have_wget:
-    test("Retrieve from URL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
+if have_curl:
+    test("Retrieve from URL", ['curl', '-o', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
         must_find_re = [ 'logo.png.*saved \[22059/22059\]' ])
 
 
@@ -417,8 +417,8 @@ test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', '%s/xyz/etc/l*.p
 
 
 ## ====== Verify Private ACL
-if have_wget:
-    test("Verify Private ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
+if have_curl:
+    test("Verify Private ACL", ['curl', '-o', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
          retcode = [1, 8],
          must_find_re = [ 'ERROR 403: Forbidden' ])
 
@@ -429,8 +429,8 @@ test_s3cmd("Change ACL to Public", ['setacl', '--acl-public', '--recursive', '%s
 
 
 ## ====== Verify Public ACL
-if have_wget:
-    test("Verify Public ACL", ['wget', '-O', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
+if have_curl:
+    test("Verify Public ACL", ['curl', '-o', 'testsuite-out/logo.png', 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base)],
         must_find_re = [ 'logo.png.*saved \[22059/22059\]' ])
 
 
@@ -547,15 +547,15 @@ test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucke
 test_s3cmd("Add cache-control header", ['modify', '--add-header=cache-control: max-age=3600, public', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "modify: .*" ])
 
-if have_wget:
-    test_wget_HEAD("HEAD check Cache-Control present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
+if have_curl:
+    test_curl_HEAD("HEAD check Cache-Control present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
                    must_find_re = [ "Cache-Control: max-age=3600" ])
 
 test_s3cmd("Remove cache-control header", ['modify', '--remove-header=cache-control', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "modify: .*" ])
 
-if have_wget:
-    test_wget_HEAD("HEAD check Cache-Control not present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
+if have_curl:
+    test_curl_HEAD("HEAD check Cache-Control not present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
                    must_not_find_re = [ "Cache-Control: max-age=3600" ])
 
 ## ====== sign
