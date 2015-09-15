@@ -354,7 +354,7 @@ test_flushdir("Clean testsuite-out/", "testsuite-out")
 ## ====== Put from stdin
 f = open('testsuite/single-file/single-file.txt', 'r')
 test_s3cmd("Put from stdin", ['put', '-', '%s/single-file/single-file.txt' % pbucket(1)],
-           must_find = ["'-' -> '%s/single-file/single-file.txt'" % pbucket(1)],
+           must_find = ["'<stdin>' -> '%s/single-file/single-file.txt'" % pbucket(1)],
            stdin = f)
 f.close()
 
