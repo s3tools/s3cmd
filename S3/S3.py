@@ -963,11 +963,13 @@ class S3(object):
             object = uri.has_object() and uri.object() or None
 
         if bucket:
-            resource['bucket'] = str(bucket)
+            resource['uri'] = "/" + self.urlencode_string(bucket)
             if object:
-                resource['uri'] = "/" + self.urlencode_string(object)
+                resource['uri'] += "/" + self.urlencode_string(object)
         if extra:
             resource['uri'] += extra
+        if self.config.service_path:
+            resource['uri'] = self.config.service_path + resource['uri']
 
         method_string = S3.http_methods.getkey(S3.operations[operation] & S3.http_methods["MASK"])
 
