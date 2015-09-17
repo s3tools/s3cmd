@@ -573,11 +573,11 @@ class S3(object):
         if self.config.server_side_encryption:
             headers["x-amz-server-side-encryption"] = "AES256"
 
-        ####inject in kms headers
+        ## Set kms headers
         if self.config.kms_key:
             headers['x-amz-server-side-encryption'] = 'aws:kms'
             headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
-            
+
         ## MIME-type handling
         headers["content-type"] = self.content_type(filename=filename)
 
@@ -730,11 +730,11 @@ class S3(object):
         if self.config.server_side_encryption:
             headers["x-amz-server-side-encryption"] = "AES256"
 
-        ####inject in kms headers
+        ## Set kms headers
         if self.config.kms_key:
             headers['x-amz-server-side-encryption'] = 'aws:kms'
             headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
-            
+
         if extra_headers:
             headers.update(extra_headers)
 
@@ -769,12 +769,12 @@ class S3(object):
         ## Set server side encryption
         if self.config.server_side_encryption:
             headers["x-amz-server-side-encryption"] = "AES256"
-        
-        ####inject in kms headers
+
+        ## Set kms headers
         if self.config.kms_key:
             headers['x-amz-server-side-encryption'] = 'aws:kms'
             headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
-            
+
         if extra_headers:
             headers.update(extra_headers)
 

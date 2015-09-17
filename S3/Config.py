@@ -156,7 +156,7 @@ class Config(object):
                     self.secret_key = env_secret_key
                 else:
                     self.role_config()
-                    
+
             #TODO check KMS key is valid
             if self.kms_key and self.server_side_encryption == True:
                 warning('Cannot have server_side_encryption (S3 SSE) and KMS_key set (S3 KMS). KMS encryption will be used. Please set server_side_encryption to False')
