@@ -573,6 +573,11 @@ class S3(object):
         if self.config.server_side_encryption:
             headers["x-amz-server-side-encryption"] = "AES256"
 
+        ####inject in kms headers
+        if self.config.kms_key:
+            headers['x-amz-server-side-encryption'] = 'aws:kms'
+            headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
+            
         ## MIME-type handling
         headers["content-type"] = self.content_type(filename=filename)
 
@@ -725,6 +730,11 @@ class S3(object):
         if self.config.server_side_encryption:
             headers["x-amz-server-side-encryption"] = "AES256"
 
+        ####inject in kms headers
+        if self.config.kms_key:
+            headers['x-amz-server-side-encryption'] = 'aws:kms'
+            headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
+            
         if extra_headers:
             headers.update(extra_headers)
 
@@ -759,7 +769,12 @@ class S3(object):
         ## Set server side encryption
         if self.config.server_side_encryption:
             headers["x-amz-server-side-encryption"] = "AES256"
-
+        
+        ####inject in kms headers
+        if self.config.kms_key:
+            headers['x-amz-server-side-encryption'] = 'aws:kms'
+            headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
+            
         if extra_headers:
             headers.update(extra_headers)
 
@@ -1265,7 +1280,8 @@ class S3(object):
             raise S3Error(response)
 
         debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
-        if response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest():
+        ## when using KMS encryption, MD5 etag value will not match
+        if (response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest()) and response["headers"]["x-amz-server-side-encryption"] != 'aws:kms':
             warning("MD5 Sums don't match!")
             if retries:
                 warning("Retrying upload of %s" % (filename))
@@ -1464,8 +1480,9 @@ class S3(object):
             warning("Reported size (%s) does not match received size (%s)" % (
                 start_position + long(response["headers"]["content-length"]), response["size"]))
         debug("ReceiveFile: Computed MD5 = %s" % response.get("md5"))
+        debug("sse headers : %s" % response["headers"]["x-amz-server-side-encryption"])
         # avoid ETags from multipart uploads that aren't the real md5
-        if '-' not in md5_from_s3 and not response["md5match"]:
+        if ('-' not in md5_from_s3 and not response["md5match"]) and (response["headers"]["x-amz-server-side-encryption"] != 'aws:kms'):
             warning("MD5 signatures do not match: computed=%s, received=%s" % (
                 response.get("md5"), md5_from_s3))
         return response

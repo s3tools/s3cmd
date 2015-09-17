@@ -29,6 +29,7 @@ class Config(object):
     access_token = ""
     host_base = "s3.amazonaws.com"
     host_bucket = "%(bucket)s.s3.amazonaws.com"
+    kms_key = ""    #can't set this and Server Side Encryption at the same time
     simpledb_host = "sdb.amazonaws.com"
     cloudfront_host = "cloudfront.amazonaws.com"
     verbosity = logging.WARNING
@@ -155,6 +156,12 @@ class Config(object):
                     self.secret_key = env_secret_key
                 else:
                     self.role_config()
+                    
+            #TODO check KMS key is valid
+            if self.kms_key and self.server_side_encryption == True:
+                warning('Cannot have server_side_encryption (S3 SSE) and KMS_key set (S3 KMS). KMS encryption will be used. Please set server_side_encryption to False')
+            if self.kms_key and self.signature_v2 == True:
+                raise Exception('KMS encryption requires signature v4. Please set signature_v2 to False')
 
     def role_config(self):
         if sys.version_info[0] * 10 + sys.version_info[1] < 26:
