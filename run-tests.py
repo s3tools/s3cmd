@@ -28,13 +28,28 @@ exclude_tests = []
 
 verbose = False
 
-if os.name == "posix":
+# https://stackoverflow.com/questions/377017/test-if-executable-exists-in-python/377028#377028
+def which(program):
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+
+    return None
+
+if which('curl') is not None:
     have_curl = True
-elif os.name == "nt":
-    have_curl = False
 else:
-    print "Unknown platform: %s" % os.name
-    sys.exit(1)
+    have_curl = False
 
 config_file = None
 if os.getenv("HOME"):
