@@ -1281,7 +1281,7 @@ class S3(object):
 
         debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
         ## when using KMS encryption, MD5 etag value will not match
-        if (response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest()) and response["headers"]["x-amz-server-side-encryption"] != 'aws:kms':
+        if (response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest()) and response["headers"].get("x-amz-server-side-encryption") != 'aws:kms':
             warning("MD5 Sums don't match!")
             if retries:
                 warning("Retrying upload of %s" % (filename))
@@ -1480,9 +1480,8 @@ class S3(object):
             warning("Reported size (%s) does not match received size (%s)" % (
                 start_position + long(response["headers"]["content-length"]), response["size"]))
         debug("ReceiveFile: Computed MD5 = %s" % response.get("md5"))
-        debug("sse headers : %s" % response["headers"]["x-amz-server-side-encryption"])
         # avoid ETags from multipart uploads that aren't the real md5
-        if ('-' not in md5_from_s3 and not response["md5match"]) and (response["headers"]["x-amz-server-side-encryption"] != 'aws:kms'):
+        if ('-' not in md5_from_s3 and not response["md5match"]) and (response["headers"].get("x-amz-server-side-encryption") != 'aws:kms'):
             warning("MD5 signatures do not match: computed=%s, received=%s" % (
                 response.get("md5"), md5_from_s3))
         return response
