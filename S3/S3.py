@@ -544,7 +544,7 @@ class S3(object):
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 
         if filename != "-" and not os.path.isfile(deunicodise(filename)):
-            raise InvalidFileError(u"%s is not a regular file" % filename)
+            raise InvalidFileError(u"Not a regular file")
         try:
             if filename == "-":
                 file = sys.stdin
@@ -553,7 +553,7 @@ class S3(object):
                 file = open(deunicodise(filename), "rb")
                 size = os.stat(deunicodise(filename))[ST_SIZE]
         except (IOError, OSError), e:
-            raise InvalidFileError(u"%s: %s" % (filename, e.strerror))
+            raise InvalidFileError(u"%s" % e.strerror)
 
         headers = SortedDict(ignore_case = True)
         if extra_headers:

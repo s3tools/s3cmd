@@ -332,7 +332,7 @@ test_s3cmd("Buckets list", ["ls"],
 
 ## ====== Sync to S3
 test_s3cmd("Sync to S3", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude', 'demo/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings' ],
-           must_find = [ "WARNING: File can not be uploaded: testsuite/permission-tests/permission-denied.txt: Permission denied",
+           must_find = [ "ERROR: Upload of 'testsuite/permission-tests/permission-denied.txt' is not possible (Reason: Permission denied)",
                          "WARNING: 32 non-printable characters replaced in: crappy-file-name/non-printables",
            ],
            must_not_find_re = [ "demo/", "\.png$", "permission-denied-dir" ],
@@ -407,7 +407,7 @@ test_mkdir("Create file-dir dir", "testsuite-out/xyz/dir-test/file-dir")
 
 ## ====== Skip dst dirs
 test_s3cmd("Skip over dir", ['sync', '%s/xyz' % pbucket(1), 'testsuite-out'],
-           must_find = "WARNING: testsuite-out/xyz/dir-test/file-dir is a directory - skipping over",
+           must_find = "ERROR: Download of 'xyz/dir-test/file-dir' failed (Reason: testsuite-out/xyz/dir-test/file-dir is a directory)",
            retcode = EX_PARTIAL)
 
 
