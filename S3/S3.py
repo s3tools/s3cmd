@@ -246,6 +246,16 @@ class S3(object):
         self.fallback_to_signature_v2 = False
         self.endpoint_requires_signature_v4 = False
 
+    def storage_class(self):
+        # Note - you cannot specify GLACIER here
+        # https://docs.aws.amazon.com/AmazonS3/latest/dev/storage-class-intro.html
+        cls = 'STANDARD'
+        if self.config.storage_class != "":
+            return self.config.storage_class
+        if self.config.reduced_redundancy:
+            cls = 'REDUCED_REDUNDANCY'
+        return cls
+
     def get_hostname(self, bucket):
         if bucket and check_bucket_name_dns_support(self.config.host_bucket, bucket):
             if self.redir_map.has_key(bucket):
@@ -569,8 +579,7 @@ class S3(object):
         ## Other Amazon S3 attributes
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
-        if self.config.reduced_redundancy:
-            headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
+        headers["x-amz-storage-class"] = self.storage_class()
 
         ## Multipart decision
         multipart = False
@@ -709,10 +718,8 @@ class S3(object):
         headers['x-amz-metadata-directive'] = "COPY"
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
-        if self.config.reduced_redundancy:
-            headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
-        else:
-            headers["x-amz-storage-class"] = "STANDARD"
+
+        headers["x-amz-storage-class"] = self.storage_class()
 
         ## Set server side encryption
         if self.config.server_side_encryption:
