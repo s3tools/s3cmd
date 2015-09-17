@@ -2417,6 +2417,8 @@ def main():
     optparser.add_option(      "--rexclude-from", dest="rexclude_from", action="append", metavar="FILE", help="Read --rexclude REGEXPs from FILE")
     optparser.add_option(      "--include", dest="include", action="append", metavar="GLOB", help="Filenames and paths matching GLOB will be included even if previously excluded by one of --(r)exclude(-from) patterns")
     optparser.add_option(      "--include-from", dest="include_from", action="append", metavar="FILE", help="Read --include GLOBs from FILE")
+    optparser.add_option(      "--infrequent-access", "--ia", dest="infrequent_access", action="store_true", help="Store object with 'Infrequent Access'. Lower per-GB price. [put, cp, mv]")
+    optparser.add_option(      "--no-infrequent-access", "--no-ia", dest="infrequent_access", action="store_false", help="Store object with 'Infrequent Access'. Lower per-GB price. [put, cp, mv]")
     optparser.add_option(      "--rinclude", dest="rinclude", action="append", metavar="REGEXP", help="Same as --include but uses REGEXP (regular expression) instead of GLOB")
     optparser.add_option(      "--rinclude-from", dest="rinclude_from", action="append", metavar="FILE", help="Read --rinclude REGEXPs from FILE")
 

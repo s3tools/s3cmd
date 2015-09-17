@@ -103,6 +103,7 @@ class Config(object):
     urlencoding_mode = "normal"
     log_target_prefix = ""
     reduced_redundancy = False
+    infrequent_access = False
     follow_symlinks = False
     socket_timeout = 300
     invalidate_on_cf = False

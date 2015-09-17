@@ -571,6 +571,8 @@ class S3(object):
             headers["x-amz-acl"] = "public-read"
         if self.config.reduced_redundancy:
             headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
+        if self.config.infrequent_access:
+            headers["x-amz-storage-class"] = "STANDARD_IA"
 
         ## Multipart decision
         multipart = False
@@ -711,6 +713,8 @@ class S3(object):
             headers["x-amz-acl"] = "public-read"
         if self.config.reduced_redundancy:
             headers["x-amz-storage-class"] = "REDUCED_REDUNDANCY"
+        if self.config.infrequent_access:
+            headers["x-amz-storage-class"] = "STANDARD_IA"
         else:
             headers["x-amz-storage-class"] = "STANDARD"
 
