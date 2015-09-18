@@ -208,7 +208,7 @@ or visit the project homepage:
 Report bugs to 
 .I s3tools\\-bugs\@lists.sourceforge.net
 .SH COPYRIGHT
-Copyright \\(co 2007\\-2014 TGRMN Software \\- http://www.tgrmn.com \\- and contributors
+Copyright \\(co 2007\\-2015 TGRMN Software \\- http://www.tgrmn.com \\- and contributors
 .br
 .SH LICENSE
 This program is free software; you can redistribute it and/or modify
