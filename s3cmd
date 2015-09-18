@@ -2508,6 +2508,7 @@ def main():
     if options.show_version:
         output(u"s3cmd version %s" % PkgInfo.version)
         sys.exit(EX_OK)
+    debug(u"s3cmd version %s" % PkgInfo.version)
 
     if options.quiet:
         try:
