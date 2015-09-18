@@ -24,18 +24,21 @@ In the below, 1.5.0-rc1 is the example version being released.  Salt to taste.
     step):
     chmod -R +rwx testsuite/permission-tests/permission-denied-dir && rm -rf testsuite
 
-8.  Build the "Source Distribution":
-    python setup.py sdist
-    -> Creates dist/s3cmd-1.5.0-rc1.tar.gz and dist/s3cmd-1.5.0-rc1.zip
-
-9.  If everything worked fine commit the above changes:
+8.  If everything worked fine commit the above changes:
     git commit -a -m "Update version to 1.5.0-rc1"
 
-10. Tag it:
+9. Tag it:
     git tag --sign -a v1.5.0-rc1 -m "Tag v1.5.0-rc1"
 
-11. Push back to github:
+10. Push back to github:
     git push --tags
+
+11.  Build the "Source Distribution":
+    python setup.py sdist upload --sign
+    -> Creates dist/s3cmd-1.5.0-rc1.tar.gz* and dist/s3cmd-1.5.0-rc1.zip*
+
+The upload step publishes it to PyPi, so 'pip install s3cmd' downloads
+the new version.
 
 
 That's it for building the release. Now upload it to SourceForge:
