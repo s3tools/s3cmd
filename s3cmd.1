@@ -76,6 +76,15 @@ Modify Bucket Policy
 s3cmd \fBdelpolicy\fR \fIs3://BUCKET\fR
 Delete Bucket Policy
 .TP
+s3cmd \fBsetcors\fR \fIFILE s3://BUCKET\fR
+Modify Bucket CORS
+.TP
+s3cmd \fBdelcors\fR \fIs3://BUCKET\fR
+Delete Bucket CORS
+.TP
+s3cmd \fBpayer\fR \fIs3://BUCKET\fR
+Modify Bucket Requester Pays policy
+.TP
 s3cmd \fBmultipart\fR \fIs3://BUCKET [Id]\fR
 Show multipart uploads
 .TP
@@ -100,7 +109,7 @@ Fix invalid file names in a bucket
 s3cmd \fBexpire\fR \fIs3://BUCKET\fR
 Set or delete expiration rule for the bucket
 .TP
-s3cmd \fBsetlifecycle\fR \fIs3://BUCKET\fR
+s3cmd \fBsetlifecycle\fR \fIFILE s3://BUCKET\fR
 Upload a lifecycle policy for the bucket
 .TP
 s3cmd \fBdellifecycle\fR \fIs3://BUCKET\fR
@@ -181,9 +190,10 @@ for file transfer commands)
 .TP
 \fB\-s\fR, \fB\-\-ssl\fR
 Use HTTPS connection when communicating with S3.
+(default)
 .TP
 \fB\-\-no\-ssl\fR
-Don't use HTTPS. (default)
+Don't use HTTPS.
 .TP
 \fB\-e\fR, \fB\-\-encrypt\fR
 Encrypt files before uploading to S3.
@@ -261,7 +271,8 @@ Don't delete remote objects.
 Perform deletes after new uploads [sync]
 .TP
 \fB\-\-delay\-updates\fR
-Put all updated files into place at end [sync]
+*OBSOLETE* Put all updated files into place at end
+[sync]
 .TP
 \fB\-\-max\-delete\fR=NUM
 Do not delete more than NUM files. [del] and [sync]
@@ -310,9 +321,6 @@ instead of GLOB
 \fB\-\-rinclude\-from\fR=FILE
 Read --rinclude REGEXPs from FILE
 .TP
-\fB\-\-ignore\-failed\-copy\fR
-Don't exit unsuccessfully because of missing keys
-.TP
 \fB\-\-files\-from\fR=FILE
 Read list of source-file names from FILE. Use - to
 read from stdin.
@@ -330,6 +338,11 @@ price. [put, cp, mv]
 \fB\-\-no\-reduced\-redundancy\fR, \fB\-\-no\-rr\fR
 Store object without 'Reduced redundancy'. Higher per\-
 GB price. [put, cp, mv]
+.TP
+\fB\-\-storage\-class\fR=CLASS
+Store object with specified CLASS (STANDARD,
+STANDARD_IA, or REDUCED_REDUNDANCY). Lower per\-GB
+price. [put, cp, mv]
 .TP
 \fB\-\-access\-logging\-target\-prefix\fR=LOG_TARGET_PREFIX
 Target prefix for access logs (S3 URI) (for [cfmodify]
@@ -372,6 +385,11 @@ Control' headers (or both) using this option. [modify]
 \fB\-\-server\-side\-encryption\fR
 Specifies that server\-side encryption will be used
 when putting objects. [put, sync, cp, modify]
+.TP
+\fB\-\-server\-side\-encryption\-kms\-id\fR=KMS_KEY
+Specifies the key id used for server\-side encryption
+with AWS KMS\-Managed Keys (SSE\-KMS) when putting
+objects. [put, sync, cp, modify]
 .TP
 \fB\-\-encoding\fR=ENCODING
 Override autodetected terminal and filesystem encoding
@@ -477,7 +495,7 @@ Enable verbose output.
 Enable debug output.
 .TP
 \fB\-\-version\fR
-Show s3cmd version (1.5.2) and exit.
+Show s3cmd version (1.6.0) and exit.
 .TP
 \fB\-F\fR, \fB\-\-follow\-symlinks\fR
 Follow symbolic links as if they are regular files
@@ -496,7 +514,13 @@ default)
 Check SSL certificate validity
 .TP
 \fB\-\-no\-check\-certificate\fR
-Check SSL certificate validity
+Do not check SSL certificate validity
+.TP
+\fB\-\-check\-hostname\fR
+Check SSL certificate hostname validity
+.TP
+\fB\-\-no\-check\-hostname\fR
+Do not check SSL certificate hostname validity
 .TP
 \fB\-\-signature\-v2\fR
 Use AWS Signature version 2 instead of newer signature
@@ -507,6 +531,23 @@ AWS Signature v4 yet.
 Limit the upload or download speed to amount bytes per
 second.  Amount may be expressed in bytes, kilobytes
 with the k suffix, or megabytes with the m suffix
+.TP
+\fB\-\-requester\-pays\fR
+Set the REQUESTER PAYS flag for operations
+.TP
+\fB\-l\fR, \fB\-\-long\-listing\fR
+Produce long listing [ls]
+.TP
+\fB\-\-stop\-on\-error\fR
+stop if error in transfer
+.TP
+\fB\-\-content\-disposition\fR=CONTENT_DISPOSITION
+Provide a Content\-Disposition for signed URLs, e.g.,
+"inline; filename=myvideo.mp4"
+.TP
+\fB\-\-content\-type\fR=CONTENT_TYPE
+Provide a Content\-Type for signed URLs, e.g.,
+"video/mp4"
 
 
 .SH EXAMPLES
@@ -614,7 +655,7 @@ or visit the project homepage:
 Report bugs to 
 .I s3tools\-bugs@lists.sourceforge.net
 .SH COPYRIGHT
-Copyright \(co 2007\-2014 TGRMN Software \- http://www.tgrmn.com \- and contributors
+Copyright \(co 2007\-2015 TGRMN Software \- http://www.tgrmn.com \- and contributors
 .br
 .SH LICENSE
 This program is free software; you can redistribute it and/or modify
