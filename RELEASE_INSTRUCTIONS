@@ -38,10 +38,31 @@ In the below, 1.5.0-rc1 is the example version being released.  Salt to taste.
     -> Creates dist/s3cmd-1.5.0-rc1.tar.gz* and dist/s3cmd-1.5.0-rc1.zip*
 
 The upload step publishes it to PyPi, so 'pip install s3cmd' downloads
-the new version.
+the new version.  It also generated the GPG signatures, so you don't
+have to do that manually, and have them available for the next steps.
 
 
-That's it for building the release. Now upload it to SourceForge:
+GitHub releases
+
+1. Login to github.com/s3tools/s3cmd
+
+2.  You will see your new tag in the Tags tab.  Click "Draft a new
+    release".
+
+3.  In the 'Tag version' drop-down, select your new tag.
+
+4.  In the 'Release title' field, name it v1.5.0-rc1.
+
+5.  In the 'Describe this release' text box, add in this release's
+    notes from the NEWS file.
+
+6.  Upload all 4 files from dist/.
+
+7.  Click "Publish release"
+
+
+
+SourceForge releases
 
 1.  Login to sf.net
 
