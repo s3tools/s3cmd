@@ -127,9 +127,8 @@ class S3Request(object):
         self.requester_pays()
 
     def requester_pays(self):
-        if self.method_string == "GET" or self.method_string == "POST":
-            if self.s3.config.requester_pays:
-                self.headers['x-amz-request-payer'] = 'requester'
+        if self.s3.config.requester_pays and self.method_string in ("GET", "POST", "PUT"):
+            self.headers['x-amz-request-payer'] = 'requester'
 
     def update_timestamp(self):
         if self.headers.has_key("date"):
