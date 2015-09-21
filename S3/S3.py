@@ -1363,7 +1363,7 @@ class S3(object):
             redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
             self.set_hostname(redir_bucket, redir_hostname)
             info("Redirected to: %s" % (redir_hostname))
-            return self.recv_file(request, stream, labels)
+            return self.recv_file(request, stream, labels, start_position)
 
         if response["status"] == 400:
             return self._http_400_handler(request, response, self.recv_file, request, stream, labels, start_position)
