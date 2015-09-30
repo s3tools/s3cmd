@@ -1204,7 +1204,10 @@ def cmd_sync_remote2local(args):
                 error(u"Download of '%s' failed too many times (Last Reason: %s). "
                       "This is usually a transient error, please try again "
                       "later." % (file, exc))
-                os.unlink(deunicodise(chkptfname))
+                try:
+                    os.unlink(deunicodise(chkptfname))
+                except Exception, sub_exc:
+                    warning(u"Error deleting temporary file %s (Reason: %s)", (chkptfname, sub_exc))
                 if cfg.stop_on_error:
                     ret = EX_DATAERR
                     error(u"Exiting now because of --stop-on-error")
@@ -1213,6 +1216,10 @@ def cmd_sync_remote2local(args):
                 continue
             except S3Error, exc:
                 warning(u"Remote file '%s'. S3Error: %s" % (exc.resource, exc))
+                try:
+                    os.unlink(deunicodise(chkptfname))
+                except Exception, sub_exc:
+                    warning(u"Error deleting temporary file %s (Reason: %s)", (chkptfname, sub_exc))
                 if cfg.stop_on_error:
                     raise
                 ret = EX_PARTIAL
