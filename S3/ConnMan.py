@@ -13,19 +13,24 @@ import socket
  
 class http_connection(object):
     def __init__(self, id, hostname, ssl, cfg):
-        self.hostname = hostname
-        self.ssl = ssl
-        self.id = id
-        self.counter = 0
-        if cfg.proxy_host != "":
-            self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
-        elif ssl:
-            self.c = httplib.HTTPSConnection(hostname)
-        elif cfg.interface:
-            self.c = httplib.HTTPConnection(hostname,source_address=(cfg.interface,0))
-            # inspired by http://stackoverflow.com/questions/1150332/source-interface-with-python-and-urllib2
-        else:
-            self.c = httplib.HTTPConnection(hostname)
+		self.hostname = hostname
+		self.ssl = ssl
+		self.id = id
+		self.counter = 0
+		debug("http_connection: to %s" % hostname)
+		if cfg.proxy_host != "":
+			debug("http_connection: via proxy %s" % cfg.proxy_host)
+			self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
+		elif ssl:
+			debug("http_connection: via SSL (443)")
+			self.c = httplib.HTTPSConnection(hostname)
+		elif cfg.interface:
+			debug("http_connection: bind to IP %s" % cfg.interface)
+			self.c = httplib.HTTPConnection(hostname,source_address=(cfg.interface,0))
+			# inspired by http://stackoverflow.com/questions/1150332/source-interface-with-python-and-urllib2
+		else:
+			debug("http_connection: regular connection")
+			self.c = httplib.HTTPConnection(hostname)
 
 class ConnMan(object):
     conn_pool_sem = Semaphore()
@@ -53,9 +58,11 @@ class ConnMan(object):
             debug("ConnMan.get(): re-using connection: %s#%d" % (conn.id, conn.counter))
         ConnMan.conn_pool_sem.release()
         if not conn:
-            debug("ConnMan.get(): creating new connection: %s" % conn_id)
+            debug("ConnMan.get(): prepare new connection: %s" % conn_id)
             conn = http_connection(conn_id, hostname, ssl, cfg)
+            debug("ConnMan.get(): doing actual connect: %s" % conn_id)
             conn.c.connect()
+            debug("ConnMan.get(): check actual connect: %s" % conn_id)
             if conn.c.source_address:
                 debug("ConnMan.get(): bound to interface: %s:%d" % conn.c.source_address)
         conn.counter += 1
