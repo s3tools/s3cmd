@@ -50,7 +50,7 @@ class Progress(object):
         self.display(done_message = message)
 
     def output_labels(self):
-        self._stdout.write(u"'%(source)s' -> '%(destination)s'  %(extra)s\n" % self.labels)
+        self._stdout.write(u"%(action)s: '%(source)s' -> '%(destination)s'  %(extra)s\n" % self.labels)
         self._stdout.flush()
 
     def _display_needed(self):
