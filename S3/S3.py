@@ -386,7 +386,10 @@ class S3(object):
     def bucket_info(self, uri):
         response = {}
         response['bucket-location'] = self.get_bucket_location(uri)
-        response['requester-pays'] = self.get_bucket_requester_pays(uri)
+        try:
+            response['requester-pays'] = self.get_bucket_requester_pays(uri)
+        except S3Error as e:
+            response['requester-pays'] = 'none'
         return response
 
     def website_info(self, uri, bucket_location = None):
