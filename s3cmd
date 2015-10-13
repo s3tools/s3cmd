@@ -2711,7 +2711,7 @@ def main():
         ## from inner functions.
         cmd_func = commands[command]["func"]
     except KeyError, e:
-        error(u"Invalid command: %s" % e)
+        error(u"Invalid command: %s", command)
         sys.exit(EX_USAGE)
 
     if len(args) < commands[command]["argc"]:
