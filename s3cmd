@@ -1661,6 +1661,10 @@ def cmd_sync_local2remote(args):
         error(u"or disable encryption with --no-encrypt parameter.")
         sys.exit(EX_USAGE)
 
+    for arg in args[:-1]:
+        if not os.path.exists(deunicodise(arg)):
+            raise ParameterError("Invalid source: '%s' is not an existing file or directory" % arg)
+
     local_list, single_file_local, src_exclude_list = fetch_local_list(args[:-1], is_src = True, recursive = True)
 
     destinations = [args[-1]]
