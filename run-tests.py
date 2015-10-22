@@ -243,7 +243,6 @@ def test_curl_HEAD(label, src_file, **kwargs):
     return test(label, cmd, **kwargs)
 
 bucket_prefix = u"%s-" % getpass.getuser()
-print "Using bucket prefix: '%s'" % bucket_prefix
 
 argv = sys.argv[1:]
 while argv:
@@ -281,6 +280,8 @@ while argv:
         exclude_tests.append(int(arg[1:]))
     else:
         run_tests.append(int(arg))
+
+print "Using bucket prefix: '%s'" % bucket_prefix
 
 cfg = S3.Config.Config(config_file)
 
@@ -335,7 +336,7 @@ test_s3cmd("Sync to S3", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude
            must_find = [ "ERROR: Upload of 'testsuite/permission-tests/permission-denied.txt' is not possible (Reason: Permission denied)",
                          "WARNING: 32 non-printable characters replaced in: crappy-file-name/non-printables",
            ],
-           must_not_find_re = [ "demo/", "\.png$", "permission-denied-dir" ],
+           must_not_find_re = [ "demo/", "^(?!WARNING: Skipping).*\.png$", "permission-denied-dir" ],
            retcode = EX_PARTIAL)
 
 if have_encoding:
@@ -592,7 +593,8 @@ test_s3cmd("Sync remote2remote", ['sync', '%s/xyz/' % pbucket(1), '%s/copy/' % p
 ## ====== Don't Put symbolic link
 test_s3cmd("Don't put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),],
            retcode = EX_USAGE,
-           must_not_find_re = [ "linked1.png"])
+           must_find = ["WARNING: Skipping over symbolic link: testsuite/etc/linked1.png"],
+           must_not_find_re = ["^(?!WARNING: Skipping).*linked1.png"])
 
 ## ====== Put symbolic link
 test_s3cmd("Put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),'--follow-symlinks' ],
@@ -664,7 +666,7 @@ test_s3cmd("Set requester pays", ['payer', '--requester-pays', pbucket(2)])
 
 ## ====== get Requester Pays flag
 test_s3cmd("Get requester pays flag", ['info', pbucket(2)],
-    must_find = [ "Payer: Requester"])
+    must_find = [ "Payer:     Requester"])
 
 ## ====== ls using Requester Pays flag
 test_s3cmd("ls using requester pays flag", ['ls', '--requester-pays', pbucket(2)])
@@ -674,7 +676,7 @@ test_s3cmd("Clear requester pays", ['payer', pbucket(2)])
 
 ## ====== get Requester Pays flag
 test_s3cmd("Get requester pays flag", ['info', pbucket(2)],
-    must_find = [ "Payer: BucketOwner"])
+    must_find = [ "Payer:     BucketOwner"])
 
 ## ====== Recursive delete maximum exceeed
 test_s3cmd("Recursive delete maximum exceeded", ['del', '--recursive', '--max-delete=1', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],

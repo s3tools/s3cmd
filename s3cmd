@@ -1031,9 +1031,18 @@ def cmd_sync_remote2local(args):
 
     s3 = S3(Config())
 
-    remote_list, src_exclude_list = fetch_remote_list(args[:-1], recursive = True, require_attribs = True)
-
     destination_base = args[-1]
+    source_args = args[:-1]
+    fetch_source_args = args[:-1]
+
+    if not destination_base.endswith(os.path.sep):
+        if fetch_source_args[0].endswith(u'/') or len(fetch_source_args) > 1:
+            raise ParameterError("Destination must be a directory and end with '/' when downloading multiple sources.")
+        elif fetch_source_args[0].endswith(u'/'):
+            fetch_source_args[0] += u'/'
+
+    remote_list, src_exclude_list = fetch_remote_list(fetch_source_args, recursive = True, require_attribs = True)
+
 
     # - The source path is either like "/myPath/my_src_folder" and
     # the user want to download this single folder and Optionally only delete
@@ -1043,12 +1052,15 @@ def cmd_sync_remote2local(args):
     # - Or like "/myPath/my_src_folder/" and the user want to have the sync
     # with the content of this folder
     destbase_with_source_list = set()
-    for source_arg in args[:-1]:
-        if not source_arg.endswith('/'):
-            destbase_with_source_list.add(os.path.join(destination_base,
-                                                  os.path.basename(source_arg)))
+    for source_arg in fetch_source_args:
+        if source_arg.endswith('/'):
+            if destination_base.endswith(os.path.sep):
+                destbase_with_source_list.add(destination_base)
+            else:
+                destbase_with_source_list.add(destination_base + os.path.sep)
         else:
-            destbase_with_source_list.add(destination_base)
+            destbase_with_source_list.add(os.path.join(destination_base,
+                                                      os.path.basename(source_arg)))
     local_list, single_file_local, dst_exclude_list = fetch_local_list(destbase_with_source_list, is_src = False, recursive = True)
 
     local_count = len(local_list)
@@ -1066,25 +1078,33 @@ def cmd_sync_remote2local(args):
 
     info(u"Summary: %d remote files to download, %d local files to delete, %d local files to hardlink" % (remote_count + update_count, local_count, copy_pairs_count))
 
-    def _set_local_filename(remote_list, destination_base):
+    def _set_local_filename(remote_list, destination_base, source_args):
         if len(remote_list) == 0:
             return
-        if not os.path.isdir(deunicodise(destination_base)):
-            ## We were either given a file name (existing or not) or want STDOUT
-            if len(remote_list) > 1:
-                raise ParameterError("Destination must be a directory when downloading multiple sources.")
-            remote_list[remote_list.keys()[0]]['local_filename'] = destination_base
-        else:
-            if destination_base[-1] != os.path.sep:
-                destination_base += os.path.sep
-            for key in remote_list:
-                local_filename = destination_base + key
-                if os.path.sep != "/":
-                    local_filename = os.path.sep.join(local_filename.split("/"))
-                remote_list[key]['local_filename'] = local_filename
 
-    _set_local_filename(remote_list, destination_base)
-    _set_local_filename(update_list, destination_base)
+        if destination_base.endswith(os.path.sep):
+            if not os.path.exists(deunicodise(destination_base)):
+                if not cfg.dry_run:
+                    os.makedirs(deunicodise(destination_base))
+            if not os.path.isdir(deunicodise(destination_base)):
+                raise ParameterError("Destination is not an existing directory")
+        elif len(remote_list) == 1 and \
+             source_args[0] == remote_list[remote_list.keys()[0]].get(u'object_uri_str', ''):
+            if os.path.isdir(deunicodise(destination_base)):
+                raise ParameterError("Destination already exists and is a directory")
+            remote_list[remote_list.keys()[0]]['local_filename'] = destination_base
+            return
+
+        if destination_base[-1] != os.path.sep:
+            destination_base += os.path.sep
+        for key in remote_list:
+            local_filename = destination_base + key
+            if os.path.sep != "/":
+                local_filename = os.path.sep.join(local_filename.split("/"))
+            remote_list[key]['local_filename'] = local_filename
+
+    _set_local_filename(remote_list, destination_base, source_args)
+    _set_local_filename(update_list, destination_base, source_args)
 
     if cfg.dry_run:
         keys = filedicts_to_keys(src_exclude_list, dst_exclude_list)
@@ -1320,7 +1340,7 @@ def cmd_sync_remote2local(args):
         ret = status
 
     failed_copy_list = local_copy(copy_pairs, destination_base)
-    _set_local_filename(failed_copy_list, destination_base)
+    _set_local_filename(failed_copy_list, destination_base, source_args)
     status, seq, total_size = _download(failed_copy_list, seq, len(failed_copy_list) + remote_count + update_count, total_size, dir_cache)
     if ret == EX_OK:
         ret = status
@@ -1355,7 +1375,7 @@ def local_copy(copy_pairs, destination_base):
             debug(u"Copying %s to %s" % (src_file, dst_file))
             shutil.copy2(deunicodise(src_file), deunicodise(dst_file))
         except (IOError, OSError), e:
-            warning(u'Unable to hardlink or copy files %s -> %s (Reason: %s)' % (src_file, dst_file, e))
+            warning(u'Unable to copy or hardlink files %s -> %s (Reason: %s)' % (src_file, dst_file, e))
             failed_copy_list[relative_file] = src_obj
     return failed_copy_list
 
@@ -1641,6 +1661,10 @@ def cmd_sync_local2remote(args):
         error(u"or disable encryption with --no-encrypt parameter.")
         sys.exit(EX_USAGE)
 
+    for arg in args[:-1]:
+        if not os.path.exists(deunicodise(arg)):
+            raise ParameterError("Invalid source: '%s' is not an existing file or directory" % arg)
+
     local_list, single_file_local, src_exclude_list = fetch_local_list(args[:-1], is_src = True, recursive = True)
 
     destinations = [args[-1]]
@@ -1668,6 +1692,10 @@ def cmd_sync(args):
         raise ParameterError("Too few parameters! Expected: %s" % commands['sync']['param'])
     if cfg.delay_updates:
         warning(u"`delay-updates` is obsolete.")
+
+    for arg in args:
+        if arg == u'-':
+            raise ParameterError("Stdin or stdout ('-') can't be used for a source or a destination with the sync command.")
 
     if S3Uri(args[0]).type == "file" and S3Uri(args[-1]).type == "s3":
         return cmd_sync_local2remote(args)
