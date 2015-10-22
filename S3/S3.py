@@ -752,7 +752,13 @@ class S3(object):
             raise S3Error(response)
 
         if self.config.acl_public is None:
-            self.set_acl(dst_uri, acl)
+            try:
+                self.set_acl(dst_uri, acl)
+            except S3Error as exc:
+                # Ignore the exception and don't fail the copy
+                # if the server doesn't support setting ACLs
+                if exc.status != 501:
+                    raise exc
         return response
 
     def object_modify(self, src_uri, dst_uri, extra_headers = None):
