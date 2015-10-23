@@ -1010,7 +1010,7 @@ def cmd_sync_remote2remote(args):
 
     total_elapsed = max(1.0, time.time() - timestamp_start)
     outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s" % (seq, total_elapsed, seq/total_elapsed)
-    if seq > 0:
+    if cfg.stats or seq > 0:
         output(outstr)
     else:
         info(outstr)
@@ -1351,7 +1351,7 @@ def cmd_sync_remote2local(args):
     # Only print out the result if any work has been done or
     # if the user asked for verbose output
     outstr = "Done. Downloaded %d bytes in %0.1f seconds, %0.2f %sB/s" % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1])
-    if total_size > 0:
+    if cfg.stats or total_size > 0:
         output(outstr)
     else:
         info(outstr)
@@ -1628,7 +1628,7 @@ def cmd_sync_local2remote(args):
         # Only print out the result if any work has been done or
         # if the user asked for verbose output
         outstr = "Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s. Copied %d files saving %d bytes transfer." % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1], n_copies, saved_bytes)
-        if total_size + saved_bytes > 0:
+        if cfg.stats or total_size + saved_bytes > 0:
             output(outstr)
         else:
             info(outstr)
@@ -2494,6 +2494,7 @@ def main():
 
     optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default on TTY).")
     optparser.add_option(      "--no-progress", dest="progress_meter", action="store_false", help="Don't display progress meter (default on non-TTY).")
+    optparser.add_option(      "--stats", dest="stats", action="store_true", help="Give some file-transfer stats.")
     optparser.add_option(      "--enable", dest="enable", action="store_true", help="Enable given CloudFront distribution (only for [cfmodify] command)")
     optparser.add_option(      "--disable", dest="enable", action="store_false", help="Enable given CloudFront distribution (only for [cfmodify] command)")
     optparser.add_option(      "--cf-invalidate", dest="invalidate_on_cf", action="store_true", help="Invalidate the uploaded filed in CloudFront. Also see [cfinval] command.")
