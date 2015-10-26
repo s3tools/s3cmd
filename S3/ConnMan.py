@@ -94,15 +94,15 @@ class http_connection(object):
         for key, value in san:
             if key == 'DNS':
                 if value.startswith('*.s3') and \
-                   (value.endswith('.amazonaws.com') and self.c.host.endswith('.amazonaws.com')) or \
-                   (value.endswith('.amazonaws.com.cn') and self.c.host.endswith('.amazonaws.com.cn')):
+                   (value.endswith('.amazonaws.com') and self.hostname.endswith('.amazonaws.com')) or \
+                   (value.endswith('.amazonaws.com.cn') and self.hostname.endswith('.amazonaws.com.cn')):
                     return
         raise e
 
     def match_hostname(self):
         cert = self.c.sock.getpeercert()
         try:
-            ssl.match_hostname(cert, self.c.host)
+            ssl.match_hostname(cert, self.hostname)
         except AttributeError: # old ssl module doesn't have this function
             return
         except ValueError: # empty SSL cert means underlying SSL library didn't validate it, we don't either.
@@ -130,6 +130,7 @@ class http_connection(object):
         self.ssl = ssl
         self.id = id
         self.counter = 0
+        self.hostname = hostname
 
         if not ssl:
             if cfg.proxy_host != "":

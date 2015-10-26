@@ -31,7 +31,7 @@ from Config import Config
 from Exceptions import *
 from MultiPart import MultiPartUpload
 from S3Uri import S3Uri
-from ConnMan import ConnMan
+from ConnMan import ConnMan, CertificateError
 from Crypto import sign_string_v2, sign_string_v4, checksum_sha256_file, checksum_sha256_buffer
 
 try:
@@ -1088,6 +1088,8 @@ class S3(object):
         except ParameterError, e:
             raise
         except OSError:
+            raise
+        except CertificateError:
             raise
         except (IOError, Exception), e:
             if hasattr(e, 'errno') and e.errno != errno.EPIPE:
