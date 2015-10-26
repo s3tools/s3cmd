@@ -328,7 +328,7 @@ def cmd_object_put(args):
     if len(args) == 0:
         raise ParameterError("Nothing to upload. Expecting a local file or directory.")
 
-    local_list, single_file_local, exclude_list = fetch_local_list(args, is_src = True)
+    local_list, single_file_local, exclude_list, total_size_local = fetch_local_list(args, is_src = True)
 
     local_count = len(local_list)
 
@@ -463,7 +463,7 @@ def cmd_object_get(args):
     if len(args) == 0:
         raise ParameterError("Nothing to download. Expecting S3 URI.")
 
-    remote_list, exclude_list = fetch_remote_list(args, require_attribs = False)
+    remote_list, exclude_list, remote_total_size = fetch_remote_list(args, require_attribs = False)
 
     remote_count = len(remote_list)
 
@@ -660,7 +660,7 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
     if bucket: # bucket specified
         uri_str = "s3://%s" % bucket
     if remote_list is None: # uri_str specified
-        remote_list, exclude_list = fetch_remote_list(uri_str, require_attribs = False)
+        remote_list, exclude_list, remote_total_size = fetch_remote_list(uri_str, require_attribs = False)
 
     if len(remote_list) == 0:
         warning(u"Remote list is empty.")
@@ -687,7 +687,7 @@ def subcmd_object_del_uri(uri_str, recursive = None):
     if recursive is None:
         recursive = cfg.recursive
 
-    remote_list, exclude_list = fetch_remote_list(uri_str, require_attribs = False, recursive = recursive)
+    remote_list, exclude_list, remote_total_size = fetch_remote_list(uri_str, require_attribs = False, recursive = recursive)
 
     remote_count = len(remote_list)
 
@@ -717,7 +717,7 @@ def cmd_object_restore(args):
     if cfg.restore_days < 1:
         raise ParameterError("You must restore a file for 1 or more days")
 
-    remote_list, exclude_list = fetch_remote_list(args, require_attribs = False, recursive = cfg.recursive)
+    remote_list, exclude_list, remote_total_size = fetch_remote_list(args, require_attribs = False, recursive = cfg.recursive)
 
     remote_count = len(remote_list)
 
@@ -759,7 +759,7 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
         raise ParameterError("Destination must be S3 URI. To download a file use 'get' or 'sync'.")
     destination_base = dst_base_uri.uri()
 
-    remote_list, exclude_list = fetch_remote_list(args, require_attribs = False)
+    remote_list, exclude_list, remote_total_size = fetch_remote_list(args, require_attribs = False)
 
     remote_count = len(remote_list)
 
@@ -921,12 +921,15 @@ def cmd_sync_remote2remote(args):
             destbase_with_source_list.add(os.path.join(destination_base,
                                                   os.path.basename(source_arg)))
 
-    src_list, src_exclude_list = fetch_remote_list(args[:-1], recursive = True, require_attribs = True)
-    dst_list, dst_exclude_list = fetch_remote_list(destbase_with_source_list, recursive = True, require_attribs = True)
+    stats_info = StatsInfo()
+
+    src_list, src_exclude_list, remote_total_size = fetch_remote_list(args[:-1], recursive = True, require_attribs = True)
+    dst_list, dst_exclude_list, _ = fetch_remote_list(destbase_with_source_list, recursive = True, require_attribs = True)
 
     src_count = len(src_list)
     orig_src_count = src_count
     dst_count = len(dst_list)
+    deleted_count = 0
 
     info(u"Found %d source files, %d destination files" % (src_count, dst_count))
 
@@ -968,11 +971,14 @@ def cmd_sync_remote2remote(args):
     # Delete items in destination that are not in source
     if cfg.delete_removed and not cfg.delete_after:
         subcmd_batch_del(remote_list = dst_list)
+        deleted_count = len(dst_list)
 
     def _upload(src_list, seq, src_count):
         file_list = src_list.keys()
         file_list.sort()
         ret = EX_OK
+        total_nb_files = 0
+        total_size = 0
         for file in file_list:
             seq += 1
             item = src_list[file]
@@ -983,51 +989,78 @@ def cmd_sync_remote2remote(args):
             try:
                 response = s3.object_copy(src_uri, dst_uri, extra_headers)
                 output("remote copy: '%(src)s' -> '%(dst)s'" % { "src" : src_uri, "dst" : dst_uri })
+                total_nb_files += 1
+                total_size += item.get(u'size', 0)
             except S3Error, e:
                 ret = EX_PARTIAL
                 error("File '%(src)s' could not be copied: %(e)s" % { "src" : src_uri, "e" : e })
                 if cfg.stop_on_error:
                     raise
-        return ret, seq
+        return ret, seq, total_nb_files, total_size
 
     # Perform the synchronization of files
     timestamp_start = time.time()
     seq = 0
-    ret, seq = _upload(src_list, seq, src_count + update_count)
-    status, seq = _upload(update_list, seq, src_count + update_count)
+    ret, seq, nb_files, size = _upload(src_list, seq, src_count + update_count)
+    total_files_copied = nb_files
+    total_size_copied = size
+
+    status, seq, nb_files, size = _upload(update_list, seq, src_count + update_count)
     if ret == EX_OK:
         ret = status
+    total_files_copied += nb_files
+    total_size_copied += size
+
+
     n_copied, bytes_saved, failed_copy_files = remote_copy(s3, copy_pairs, destination_base)
+    total_files_copied += n_copied
+    total_size_copied += bytes_saved
 
     #process files not copied
     debug("Process files that was not remote copied")
     failed_copy_count = len (failed_copy_files)
     for key in failed_copy_files:
         failed_copy_files[key]['target_uri'] = destination_base + key
-    status, seq = _upload(failed_copy_files, seq, src_count + update_count + failed_copy_count)
+    status, seq, nb_files, size = _upload(failed_copy_files, seq, src_count + update_count + failed_copy_count)
     if ret == EX_OK:
         ret = status
-
-    total_elapsed = max(1.0, time.time() - timestamp_start)
-    outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s" % (seq, total_elapsed, seq/total_elapsed)
-    if cfg.stats or seq > 0:
-        output(outstr)
-    else:
-        info(outstr)
+    total_files_copied += nb_files
+    total_size_copied += size
 
     # Delete items in destination that are not in source
     if cfg.delete_removed and cfg.delete_after:
         subcmd_batch_del(remote_list = dst_list)
+        deleted_count = len(dst_list)
+
+    stats_info.files = orig_src_count
+    stats_info.size = remote_total_size
+    stats_info.files_copied = total_files_copied
+    stats_info.size_copied = total_size_copied
+    stats_info.files_deleted = deleted_count
+
+    total_elapsed = max(1.0, time.time() - timestamp_start)
+    outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s." % (total_files_copied, total_elapsed, seq/total_elapsed)
+    if cfg.stats:
+        outstr += stats_info.format_output()
+        output(outstr)
+    elif seq > 0:
+        output(outstr)
+    else:
+        info(outstr)
+
     return ret
 
 def cmd_sync_remote2local(args):
     def _do_deletes(local_list):
+        total_size = 0
         if cfg.max_delete > 0 and len(local_list) > cfg.max_delete:
             warning(u"delete: maximum requested number of deletes would be exceeded, none performed.")
-            return
+            return total_size
         for key in local_list:
             os.unlink(deunicodise(local_list[key]['full_name']))
             output(u"delete: '%s'" % local_list[key]['full_name'])
+            total_size += local_list[key].get(u'size', 0)
+        return len(local_list), total_size
 
     s3 = S3(Config())
 
@@ -1041,7 +1074,9 @@ def cmd_sync_remote2local(args):
         elif fetch_source_args[0].endswith(u'/'):
             fetch_source_args[0] += u'/'
 
-    remote_list, src_exclude_list = fetch_remote_list(fetch_source_args, recursive = True, require_attribs = True)
+    stats_info = StatsInfo()
+
+    remote_list, src_exclude_list, remote_total_size = fetch_remote_list(fetch_source_args, recursive = True, require_attribs = True)
 
 
     # - The source path is either like "/myPath/my_src_folder" and
@@ -1061,7 +1096,7 @@ def cmd_sync_remote2local(args):
         else:
             destbase_with_source_list.add(os.path.join(destination_base,
                                                       os.path.basename(source_arg)))
-    local_list, single_file_local, dst_exclude_list = fetch_local_list(destbase_with_source_list, is_src = False, recursive = True)
+    local_list, single_file_local, dst_exclude_list, local_total_size = fetch_local_list(destbase_with_source_list, is_src = False, recursive = True)
 
     local_count = len(local_list)
     remote_count = len(remote_list)
@@ -1131,7 +1166,9 @@ def cmd_sync_remote2local(args):
         cfg.delete_removed = False
 
     if cfg.delete_removed and not cfg.delete_after:
-        _do_deletes(local_list)
+        deleted_count, deleted_size = _do_deletes(local_list)
+    else:
+        deleted_count, deleted_size = (0, 0)
 
     def _download(remote_list, seq, total, total_size, dir_cache):
         original_umask = os.umask(0);
@@ -1329,40 +1366,54 @@ def cmd_sync_remote2local(args):
                 output(u"File '%s' removed after syncing" % (uri))
         return ret, seq, total_size
 
-    total_size = 0
+    size_transferred = 0
     total_elapsed = 0.0
     timestamp_start = time.time()
     dir_cache = {}
     seq = 0
-    ret, seq, total_size = _download(remote_list, seq, remote_count + update_count, total_size, dir_cache)
-    status, seq, total_size = _download(update_list, seq, remote_count + update_count, total_size, dir_cache)
+    ret, seq, size_transferred = _download(remote_list, seq, remote_count + update_count, size_transferred, dir_cache)
+    status, seq, size_transferred = _download(update_list, seq, remote_count + update_count, size_transferred, dir_cache)
     if ret == EX_OK:
         ret = status
 
-    failed_copy_list = local_copy(copy_pairs, destination_base)
+    n_copies, size_copies, failed_copy_list = local_copy(copy_pairs, destination_base)
     _set_local_filename(failed_copy_list, destination_base, source_args)
-    status, seq, total_size = _download(failed_copy_list, seq, len(failed_copy_list) + remote_count + update_count, total_size, dir_cache)
+    status, seq, size_transferred = _download(failed_copy_list, seq, len(failed_copy_list) + remote_count + update_count, size_transferred, dir_cache)
     if ret == EX_OK:
         ret = status
+
+    if cfg.delete_removed and cfg.delete_after:
+        deleted_count, deleted_size = _do_deletes(local_list)
 
     total_elapsed = max(1.0, time.time() - timestamp_start)
-    speed_fmt = formatSize(total_size/total_elapsed, human_readable = True, floating_point = True)
+    speed_fmt = formatSize(size_transferred/total_elapsed, human_readable = True, floating_point = True)
+
+    stats_info.files = orig_remote_count
+    stats_info.size = remote_total_size
+    stats_info.files_transferred = len(failed_copy_list) + remote_count + update_count
+    stats_info.size_transferred = size_transferred
+    stats_info.files_copied = n_copies
+    stats_info.size_copied = size_copies
+    stats_info.files_deleted = deleted_count
+    stats_info.size_deleted = deleted_size
 
     # Only print out the result if any work has been done or
     # if the user asked for verbose output
-    outstr = "Done. Downloaded %d bytes in %0.1f seconds, %0.2f %sB/s" % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1])
-    if cfg.stats or total_size > 0:
+    outstr = "Done. Downloaded %d bytes in %0.1f seconds, %0.2f %sB/s." % (size_transferred, total_elapsed, speed_fmt[0], speed_fmt[1])
+    if cfg.stats:
+        outstr += stats_info.format_output()
+        output(outstr)
+    elif size_transferred > 0:
         output(outstr)
     else:
         info(outstr)
 
-    if cfg.delete_removed and cfg.delete_after:
-        _do_deletes(local_list)
     return ret
 
 def local_copy(copy_pairs, destination_base):
     # Do NOT hardlink local files by default, that'd be silly
     # For instance all empty files would become hardlinked together!
+    saved_bytes = 0
     failed_copy_list = FileDict()
     for (src_obj, dst1, relative_file) in copy_pairs:
         src_file = os.path.join(destination_base, dst1)
@@ -1374,10 +1425,11 @@ def local_copy(copy_pairs, destination_base):
                 os.makedirs(deunicodise(dst_dir))
             debug(u"Copying %s to %s" % (src_file, dst_file))
             shutil.copy2(deunicodise(src_file), deunicodise(dst_file))
+            saved_bytes += src_obj.get(u'size', 0)
         except (IOError, OSError), e:
             warning(u'Unable to copy or hardlink files %s -> %s (Reason: %s)' % (src_file, dst_file, e))
             failed_copy_list[relative_file] = src_obj
-    return failed_copy_list
+    return len(copy_pairs), saved_bytes, failed_copy_list
 
 def remote_copy(s3, copy_pairs, destination_base):
     saved_bytes = 0
@@ -1389,8 +1441,7 @@ def remote_copy(s3, copy_pairs, destination_base):
         extra_headers = copy(cfg.extra_headers)
         try:
             s3.object_copy(dst1_uri, dst2_uri, extra_headers)
-            info = s3.object_info(dst2_uri)
-            saved_bytes = saved_bytes + long(info['headers']['content-length'])
+            saved_bytes += src_obj.get(u'size', 0)
             output(u"remote copy: '%s' -> '%s'" % (dst1, dst2))
         except:
             warning(u"Unable to remote copy files '%s' -> '%s'" % (dst1_uri, dst2_uri))
@@ -1439,16 +1490,16 @@ def _build_attr_header(local_list, src):
 
 
 def cmd_sync_local2remote(args):
-    def _single_process(source_args, local_list):
+    def _single_process(source_args):
         for dest in destinations:
             ## Normalize URI to convert s3://bkt to s3://bkt/ (trailing slash)
             destination_base_uri = S3Uri(dest)
             if destination_base_uri.type != 's3':
                 raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
             destination_base = destination_base_uri.uri()
-        return _child(destination_base, source_args, local_list)
+        return _child(destination_base, source_args)
 
-    def _parent(source_args, local_list):
+    def _parent(source_args):
         # Now that we've done all the disk I/O to look at the local file system and
         # calculate the md5 for each file, fork for each destination to upload to them separately
         # and in parallel
@@ -1463,7 +1514,7 @@ def cmd_sync_local2remote(args):
             destination_base = destination_base_uri.uri()
             child_pid = os.fork()
             if child_pid == 0:
-                os._exit(_child(destination_base, source_args, local_list))
+                os._exit(_child(destination_base, source_args))
             else:
                 child_pids.append(child_pid)
 
@@ -1475,7 +1526,7 @@ def cmd_sync_local2remote(args):
 
         return ret
 
-    def _child(destination_base, source_args, local_list):
+    def _child(destination_base, source_args):
         def _set_remote_uri(local_list, destination_base, single_file_local):
             if len(local_list) > 0:
                 ## Populate 'remote_uri' only if we've got something to upload
@@ -1530,6 +1581,10 @@ def cmd_sync_local2remote(args):
             return ret, seq, total_size
 
 
+        stats_info = StatsInfo()
+
+        local_list, single_file_local, src_exclude_list, local_total_size = fetch_local_list(args[:-1], is_src = True, recursive = True)
+
         # - The source path is either like "/myPath/my_src_folder" and
         # the user want to upload this single folder and optionally only delete
         # things that have been removed inside this folder. For this case,
@@ -1545,7 +1600,7 @@ def cmd_sync_local2remote(args):
             else:
                 destbase_with_source_list.add(destination_base)
 
-        remote_list, dst_exclude_list = fetch_remote_list(destbase_with_source_list, recursive = True, require_attribs = True)
+        remote_list, dst_exclude_list, remote_total_size = fetch_remote_list(destbase_with_source_list, recursive = True, require_attribs = True)
 
         local_count = len(local_list)
         orig_local_count = local_count
@@ -1602,11 +1657,11 @@ def cmd_sync_local2remote(args):
         if cfg.delete_removed and not cfg.delete_after and remote_list:
             subcmd_batch_del(remote_list = remote_list)
 
-        total_size = 0
+        size_transferred = 0
         total_elapsed = 0.0
         timestamp_start = time.time()
-        ret, n, total_size = _upload(local_list, 0, upload_count, total_size)
-        status, n, total_size = _upload(update_list, n, upload_count, total_size)
+        ret, n, size_transferred = _upload(local_list, 0, upload_count, size_transferred)
+        status, n, size_transferred = _upload(update_list, n, upload_count, size_transferred)
         if ret == EX_OK:
             ret = status
         n_copies, saved_bytes, failed_copy_files  = remote_copy(s3, copy_pairs, destination_base)
@@ -1615,20 +1670,33 @@ def cmd_sync_local2remote(args):
         debug("Process files that was not remote copied")
         failed_copy_count = len(failed_copy_files)
         _set_remote_uri(failed_copy_files, destination_base, single_file_local)
-        status, n, total_size = _upload(failed_copy_files, n, upload_count + failed_copy_count, total_size)
+        status, n, size_transferred = _upload(failed_copy_files, n, upload_count + failed_copy_count, size_transferred)
         if ret == EX_OK:
             ret = status
 
         if cfg.delete_removed and cfg.delete_after and remote_list:
             subcmd_batch_del(remote_list = remote_list)
         total_elapsed = max(1.0, time.time() - timestamp_start)
-        total_speed = total_elapsed and total_size/total_elapsed or 0.0
+        total_speed = total_elapsed and size_transferred/total_elapsed or 0.0
         speed_fmt = formatSize(total_speed, human_readable = True, floating_point = True)
+
+
+        stats_info.files = orig_local_count
+        stats_info.size = local_total_size
+        stats_info.files_transferred = upload_count + failed_copy_count
+        stats_info.size_transferred = size_transferred
+        stats_info.files_copied = n_copies
+        stats_info.size_copied = saved_bytes
+        stats_info.files_deleted = remote_count
+
 
         # Only print out the result if any work has been done or
         # if the user asked for verbose output
-        outstr = "Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s. Copied %d files saving %d bytes transfer." % (total_size, total_elapsed, speed_fmt[0], speed_fmt[1], n_copies, saved_bytes)
-        if cfg.stats or total_size + saved_bytes > 0:
+        outstr = "Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s." % (size_transferred, total_elapsed, speed_fmt[0], speed_fmt[1])
+        if cfg.stats:
+            outstr += stats_info.format_output()
+            output(outstr)
+        elif size_transferred + saved_bytes > 0:
             output(outstr)
         else:
             info(outstr)
@@ -1665,14 +1733,12 @@ def cmd_sync_local2remote(args):
         if not os.path.exists(deunicodise(arg)):
             raise ParameterError("Invalid source: '%s' is not an existing file or directory" % arg)
 
-    local_list, single_file_local, src_exclude_list = fetch_local_list(args[:-1], is_src = True, recursive = True)
-
     destinations = [args[-1]]
     if cfg.additional_destinations:
         destinations = destinations + cfg.additional_destinations
 
     if 'fork' not in os.__all__ or len(destinations) < 2:
-        ret = _single_process(args[:-1], local_list)
+        ret = _single_process(args[:-1])
         destination_base_uri = S3Uri(destinations[-1])
         if cfg.invalidate_on_cf:
             if len(uploaded_objects_list) == 0:
@@ -1680,7 +1746,7 @@ def cmd_sync_local2remote(args):
             else:
                 _invalidate_on_cf(destination_base_uri)
     else:
-        ret = _parent(args[:-1], local_list)
+        ret = _parent(args[:-1])
         if cfg.invalidate_on_cf:
             error(u"You cannot use both --cf-invalidate and --add-destination.")
             return(EX_USAGE)
@@ -1725,7 +1791,7 @@ def cmd_setacl(args):
             else:
                 args.append(arg)
 
-    remote_list, exclude_list = fetch_remote_list(args)
+    remote_list, exclude_list, _ = fetch_remote_list(args)
 
     remote_count = len(remote_list)
 
@@ -2828,7 +2894,7 @@ if __name__ == '__main__':
         from S3 import Utils
         from S3 import Crypto
         from S3.Utils import *
-        from S3.Progress import Progress
+        from S3.Progress import Progress, StatsInfo
         from S3.CloudFront import Cmd as CfCmd
         from S3.CloudFront import CloudFront
         from S3.FileLists import *

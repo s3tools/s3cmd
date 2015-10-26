@@ -188,6 +188,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
 
     def _fetch_local_list_info(loc_list):
         len_loc_list = len(loc_list)
+        total_size = 0
         info(u"Running stat() and reading/calculating MD5 values on %d files, this may take some time..." % len_loc_list)
         counter = 0
         for relative_file in loc_list:
@@ -216,6 +217,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
                 'sr': sr # save it all, may need it in preserve_attrs_list
                 ## TODO: Possibly more to save here...
             })
+            total_size += sr.st_size
             if 'md5' in cfg.sync_checks:
                 md5 = cache.md5(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size)
                 if md5 is None:
@@ -225,6 +227,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
                             continue
                         cache.add(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size, md5)
                 loc_list.record_hardlink(relative_file, sr.st_dev, sr.st_ino, md5, sr.st_size)
+        return total_size
 
 
     def _get_filelist_local(loc_list, local_uri, cache):
@@ -341,9 +344,9 @@ def fetch_local_list(args, is_src = False, recursive = None):
         single_file = False
 
     local_list, exclude_list = filter_exclude_include(local_list)
-    _fetch_local_list_info(local_list)
+    total_size = _fetch_local_list_info(local_list)
     _maintain_cache(cache, local_list)
-    return local_list, single_file, exclude_list
+    return local_list, single_file, exclude_list, total_size
 
 def fetch_remote_list(args, require_attribs = False, recursive = None, uri_params = {}):
     def _get_remote_attribs(uri, remote_item):
@@ -381,6 +384,8 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
 
         info(u"Retrieving list of remote files for %s ..." % remote_uri)
         empty_fname_re = re.compile(r'\A\s*\Z')
+
+        total_size = 0
 
         s3 = S3(Config())
         response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object(),
@@ -422,9 +427,10 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
                 _get_remote_attribs(S3Uri(object_uri_str), rem_list[key])
             md5 = rem_list[key]['md5']
             rem_list.record_md5(key, md5)
+            total_size += int(object['Size'])
             if break_now:
                 break
-        return rem_list
+        return rem_list, total_size
 
     cfg = Config()
     remote_uris = []
@@ -442,9 +448,12 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
             raise ParameterError("Expecting S3 URI instead of '%s'" % arg)
         remote_uris.append(uri)
 
+    total_size = 0
+
     if recursive:
         for uri in remote_uris:
-            objectlist = _get_filelist_remote(uri, recursive = True)
+            objectlist, tmp_total_size = _get_filelist_remote(uri, recursive = True)
+            total_size += tmp_total_size
             for key in objectlist:
                 remote_list[key] = objectlist[key]
                 remote_list.record_md5(key, objectlist.get_md5(key))
@@ -459,7 +468,8 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
                 ## Only request recursive listing if the 'rest' of the URI,
                 ## i.e. the part after first wildcard, contains '/'
                 need_recursion = '/' in rest
-                objectlist = _get_filelist_remote(S3Uri(prefix), recursive = need_recursion)
+                objectlist, tmp_total_size = _get_filelist_remote(S3Uri(prefix), recursive = need_recursion)
+                total_size += tmp_total_size
                 for key in objectlist:
                     ## Check whether the 'key' matches the requested wildcards
                     if glob.fnmatch.fnmatch(objectlist[key]['object_uri_str'], uri_str):
@@ -481,9 +491,10 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
                 md5 = remote_item.get('md5')
                 if md5:
                     remote_list.record_md5(key, md5)
+                total_size += remote_item.get('size', 0)
 
     remote_list, exclude_list = filter_exclude_include(remote_list)
-    return remote_list, exclude_list
+    return remote_list, exclude_list, total_size
 
 
 def compare_filelists(src_list, dst_list, src_remote, dst_remote):
