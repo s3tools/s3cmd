@@ -116,6 +116,7 @@ class Config(object):
     website_endpoint = "http://%(bucket)s.s3-website-%(location)s.amazonaws.com/"
     additional_destinations = []
     files_from = []
+    from0 = False
     cache_file = ""
     add_headers = ""
     remove_headers = []

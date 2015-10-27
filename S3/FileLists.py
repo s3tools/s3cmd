@@ -165,8 +165,14 @@ def _get_filelist_from_file(cfg, local_path):
                 warning(u"--files-from input file %s could not be opened for reading (%s), skipping." % (fname, e.strerror))
                 continue
 
-        for line in f:
-            line = unicodise(line).strip()
+        data = f.read()
+        if cfg.from0:
+            files = data.split('\0')
+        else:
+            files = [line.strip() for line in data.split('\n')]
+
+        for fpath in files:
+            line = unicodise(fpath)
             line = os.path.normpath(os.path.join(local_path, line))
             dirname = unicodise(os.path.dirname(deunicodise(line)))
             basename = unicodise(os.path.basename(deunicodise(line)))
@@ -188,7 +194,11 @@ def fetch_local_list(args, is_src = False, recursive = None):
 
     def _fetch_local_list_info(loc_list):
         len_loc_list = len(loc_list)
-        info(u"Running stat() and reading/calculating MD5 values on %d files, this may take some time..." % len_loc_list)
+        calculate_md5 = 'md5' in cfg.sync_checks
+        extra_info = ''
+        if calculate_md5:
+            extra_info = ' and reading/calculating MD5 values'
+        info(u"Running stat()%s on %d files, this may take some time..." % (extra_info, len_loc_list))
         counter = 0
         for relative_file in loc_list:
             counter += 1
@@ -216,7 +226,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
                 'sr': sr # save it all, may need it in preserve_attrs_list
                 ## TODO: Possibly more to save here...
             })
-            if 'md5' in cfg.sync_checks:
+            if calculate_md5:
                 md5 = cache.md5(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size)
                 if md5 is None:
                         try:
@@ -325,7 +335,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
         uri = S3Uri(arg)
         if not uri.type == 'file':
             raise ParameterError("Expecting filename or directory instead of: %s" % arg)
-        if uri.isdir() and not recursive:
+        if uri.isdir() and not recursive and not cfg.files_from:
             raise ParameterError("Use --recursive to upload a directory: %s" % arg)
         local_uris.append(uri)
 
