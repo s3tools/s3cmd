@@ -597,7 +597,7 @@ class S3(object):
                 multipart = True
         if multipart:
             # Multipart requests are quite different... drop here
-            return self.send_file_multipart(file, headers, uri, size)
+            return self.send_file_multipart(file, headers, uri, size, extra_label)
 
         ## Not multipart...
         if self.config.put_continue:
@@ -1152,6 +1152,7 @@ class S3(object):
         size_left = size_total = long(headers["content-length"])
         filename = unicodise(file.name)
         if self.config.progress_meter:
+            labels[u'action'] = u'upload'
             progress = self.config.progress_class(labels, size_total)
         else:
             info("Sending file '%s', please wait..." % filename)
@@ -1306,10 +1307,10 @@ class S3(object):
 
         return response
 
-    def send_file_multipart(self, file, headers, uri, size):
+    def send_file_multipart(self, file, headers, uri, size, extra_label = ""):
         timestamp_start = time.time()
         upload = MultiPartUpload(self, file, uri, headers)
-        upload.upload_all_parts()
+        upload.upload_all_parts(extra_label)
         response = upload.complete_multipart_upload()
         timestamp_end = time.time()
         response["elapsed"] = timestamp_end - timestamp_start
@@ -1326,6 +1327,7 @@ class S3(object):
         method_string, resource, headers = request.get_triplet()
         filename = unicodise(stream.name)
         if self.config.progress_meter:
+            labels[u'action'] = u'download'
             progress = self.config.progress_class(labels, 0)
         else:
             info("Receiving file '%s', please wait..." % filename)

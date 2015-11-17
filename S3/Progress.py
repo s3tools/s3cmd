@@ -50,7 +50,7 @@ class Progress(object):
         self.display(done_message = message)
 
     def output_labels(self):
-        self._stdout.write(u"'%(source)s' -> '%(destination)s'  %(extra)s\n" % self.labels)
+        self._stdout.write(u"%(action)s: '%(source)s' -> '%(destination)s'  %(extra)s\n" % self.labels)
         self._stdout.flush()
 
     def _display_needed(self):
@@ -172,5 +172,45 @@ class ProgressCR(Progress):
             self._stdout.write("  %s\n" % done_message)
 
         self._stdout.flush()
+
+class StatsInfo(object):
+    """Holding info for stats totals"""
+    def __init__(self):
+        self.files = None
+        self.size = None
+        self.files_transferred = None
+        self.size_transferred = None
+        self.files_copied = None
+        self.size_copied = None
+        self.files_deleted = None
+        self.size_deleted = None
+
+    def format_output(self):
+        outstr = u""
+        if self.files is not None:
+            tmp_str = u"Number of files: %d"% self.files
+            if self.size is not None:
+                tmp_str += " (%d bytes) "% self.size
+            outstr += u"\nStats: " + tmp_str
+
+        if self.files_transferred:
+            tmp_str = u"Number of files transferred: %d"% self.files_transferred
+            if self.size_transferred is not None:
+                tmp_str += " (%d bytes) "% self.size_transferred
+            outstr += u"\nStats: " + tmp_str
+
+        if self.files_copied:
+            tmp_str = u"Number of files copied: %d"% self.files_copied
+            if self.size_copied is not None:
+                tmp_str += " (%d bytes) "% self.size_copied
+            outstr += u"\nStats: " + tmp_str
+
+        if self.files_deleted:
+            tmp_str = u"Number of files deleted: %d"% self.files_deleted
+            if self.size_deleted is not None:
+                tmp_str += " (%d bytes) "% self.size_deleted
+            outstr += u"\nStats: " + tmp_str
+
+        return outstr
 
 # vim:et:ts=4:sts=4:ai

@@ -128,6 +128,7 @@ class Config(object):
     stop_on_error = False
     content_disposition = None
     content_type = None
+    stats = False
 
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None):

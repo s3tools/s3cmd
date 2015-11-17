@@ -75,7 +75,7 @@ class MultiPartUpload(object):
 
         return self.upload_id
 
-    def upload_all_parts(self):
+    def upload_all_parts(self, extra_label=''):
         """
         Execute a full multipart upload on a file
         Returns the seq/etag dict
@@ -98,6 +98,8 @@ class MultiPartUpload(object):
         if self.s3.config.put_continue:
             remote_statuses = self.get_parts_information(self.uri, self.upload_id)
 
+        if extra_label:
+            extra_label = u' ' + extra_label
         seq = 1
         if filename != "<stdin>":
             while size_left > 0:
@@ -107,7 +109,7 @@ class MultiPartUpload(object):
                 labels = {
                     'source' : filename,
                     'destination' : self.uri.uri(),
-                    'extra' : "[part %d of %d, %s]" % (seq, nr_parts, "%d%sB" % formatSize(current_chunk_size, human_readable = True))
+                    'extra' : "[part %d of %d, %s]%s" % (seq, nr_parts, "%d%sB" % formatSize(current_chunk_size, human_readable = True), extra_label)
                 }
                 try:
                     self.upload_part(seq, offset, current_chunk_size, labels, remote_status = remote_statuses.get(seq))
