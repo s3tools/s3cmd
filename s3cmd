@@ -2818,8 +2818,8 @@ def main():
         rc = EX_GENERAL
     return rc
 
-def report_exception(e, msg=''):
-        sys.stderr.write(u"""
+def report_exception(e, msg=u''):
+        alert_header = u"""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     An unexpected error has occurred.
   Please try reproducing the error using
@@ -2829,13 +2829,13 @@ def report_exception(e, msg=''):
   and have a look at the known issues list:
     https://github.com/s3tools/s3cmd/wiki/Common-known-issues-and-their-solutions
   If the error persists, please report the
-  following lines (removing any private
+  %s (removing any private
   info as necessary) to:
-   s3tools-bugs@lists.sourceforge.net
-%s
+   s3tools-bugs@lists.sourceforge.net%s
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-""" % msg)
+"""
+        sys.stderr.write(alert_header % (u"following lines", u"\n\n" + msg))
         tb = traceback.format_exc(sys.exc_info())
         try:
             s = u' '.join([unicodise(a) for a in sys.argv])
@@ -2862,21 +2862,7 @@ def report_exception(e, msg=''):
                 sys.stderr.write(u"\t%s\n" % path)
             sys.stderr.write("Now the question is where have the s3cmd modules been installed?\n")
 
-        sys.stderr.write("""
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    An unexpected error has occurred.
-  Please try reproducing the error using
-  the latest s3cmd code from the git master
-  branch found at:
-    https://github.com/s3tools/s3cmd
-  and have a look at the known issues list:
-    https://github.com/s3tools/s3cmd/wiki/Common-known-issues-and-their-solutions
-  If the error persists, please report the
-  above lines (removing any private
-  info as necessary) to:
-   s3tools-bugs@lists.sourceforge.net
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-""")
+        sys.stderr.write(alert_header % (u"above lines", u""))
 
 if __name__ == '__main__':
     try:
