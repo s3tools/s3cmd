@@ -848,7 +848,7 @@ def cmd_info(args):
                 output(u"%s (object):" % uri.uri())
                 output(u"   File size: %s" % info['headers']['content-length'])
                 output(u"   Last mod:  %s" % info['headers']['last-modified'])
-                output(u"   MIME type: %s" % info['headers']['content-type'])
+                output(u"   MIME type: %s" % info['headers'].get('content-type', 'none'))
                 md5 = info['headers']['etag'].strip('"\'')
                 try:
                     md5 = info['s3cmd-attrs']['md5']
