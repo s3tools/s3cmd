@@ -620,16 +620,27 @@ def subcmd_batch_del_iterative(uri_str = None, bucket = None):
     deleted_bytes = deleted_count = 0
 
     for _, to_delete in s3.bucket_list_streaming(bucket, prefix=uri.object(), recursive=True):
+        if not to_delete:
+            continue
         if not cfg.dry_run:
             response = s3.object_batch_delete_uri_strs([uri.compose_uri(bucket, item['Key']) for item in to_delete])
         deleted_bytes += sum(int(item["Size"]) for item in to_delete)
         deleted_count += len(to_delete)
         output('\n'.join(u"delete: '%s'" % uri.compose_uri(bucket, p['Key']) for p in to_delete))
 
+    if deleted_count:
         # display summary data of deleted files
-        total_size, size_coeff = formatSize(deleted_bytes, Config().human_readable_sizes)
-        total_size_str = str(total_size) + size_coeff
-        info(u"Deleted %s objects (%s) from %s" % (deleted_count, total_size_str, uri))
+        if cfg.stats:
+            stats_info = StatsInfo()
+            stats_info.files_deleted = deleted_count
+            stats_info.size_deleted = deleted_bytes
+            output(stats_info.format_output())
+        else:
+            total_size, size_coeff = formatSize(deleted_bytes, Config().human_readable_sizes)
+            total_size_str = str(total_size) + size_coeff
+            info(u"Deleted %s objects (%s) from %s" % (deleted_count, total_size_str, uri))
+    else:
+        warning(u"Remote list is empty.")
 
     return EX_OK
 
@@ -674,7 +685,6 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
 
     if cfg.dry_run:
         warning(u"Exiting now because of --dry-run")
-        return EX_OK
     return EX_OK
 
 def subcmd_object_del_uri(uri_str, recursive = None):
