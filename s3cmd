@@ -949,7 +949,7 @@ def cmd_sync_remote2remote(args):
     update_count = len(update_list)
     dst_count = len(dst_list)
 
-    print(u"Summary: %d source files to copy, %d files at destination to delete" % (src_count, dst_count))
+    print(u"Summary: %d source files to copy, %d files at destination to delete" % (src_count + update_count, dst_count))
 
     ### Populate 'target_uri' only if we've got something to sync from src to dst
     for key in src_list:
