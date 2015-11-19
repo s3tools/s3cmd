@@ -965,7 +965,9 @@ def cmd_sync_remote2remote(args):
             for key in dst_list:
                 output(u"delete: '%s'" % dst_list[key]['object_uri_str'])
         for key in src_list:
-            output(u"Sync: '%s' -> '%s'" % (src_list[key]['object_uri_str'], src_list[key]['target_uri']))
+            output(u"remote copy: '%s' -> '%s'" % (src_list[key]['object_uri_str'], src_list[key]['target_uri']))
+        for key in update_list:
+            output(u"remote copy: '%s' -> '%s'" % (update_list[key]['object_uri_str'], update_list[key]['target_uri']))
         warning(u"Exiting now because of --dry-run")
         return EX_OK
 
