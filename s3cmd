@@ -747,8 +747,14 @@ def cmd_object_restore(args):
 
         uri = S3Uri(item['object_uri_str'])
         if not item['object_uri_str'].endswith("/"):
-            response = s3.object_restore(S3Uri(item['object_uri_str']))
-            output(u"restore: '%s'" % item['object_uri_str'])
+            try:
+                response = s3.object_restore(S3Uri(item['object_uri_str']))
+                output(u"restore: '%s'" % item['object_uri_str'])
+            except S3Error, e:
+                if e.code == "RestoreAlreadyInProgress":
+                    warning("%s: %s" % (e.message, item['object_uri_str']))
+                else:
+                    raise e
         else:
             debug(u"Skipping directory since only files may be restored")
     return EX_OK
