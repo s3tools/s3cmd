@@ -123,7 +123,12 @@ class http_connection(object):
                 context.check_hostname = False
             conn = httplib.HTTPSConnection(hostname, port, context=context, check_hostname=False)
         except TypeError:
-            conn = httplib.HTTPSConnection(hostname, port)
+            try:
+                # in case check_hostname parameter is not present try again
+                conn = httplib.HTTPSConnection(hostname, port, context=context)
+            except TypeError:
+                # in case even context parameter is not present try one last time
+                conn = httplib.HTTPSConnection(hostname, port)
         return conn
 
     def __init__(self, id, hostname, ssl, cfg):
