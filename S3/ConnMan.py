@@ -121,7 +121,7 @@ class http_connection(object):
                 # back.  We then run the same check, relaxed for S3's
                 # wildcard certificates.
                 context.check_hostname = False
-            conn = httplib.HTTPSConnection(hostname, port, context=context)
+            conn = httplib.HTTPSConnection(hostname, port, context=context, check_hostname=False)
         except TypeError:
             conn = httplib.HTTPSConnection(hostname, port)
         return conn
