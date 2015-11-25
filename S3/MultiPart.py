@@ -15,7 +15,6 @@ class MultiPartUpload(object):
     MIN_CHUNK_SIZE_MB = 5       # 5MB
     MAX_CHUNK_SIZE_MB = 5120    # 5GB
     MAX_FILE_SIZE = 42949672960 # 5TB
-    MAX_CHUNKS = 10000
 
     def __init__(self, s3, file, uri, headers_baseline = {}):
         self.s3 = s3
