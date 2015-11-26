@@ -376,10 +376,9 @@ def cmd_object_put(args):
         seq_label = "[%d of %d]" % (seq, local_count)
         if Config().encrypt:
             gpg_exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
-        if cfg.preserve_attrs or local_list[key]['size'] > (cfg.multipart_chunk_size_mb * 1024 * 1024):
-            attr_header = _build_attr_header(local_list, key)
-            debug(u"attr_header: %s" % attr_header)
-            extra_headers.update(attr_header)
+        attr_header = _build_attr_header(local_list, key)
+        debug(u"attr_header: %s" % attr_header)
+        extra_headers.update(attr_header)
         try:
             response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label)
         except S3UploadError, exc:
@@ -1469,42 +1468,47 @@ def remote_copy(s3, copy_pairs, destination_base):
 
 def _build_attr_header(local_list, src):
     attrs = {}
-    for attr in cfg.preserve_attrs_list:
-        if attr == 'uname':
-            try:
-                val = Utils.getpwuid_username(local_list[src]['uid'])
-            except (KeyError, TypeError):
-                attr = "uid"
-                val = local_list[src].get('uid')
-                if val:
-                    warning(u"%s: Owner username not known. Storing UID=%d instead." % (src, val))
-        elif attr == 'gname':
-            try:
-                val = Utils.getgrgid_grpname(local_list[src].get('gid'))
-            except (KeyError, TypeError):
-                attr = "gid"
-                val = local_list[src].get('gid')
-                if val:
-                    warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (src, val))
-        elif attr == 'md5':
-            try:
-                val = local_list.get_md5(src)
-            except IOError:
-                val = None
-        else:
-            try:
-                val = getattr(local_list[src]['sr'], 'st_' + attr)
-            except:
-                val = None
-        if val is not None:
-            attrs[attr] = val
+    if cfg.preserve_attrs:
+        for attr in cfg.preserve_attrs_list:
+            if attr == 'uname':
+                try:
+                    val = Utils.getpwuid_username(local_list[src]['uid'])
+                except (KeyError, TypeError):
+                    attr = "uid"
+                    val = local_list[src].get('uid')
+                    if val:
+                        warning(u"%s: Owner username not known. Storing UID=%d instead." % (src, val))
+            elif attr == 'gname':
+                try:
+                    val = Utils.getgrgid_grpname(local_list[src].get('gid'))
+                except (KeyError, TypeError):
+                    attr = "gid"
+                    val = local_list[src].get('gid')
+                    if val:
+                        warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (src, val))
+            elif attr != "md5":
+                try:
+                    val = getattr(local_list[src]['sr'], 'st_' + attr)
+                except:
+                    val = None
+            if val is not None:
+                attrs[attr] = val
 
-    if 'md5' in attrs and attrs['md5'] is None:
-        del attrs['md5']
+    if 'md5' in cfg.preserve_attrs_list:
+        try:
+            val = local_list.get_md5(src)
+            if val is not None:
+                attrs['md5'] = val
+        except IOError:
+            pass
 
-    result = ""
-    for k in attrs: result += "%s:%s/" % (k, attrs[k])
-    return { 'x-amz-meta-s3cmd-attrs' : result[:-1] }
+    if attrs:
+        result = ""
+        for k in attrs:
+            result += "%s:%s/" % (k, attrs[k])
+        return {'x-amz-meta-s3cmd-attrs' : result[:-1]}
+    else:
+        return {}
 
 
 def cmd_sync_local2remote(args):
@@ -1568,10 +1572,9 @@ def cmd_sync_local2remote(args):
                 seq_label = "[%d of %d]" % (seq, total)
                 extra_headers = copy(cfg.extra_headers)
                 try:
-                    if cfg.preserve_attrs:
-                        attr_header = _build_attr_header(local_list, file)
-                        debug(u"attr_header: %s" % attr_header)
-                        extra_headers.update(attr_header)
+                    attr_header = _build_attr_header(local_list, file)
+                    debug(u"attr_header: %s" % attr_header)
+                    extra_headers.update(attr_header)
                     response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
                 except S3UploadError, exc:
                     error(u"Upload of '%s' failed too many times (Last reason: %s)" % (item['full_name'], exc))
