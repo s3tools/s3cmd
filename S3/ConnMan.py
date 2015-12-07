@@ -121,21 +121,21 @@ class http_connection(object):
                 # after the connection is made and we get control
                 # back.  We then run the same check, relaxed for S3's
                 # wildcard certificates.
-                check_context = False
+                debug(u'Recognized AWS S3 host, disabling initial SSL hostname check')
+                check_hostname = False
                 if context:
                     context.check_hostname = False
-                debug(u'Recognized AWS S3 host, disabling initial SSL hostname check')
             conn = httplib.HTTPSConnection(hostname, port, context=context, check_hostname=check_hostname)
+            debug(u'httplib.HTTPSConnection() has both context and check_hostname')
         except TypeError:
-            debug(u'python-libs missing either or both httplib.HTTPSConnection() context or check_hostname')
             try:
                 # in case check_hostname parameter is not present try again
-                debug(u'python-libs maybe missing httplib.HTTPSConnection() check_hostname')
                 conn = httplib.HTTPSConnection(hostname, port, context=context)
+                debug(u'httplib.HTTPSConnection() has only context')
             except TypeError:
                 # in case even context parameter is not present try one last time
-                debug(u'python-libs missing both httplib.HTTPSConnection() context and check_hostname')
                 conn = httplib.HTTPSConnection(hostname, port)
+                debug(u'httplib.HTTPSConnection() has neither context nor check_hostname')
         return conn
 
     def __init__(self, id, hostname, ssl, cfg):
