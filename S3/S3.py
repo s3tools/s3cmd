@@ -595,6 +595,9 @@ class S3(object):
         if self.config.enable_multipart:
             if size > self.config.multipart_chunk_size_mb * 1024 * 1024 or filename == "-":
                 multipart = True
+                if size > self.config.multipart_max_chunks * self.config.multipart_chunk_size_mb * 1024 * 1024:
+                    raise ParameterError("Chunk size %d MB results in more than %d chunks. Please increase --multipart-chunk-size-mb" % \
+                          (self.config.multipart_chunk_size_mb, self.config.multipart_max_chunks))
         if multipart:
             # Multipart requests are quite different... drop here
             return self.send_file_multipart(file, headers, uri, size, extra_label)
