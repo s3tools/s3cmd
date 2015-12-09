@@ -210,17 +210,19 @@ class Config(object):
         if len(cred_content)>0:
             for line in cred_content.splitlines():
                 is_data = r_data.match(line)
-                is_data = r_data.match(line)
                 if is_data:
                     data = is_data.groupdict()
                     if r_quotes.match(data["value"]):
                         data["value"] = data["value"][1:-1]
-                    if data["orig_key"]=="AWSAccessKeyId":
+                    if data["orig_key"] == "AWSAccessKeyId" \
+                       or data["orig_key"] == "aws_access_key_id":
                         data["key"] = "access_key"
-                    elif data["orig_key"]=="AWSSecretKey":
+                    elif data["orig_key"]=="AWSSecretKey" \
+                       or data["orig_key"]=="aws_secret_access_key":
                         data["key"] = "secret_key"
                     else:
-                        del data["key"]
+                        debug("env_config: key = %r will be ignored", data["orig_key"])
+
                     if "key" in data:
                         Config().update_option(data["key"], data["value"])
                         if data["key"] in ("access_key", "secret_key", "gpg_passphrase"):
