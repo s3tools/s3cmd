@@ -161,33 +161,38 @@ class S3Request(object):
         return False
 
     def sign(self):
-        h  = self.method_string + "\n"
-        h += self.headers.get("content-md5", "")+"\n"
-        h += self.headers.get("content-type", "")+"\n"
-        h += self.headers.get("date", "")+"\n"
-        for header in sorted(self.headers.keys()):
-            if header.startswith("x-amz-"):
-                h += header+":"+str(self.headers[header])+"\n"
-            if header.startswith("x-emc-"):
-                h += header+":"+str(self.headers[header])+"\n"
-        if self.resource['bucket']:
-            h += "/" + self.resource['bucket']
-        h += self.resource['uri']
-
         if self.use_signature_v2():
+            h  = self.method_string + "\n"
+            h += self.headers.get("content-md5", "")+"\n"
+            h += self.headers.get("content-type", "")+"\n"
+            h += self.headers.get("date", "")+"\n"
+            for header in sorted(self.headers.keys()):
+                if header.startswith("x-amz-"):
+                    h += header+":"+str(self.headers[header])+"\n"
+                if header.startswith("x-emc-"):
+                    h += header+":"+str(self.headers[header])+"\n"
+            if self.resource['bucket']:
+                h += "/" + self.resource['bucket']
+            h += self.resource['uri']
             debug("Using signature v2")
             debug("SignHeaders: " + repr(h))
             signature = sign_string_v2(h)
             self.headers["Authorization"] = "AWS "+self.s3.config.access_key+":"+signature
         else:
             debug("Using signature v4")
-            self.headers = sign_string_v4(self.method_string,
-                                          self.s3.get_hostname(self.resource['bucket']),
-                                          self.resource['uri'],
-                                          self.params,
-                                          S3Request.region_map.get(self.resource['bucket'], Config().bucket_location),
-                                          self.headers,
-                                          self.body)
+            hostname = self.s3.get_hostname(self.resource['bucket'])
+
+            ## Default to bucket part of DNS.
+            resource_uri = self.resource['uri']
+            ## If bucket is not part of DNS assume path style to complete the request.
+            if not check_bucket_name_dns_support(self.s3.config.host_bucket, self.resource['bucket']):
+                if self.resource['bucket']:
+                    resource_uri = "/" + self.resource['bucket'] + self.resource['uri']
+
+            bucket_region = S3Request.region_map.get(self.resource['bucket'], Config().bucket_location)
+            ## Sign the data.
+            self.headers = sign_string_v4(self.method_string, hostname, resource_uri, self.params,
+                                          bucket_region, self.headers, self.body)
 
     def get_triplet(self):
         self.update_timestamp()
