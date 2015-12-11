@@ -2726,7 +2726,8 @@ def main():
 
     ## Special handling for tri-state options (True, False, None)
     cfg.update_option("enable", options.enable)
-    cfg.update_option("acl_public", options.acl_public)
+    if options.acl_public is not None:
+        cfg.update_option("acl_public", options.acl_public)
 
     ## Check multipart chunk constraints
     if cfg.multipart_chunk_size_mb < MultiPartUpload.MIN_CHUNK_SIZE_MB:

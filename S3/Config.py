@@ -253,6 +253,11 @@ class Config(object):
                 _option = _option.strip()
             self.update_option(option, _option)
 
+        # allow acl_public to be set from the config file too, even though by
+        # default it is set to None, and not present in the config file.
+        if cp.get('acl_public'):
+            self.update_option('acl_public', cp.get('acl_public'))
+
         if cp.get('add_headers'):
             for option in cp.get('add_headers').split(","):
                 (key, value) = option.split(':')
