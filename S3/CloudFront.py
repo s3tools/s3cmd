@@ -11,7 +11,6 @@ import time
 import random
 from datetime import datetime
 from logging import debug, info, warning, error
-from sets import Set
 
 try:
     import xml.etree.ElementTree as ET
@@ -601,7 +600,7 @@ class CloudFront(object):
                     continue
 
                 if CloudFront.dist_list.get(distListIndex, None) is None:
-                    CloudFront.dist_list[distListIndex] = Set()
+                    CloudFront.dist_list[distListIndex] = set() 
 
                 CloudFront.dist_list[distListIndex].add(d.uri())
 
