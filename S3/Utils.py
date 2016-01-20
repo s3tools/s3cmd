@@ -62,7 +62,10 @@ def parseNodes(nodes):
                 retval_item[name] = parseNodes([child])
             else:
                 found_text = node.findtext(".//%s" % child.tag)
-                retval_item[name] = decode_from_s3(found_text) if found_text is not None else None
+                if found_text is not None:
+                    retval_item[name] = decode_from_s3(found_text)
+                else:
+                    retval_item[name] = None
         retval.append(retval_item)
     return retval
 __all__.append("parseNodes")
