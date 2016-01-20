@@ -331,6 +331,16 @@ us\-east\-1, us\-west\-1, us\-west\-2, eu\-west\-1, eu\-
 central\-1, ap\-northeast\-1, ap\-southeast\-1, ap\-
 southeast\-2, sa\-east\-1
 .TP
+\fB\-\-host\fR=HOSTNAME
+HOSTNAME:PORT for S3 endpoint (default:
+s3.amazonaws.com, alternatives such as s3\-eu\-
+west\-1.amazonaws.com). You should also set \fB\-\-host\-\fR
+bucket.
+.TP
+\fB\-\-host\-bucket\fR=HOST_BUCKET
+DNS\-style bucket+hostname:port template for accessing
+a bucket (default: %(bucket)s.s3.amazonaws.com)
+.TP
 \fB\-\-reduced\-redundancy\fR, \fB\-\-rr\fR
 Store object with 'Reduced redundancy'. Lower per\-GB
 price. [put, cp, mv]
@@ -449,6 +459,9 @@ Display progress meter (default on TTY).
 \fB\-\-no\-progress\fR
 Don't display progress meter (default on non-TTY).
 .TP
+\fB\-\-stats\fR
+Give some file-transfer stats.
+.TP
 \fB\-\-enable\fR
 Enable given CloudFront distribution (only for
 [cfmodify] command)
@@ -495,7 +508,7 @@ Enable verbose output.
 Enable debug output.
 .TP
 \fB\-\-version\fR
-Show s3cmd version (1.6.0) and exit.
+Show s3cmd version (1.6.1) and exit.
 .TP
 \fB\-F\fR, \fB\-\-follow\-symlinks\fR
 Follow symbolic links as if they are regular files
