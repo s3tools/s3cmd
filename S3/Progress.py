@@ -12,11 +12,11 @@ import time
 import Utils
 
 class Progress(object):
-    _stdout = sys.stdout
+    _stdout = sys.stderr
     _last_display = 0
 
     def __init__(self, labels, total_size):
-        self._stdout = sys.stdout
+        self._stdout = sys.stderr
         self.new_file(labels, total_size)
 
     def new_file(self, labels, total_size):
