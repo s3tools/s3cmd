@@ -153,9 +153,11 @@ class Config(object):
             if len(self.access_key)==0:
                 env_access_key = os.environ.get("AWS_ACCESS_KEY", None) or os.environ.get("AWS_ACCESS_KEY_ID", None)
                 env_secret_key = os.environ.get("AWS_SECRET_KEY", None) or os.environ.get("AWS_SECRET_ACCESS_KEY", None)
+                env_access_token = os.environ.get("AWS_SESSION_TOKEN", None) or os.environ.get("AWS_SECURITY_TOKEN", None)
                 if env_access_key:
                     self.access_key = env_access_key
                     self.secret_key = env_secret_key
+                    self.access_token = env_access_token
                 else:
                     self.role_config()
 
