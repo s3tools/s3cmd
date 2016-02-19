@@ -540,8 +540,8 @@ class CloudFront(object):
             headers["x-amz-date"] = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
 
         if len(self.config.access_token)>0:
-            # Edit: Do not refresh role.
-            # self.config.role_refresh()
+            if self.config.token_refresh:
+                self.config.role_refresh()
             headers['x-amz-security-token']=self.config.access_token
 
         signature = self.sign_request(headers)
