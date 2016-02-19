@@ -27,6 +27,7 @@ class Config(object):
     access_key = ""
     secret_key = ""
     access_token = ""
+    token_refresh = True
     host_base = "s3.amazonaws.com"
     host_bucket = "%(bucket)s.s3.amazonaws.com"
     kms_key = ""    #can't set this and Server Side Encryption at the same time
