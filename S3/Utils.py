@@ -407,7 +407,7 @@ def time_to_epoch(t):
 
 def check_bucket_name(bucket, dns_strict = True):
     if dns_strict:
-        invalid = re.search("([^a-z0-9\.-])", bucket, re.UNICODE)
+        invalid = re.search("([^a-zA-Z0-9\._-])", bucket, re.UNICODE)
         if invalid:
             raise Exceptions.ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: lowercase us-ascii letters (a-z), digits (0-9), dot (.) and hyphen (-)." % (bucket, invalid.groups()[0]))
     else:
@@ -426,9 +426,9 @@ def check_bucket_name(bucket, dns_strict = True):
             raise Exceptions.ParameterError("Bucket name '%s' must not contain sequence '-.' for DNS compatibility" % bucket)
         if re.search("\.\.", bucket, re.UNICODE):
             raise Exceptions.ParameterError("Bucket name '%s' must not contain sequence '..' for DNS compatibility" % bucket)
-        if not re.search("^[0-9a-z]", bucket, re.UNICODE):
+        if not re.search("^[0-9a-zA-Z]", bucket, re.UNICODE):
             raise Exceptions.ParameterError("Bucket name '%s' must start with a letter or a digit" % bucket)
-        if not re.search("[0-9a-z]$", bucket, re.UNICODE):
+        if not re.search("[0-9a-zA-Z]$", bucket, re.UNICODE):
             raise Exceptions.ParameterError("Bucket name '%s' must end with a letter or a digit" % bucket)
     return True
 __all__.append("check_bucket_name")
