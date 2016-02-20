@@ -2639,7 +2639,6 @@ def main():
     if options.quiet:
         try:
             f = open("/dev/null", "w")
-            sys.stdout.close()
             sys.stdout = f
         except IOError:
             warning(u"Unable to open /dev/null: --quiet disabled.")
