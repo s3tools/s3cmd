@@ -872,6 +872,21 @@ def cmd_info(args):
                 output(u"   Location:  %s" % info['bucket-location'])
                 output(u"   Payer:     %s" % info['requester-pays'])
                 try:
+                    transition = s3.transition_info(uri, cfg.bucket_location)
+                    transition_desc = "Transition Rule: "
+                    if transition['prefix'] == "":
+                        transition_desc += "all objects in this bucket "
+                    else:
+                        transition_desc += "objects with key prefix '" + transition['prefix'] + "' "
+                    transition_desc += "will transition to '" + transition['StorageClass'] + "' in '" 
+                    if transition['days']:
+                        transition_desc += transition['days'] + "' day(s) after creation"
+                    elif transition['date']:
+                        transition_desc += transition['date'] + "' "
+                    output(u"   %s" % transition_desc)
+                except:
+                    output(u"   Transition Rule: none")
+                try:
                     expiration = s3.expiration_info(uri, cfg.bucket_location)
                     expiration_desc = "Expiration Rule: "
                     if expiration['prefix'] == "":
@@ -1921,6 +1936,17 @@ def cmd_setlifecycle(args):
         output(u"%s: Lifecycle Policy updated" % uri)
     return EX_OK
 
+def cmd_getlifecycle(args):
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+    if cfg.dry_run: return EX_OK
+
+    response = s3.get_lifecycle_policy(uri)
+
+    output(u"%s: Got Lifecycle Policy" % response['status'])
+    output(u"%s" % response['data'])
+    return EX_OK
+
 def cmd_dellifecycle(args):
     s3 = S3(cfg)
     uri = S3Uri(args[0])
@@ -2378,6 +2404,7 @@ def get_commands_list():
     ## Lifecycle commands
     {"cmd":"expire", "label":"Set or delete expiration rule for the bucket", "param":"s3://BUCKET", "func":cmd_expiration_set, "argc":1},
     {"cmd":"setlifecycle", "label":"Upload a lifecycle policy for the bucket", "param":"FILE s3://BUCKET", "func":cmd_setlifecycle, "argc":2},
+    {"cmd":"getlifecycle", "label":"Get a lifecycle policy for the bucket",    "param":"s3://BUCKET", "func":cmd_getlifecycle, "argc":1},
     {"cmd":"dellifecycle", "label":"Remove a lifecycle policy for the bucket", "param":"s3://BUCKET", "func":cmd_dellifecycle, "argc":1},
 
     ## CloudFront commands
