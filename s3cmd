@@ -1735,11 +1735,11 @@ def cmd_sync_local2remote(args):
               if len(default_index_file) < 1:
                   default_index_file = None
 
-        result = cf.InvalidateObjects(destination_base_uri, uploaded_objects_list, default_index_file, cfg.invalidate_default_index_on_cf, cfg.invalidate_default_index_root_on_cf)
-        if result['status'] == 201:
-            output("Created invalidation request for %d paths" % len(uploaded_objects_list))
-            output("Check progress with: s3cmd cfinvalinfo cf://%s/%s" % (result['dist_id'], result['request_id']))
-
+        results = cf.InvalidateObjects(destination_base_uri, uploaded_objects_list, default_index_file, cfg.invalidate_default_index_on_cf, cfg.invalidate_default_index_root_on_cf)
+        for result in results:
+            if result['status'] == 201:
+                output(u"Created invalidation request for %d paths" % len(uploaded_objects_list))
+                output(u"Check progress with: s3cmd cfinvalinfo cf://%s/%s" % (result['dist_id'], result['request_id']))
 
     # main execution
     s3 = S3(cfg)

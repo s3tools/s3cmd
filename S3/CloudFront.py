@@ -447,7 +447,7 @@ class CloudFront(object):
             paths = new_paths
 
         # uri could be either cf:// or s3:// uri
-        cfuri = self.get_dist_name_for_bucket(uri)
+        cfuris = self.get_dist_name_for_bucket(uri)
         if len(paths) > 999:
             try:
                 tmp_filename = Utils.mktmpfile()
@@ -459,16 +459,22 @@ class CloudFront(object):
             except:
                 pass
             raise ParameterError("Too many paths to invalidate")
-        invalbatch = InvalidationBatch(distribution = cfuri.dist_id(), paths = paths)
-        debug("InvalidateObjects(): request_body: %s" % invalbatch)
-        response = self.send_request("Invalidate", dist_id = cfuri.dist_id(),
-                                     body = str(invalbatch))
-        response['dist_id'] = cfuri.dist_id()
-        if response['status'] == 201:
-            inval_info = Invalidation(response['data']).info
-            response['request_id'] = inval_info['Id']
-        debug("InvalidateObjects(): response: %s" % response)
-        return response
+
+        responses = []
+        for cfuri in cfuris:
+            invalbatch = InvalidationBatch(distribution = cfuri.dist_id(), paths = paths)
+            debug("InvalidateObjects(): request_body: %s" % invalbatch)
+            response = self.send_request("Invalidate", dist_id = cfuri.dist_id(),
+                                         body = str(invalbatch))
+            response['dist_id'] = cfuri.dist_id()
+            if response['status'] == 201:
+                inval_info = Invalidation(response['data']).info
+                response['request_id'] = inval_info['Id']
+            debug("InvalidateObjects(): response: %s" % response)
+
+            responses.append(response)
+
+        return responses
 
     def GetInvalList(self, cfuri):
         if cfuri.type != "cf":
@@ -578,8 +584,10 @@ class CloudFront(object):
             response = self.GetList()
             CloudFront.dist_list = {}
             for d in response['dist_list'].dist_summs:
+                distListIndex = ""
+
                 if d.info.has_key("S3Origin"):
-                    CloudFront.dist_list[getBucketFromHostname(d.info['S3Origin']['DNSName'])[0]] = d.uri()
+                    distListIndex = getBucketFromHostname(d.info['S3Origin']['DNSName'])[0]
                 elif d.info.has_key("CustomOrigin"):
                     # Aral: This used to skip over distributions with CustomOrigin, however, we mustn't
                     #       do this since S3 buckets that are set up as websites use custom origins.
@@ -587,10 +595,15 @@ class CloudFront(object):
                     #       S3 bucket. Here, we make use this naming convention to support this use case.
                     distListIndex = getBucketFromHostname(d.info['CustomOrigin']['DNSName'])[0];
                     distListIndex = distListIndex[:len(uri.bucket())]
-                    CloudFront.dist_list[distListIndex] = d.uri()
                 else:
                     # Aral: I'm not sure when this condition will be reached, but keeping it in there.
                     continue
+
+                if CloudFront.dist_list.get(distListIndex, None) is None:
+                    CloudFront.dist_list[distListIndex] = set() 
+
+                CloudFront.dist_list[distListIndex].add(d.uri())
+
             debug("dist_list: %s" % CloudFront.dist_list)
         try:
             return CloudFront.dist_list[uri.bucket()]
@@ -624,8 +637,8 @@ class Cmd(object):
         cf = CloudFront(Config())
         cfuris = []
         for arg in args:
-            uri = cf.get_dist_name_for_bucket(S3Uri(arg))
-            cfuris.append(uri)
+            uris = cf.get_dist_name_for_bucket(S3Uri(arg))
+            cfuris.extend(uris)
         return cfuris
 
     @staticmethod
