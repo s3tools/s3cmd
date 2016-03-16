@@ -133,12 +133,12 @@ class Config(object):
     stats = False
 
     ## Creating a singleton
-    def __new__(self, configfile = None, access_key=None, secret_key=None):
+    def __new__(self, configfile = None, access_key=None, secret_key=None, access_token=None):
         if self._instance is None:
             self._instance = object.__new__(self)
         return self._instance
 
-    def __init__(self, configfile = None, access_key=None, secret_key=None):
+    def __init__(self, configfile = None, access_key=None, secret_key=None, access_token=None):
         if configfile:
             try:
                 self.read_config_file(configfile)
@@ -150,6 +150,11 @@ class Config(object):
             if access_key and secret_key:
                 self.access_key = access_key
                 self.secret_key = secret_key
+                
+            if access_token:
+                self.access_token = access_token
+                # Do not refresh the IAM role when an access token is provided.
+                self._access_token_refresh = False
 
             if len(self.access_key)==0:
                 env_access_key = os.environ.get("AWS_ACCESS_KEY", None) or os.environ.get("AWS_ACCESS_KEY_ID", None)
