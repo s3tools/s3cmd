@@ -118,8 +118,7 @@ class S3Request(object):
         self.s3 = s3
         self.headers = SortedDict(headers or {}, ignore_case = True)
         if len(self.s3.config.access_token)>0:
-            if self.s3.config.token_refresh:
-                self.s3.config.role_refresh()
+            self.s3.config.role_refresh()
             self.headers['x-amz-security-token']=self.s3.config.access_token
         self.resource = resource
         self.method_string = method_string

@@ -27,7 +27,7 @@ class Config(object):
     access_key = ""
     secret_key = ""
     access_token = ""
-    token_refresh = True
+    _access_token_refresh = True
     host_base = "s3.amazonaws.com"
     host_bucket = "%(bucket)s.s3.amazonaws.com"
     kms_key = ""    #can't set this and Server Side Encryption at the same time
@@ -158,7 +158,10 @@ class Config(object):
                 if env_access_key:
                     self.access_key = env_access_key
                     self.secret_key = env_secret_key
-                    self.access_token = env_access_token
+                    if env_access_token:
+                        # Do not refresh the IAM role when an access token is provided.
+                        self._access_token_refresh = False
+                        self.access_token = env_access_token
                 else:
                     self.role_config()
 
@@ -196,10 +199,11 @@ class Config(object):
             raise
 
     def role_refresh(self):
-        try:
-            self.role_config()
-        except:
-            warning("Could not refresh role")
+        if self._access_token_refresh:
+            try:
+                self.role_config()
+            except:
+                warning("Could not refresh role")
 
     def env_config(self):
         cred_content = ""
