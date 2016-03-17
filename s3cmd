@@ -2147,6 +2147,7 @@ def run_configure(config_file, args):
     options = [
         ("access_key", "Access Key", "Access key and Secret key are your identifiers for Amazon S3. Leave them empty for using the env variables."),
         ("secret_key", "Secret Key"),
+        ("access_token", "Access Token"),
         ("bucket_location", "Default Region"),
         ("gpg_passphrase", "Encryption password", "Encryption password is used to protect your files from reading\nby unauthorized persons while in transfer to S3"),
         ("gpg_command", "Path to GPG program"),
@@ -2503,6 +2504,7 @@ def main():
     optparser.add_option(      "--dump-config", dest="dump_config", action="store_true", help="Dump current configuration after parsing config files and command line options and exit.")
     optparser.add_option(      "--access_key", dest="access_key", help="AWS Access Key")
     optparser.add_option(      "--secret_key", dest="secret_key", help="AWS Secret Key")
+    optparser.add_option(      "--access_token", dest="access_token", help="AWS Access Token")
 
     optparser.add_option("-n", "--dry-run", dest="dry_run", action="store_true", help="Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though (only for file transfer commands)")
 
@@ -2650,7 +2652,7 @@ def main():
         sys.exit(EX_CONFIG)
 
     try:
-        cfg = Config(options.config, options.access_key, options.secret_key)
+        cfg = Config(options.config, options.access_key, options.secret_key, options.access_token)
     except IOError, e:
         if options.run_configure:
             cfg = Config()

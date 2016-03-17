@@ -27,6 +27,7 @@ class Config(object):
     access_key = ""
     secret_key = ""
     access_token = ""
+    _access_token_refresh = True
     host_base = "s3.amazonaws.com"
     host_bucket = "%(bucket)s.s3.amazonaws.com"
     kms_key = ""    #can't set this and Server Side Encryption at the same time
@@ -132,12 +133,12 @@ class Config(object):
     stats = False
 
     ## Creating a singleton
-    def __new__(self, configfile = None, access_key=None, secret_key=None):
+    def __new__(self, configfile = None, access_key=None, secret_key=None, access_token=None):
         if self._instance is None:
             self._instance = object.__new__(self)
         return self._instance
 
-    def __init__(self, configfile = None, access_key=None, secret_key=None):
+    def __init__(self, configfile = None, access_key=None, secret_key=None, access_token=None):
         if configfile:
             try:
                 self.read_config_file(configfile)
@@ -149,13 +150,23 @@ class Config(object):
             if access_key and secret_key:
                 self.access_key = access_key
                 self.secret_key = secret_key
+                
+            if access_token:
+                self.access_token = access_token
+                # Do not refresh the IAM role when an access token is provided.
+                self._access_token_refresh = False
 
             if len(self.access_key)==0:
                 env_access_key = os.environ.get("AWS_ACCESS_KEY", None) or os.environ.get("AWS_ACCESS_KEY_ID", None)
                 env_secret_key = os.environ.get("AWS_SECRET_KEY", None) or os.environ.get("AWS_SECRET_ACCESS_KEY", None)
+                env_access_token = os.environ.get("AWS_SESSION_TOKEN", None) or os.environ.get("AWS_SECURITY_TOKEN", None)
                 if env_access_key:
                     self.access_key = env_access_key
                     self.secret_key = env_secret_key
+                    if env_access_token:
+                        # Do not refresh the IAM role when an access token is provided.
+                        self._access_token_refresh = False
+                        self.access_token = env_access_token
                 else:
                     self.role_config()
 
@@ -193,10 +204,11 @@ class Config(object):
             raise
 
     def role_refresh(self):
-        try:
-            self.role_config()
-        except:
-            warning("Could not refresh role")
+        if self._access_token_refresh:
+            try:
+                self.role_config()
+            except:
+                warning("Could not refresh role")
 
     def env_config(self):
         cred_content = ""
