@@ -855,7 +855,7 @@ def cmd_info(args):
                 output(u"   Last mod:  %s" % info['headers']['last-modified'])
                 output(u"   MIME type: %s" % info['headers'].get('content-type', 'none'))
                 output(u"   Storage:   %s" % info['headers'].get('x-amz-storage-class', 'STANDARD'))
-                md5 = info['headers']['etag'].strip('"\'')
+                md5 = info['headers'].get('etag', '').strip('"\'')
                 try:
                     md5 = info['s3cmd-attrs']['md5']
                 except KeyError:
