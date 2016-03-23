@@ -1614,9 +1614,10 @@ def cmd_sync_local2remote(args):
         # the root of destination_base.
         # - Or like "/myPath/my_src_folder/" and the user want to have the sync
         # with the content of this folder
+        # Special case, "." for current folder.
         destbase_with_source_list = set()
         for source_arg in source_args:
-            if not source_arg.endswith('/'):
+            if not source_arg.endswith('/') and os.path.basename(source_arg) != '.':
                 destbase_with_source_list.add(os.path.join(destination_base,
                                                     os.path.basename(source_arg)))
             else:
