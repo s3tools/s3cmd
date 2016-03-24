@@ -48,8 +48,8 @@ from distutils.spawn import find_executable
 from ssl import SSLError
 
 def output(message):
-    sys.stdout.write(message + "\n")
-    sys.stdout.flush()
+    sys.stderr.write(message + "\n")
+    sys.stderr.flush()
 
 def check_args_type(args, type, verbose_type):
     """NOTE: This function looks like to not be used."""
@@ -2641,8 +2641,8 @@ def main():
     if options.quiet:
         try:
             f = open("/dev/null", "w")
-            sys.stdout.close()
-            sys.stdout = f
+            sys.stderr.close()
+            sys.stderr = f
         except IOError:
             warning(u"Unable to open /dev/null: --quiet disabled.")
 
