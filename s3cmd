@@ -1226,54 +1226,50 @@ def cmd_sync_remote2local(args):
                     response = s3.object_get(uri, dst_stream, dst_file, extra_label = seq_label)
                     dst_stream.close()
                     # download completed, rename the file to destination
+                    if os.name == "nt":
+                        # Windows is really a bad OS. Rename can't overwrite an existing file
+                        try:
+                            os.unlink(deunicodise(dst_file))
+                        except OSError:
+                            pass
                     os.rename(deunicodise(chkptfname), deunicodise(dst_file))
                     debug(u"renamed chkptfname=%s to dst_file=%s" % (chkptfname, dst_file))
             except OSError, exc:
-                if (exc.errno == errno.EISDIR or
-                      exc.errno == errno.ETXTBSY or
-                      exc.errno == errno.EPERM or
-                      exc.errno == errno.EACCES or
-                      exc.errno == errno.EBUSY or
-                      exc.errno == errno.EFBIG or
-                      exc.errno == errno.ENAMETOOLONG):
+                allow_partial = True
 
-                    if exc.errno == errno.EISDIR:
-                        error(u"Download of '%s' failed (Reason: %s is a directory)" % (file, dst_file))
-                    elif exc.errno == errno.ETXTBSY:
-                        error(u"Download of '%s' failed (Reason: %s is currently open for execute, cannot be overwritten)" % (file, dst_file))
-                    elif (exc.errno == errno.EPERM or
-                          exc.errno == errno.EACCES):
-                        error(u"Download of '%s' failed (Reason: %s permission denied)" % (file, dst_file))
-                    elif exc.errno == errno.EBUSY:
-                        error(u"Download of '%s' failed (Reason: %s is busy)" % (file, dst_file))
-                    elif exc.errno == errno.EFBIG:
-                        error(u"Download of '%s' failed (Reason: %s is too big)" % (file, dst_file))
-                    elif exc.errno == errno.ENAMETOOLONG:
-                        error(u"Download of '%s' failed (Reason: File Name is too long)" % file)
+                if exc.errno == errno.EISDIR:
+                    error(u"Download of '%s' failed (Reason: %s is a directory)" % (file, dst_file))
+                elif os.name != "nt" and exc.errno == errno.ETXTBSY:
+                    error(u"Download of '%s' failed (Reason: %s is currently open for execute, cannot be overwritten)" % (file, dst_file))
+                elif exc.errno == errno.EPERM or exc.errno == errno.EACCES:
+                    error(u"Download of '%s' failed (Reason: %s permission denied)" % (file, dst_file))
+                elif exc.errno == errno.EBUSY:
+                    error(u"Download of '%s' failed (Reason: %s is busy)" % (file, dst_file))
+                elif exc.errno == errno.EFBIG:
+                    error(u"Download of '%s' failed (Reason: %s is too big)" % (file, dst_file))
+                elif exc.errno == errno.ENAMETOOLONG:
+                    error(u"Download of '%s' failed (Reason: File Name is too long)" % file)
 
-                    try:
-                        # Try to remove the temp file if it exists
-                        if chkptfname:
-                            os.unlink(deunicodise(chkptfname))
-                    except:
-                        pass
-                    if cfg.stop_on_error:
-                        ret = EX_OSFILE
-                        error(u"Exiting now because of --stop-on-error")
-                        raise
+                elif (exc.errno == errno.ENOSPC or (os.name != "nt" and exc.errno == errno.EDQUOT)):
+                    error(u"Download of '%s' failed (Reason: No space left)" % file)
+                    allow_partial = False
+                else:
+                    error(u"Download of '%s' failed (Reason: Unknown OsError %d)" % (file, exc.errno))
+                    allow_partial = False
+
+                try:
+                    # Try to remove the temp file if it exists
+                    if chkptfname:
+                        os.unlink(deunicodise(chkptfname))
+                except:
+                    pass
+
+                if allow_partial and not cfg.stop_on_error:
                     ret = EX_PARTIAL
                     continue
-                elif (exc.errno == errno.ENOSPC or
-                      exc.errno == errno.EDQUOT):
-                    error(u"Download of '%s' failed (Reason: No space left)" % file)
-                    try:
-                        # Try to remove the temp file if it exists
-                        if chkptfname:
-                            os.unlink(deunicodise(chkptfname))
-                    except:
-                        pass
-                    raise
 
+                ret = EX_OSFILE
+                error(u"Exiting now because of --stop-on-error")
                 raise
             except S3DownloadError, exc:
                 error(u"Download of '%s' failed too many times (Last Reason: %s). "
