@@ -1269,7 +1269,10 @@ def cmd_sync_remote2local(args):
                     continue
 
                 ret = EX_OSFILE
-                error(u"Exiting now because of --stop-on-error")
+                if allow_partial:
+                    error(u"Exiting now because of --stop-on-error")
+                else:
+                    error(u"Exiting now because of fatal error")
                 raise
             except S3DownloadError, exc:
                 error(u"Download of '%s' failed too many times (Last Reason: %s). "
