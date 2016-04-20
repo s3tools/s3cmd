@@ -854,7 +854,8 @@ def cmd_info(args):
                 output(u"   File size: %s" % info['headers']['content-length'])
                 output(u"   Last mod:  %s" % info['headers']['last-modified'])
                 output(u"   MIME type: %s" % info['headers'].get('content-type', 'none'))
-                md5 = info['headers']['etag'].strip('"\'')
+                output(u"   Storage:   %s" % info['headers'].get('x-amz-storage-class', 'STANDARD'))
+                md5 = info['headers'].get('etag', '').strip('"\'')
                 try:
                     md5 = info['s3cmd-attrs']['md5']
                 except KeyError:
@@ -1225,54 +1226,53 @@ def cmd_sync_remote2local(args):
                     response = s3.object_get(uri, dst_stream, dst_file, extra_label = seq_label)
                     dst_stream.close()
                     # download completed, rename the file to destination
+                    if os.name == "nt":
+                        # Windows is really a bad OS. Rename can't overwrite an existing file
+                        try:
+                            os.unlink(deunicodise(dst_file))
+                        except OSError:
+                            pass
                     os.rename(deunicodise(chkptfname), deunicodise(dst_file))
                     debug(u"renamed chkptfname=%s to dst_file=%s" % (chkptfname, dst_file))
             except OSError, exc:
-                if (exc.errno == errno.EISDIR or
-                      exc.errno == errno.ETXTBSY or
-                      exc.errno == errno.EPERM or
-                      exc.errno == errno.EACCES or
-                      exc.errno == errno.EBUSY or
-                      exc.errno == errno.EFBIG or
-                      exc.errno == errno.ENAMETOOLONG):
+                allow_partial = True
 
-                    if exc.errno == errno.EISDIR:
-                        error(u"Download of '%s' failed (Reason: %s is a directory)" % (file, dst_file))
-                    elif exc.errno == errno.ETXTBSY:
-                        error(u"Download of '%s' failed (Reason: %s is currently open for execute, cannot be overwritten)" % (file, dst_file))
-                    elif (exc.errno == errno.EPERM or
-                          exc.errno == errno.EACCES):
-                        error(u"Download of '%s' failed (Reason: %s permission denied)" % (file, dst_file))
-                    elif exc.errno == errno.EBUSY:
-                        error(u"Download of '%s' failed (Reason: %s is busy)" % (file, dst_file))
-                    elif exc.errno == errno.EFBIG:
-                        error(u"Download of '%s' failed (Reason: %s is too big)" % (file, dst_file))
-                    elif exc.errno == errno.ENAMETOOLONG:
-                        error(u"Download of '%s' failed (Reason: File Name is too long)" % file)
+                if exc.errno == errno.EISDIR:
+                    error(u"Download of '%s' failed (Reason: %s is a directory)" % (file, dst_file))
+                elif os.name != "nt" and exc.errno == errno.ETXTBSY:
+                    error(u"Download of '%s' failed (Reason: %s is currently open for execute, cannot be overwritten)" % (file, dst_file))
+                elif exc.errno == errno.EPERM or exc.errno == errno.EACCES:
+                    error(u"Download of '%s' failed (Reason: %s permission denied)" % (file, dst_file))
+                elif exc.errno == errno.EBUSY:
+                    error(u"Download of '%s' failed (Reason: %s is busy)" % (file, dst_file))
+                elif exc.errno == errno.EFBIG:
+                    error(u"Download of '%s' failed (Reason: %s is too big)" % (file, dst_file))
+                elif exc.errno == errno.ENAMETOOLONG:
+                    error(u"Download of '%s' failed (Reason: File Name is too long)" % file)
 
-                    try:
-                        # Try to remove the temp file if it exists
-                        if chkptfname:
-                            os.unlink(deunicodise(chkptfname))
-                    except:
-                        pass
-                    if cfg.stop_on_error:
-                        ret = EX_OSFILE
-                        error(u"Exiting now because of --stop-on-error")
-                        raise
+                elif (exc.errno == errno.ENOSPC or (os.name != "nt" and exc.errno == errno.EDQUOT)):
+                    error(u"Download of '%s' failed (Reason: No space left)" % file)
+                    allow_partial = False
+                else:
+                    error(u"Download of '%s' failed (Reason: Unknown OsError %d)" % (file, exc.errno))
+                    allow_partial = False
+
+                try:
+                    # Try to remove the temp file if it exists
+                    if chkptfname:
+                        os.unlink(deunicodise(chkptfname))
+                except:
+                    pass
+
+                if allow_partial and not cfg.stop_on_error:
                     ret = EX_PARTIAL
                     continue
-                elif (exc.errno == errno.ENOSPC or
-                      exc.errno == errno.EDQUOT):
-                    error(u"Download of '%s' failed (Reason: No space left)" % file)
-                    try:
-                        # Try to remove the temp file if it exists
-                        if chkptfname:
-                            os.unlink(deunicodise(chkptfname))
-                    except:
-                        pass
-                    raise
 
+                ret = EX_OSFILE
+                if allow_partial:
+                    error(u"Exiting now because of --stop-on-error")
+                else:
+                    error(u"Exiting now because of fatal error")
                 raise
             except S3DownloadError, exc:
                 error(u"Download of '%s' failed too many times (Last Reason: %s). "
@@ -1613,9 +1613,10 @@ def cmd_sync_local2remote(args):
         # the root of destination_base.
         # - Or like "/myPath/my_src_folder/" and the user want to have the sync
         # with the content of this folder
+        # Special case, "." for current folder.
         destbase_with_source_list = set()
         for source_arg in source_args:
-            if not source_arg.endswith('/'):
+            if not source_arg.endswith('/') and os.path.basename(source_arg) != '.':
                 destbase_with_source_list.add(os.path.join(destination_base,
                                                     os.path.basename(source_arg)))
             else:
@@ -1734,11 +1735,11 @@ def cmd_sync_local2remote(args):
               if len(default_index_file) < 1:
                   default_index_file = None
 
-        result = cf.InvalidateObjects(destination_base_uri, uploaded_objects_list, default_index_file, cfg.invalidate_default_index_on_cf, cfg.invalidate_default_index_root_on_cf)
-        if result['status'] == 201:
-            output("Created invalidation request for %d paths" % len(uploaded_objects_list))
-            output("Check progress with: s3cmd cfinvalinfo cf://%s/%s" % (result['dist_id'], result['request_id']))
-
+        results = cf.InvalidateObjects(destination_base_uri, uploaded_objects_list, default_index_file, cfg.invalidate_default_index_on_cf, cfg.invalidate_default_index_root_on_cf)
+        for result in results:
+            if result['status'] == 201:
+                output(u"Created invalidation request for %d paths" % len(uploaded_objects_list))
+                output(u"Check progress with: s3cmd cfinvalinfo cf://%s/%s" % (result['dist_id'], result['request_id']))
 
     # main execution
     s3 = S3(cfg)
@@ -2472,7 +2473,7 @@ class MyHelpFormatter(IndentedHelpFormatter):
 
 def main():
     global cfg
-
+    cfg = Config()
     commands_list = get_commands_list()
     commands = {}
 
@@ -2502,6 +2503,7 @@ def main():
     optparser.add_option(      "--dump-config", dest="dump_config", action="store_true", help="Dump current configuration after parsing config files and command line options and exit.")
     optparser.add_option(      "--access_key", dest="access_key", help="AWS Access Key")
     optparser.add_option(      "--secret_key", dest="secret_key", help="AWS Secret Key")
+    optparser.add_option(      "--access_token", dest="access_token", help="AWS Access Token")
 
     optparser.add_option("-n", "--dry-run", dest="dry_run", action="store_true", help="Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though (only for file transfer commands)")
 
@@ -2544,6 +2546,8 @@ def main():
 
     optparser.add_option(      "--files-from", dest="files_from", action="append", metavar="FILE", help="Read list of source-file names from FILE. Use - to read from stdin.")
     optparser.add_option(      "--region", "--bucket-location", metavar="REGION", dest="bucket_location", help="Region to create bucket in. As of now the regions are: us-east-1, us-west-1, us-west-2, eu-west-1, eu-central-1, ap-northeast-1, ap-southeast-1, ap-southeast-2, sa-east-1")
+    optparser.add_option(      "--host", metavar="HOSTNAME", dest="host_base", help="HOSTNAME:PORT for S3 endpoint (default: %s, alternatives such as s3-eu-west-1.amazonaws.com). You should also set --host-bucket." % (cfg.host_base))
+    optparser.add_option(      "--host-bucket", dest="host_bucket", help="DNS-style bucket+hostname:port template for accessing a bucket (default: %s)" % (cfg.host_bucket))
     optparser.add_option(      "--reduced-redundancy", "--rr", dest="reduced_redundancy", action="store_true", help="Store object with 'Reduced redundancy'. Lower per-GB price. [put, cp, mv]")
     optparser.add_option(      "--no-reduced-redundancy", "--no-rr", dest="reduced_redundancy", action="store_false", help="Store object without 'Reduced redundancy'. Higher per-GB price. [put, cp, mv]")
     optparser.add_option(      "--storage-class", dest="storage_class", action="store", metavar="CLASS", help="Store object with specified CLASS (STANDARD, STANDARD_IA, or REDUCED_REDUNDANCY). Lower per-GB price. [put, cp, mv]")
@@ -2636,7 +2640,6 @@ def main():
     if options.quiet:
         try:
             f = open("/dev/null", "w")
-            sys.stdout.close()
             sys.stdout = f
         except IOError:
             warning(u"Unable to open /dev/null: --quiet disabled.")
@@ -2647,7 +2650,7 @@ def main():
         sys.exit(EX_CONFIG)
 
     try:
-        cfg = Config(options.config, options.access_key, options.secret_key)
+        cfg = Config(options.config, options.access_key, options.secret_key, options.access_token)
     except IOError, e:
         if options.run_configure:
             cfg = Config()
@@ -2724,7 +2727,8 @@ def main():
 
     ## Special handling for tri-state options (True, False, None)
     cfg.update_option("enable", options.enable)
-    cfg.update_option("acl_public", options.acl_public)
+    if options.acl_public is not None:
+        cfg.update_option("acl_public", options.acl_public)
 
     ## Check multipart chunk constraints
     if cfg.multipart_chunk_size_mb < MultiPartUpload.MIN_CHUNK_SIZE_MB:

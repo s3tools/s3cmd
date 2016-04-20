@@ -112,18 +112,30 @@ class http_connection(object):
 
     @staticmethod
     def _https_connection(hostname, port=None):
+        check_hostname = True
         try:
             context = http_connection._ssl_context()
             # S3's wildcart certificate doesn't work with DNS-style named buckets.
-            if (hostname.endswith('.amazonaws.com') or hostname.endswith('.amazonaws.com.cn')) and context:
+            if (hostname.endswith('.amazonaws.com') or hostname.endswith('.amazonaws.com.cn')):
                 # this merely delays running the hostname check until
                 # after the connection is made and we get control
                 # back.  We then run the same check, relaxed for S3's
                 # wildcard certificates.
-                context.check_hostname = False
-            conn = httplib.HTTPSConnection(hostname, port, context=context)
+                debug(u'Recognized AWS S3 host, disabling initial SSL hostname check')
+                check_hostname = False
+                if context:
+                    context.check_hostname = False
+            conn = httplib.HTTPSConnection(hostname, port, context=context, check_hostname=check_hostname)
+            debug(u'httplib.HTTPSConnection() has both context and check_hostname')
         except TypeError:
-            conn = httplib.HTTPSConnection(hostname, port)
+            try:
+                # in case check_hostname parameter is not present try again
+                conn = httplib.HTTPSConnection(hostname, port, context=context)
+                debug(u'httplib.HTTPSConnection() has only context')
+            except TypeError:
+                # in case even context parameter is not present try one last time
+                conn = httplib.HTTPSConnection(hostname, port)
+                debug(u'httplib.HTTPSConnection() has neither context nor check_hostname')
         return conn
 
     def __init__(self, id, hostname, ssl, cfg):

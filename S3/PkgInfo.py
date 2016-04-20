@@ -7,7 +7,7 @@
 ## Copyright: TGRMN Software and contributors
 
 package = "s3cmd"
-version = "1.6.0+"
+version = "1.6.1"
 url = "http://s3tools.org"
 license = "GNU GPL v2+"
 short_description = "Command line tool for managing Amazon S3 and CloudFront services"

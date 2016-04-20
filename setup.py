@@ -4,6 +4,20 @@
 import sys
 import os
 
+try:
+    import xml.etree.ElementTree
+    print "Using xml.etree.ElementTree for XML processing"
+except ImportError, e:
+    sys.stderr.write(str(e) + "\n")
+    try:
+        import elementtree.ElementTree
+        print "Using elementtree.ElementTree for XML processing"
+    except ImportError, e:
+        sys.stderr.write(str(e) + "\n")
+        sys.stderr.write("Please install ElementTree module from\n")
+        sys.stderr.write("http://effbot.org/zone/element-index.htm\n")
+        sys.exit(1)
+
 from setuptools import setup
 
 import S3.PkgInfo
@@ -13,33 +27,19 @@ if float("%d.%d" % sys.version_info[:2]) < 2.6:
     sys.stderr.write("S3cmd requires Python 2.6 or newer.\n")
     sys.exit(1)
 
-try:
-    import xml.etree.ElementTree as ET
-    print "Using xml.etree.ElementTree for XML processing"
-except ImportError, e:
-    sys.stderr.write(str(e) + "\n")
+## Remove 'MANIFEST' file to force
+## distutils to recreate it.
+## Only in "sdist" stage. Otherwise
+## it makes life difficult to packagers.
+if len(sys.argv) > 1 and sys.argv[1] == "sdist":
     try:
-        import elementtree.ElementTree as ET
-        print "Using elementtree.ElementTree for XML processing"
-    except ImportError, e:
-        sys.stderr.write(str(e) + "\n")
-        sys.stderr.write("Please install ElementTree module from\n")
-        sys.stderr.write("http://effbot.org/zone/element-index.htm\n")
-        sys.exit(1)
-
-try:
-    ## Remove 'MANIFEST' file to force
-    ## distutils to recreate it.
-    ## Only in "sdist" stage. Otherwise
-    ## it makes life difficult to packagers.
-    if sys.argv[1] == "sdist":
         os.unlink("MANIFEST")
-except:
-    pass
+    except OSError, e:
+        pass
 
 ## Re-create the manpage
 ## (Beware! Perl script on the loose!!)
-if sys.argv[1] == "sdist":
+if len(sys.argv) > 1 and sys.argv[1] == "sdist":
     if os.stat_result(os.stat("s3cmd.1")).st_mtime < os.stat_result(os.stat("s3cmd")).st_mtime:
         sys.stderr.write("Re-create man page first!\n")
         sys.stderr.write("Run: ./s3cmd --help | ./format-manpage.pl > s3cmd.1\n")
@@ -103,6 +103,6 @@ Authors:
     ],
 
     install_requires = ["python-dateutil", "python-magic"]
-    )
+)
 
 # vim:et:ts=4:sts=4:ai

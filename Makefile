@@ -1,5 +1,5 @@
-VERSION := 1.5.0
 SHELL  := /bin/bash
+VERSION := $(shell /usr/bin/env python2 -c 'from S3 import PkgInfo;print PkgInfo.version')
 SPEC   := s3cmd.spec
 COMMIT := $(shell git rev-parse HEAD)
 SHORTCOMMIT := $(shell git rev-parse --short=8 HEAD)

@@ -1,3 +1,11 @@
+s3cmd-1.6.1      - 2016-01-20
+===============
+* Added --host and --host-bucket
+* Added --stats
+* Fix for newer python 2.7.x SSL library updates
+* Many other bug fixes
+
+
 s3cmd-1.6.0      - 2015-09-18
 ===============
 * Support signed URL content disposition type
