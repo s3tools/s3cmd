@@ -54,6 +54,7 @@ class Config(object):
     acl_public = None
     acl_grants = []
     acl_revokes = []
+    swift_compatible = False
     proxy_host = ""
     proxy_port = 3128
     encrypt = False
