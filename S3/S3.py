@@ -1100,7 +1100,7 @@ class S3(object):
         except CertificateError:
             raise
         except (IOError, Exception), e:
-            if hasattr(e, 'errno') and e.errno != errno.EPIPE:
+            if hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET):
                 raise
             # close the connection and re-establish
             conn.counter = ConnMan.conn_max_counter
@@ -1366,7 +1366,7 @@ class S3(object):
         except (IOError, Exception), e:
             if self.config.progress_meter:
                 progress.done("failed")
-            if hasattr(e, 'errno') and e.errno != errno.EPIPE:
+            if hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET):
                 raise
             # close the connection and re-establish
             conn.counter = ConnMan.conn_max_counter
@@ -1449,7 +1449,7 @@ class S3(object):
         except (IOError, Exception), e:
             if self.config.progress_meter:
                 progress.done("failed")
-            if hasattr(e, 'errno') and e.errno != errno.EPIPE:
+            if hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET):
                 raise
             # close the connection and re-establish
             conn.counter = ConnMan.conn_max_counter
