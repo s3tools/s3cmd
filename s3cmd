@@ -42,6 +42,7 @@ import tempfile
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
+from multiprocessing.dummy import Pool
 from logging import debug, info, warning, error
 from distutils.spawn import find_executable
 
@@ -726,12 +727,21 @@ def cmd_object_restore(args):
     if cfg.restore_days < 1:
         raise ParameterError("You must restore a file for 1 or more days")
 
-    remote_list, exclude_list, remote_total_size = fetch_remote_list(args, require_attribs = False, recursive = cfg.recursive)
-
+    retries = cfg.request_retries
+    while retries:
+        try:
+            remote_list, exclude_list, remote_total_size = fetch_remote_list(args, require_attribs = False, recursive = cfg.recursive)
+            retries = 0
+        except socket.timeout:
+            warning(u"Retrying file list fetch.  Retries %d" % retries)
+            retries = retries - 1
+            if not retries:
+                # Give up
+                warning("Could not fetch file list, timeout.")
+                raise
     remote_count = len(remote_list)
 
     info(u"Summary: Restoring %d remote files for %d days" % (remote_count, cfg.restore_days))
-
     if cfg.dry_run:
         for key in exclude_list:
             output(u"exclude: %s" % key)
@@ -741,21 +751,37 @@ def cmd_object_restore(args):
         warning(u"Exiting now because of --dry-run")
         return EX_OK
 
+    fileurls = []
     for key in remote_list:
         item = remote_list[key]
 
-        uri = S3Uri(item['object_uri_str'])
         if not item['object_uri_str'].endswith("/"):
-            try:
-                response = s3.object_restore(S3Uri(item['object_uri_str']))
-                output(u"restore: '%s'" % item['object_uri_str'])
-            except S3Error, e:
-                if e.code == "RestoreAlreadyInProgress":
-                    warning("%s: %s" % (e.message, item['object_uri_str']))
-                else:
-                    raise e
+            fileurls.append(item['object_uri_str'])
         else:
             debug(u"Skipping directory since only files may be restored")
+
+    def do_restore(fileurl, retry_count=cfg.retries):
+        try:
+            response = s3.object_restore(S3Uri(fileurl))
+            output(u"restore: '%s'" % fileurl)
+        except S3Error, e:
+            if e.code == "RestoreAlreadyInProgress":
+                warning("%s: %s" % (e.message, fileurl]))
+            else:
+                raise e
+        except socket.timeout:
+            if retry_count:
+                do_restore(fileurl, retry_count-1)
+            else:
+                # give up
+                warning("Too many socket timeouts: %s" % fileurl)
+                raise
+
+    pool = Pool(cfg.pool_threads)
+    result = pool.map(do_restore, fileurls)
+    # close the pool and wait for the work to finish
+    pool.close()
+    pool.join()
     return EX_OK
 
 

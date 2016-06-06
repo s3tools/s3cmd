@@ -109,6 +109,8 @@ class Config(object):
     storage_class = ""
     follow_symlinks = False
     socket_timeout = 300
+    pool_threads = 128
+    request_retries = 5
     invalidate_on_cf = False
     # joseprio: new flags for default index invalidation
     invalidate_default_index_on_cf = False
@@ -150,7 +152,7 @@ class Config(object):
             if access_key and secret_key:
                 self.access_key = access_key
                 self.secret_key = secret_key
-                
+
             if access_token:
                 self.access_token = access_token
                 # Do not refresh the IAM role when an access token is provided.
