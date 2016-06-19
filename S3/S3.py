@@ -12,6 +12,7 @@ import time
 import errno
 import base64
 import mimetypes
+import pprint
 from xml.sax import saxutils
 from logging import debug, info, warning, error
 from stat import ST_SIZE
@@ -1074,15 +1075,15 @@ class S3(object):
         raise S3Error(response)
 
     def send_request(self, request, retries = _max_retries):
+        pp = pprint.PrettyPrinter()
         method_string, resource, headers = request.get_triplet()
-
+        response = {}
         debug("Processing request, please wait...")
         try:
             conn = ConnMan.get(self.get_hostname(resource['bucket']))
             uri = self.format_uri(resource)
             debug("Sending request method_string=%r, uri=%r, headers=%r, body=(%i bytes)" % (method_string, uri, headers, len(request.body or "")))
             conn.c.request(method_string, uri, request.body, headers)
-            response = {}
             http_response = conn.c.getresponse()
             response["status"] = http_response.status
             response["reason"] = http_response.reason
@@ -1091,15 +1092,9 @@ class S3(object):
             if response["headers"].has_key("x-amz-meta-s3cmd-attrs"):
                 attrs = parse_attrs_header(response["headers"]["x-amz-meta-s3cmd-attrs"])
                 response["s3cmd-attrs"] = attrs
-            debug("Response: " + str(response))
             ConnMan.put(conn)
-        except ParameterError, e:
-            raise
-        except OSError:
-            raise
-        except CertificateError:
-            raise
         except (IOError, Exception), e:
+            debug("Response:\n" + pp.pformat(response))
             if hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET):
                 raise
             # close the connection and re-establish
@@ -1112,6 +1107,12 @@ class S3(object):
                 return self.send_request(request, retries - 1)
             else:
                 raise S3RequestError("Request failed for: %s" % resource['uri'])
+
+        except:
+            debug("Response:\n" + pp.pformat(response))
+            raise
+
+        debug("Response:\n" + pp.pformat(response))
 
         if response["status"] == 400:
             return self._http_400_handler(request, response, self.send_request, request)
