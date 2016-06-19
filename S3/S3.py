@@ -185,7 +185,7 @@ class S3Request(object):
             ## Default to bucket part of DNS.
             resource_uri = self.resource['uri']
             ## If bucket is not part of DNS assume path style to complete the request.
-            if not check_bucket_name_dns_support(self.s3.config.host_bucket, self.resource['bucket']):
+            if self.resource['bucket'] and not check_bucket_name_dns_support(self.s3.config.host_bucket, self.resource['bucket']):
                 if self.resource['bucket']:
                     resource_uri = "/" + self.resource['bucket'] + self.resource['uri']
 
