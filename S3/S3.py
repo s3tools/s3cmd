@@ -292,19 +292,20 @@ class S3(object):
         response["list"] = getListFromXml(response["data"], "Bucket")
         return response
 
-    def bucket_list(self, bucket, prefix = None, recursive = None, uri_params = {}):
+    def bucket_list(self, bucket, prefix = None, recursive = None, uri_params = {}, limit = -1):
         item_list = []
         prefixes = []
-        for dirs, objects in self.bucket_list_streaming(bucket, prefix, recursive, uri_params):
+        for truncated, dirs, objects in self.bucket_list_streaming(bucket, prefix, recursive, uri_params, limit):
             item_list.extend(objects)
             prefixes.extend(dirs)
 
         response = {}
         response['list'] = item_list
         response['common_prefixes'] = prefixes
+        response['truncated'] = truncated
         return response
 
-    def bucket_list_streaming(self, bucket, prefix = None, recursive = None, uri_params = {}):
+    def bucket_list_streaming(self, bucket, prefix = None, recursive = None, uri_params = {}, limit = -1):
         """ Generator that produces <dir_list>, <object_list> pairs of groups of content of a specified bucket. """
         def _list_truncated(data):
             ## <IsTruncated> can either be "true" or "false" or be missing completely
@@ -321,25 +322,38 @@ class S3(object):
         truncated = True
         prefixes = []
 
+        num_objects = 0
+        num_prefixes = 0
+        max_keys = limit
         while truncated:
-            response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params)
+            response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params, max_keys)
             current_list = _get_contents(response["data"])
             current_prefixes = _get_common_prefixes(response["data"])
+            num_objects += len(current_list)
+            num_prefixes += len(current_prefixes)
+            if limit > num_objects + num_prefixes:
+                max_keys = limit - (num_objects + num_prefixes)
             truncated = _list_truncated(response["data"])
             if truncated:
-                if current_list:
-                    uri_params['marker'] = self.urlencode_string(current_list[-1]["Key"])
+                if limit == -1 or num_objects + num_prefixes < limit:
+                    if current_list:
+                        uri_params['marker'] = self.urlencode_string(current_list[-1]["Key"])
+                    else:
+                        uri_params['marker'] = self.urlencode_string(current_prefixes[-1]["Prefix"])
+                    debug("Listing continues after '%s'" % uri_params['marker'])
                 else:
-                    uri_params['marker'] = self.urlencode_string(current_prefixes[-1]["Prefix"])
-                debug("Listing continues after '%s'" % uri_params['marker'])
+                    yield truncated, current_prefixes, current_list
+                    break
 
-            yield current_prefixes, current_list
+            yield truncated, current_prefixes, current_list
 
-    def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = {}):
+    def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = {}, max_keys = -1):
         if prefix:
             uri_params['prefix'] = self.urlencode_string(prefix)
         if not self.config.recursive and not recursive:
             uri_params['delimiter'] = "/"
+        if max_keys != -1:
+            uri_params['max-keys'] = str(max_keys)
         request = self.create_request("BUCKET_LIST", bucket = bucket, **uri_params)
         response = self.send_request(request)
         #debug(response)
