@@ -173,7 +173,7 @@ def subcmd_bucket_list(s3, uri):
             "uri": uri.compose_uri(bucket, prefix["Prefix"])})
 
     for object in response["list"]:
-        md5 = object['ETag'].strip('"\'')
+        md5 = object.get('ETag', '').strip('"\'')
         storageclass = object.get('StorageClass','')
 
         if cfg.list_md5:
