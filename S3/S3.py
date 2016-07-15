@@ -919,6 +919,14 @@ class S3(object):
         response = self.send_request(request)
         return response
 
+    def get_lifecycle_policy(self, uri):
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?lifecycle")
+        debug(u"get_lifecycle_policy(%s)" % uri)
+        response = self.send_request(request)
+
+        debug(u"%s: Got Lifecycle Policy" % response['status'])
+        return response
+
     def delete_lifecycle_policy(self, uri):
         request = self.create_request("BUCKET_DELETE", uri = uri, extra = "?lifecycle")
         debug(u"delete_lifecycle_policy(%s)" % uri)

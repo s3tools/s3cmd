@@ -35,6 +35,7 @@ $ pip install python-dateutil
 
 import Config
 import Exceptions
+import xml.dom.minidom
 
 # hashlib backported to python 2.4 / 2.5 is not compatible with hmac!
 if sys.version_info[0] == 2 and sys.version_info[1] < 6:
@@ -69,6 +70,13 @@ def parseNodes(nodes):
         retval.append(retval_item)
     return retval
 __all__.append("parseNodes")
+
+def getPrettyFromXml(xmlstr):
+    xmlparser = xml.dom.minidom.parseString(xmlstr)
+    return xmlparser.toprettyxml()
+
+__all__.append("getPrettyFromXml")
+
 
 def stripNameSpace(xml):
     """
