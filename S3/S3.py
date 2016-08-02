@@ -506,6 +506,8 @@ class S3(object):
             raise ParameterError("You must specify --mime-type or --default-mime-type for files uploaded from stdin.")
 
         if self.config.guess_mime_type:
+            if self.config.follow_symlinks:
+                filename = unicodise(os.path.realpath(deunicodise(filename)))
             if self.config.use_mime_magic:
                 (content_type, content_charset) = mime_magic(filename)
             else:
