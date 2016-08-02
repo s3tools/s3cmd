@@ -14,6 +14,7 @@ from logging import debug
 
 from Config import Config
 from Exceptions import ParameterError
+from Utils import getBucketFromHostname
 
 if not 'CertificateError ' in ssl.__dict__:
     class CertificateError(Exception):
@@ -71,7 +72,7 @@ class http_connection(object):
         http_connection.context_set = True
         return context
 
-    def match_hostname_aws(self, cert, e):
+    def forgive_wildcard_cert(self, cert, e):
         """
         Wildcard matching for *.s3.amazonaws.com and similar per region.
 
@@ -88,14 +89,21 @@ class http_connection(object):
         mybucket.example.com.s3.amazonaws.com to be considered a valid
         hostname for the *.s3.amazonaws.com wildcard cert, and for the
         region-specific *.s3-[region].amazonaws.com wildcard cert.
+
+        We also forgive non-S3 wildcard certificates should the
+        hostname match, to allow compatibility with other S3
+        API-compatible storage providers.
         """
-        debug(u'checking SSL subjectAltName against amazonaws.com')
+        debug(u'checking SSL subjectAltName as forgiving wildcard cert')
         san = cert.get('subjectAltName', ())
         for key, value in san:
             if key == 'DNS':
                 if value.startswith('*.s3') and \
                    (value.endswith('.amazonaws.com') and self.hostname.endswith('.amazonaws.com')) or \
                    (value.endswith('.amazonaws.com.cn') and self.hostname.endswith('.amazonaws.com.cn')):
+                    return
+                elif value == (Config.host_bucket % {'bucket': '*'}) and \
+                     self.hostname.endswith('.' + '.'.join(Config.host_bucket.split('.')[1:])):
                     return
         raise e
 
@@ -108,20 +116,21 @@ class http_connection(object):
         except ValueError: # empty SSL cert means underlying SSL library didn't validate it, we don't either.
             return
         except ssl.CertificateError, e:
-            self.match_hostname_aws(cert, e)
+            self.forgive_wildcard_cert(cert, e)
 
     @staticmethod
     def _https_connection(hostname, port=None):
         check_hostname = True
         try:
             context = http_connection._ssl_context()
-            # S3's wildcart certificate doesn't work with DNS-style named buckets.
-            if (hostname.endswith('.amazonaws.com') or hostname.endswith('.amazonaws.com.cn')):
+            # Wilcard certificates do not work with DNS-style named buckets.
+            bucket_name, success = getBucketFromHostname(hostname)
+            if ('.' in bucket_name and success):
                 # this merely delays running the hostname check until
                 # after the connection is made and we get control
                 # back.  We then run the same check, relaxed for S3's
                 # wildcard certificates.
-                debug(u'Recognized AWS S3 host, disabling initial SSL hostname check')
+                debug(u'Bucket name contains "." character, disabling initial SSL hostname check')
                 check_hostname = False
                 if context:
                     context.check_hostname = False
