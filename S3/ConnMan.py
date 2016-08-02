@@ -125,7 +125,7 @@ class http_connection(object):
             context = http_connection._ssl_context()
             # Wilcard certificates do not work with DNS-style named buckets.
             bucket_name, success = getBucketFromHostname(hostname)
-            if ('.' in bucket_name and success):
+            if success and '.' in bucket_name:
                 # this merely delays running the hostname check until
                 # after the connection is made and we get control
                 # back.  We then run the same check, relaxed for S3's
