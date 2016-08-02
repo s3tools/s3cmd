@@ -446,6 +446,23 @@ class S3(object):
 
         return response
 
+    def transition_info(self, uri, bucket_location = None):
+        bucket = uri.bucket()
+
+        request = self.create_request("BUCKET_LIST", bucket = bucket, extra="?lifecycle")
+        try:
+            response = self.send_request(request)
+            response['prefix'] = getTextFromXml(response['data'], ".//Rule//Prefix")
+            response['date'] = getTextFromXml(response['data'], ".//Rule//Transition//Date")
+            response['days'] = getTextFromXml(response['data'], ".//Rule//Transition//Days")
+            response['StorageClass'] = getTextFromXml(response['data'], ".//Rule//Transition//StorageClass")
+            return response
+        except S3Error, e:
+            if e.status == 404:
+                debug("Could not get /?lifecycle - lifecycle probably not configured for this bucket")
+                return None
+            raise
+
     def expiration_info(self, uri, bucket_location = None):
         bucket = uri.bucket()
 
@@ -919,6 +936,14 @@ class S3(object):
         request = self.create_request("BUCKET_CREATE", uri = uri,
                                       extra = "?requestPayment", body = body)
         response = self.send_request(request)
+        return response
+
+    def get_lifecycle_policy(self, uri):
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?lifecycle")
+        debug(u"get_lifecycle_policy(%s)" % uri)
+        response = self.send_request(request)
+
+        debug(u"%s: Got Lifecycle Policy" % response['status'])
         return response
 
     def delete_lifecycle_policy(self, uri):
