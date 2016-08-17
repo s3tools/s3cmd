@@ -6,6 +6,7 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
+import re
 import sys
 import httplib
 import ssl
@@ -110,7 +111,10 @@ class http_connection(object):
     def match_hostname(self):
         cert = self.c.sock.getpeercert()
         try:
-            ssl.match_hostname(cert, self.hostname)
+            if re.match('[^\:]+:[0-9]+', self.hostname):
+                ssl.match_hostname(cert, self.hostname.split(':')[0])
+            else:
+                ssl.match_hostname(cert, self.hostname)
         except AttributeError: # old ssl module doesn't have this function
             return
         except ValueError: # empty SSL cert means underlying SSL library didn't validate it, we don't either.
