@@ -471,13 +471,15 @@ def getBucketFromHostname(hostname):
 
     Returns bucket name and a boolean success flag.
     """
+    if "%(bucket)s" not in Config.Config().host_bucket:
+        return (hostname, False)
 
     # Create RE pattern from Config.host_bucket
     pattern = Config.Config().host_bucket % { 'bucket' : '(?P<bucket>.*)' }
     m = re.match(pattern, hostname, re.UNICODE)
     if not m:
         return (hostname, False)
-    return m.groups()[0], True
+    return m.group(1), True
 __all__.append("getBucketFromHostname")
 
 def getHostnameFromBucket(bucket):
