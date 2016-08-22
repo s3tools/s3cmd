@@ -2961,6 +2961,15 @@ if __name__ == '__main__':
         error("SSL certificate verification failure: %s" % e)
         sys.exit(EX_ACCESSDENIED)
 
+    except socket.gaierror, e:
+        # gaierror is a subset of IOError
+        # typically encountered error is:
+        # gaierror: [Errno -2] Name or service not known
+        error(e)
+        error("Connection Error: Error resolving a server hostname.\n"
+              "Please check the servers address specified in 'host_base', 'host_bucket', 'cloudfront_host', 'website_endpoint'")
+        sys.exit(EX_IOERR)
+
     except IOError, e:
         if e.errno == errno.EPIPE:
             # Fail silently on SIGPIPE. This likely means we wrote to a closed
