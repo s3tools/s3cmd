@@ -31,6 +31,7 @@ class Config(object):
     host_base = "s3.amazonaws.com"
     host_bucket = "%(bucket)s.s3.amazonaws.com"
     kms_key = ""    #can't set this and Server Side Encryption at the same time
+    # simpledb_host looks useless, legacy? to remove?
     simpledb_host = "sdb.amazonaws.com"
     cloudfront_host = "cloudfront.amazonaws.com"
     verbosity = logging.WARNING
@@ -332,6 +333,12 @@ class Config(object):
             except ValueError:
                 error("Config: value of option '%s' must be an integer, not '%s'" % (option, value))
                 return
+
+        elif option in ["host_base", "host_bucket", "cloudfront_host"]:
+            if value.startswith("http://"):
+                value = value[7:]
+            elif value.startswith("https://"):
+                value = value[8:]
 
 
         setattr(Config, option, value)
