@@ -1089,8 +1089,9 @@ class S3(object):
         method_string, resource, headers = request.get_triplet()
         response = {}
         debug("Processing request, please wait...")
+
+        conn = ConnMan.get(self.get_hostname(resource['bucket']))
         try:
-            conn = ConnMan.get(self.get_hostname(resource['bucket']))
             uri = self.format_uri(resource)
             debug("Sending request method_string=%r, uri=%r, headers=%r, body=(%i bytes)" % (method_string, uri, headers, len(request.body or "")))
             conn.c.request(method_string, uri, request.body, headers)
@@ -1119,6 +1120,7 @@ class S3(object):
                 raise S3RequestError("Request failed for: %s" % resource['uri'])
 
         except:
+            # Only KeyboardInterrupt and SystemExit will not be covered by Exception
             debug("Response:\n" + pp.pformat(response))
             raise
 
@@ -1352,8 +1354,9 @@ class S3(object):
         else:
             info("Receiving file '%s', please wait..." % filename)
         timestamp_start = time.time()
+
+        conn = ConnMan.get(self.get_hostname(resource['bucket']))
         try:
-            conn = ConnMan.get(self.get_hostname(resource['bucket']))
             conn.c.putrequest(method_string, self.format_uri(resource))
             for header in headers.keys():
                 conn.c.putheader(header, str(headers[header]))
