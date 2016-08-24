@@ -11,6 +11,7 @@ import httplib
 import ssl
 from threading import Semaphore
 from logging import debug
+import re
 
 from Config import Config
 from Exceptions import ParameterError
@@ -22,6 +23,10 @@ if not 'CertificateError ' in ssl.__dict__:
     ssl.CertificateError = CertificateError
 
 __all__ = [ "ConnMan" ]
+
+# Separate hostname and port in an url like: www.myhostname.com:9000/helloworld
+# Support hostname being an ipv4 or ipv6
+regex_hostname_port = re.compile(r'^(\[?[^/@]*\]?)(:[0-9]+)(?=[/@\Z])')
 
 class http_connection(object):
     context = None
@@ -72,7 +77,7 @@ class http_connection(object):
         http_connection.context_set = True
         return context
 
-    def forgive_wildcard_cert(self, cert, e):
+    def forgive_wildcard_cert(self, cert, hostname):
         """
         Wildcard matching for *.s3.amazonaws.com and similar per region.
 
@@ -96,27 +101,33 @@ class http_connection(object):
         """
         debug(u'checking SSL subjectAltName as forgiving wildcard cert')
         san = cert.get('subjectAltName', ())
+        cleaned_host_bucket_config = regex_hostname_port.sub(r'\1', Config.host_bucket, count=1)
         for key, value in san:
             if key == 'DNS':
                 if value.startswith('*.s3') and \
-                   (value.endswith('.amazonaws.com') and self.hostname.endswith('.amazonaws.com')) or \
-                   (value.endswith('.amazonaws.com.cn') and self.hostname.endswith('.amazonaws.com.cn')):
-                    return
-                elif value == (Config.host_bucket % {'bucket': '*'}) and \
-                     self.hostname.endswith('.' + '.'.join(Config.host_bucket.split('.')[1:])):
-                    return
-        raise e
+                   (value.endswith('.amazonaws.com') and hostname.endswith('.amazonaws.com')) or \
+                   (value.endswith('.amazonaws.com.cn') and hostname.endswith('.amazonaws.com.cn')):
+                    return True
+                elif value == cleaned_host_bucket_config % \
+                               {'bucket': '*', 'location': Config.bucket_location} and \
+                     hostname.endswith(cleaned_host_bucket_config % \
+                                       {'bucket': '', 'location': Config.bucket_location}):
+                    return True
+        return False
 
     def match_hostname(self):
         cert = self.c.sock.getpeercert()
+        # Strip the port info if hostname is like: www.myserver.com:9000/subpath
+        cleaned_hostname = regex_hostname_port.sub(r'\1', self.hostname, count=1)
         try:
-            ssl.match_hostname(cert, self.hostname)
+            ssl.match_hostname(cert, cleaned_hostname)
         except AttributeError: # old ssl module doesn't have this function
             return
         except ValueError: # empty SSL cert means underlying SSL library didn't validate it, we don't either.
             return
         except ssl.CertificateError, e:
-            self.forgive_wildcard_cert(cert, e)
+            if not self.forgive_wildcard_cert(cert, cleaned_hostname):
+                raise e
 
     @staticmethod
     def _https_connection(hostname, port=None):
@@ -220,4 +231,3 @@ class ConnMan(object):
         ConnMan.conn_pool[conn.id].append(conn)
         ConnMan.conn_pool_sem.release()
         debug("ConnMan.put(): connection put back to pool (%s#%d)" % (conn.id, conn.counter))
-
