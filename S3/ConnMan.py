@@ -11,7 +11,7 @@ import httplib
 import ssl
 from threading import Semaphore
 from logging import debug
-import re
+from urlparse import urlparse
 
 from Config import Config
 from Exceptions import ParameterError
@@ -24,9 +24,6 @@ if not 'CertificateError ' in ssl.__dict__:
 
 __all__ = [ "ConnMan" ]
 
-# Separate hostname and port in an url like: www.myhostname.com:9000/helloworld
-# Support hostname being an ipv4 or ipv6
-regex_hostname_port = re.compile(r'^(\[?[^/@]*\]?)(:[0-9]+)(?=[/@\Z])')
 
 class http_connection(object):
     context = None
@@ -66,7 +63,7 @@ class http_connection(object):
         cafile = cfg.ca_certs_file
         if cafile == "":
             cafile = None
-        debug(u"Using ca_certs_file %s" % cafile)
+        debug(u"Using ca_certs_file %s", cafile)
 
         if cfg.check_ssl_certificate:
             context = http_connection._ssl_verified_context(cafile)
@@ -101,7 +98,7 @@ class http_connection(object):
         """
         debug(u'checking SSL subjectAltName as forgiving wildcard cert')
         san = cert.get('subjectAltName', ())
-        cleaned_host_bucket_config = regex_hostname_port.sub(r'\1', Config.host_bucket, count=1)
+        cleaned_host_bucket_config = urlparse('https://' + Config.host_bucket).hostname
         for key, value in san:
             if key == 'DNS':
                 if value.startswith('*.s3') and \
@@ -117,16 +114,14 @@ class http_connection(object):
 
     def match_hostname(self):
         cert = self.c.sock.getpeercert()
-        # Strip the port info if hostname is like: www.myserver.com:9000/subpath
-        cleaned_hostname = regex_hostname_port.sub(r'\1', self.hostname, count=1)
         try:
-            ssl.match_hostname(cert, cleaned_hostname)
+            ssl.match_hostname(cert, self.hostname)
         except AttributeError: # old ssl module doesn't have this function
             return
         except ValueError: # empty SSL cert means underlying SSL library didn't validate it, we don't either.
             return
         except ssl.CertificateError, e:
-            if not self.forgive_wildcard_cert(cert, cleaned_hostname):
+            if not self.forgive_wildcard_cert(cert, self.hostname):
                 raise e
 
     @staticmethod
@@ -162,24 +157,27 @@ class http_connection(object):
         self.ssl = ssl
         self.id = id
         self.counter = 0
-        self.hostname = hostname
+        # Whatever is the input, ensure to have clean hostname and port
+        parsed_hostname = urlparse('https://' + hostname)
+        self.hostname = parsed_hostname.hostname
+        self.port = parsed_hostname.port
 
-        if not ssl:
-            if cfg.proxy_host != "":
-                self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
-                debug(u'proxied HTTPConnection(%s, %s)' % (cfg.proxy_host, cfg.proxy_port))
-            else:
-                self.c = httplib.HTTPConnection(hostname)
-                debug(u'non-proxied HTTPConnection(%s)' % hostname)
-        else:
-            if cfg.proxy_host != "":
-                self.c = http_connection._https_connection(cfg.proxy_host, cfg.proxy_port)
-                self.c.set_tunnel(hostname)
-                debug(u'proxied HTTPSConnection(%s, %s)' % (cfg.proxy_host, cfg.proxy_port))
-                debug(u'tunnel to %s' % hostname)
-            else:
+        if not cfg.proxy_host:
+            if ssl:
                 self.c = http_connection._https_connection(hostname)
-                debug(u'non-proxied HTTPSConnection(%s)' % hostname)
+                debug(u'non-proxied HTTPSConnection(%s, %s)', self.hostname, self.port)
+            else:
+                self.c = httplib.HTTPConnection(self.hostname, self.port)
+                debug(u'non-proxied HTTPConnection(%s, %s)', self.hostname, self.port)
+        else:
+            if ssl:
+                self.c = http_connection._https_connection(cfg.proxy_host, cfg.proxy_port)
+                debug(u'proxied HTTPSConnection(%s, %s)', cfg.proxy_host, cfg.proxy_port)
+            else:
+                self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
+                debug(u'proxied HTTPConnection(%s, %s)', cfg.proxy_host, cfg.proxy_port)
+            self.c.set_tunnel(self.hostname, self.port)
+            debug(u'tunnel to %s, %s', self.hostname, self.port)
 
 
 class ConnMan(object):
