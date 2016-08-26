@@ -2904,6 +2904,8 @@ if __name__ == '__main__':
         ## Our modules
         ## Keep them in try/except block to
         ## detect any syntax errors in there
+        reload(sys)
+        sys.setdefaultencoding('utf-8')
         from S3.ExitCodes import *
         from S3.Exceptions import *
         from S3 import PkgInfo
