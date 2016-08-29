@@ -280,7 +280,7 @@ class S3(object):
             uri = "/%s%s" % (resource['bucket'], resource['uri'])
         else:
             uri = resource['uri']
-        if self.config.proxy_host != "":
+        if self.config.proxy_host != "" and not self.config.use_https:
             uri = "http://%s%s" % (self.get_hostname(resource['bucket']), uri)
         debug('format_uri(): ' + uri)
         return uri
