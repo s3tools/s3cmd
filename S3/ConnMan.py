@@ -162,6 +162,20 @@ class http_connection(object):
         self.hostname = parsed_hostname.hostname
         self.port = parsed_hostname.port
 
+        """
+        History note:
+        In a perfect world, or in the future:
+        - All http proxies would support CONNECT/tunnel, and so there would be no need
+        for using "absolute URIs" in format_uri.
+        - All s3-like servers would work well whether using relative or ABSOLUTE URIs.
+        But currently, what is currently common:
+        - Proxies without support for CONNECT for http, and so "absolute URIs" have to
+        be used.
+        - Proxies with support for CONNECT for httpS but s3-like servers having issues
+        with "absolute URIs", so relative one still have to be used as the requests will
+        pass as-is, through the proxy because of the CONNECT mode.
+        """
+
         if not cfg.proxy_host:
             if ssl:
                 self.c = http_connection._https_connection(hostname)
@@ -173,11 +187,12 @@ class http_connection(object):
             if ssl:
                 self.c = http_connection._https_connection(cfg.proxy_host, cfg.proxy_port)
                 debug(u'proxied HTTPSConnection(%s, %s)', cfg.proxy_host, cfg.proxy_port)
+                self.c.set_tunnel(self.hostname, self.port)
+                debug(u'tunnel to %s, %s', self.hostname, self.port)
             else:
                 self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
                 debug(u'proxied HTTPConnection(%s, %s)', cfg.proxy_host, cfg.proxy_port)
-            self.c.set_tunnel(self.hostname, self.port)
-            debug(u'tunnel to %s, %s', self.hostname, self.port)
+                # No tunnel here for the moment
 
 
 class ConnMan(object):
