@@ -6,7 +6,7 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
-from Utils import getTreeFromXml
+from Utils import getTreeFromXml, deunicodise
 
 try:
     import xml.etree.ElementTree as ET
@@ -25,11 +25,11 @@ class Grantee(object):
         self.permission = None
 
     def __repr__(self):
-        return 'Grantee("%(tag)s", "%(name)s", "%(permission)s")' % {
+        return deunicodise('Grantee("%(tag)s", "%(name)s", "%(permission)s")' % {
             "tag" : self.tag,
             "name" : self.name,
             "permission" : self.permission
-        }
+        })
 
     def isAllUsers(self):
         return self.tag == "URI" and self.name == Grantee.ALL_USERS_URI

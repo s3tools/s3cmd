@@ -34,7 +34,7 @@ def sign_string_v2(string_to_sign):
 
     Useful for REST authentication. See http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html
     """
-    signature = base64.encodestring(hmac.new(Config.Config().secret_key, string_to_sign, sha1).digest()).strip()
+    signature = base64.encodestring(hmac.new(Config.Config().secret_key, deunicodise(string_to_sign), sha1).digest()).strip()
     return signature
 __all__.append("sign_string_v2")
 

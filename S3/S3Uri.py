@@ -42,7 +42,7 @@ class S3Uri(object):
         return self.uri()
 
     def __repr__(self):
-        return "<%s: %s>" % (self.__class__.__name__, self.__unicode__())
+        return deunicodise("<%s: %s>" % (self.__class__.__name__, self.__unicode__()))
 
     def public_url(self):
         raise ValueError("This S3 URI does not have Anonymous URL representation")
