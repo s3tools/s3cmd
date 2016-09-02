@@ -2160,6 +2160,8 @@ def run_configure(config_file, args):
         ("access_key", "Access Key", "Access key and Secret key are your identifiers for Amazon S3. Leave them empty for using the env variables."),
         ("secret_key", "Secret Key"),
         ("bucket_location", "Default Region"),
+        ("host_base", "S3 Endpoint", "Use \"s3.amazonaws.com\" for S3 Endpoint and not modify it to the target Amazon S3."),
+        ("host_bucket", "DNS-style bucket+hostname:port template for accessing a bucket", "Use \"%(bucket)s.s3.amazonaws.com\" to the target Amazon S3. \"%(bucket)s\" and \"%(location)s\" vars can be used\nif the target S3 system supports dns based buckets."),
         ("gpg_passphrase", "Encryption password", "Encryption password is used to protect your files from reading\nby unauthorized persons while in transfer to S3"),
         ("gpg_command", "Path to GPG program"),
         ("use_https", "Use HTTPS protocol", "When using secure HTTPS protocol all communication with Amazon S3\nservers is protected from 3rd party eavesdropping. This method is\nslower than plain HTTP, and can only be proxied with Python 2.7 or newer"),
