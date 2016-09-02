@@ -275,11 +275,13 @@ class S3(object):
     def set_hostname(self, bucket, redir_hostname):
         self.redir_map[bucket] = redir_hostname
 
-    def format_uri(self, resource):
+    def format_uri(self, resource, base_path=None):
         if resource['bucket'] and not check_bucket_name_dns_support(self.config.host_bucket, resource['bucket']):
             uri = "/%s%s" % (resource['bucket'], resource['uri'])
         else:
             uri = resource['uri']
+        if base_path:
+            uri = "%s%s" % (base_path, uri)
         if self.config.proxy_host != "" and not self.config.use_https:
             uri = "http://%s%s" % (self.get_hostname(resource['bucket']), uri)
         debug('format_uri(): ' + uri)
@@ -1106,7 +1108,7 @@ class S3(object):
 
         conn = ConnMan.get(self.get_hostname(resource['bucket']))
         try:
-            uri = self.format_uri(resource)
+            uri = self.format_uri(resource, conn.path)
             debug("Sending request method_string=%r, uri=%r, headers=%r, body=(%i bytes)" % (method_string, uri, headers, len(request.body or "")))
             conn.c.request(method_string, uri, request.body, headers)
             http_response = conn.c.getresponse()
@@ -1201,7 +1203,7 @@ class S3(object):
         method_string, resource, headers = request.get_triplet()
         try:
             conn = ConnMan.get(self.get_hostname(resource['bucket']))
-            conn.c.putrequest(method_string, self.format_uri(resource))
+            conn.c.putrequest(method_string, self.format_uri(resource, conn.path))
             for header in headers.keys():
                 conn.c.putheader(header, str(headers[header]))
             conn.c.endheaders()
@@ -1371,7 +1373,7 @@ class S3(object):
 
         conn = ConnMan.get(self.get_hostname(resource['bucket']))
         try:
-            conn.c.putrequest(method_string, self.format_uri(resource))
+            conn.c.putrequest(method_string, self.format_uri(resource, conn.path))
             for header in headers.keys():
                 conn.c.putheader(header, str(headers[header]))
             if start_position > 0:
