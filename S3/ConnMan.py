@@ -161,6 +161,11 @@ class http_connection(object):
         parsed_hostname = urlparse('https://' + hostname)
         self.hostname = parsed_hostname.hostname
         self.port = parsed_hostname.port
+        if parsed_hostname.path and parsed_hostname.path != '/':
+            self.path = parsed_hostname.path.rstrip('/')
+            debug(u'endpoint path set to %s', self.path)
+        else:
+            self.path = None
 
         """
         History note:
