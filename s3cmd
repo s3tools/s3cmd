@@ -94,7 +94,7 @@ def subcmd_bucket_usage(s3, uri):
     object_count = 0
     extra_info = u''
     try:
-        for _, objects in s3.bucket_list_streaming(uri.bucket(), prefix=uri.object(), recursive=True):
+        for _, _, objects in s3.bucket_list_streaming(uri.bucket(), prefix=uri.object(), recursive=True):
             for obj in objects:
                 bucket_size += int(obj["Size"])
                 object_count += 1
@@ -621,7 +621,7 @@ def subcmd_batch_del_iterative(uri_str = None, bucket = None):
 
     deleted_bytes = deleted_count = 0
 
-    for _, to_delete in s3.bucket_list_streaming(bucket, prefix=uri.object(), recursive=True):
+    for _, _, to_delete in s3.bucket_list_streaming(bucket, prefix=uri.object(), recursive=True):
         if not to_delete:
             continue
         if not cfg.dry_run:
