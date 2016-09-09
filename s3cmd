@@ -890,25 +890,45 @@ def cmd_info(args):
                     elif expiration['date']:
                         expiration_desc += expiration['date'] + "' "
                     output(u"   %s" % expiration_desc)
-                except:
+                except S3Error as exc:
+                    # Ignore the exception and don't fail the info
+                    # if the server doesn't support setting ACLs
+                    if exc.status not in [404, 501]:
+                        raise exc
                     output(u"   Expiration Rule: none")
-            acl = s3.get_acl(uri)
-            acl_grant_list = acl.getGrantList()
+
             try:
                 policy = s3.get_policy(uri)
                 output(u"   policy:    %s" % policy)
-            except:
+            except S3Error as exc:
+                # Ignore the exception and don't fail the info
+                # if the server doesn't support setting ACLs
+                if exc.status not in [404, 501]:
+                    raise exc
                 output(u"   policy:    none")
+
             try:
                 cors = s3.get_cors(uri)
                 output(u"   cors:      %s" % cors)
-            except:
-                output(u"   cors:      none")
+            except S3Error as exc:
+                # Ignore the exception and don't fail the info
+                # if the server doesn't support setting ACLs
+                if exc.status not in [404, 501]:
+                    raise exc
+                output(u"   cors:    none")
 
-            for grant in acl_grant_list:
-                output(u"   ACL:       %s: %s" % (grant['grantee'], grant['permission']))
-            if acl.isAnonRead():
-                output(u"   URL:       %s" % uri.public_url())
+            try:
+                acl = s3.get_acl(uri)
+                acl_grant_list = acl.getGrantList()
+                for grant in acl_grant_list:
+                    output(u"   ACL:       %s: %s" % (grant['grantee'], grant['permission']))
+                if acl.isAnonRead():
+                    output(u"   URL:       %s" % uri.public_url())
+            except S3Error as exc:
+                # Ignore the exception and don't fail the info
+                # if the server doesn't support setting ACLs
+                if exc.status not in [404, 501]:
+                    raise exc
 
             if uri.has_object():
                 for header, value in info['headers'].iteritems():
