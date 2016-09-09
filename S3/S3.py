@@ -748,7 +748,14 @@ class S3(object):
         if dst_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
         if self.config.acl_public is None:
-            acl = self.get_acl(src_uri)
+            try:
+                acl = self.get_acl(src_uri)
+            except S3Error as exc:
+                # Ignore the exception and don't fail the copy
+                # if the server doesn't support setting ACLs
+                if exc.status != 501:
+                    raise exc
+                acl = None
         headers = SortedDict(ignore_case = True)
         headers['x-amz-copy-source'] = encode_to_s3("/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object())))
         headers['x-amz-metadata-directive'] = "COPY"
@@ -778,7 +785,7 @@ class S3(object):
             error("Server error during the COPY operation. Overwrite response status to 500")
             raise S3Error(response)
 
-        if self.config.acl_public is None:
+        if self.config.acl_public is None and acl:
             try:
                 self.set_acl(dst_uri, acl)
             except S3Error as exc:
