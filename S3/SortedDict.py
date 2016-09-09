@@ -6,6 +6,8 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
+from __future__ import print_function
+
 from BidirMap import BidirMap
 
 class SortedDictIterator(object):
@@ -59,16 +61,16 @@ class SortedDict(dict):
 if __name__ == "__main__":
     d = { 'AWS' : 1, 'Action' : 2, 'america' : 3, 'Auckland' : 4, 'America' : 5 }
     sd = SortedDict(d)
-    print "Wanted: Action, america, Auckland, AWS,    [ignore case]"
-    print "Got:   ",
+    print("Wanted: Action, america, Auckland, AWS,    [ignore case]")
+    print("Got:   ", end=' ')
     for key in sd:
-        print "%s," % key,
-    print "   [used: __iter__()]"
+        print("%s," % key, end=' ')
+    print("   [used: __iter__()]")
     d = SortedDict(d, ignore_case = False)
-    print "Wanted: AWS, Action, Auckland, america,    [case sensitive]"
-    print "Got:   ",
+    print("Wanted: AWS, Action, Auckland, america,    [case sensitive]")
+    print("Got:   ", end=' ')
     for key in d.keys():
-        print "%s," % key,
-    print "   [used: keys()]"
+        print("%s," % key, end=' ')
+    print("   [used: keys()]")
 
 # vim:et:ts=4:sts=4:ai

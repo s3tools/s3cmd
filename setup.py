@@ -1,17 +1,19 @@
 #!/usr/bin/env python2
 # -*- coding=utf-8 -*-
 
+from __future__ import print_function
+
 import sys
 import os
 
 try:
     import xml.etree.ElementTree
-    print "Using xml.etree.ElementTree for XML processing"
+    print("Using xml.etree.ElementTree for XML processing")
 except ImportError, e:
     sys.stderr.write(str(e) + "\n")
     try:
         import elementtree.ElementTree
-        print "Using elementtree.ElementTree for XML processing"
+        print("Using elementtree.ElementTree for XML processing")
     except ImportError, e:
         sys.stderr.write(str(e) + "\n")
         sys.stderr.write("Please install ElementTree module from\n")

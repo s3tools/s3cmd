@@ -6,6 +6,8 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
+from __future__ import print_function
+
 import S3Uri
 from Exceptions import ParameterError
 from Utils import getTreeFromXml
@@ -80,14 +82,14 @@ __all__.append("AccessLog")
 
 if __name__ == "__main__":
     log = AccessLog()
-    print log
+    print(log)
     log.enableLogging(S3Uri.S3Uri(u"s3://targetbucket/prefix/log-"))
-    print log
+    print(log)
     log.setAclPublic(True)
-    print log
+    print(log)
     log.setAclPublic(False)
-    print log
+    print(log)
     log.disableLogging()
-    print log
+    print(log)
 
 # vim:et:ts=4:sts=4:ai

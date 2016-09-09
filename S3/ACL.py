@@ -6,6 +6,8 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
+from __future__ import print_function
+
 from Utils import getTreeFromXml, deunicodise
 
 try:
@@ -222,11 +224,11 @@ if __name__ == "__main__":
 </AccessControlPolicy>
     """
     acl = ACL(xml)
-    print "Grants:", acl.getGrantList()
+    print("Grants:", acl.getGrantList())
     acl.revokeAnonRead()
-    print "Grants:", acl.getGrantList()
+    print("Grants:", acl.getGrantList())
     acl.grantAnonRead()
-    print "Grants:", acl.getGrantList()
-    print acl
+    print("Grants:", acl.getGrantList())
+    print(acl)
 
 # vim:et:ts=4:sts=4:ai

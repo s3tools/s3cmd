@@ -6,6 +6,8 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
+from __future__ import print_function
+
 import os
 import re
 import sys
@@ -185,39 +187,39 @@ class S3UriCloudFront(S3Uri):
 
 if __name__ == "__main__":
     uri = S3Uri("s3://bucket/object")
-    print "type()  =", type(uri)
-    print "uri     =", uri
-    print "uri.type=", uri.type
-    print "bucket  =", uri.bucket()
-    print "object  =", uri.object()
-    print
+    print("type()  =", type(uri))
+    print("uri     =", uri)
+    print("uri.type=", uri.type)
+    print("bucket  =", uri.bucket())
+    print("object  =", uri.object())
+    print()
 
     uri = S3Uri("s3://bucket")
-    print "type()  =", type(uri)
-    print "uri     =", uri
-    print "uri.type=", uri.type
-    print "bucket  =", uri.bucket()
-    print
+    print("type()  =", type(uri))
+    print("uri     =", uri)
+    print("uri.type=", uri.type)
+    print("bucket  =", uri.bucket())
+    print()
 
     uri = S3Uri("s3fs://filesystem1/path/to/remote/file.txt")
-    print "type()  =", type(uri)
-    print "uri     =", uri
-    print "uri.type=", uri.type
-    print "path    =", uri.path()
-    print
+    print("type()  =", type(uri))
+    print("uri     =", uri)
+    print("uri.type=", uri.type)
+    print("path    =", uri.path())
+    print()
 
     uri = S3Uri("/path/to/local/file.txt")
-    print "type()  =", type(uri)
-    print "uri     =", uri
-    print "uri.type=", uri.type
-    print "path    =", uri.path()
-    print
+    print("type()  =", type(uri))
+    print("uri     =", uri)
+    print("uri.type=", uri.type)
+    print("path    =", uri.path())
+    print()
 
     uri = S3Uri("cf://1234567890ABCD/")
-    print "type()  =", type(uri)
-    print "uri     =", uri
-    print "uri.type=", uri.type
-    print "dist_id =", uri.dist_id()
-    print
+    print("type()  =", type(uri))
+    print("uri     =", uri)
+    print("uri.type=", uri.type)
+    print("dist_id =", uri.dist_id())
+    print()
 
 # vim:et:ts=4:sts=4:ai
