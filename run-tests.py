@@ -642,7 +642,7 @@ test_s3cmd("Create expiration rule with days and prefix", ['expire', pbucket(1),
     must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
 
 ## ====== Create expiration rule with date and prefix
-test_s3cmd("Create expiration rule with date and prefix", ['expire', pbucket(1), '--expiry-date=2012-12-31T00:00:00.000Z', '--expiry-prefix=log/'],
+test_s3cmd("Create expiration rule with date and prefix", ['expire', pbucket(1), '--expiry-date=2020-12-31T00:00:00.000Z', '--expiry-prefix=log/'],
     must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
 
 ## ====== Create expiration rule with days only
@@ -650,12 +650,12 @@ test_s3cmd("Create expiration rule with days only", ['expire', pbucket(1), '--ex
     must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
 
 ## ====== Create expiration rule with date only
-test_s3cmd("Create expiration rule with date only", ['expire', pbucket(1), '--expiry-date=2012-12-31T00:00:00.000Z'],
+test_s3cmd("Create expiration rule with date only", ['expire', pbucket(1), '--expiry-date=2020-12-31T00:00:00.000Z'],
     must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
 
 ## ====== Get current expiration setting
 test_s3cmd("Get current expiration setting", ['info', pbucket(1)],
-    must_find = [ "Expiration Rule: all objects in this bucket will expire in '2012-12-31T00:00:00.000Z'"])
+    must_find = [ "Expiration Rule: all objects in this bucket will expire in '2020-12-31T00:00:00.000Z'"])
 
 ## ====== Delete expiration rule
 test_s3cmd("Delete expiration rule", ['expire', pbucket(1)],
