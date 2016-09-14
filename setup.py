@@ -9,12 +9,12 @@ import os
 try:
     import xml.etree.ElementTree
     print("Using xml.etree.ElementTree for XML processing")
-except ImportError, e:
+except ImportError as e:
     sys.stderr.write(str(e) + "\n")
     try:
         import elementtree.ElementTree
         print("Using elementtree.ElementTree for XML processing")
-    except ImportError, e:
+    except ImportError as e:
         sys.stderr.write(str(e) + "\n")
         sys.stderr.write("Please install ElementTree module from\n")
         sys.stderr.write("http://effbot.org/zone/element-index.htm\n")
@@ -36,7 +36,7 @@ if float("%d.%d" % sys.version_info[:2]) < 2.6:
 if len(sys.argv) > 1 and sys.argv[1] == "sdist":
     try:
         os.unlink("MANIFEST")
-    except OSError, e:
+    except OSError as e:
         pass
 
 ## Re-create the manpage

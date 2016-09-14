@@ -78,7 +78,7 @@ try:
         def mime_magic_file(file):
             return magic_.file(deunicodise(file))
 
-except ImportError, e:
+except ImportError as e:
     if 'magic' in str(e):
         magic_message = "Module python-magic is not available."
     else:
@@ -132,7 +132,7 @@ class S3Request(object):
             self.headers['x-amz-request-payer'] = 'requester'
 
     def update_timestamp(self):
-        if self.headers.has_key("date"):
+        if "date" in self.headers:
             del(self.headers["date"])
         self.headers["x-amz-date"] = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
 
@@ -263,7 +263,7 @@ class S3(object):
 
     def get_hostname(self, bucket):
         if bucket and check_bucket_name_dns_support(self.config.host_bucket, bucket):
-            if self.redir_map.has_key(bucket):
+            if bucket in self.redir_map:
                 host = self.redir_map[bucket]
             else:
                 host = getHostnameFromBucket(bucket)
@@ -426,7 +426,7 @@ class S3(object):
                 "bucket" : uri.bucket(),
                 "location" : self.get_bucket_location(uri)}
             return response
-        except S3Error, e:
+        except S3Error as e:
             if e.status == 404:
                 debug("Could not get /?website - website probably not configured for this bucket")
                 return None
@@ -472,7 +472,7 @@ class S3(object):
             response['date'] = getTextFromXml(response['data'], ".//Rule//Expiration//Date")
             response['days'] = getTextFromXml(response['data'], ".//Rule//Expiration//Days")
             return response
-        except S3Error, e:
+        except S3Error as e:
             if e.status == 404:
                 debug("Could not get /?lifecycle - lifecycle probably not configured for this bucket")
                 return None
@@ -588,7 +588,7 @@ class S3(object):
             else:
                 file = open(deunicodise(filename), "rb")
                 size = os.stat(deunicodise(filename))[ST_SIZE]
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             raise InvalidFileError(u"%s" % e.strerror)
 
         headers = SortedDict(ignore_case = True)
@@ -1003,7 +1003,7 @@ class S3(object):
         request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(), extra = "?logging", body = body)
         try:
             response = self.send_request(request)
-        except S3Error, e:
+        except S3Error as e:
             if e.info['Code'] == "InvalidTargetBucketForLogging":
                 info("Setting up log-delivery ACL for target bucket.")
                 self.set_accesslog_acl(S3Uri(u"s3://%s" % log_target_prefix_uri.bucket()))
@@ -1123,11 +1123,11 @@ class S3(object):
             response["reason"] = http_response.reason
             response["headers"] = convertTupleListToDict(http_response.getheaders())
             response["data"] =  http_response.read()
-            if response["headers"].has_key("x-amz-meta-s3cmd-attrs"):
+            if "x-amz-meta-s3cmd-attrs" in response["headers"]:
                 attrs = parse_attrs_header(response["headers"]["x-amz-meta-s3cmd-attrs"])
                 response["s3cmd-attrs"] = attrs
             ConnMan.put(conn)
-        except (IOError, Exception), e:
+        except (IOError, Exception) as e:
             debug("Response:\n" + pp.pformat(response))
             if hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET):
                 raise
@@ -1214,9 +1214,9 @@ class S3(object):
             for header in headers.keys():
                 conn.c.putheader(header, str(headers[header]))
             conn.c.endheaders()
-        except ParameterError, e:
+        except ParameterError as e:
             raise
-        except Exception, e:
+        except Exception as e:
             if self.config.progress_meter:
                 progress.done("failed")
             if retries:
@@ -1267,9 +1267,9 @@ class S3(object):
             response["size"] = size_total
             ConnMan.put(conn)
             debug(u"Response: %s" % response)
-        except ParameterError, e:
+        except ParameterError as e:
             raise
-        except Exception, e:
+        except Exception as e:
             if self.config.progress_meter:
                 progress.done("failed")
             if retries:
@@ -1311,7 +1311,7 @@ class S3(object):
 
         # S3 from time to time doesn't send ETag back in a response :-(
         # Force re-upload here.
-        if not response['headers'].has_key('etag'):
+        if 'etag' not in response['headers']:
             response['headers']['etag'] = ''
 
         if response["status"] < 200 or response["status"] > 299:
@@ -1392,15 +1392,15 @@ class S3(object):
             response["status"] = http_response.status
             response["reason"] = http_response.reason
             response["headers"] = convertTupleListToDict(http_response.getheaders())
-            if response["headers"].has_key("x-amz-meta-s3cmd-attrs"):
+            if "x-amz-meta-s3cmd-attrs" in response["headers"]:
                 attrs = parse_attrs_header(response["headers"]["x-amz-meta-s3cmd-attrs"])
                 response["s3cmd-attrs"] = attrs
             debug("Response: %s" % response)
-        except ParameterError, e:
+        except ParameterError as e:
             raise
-        except OSError, e:
+        except OSError as e:
             raise
-        except (IOError, Exception), e:
+        except (IOError, Exception) as e:
             if self.config.progress_meter:
                 progress.done("failed")
             if hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET):
@@ -1483,7 +1483,7 @@ class S3(object):
             ConnMan.put(conn)
         except OSError:
             raise
-        except (IOError, Exception), e:
+        except (IOError, Exception) as e:
             if self.config.progress_meter:
                 progress.done("failed")
             if hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET):
@@ -1529,7 +1529,7 @@ class S3(object):
                 # Otherwise try to compute MD5 of the output file
                 try:
                     response["md5"] = hash_file_md5(filename)
-                except IOError, e:
+                except IOError as e:
                     if e.errno != errno.ENOENT:
                         warning("Unable to open file: %s: %s" % (filename, e))
                     warning("Unable to verify MD5. Assume it matches.")

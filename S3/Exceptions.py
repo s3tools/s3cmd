@@ -46,10 +46,10 @@ class S3Error (S3Exception):
             "Resource" : ""
         }
         debug("S3Error: %s (%s)" % (self.status, self.reason))
-        if response.has_key("headers"):
+        if "headers" in response:
             for header in response["headers"]:
                 debug("HttpHeader: %s: %s" % (header, response["headers"][header]))
-        if response.has_key("data") and response["data"]:
+        if "data" in response and response["data"]:
             try:
                 tree = getTreeFromXml(response["data"])
             except XmlParseError:
@@ -57,7 +57,7 @@ class S3Error (S3Exception):
             else:
                 try:
                     self.info.update(self.parse_error_xml(tree))
-                except Exception, e:
+                except Exception as e:
                     error("Error parsing xml: %s.  ErrorXML: %s" % (e, response["data"]))
 
         self.code = self.info["Code"]
@@ -66,7 +66,7 @@ class S3Error (S3Exception):
 
     def __unicode__(self):
         retval = u"%d " % (self.status)
-        retval += (u"(%s)" % (self.info.has_key("Code") and self.info["Code"] or self.reason))
+        retval += (u"(%s)" % ("Code" in self.info and self.info["Code"] or self.reason))
         error_msg = self.info.get("Message")
         if error_msg:
             retval += (u": %s" % error_msg)

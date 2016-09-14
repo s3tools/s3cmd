@@ -217,7 +217,7 @@ class Config(object):
         try:
             cred_file = open(os.environ['AWS_CREDENTIAL_FILE'],'r')
             cred_content = cred_file.read()
-        except IOError, e:
+        except IOError as e:
             debug("Error %d accessing credentials file %s" % (e.errno,os.environ['AWS_CREDENTIAL_FILE']))
         r_data = re.compile("^\s*(?P<orig_key>\w+)\s*=\s*(?P<value>.*)")
         r_quotes = re.compile("^\"(.*)\"\s*$")
@@ -389,7 +389,7 @@ class ConfigParser(object):
         self.cfg[name] = value
 
     def get(self, name, default = None):
-        if self.cfg.has_key(name):
+        if name in self.cfg:
             return self.cfg[name]
         return default
 

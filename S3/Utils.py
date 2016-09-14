@@ -98,7 +98,7 @@ def getTreeFromXml(xml):
         if xmlns:
             tree.attrib['xmlns'] = xmlns
         return tree
-    except Exception, e:
+    except Exception as e:
         error("Error parsing xml: %s", e)
         error(xml)
         raise
@@ -120,7 +120,7 @@ def getDictFromTree(tree):
         else:
             content = decode_from_s3(child.text) if child.text is not None else None
         child_tag = decode_from_s3(child.tag)
-        if ret_dict.has_key(child_tag):
+        if child_tag in ret_dict:
             if not type(ret_dict[child_tag]) == list:
                 ret_dict[child_tag] = [ret_dict[child_tag]]
             ret_dict[child_tag].append(content or "")
@@ -216,14 +216,14 @@ def rndstr(len):
 __all__.append("rndstr")
 
 def mktmpsomething(prefix, randchars, createfunc):
-    old_umask = os.umask(0077)
+    old_umask = os.umask(0o077)
     tries = 5
     while tries > 0:
         dirname = prefix + rndstr(randchars)
         try:
             createfunc(dirname)
             break
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.EEXIST:
                 os.umask(old_umask)
                 raise
@@ -273,10 +273,10 @@ def mkdir_with_parents(dir_name):
         try:
             debug("mkdir(%s)" % cur_dir)
             os.mkdir(deunicodise(cur_dir))
-        except (OSError, IOError), e:
+        except (OSError, IOError) as e:
             debug("Can not make directory '%s' (Reason: %s)" % (cur_dir, e.strerror))
             return False
-        except Exception, e:
+        except Exception as e:
             debug("Can not make directory '%s' (Reason: %s)" % (cur_dir, e))
             return False
     return True
@@ -406,7 +406,7 @@ def time_to_epoch(t):
             # Try to parse it as a timestamp string
             try:
                 return time.strptime(t)
-            except ValueError, ex:
+            except ValueError as ex:
                 # Will fall through
                 debug("Failed to parse date with strptime: %s", ex)
                 pass

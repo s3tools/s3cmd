@@ -73,8 +73,8 @@ if not os.path.isfile('testsuite/checksum/cksum33.txt'):
     sys.exit(1)
 
 ## Fix up permissions for permission-denied tests
-os.chmod("testsuite/permission-tests/permission-denied-dir", 0444)
-os.chmod("testsuite/permission-tests/permission-denied.txt", 0000)
+os.chmod("testsuite/permission-tests/permission-denied-dir", 0o444)
+os.chmod("testsuite/permission-tests/permission-denied.txt", 0o000)
 
 ## Patterns for Unicode tests
 patterns = {}

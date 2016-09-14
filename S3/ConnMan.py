@@ -120,7 +120,7 @@ class http_connection(object):
             return
         except ValueError: # empty SSL cert means underlying SSL library didn't validate it, we don't either.
             return
-        except ssl.CertificateError, e:
+        except ssl.CertificateError as e:
             if not self.forgive_wildcard_cert(cert, self.hostname):
                 raise e
 
@@ -218,7 +218,7 @@ class ConnMan(object):
         else:
             conn_id = "http%s://%s" % (ssl and "s" or "", hostname)
         ConnMan.conn_pool_sem.acquire()
-        if not ConnMan.conn_pool.has_key(conn_id):
+        if conn_id not in ConnMan.conn_pool:
             ConnMan.conn_pool[conn_id] = []
         if len(ConnMan.conn_pool[conn_id]):
             conn = ConnMan.conn_pool[conn_id].pop()
