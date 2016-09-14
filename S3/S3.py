@@ -132,7 +132,7 @@ class S3Request(object):
             self.headers['x-amz-request-payer'] = 'requester'
 
     def update_timestamp(self):
-        if self.headers.has_key("date"):
+        if "date" in self.headers:
             del(self.headers["date"])
         self.headers["x-amz-date"] = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
 
@@ -263,7 +263,7 @@ class S3(object):
 
     def get_hostname(self, bucket):
         if bucket and check_bucket_name_dns_support(self.config.host_bucket, bucket):
-            if self.redir_map.has_key(bucket):
+            if bucket in self.redir_map:
                 host = self.redir_map[bucket]
             else:
                 host = getHostnameFromBucket(bucket)
@@ -1123,7 +1123,7 @@ class S3(object):
             response["reason"] = http_response.reason
             response["headers"] = convertTupleListToDict(http_response.getheaders())
             response["data"] =  http_response.read()
-            if response["headers"].has_key("x-amz-meta-s3cmd-attrs"):
+            if "x-amz-meta-s3cmd-attrs" in response["headers"]:
                 attrs = parse_attrs_header(response["headers"]["x-amz-meta-s3cmd-attrs"])
                 response["s3cmd-attrs"] = attrs
             ConnMan.put(conn)
@@ -1311,7 +1311,7 @@ class S3(object):
 
         # S3 from time to time doesn't send ETag back in a response :-(
         # Force re-upload here.
-        if not response['headers'].has_key('etag'):
+        if 'etag' not in response['headers']:
             response['headers']['etag'] = ''
 
         if response["status"] < 200 or response["status"] > 299:
@@ -1392,7 +1392,7 @@ class S3(object):
             response["status"] = http_response.status
             response["reason"] = http_response.reason
             response["headers"] = convertTupleListToDict(http_response.getheaders())
-            if response["headers"].has_key("x-amz-meta-s3cmd-attrs"):
+            if "x-amz-meta-s3cmd-attrs" in response["headers"]:
                 attrs = parse_attrs_header(response["headers"]["x-amz-meta-s3cmd-attrs"])
                 response["s3cmd-attrs"] = attrs
             debug("Response: %s" % response)

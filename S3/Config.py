@@ -389,7 +389,7 @@ class ConfigParser(object):
         self.cfg[name] = value
 
     def get(self, name, default = None):
-        if self.cfg.has_key(name):
+        if name in self.cfg:
             return self.cfg[name]
         return default
 

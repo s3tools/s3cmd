@@ -120,7 +120,7 @@ def getDictFromTree(tree):
         else:
             content = decode_from_s3(child.text) if child.text is not None else None
         child_tag = decode_from_s3(child.tag)
-        if ret_dict.has_key(child_tag):
+        if child_tag in ret_dict:
             if not type(ret_dict[child_tag]) == list:
                 ret_dict[child_tag] = [ret_dict[child_tag]]
             ret_dict[child_tag].append(content or "")
