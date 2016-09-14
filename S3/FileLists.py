@@ -161,7 +161,7 @@ def _get_filelist_from_file(cfg, local_path):
         else:
             try:
                 f = open(deunicodise(fname), 'r')
-            except IOError, e:
+            except IOError as e:
                 warning(u"--files-from input file %s could not be opened for reading (%s), skipping." % (fname, e.strerror))
                 continue
 
@@ -201,7 +201,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
             full_name = loc_list[relative_file]['full_name']
             try:
                 sr = os.stat_result(os.stat(deunicodise(full_name)))
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.ENOENT:
                     # file was removed async to us getting the list
                     continue

@@ -57,7 +57,7 @@ class S3Error (S3Exception):
             else:
                 try:
                     self.info.update(self.parse_error_xml(tree))
-                except Exception, e:
+                except Exception as e:
                     error("Error parsing xml: %s.  ErrorXML: %s" % (e, response["data"]))
 
         self.code = self.info["Code"]
