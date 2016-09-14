@@ -216,7 +216,7 @@ def rndstr(len):
 __all__.append("rndstr")
 
 def mktmpsomething(prefix, randchars, createfunc):
-    old_umask = os.umask(0077)
+    old_umask = os.umask(0o077)
     tries = 5
     while tries > 0:
         dirname = prefix + rndstr(randchars)
