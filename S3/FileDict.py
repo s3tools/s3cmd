@@ -28,7 +28,7 @@ class FileDict(SortedDict):
         self.by_md5[md5].add(relative_file)
 
     def find_md5_one(self, md5):
-        if md5 is None: return None
+        if not md5: return None
         try:
             return list(self.by_md5.get(md5, set()))[0]
         except:
