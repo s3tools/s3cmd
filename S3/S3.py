@@ -805,7 +805,15 @@ class S3(object):
         info_response = self.object_info(src_uri)
         headers = info_response['headers']
         headers = self._sanitize_headers(headers)
-        acl = self.get_acl(src_uri)
+
+        try:
+            acl = self.get_acl(src_uri)
+        except S3Error as exc:
+            # Ignore the exception and don't fail the modify
+            # if the server doesn't support setting ACLs
+            if exc.status != 501:
+                raise exc
+            acl = None
 
         headers['x-amz-copy-source'] = encode_to_s3("/%s/%s" % (src_uri.bucket(), self.urlencode_string(src_uri.object())))
         headers['x-amz-metadata-directive'] = "REPLACE"
@@ -836,7 +844,14 @@ class S3(object):
             error("Server error during the MODIFY operation. Overwrite response status to 500")
             raise S3Error(response)
 
-        self.set_acl(src_uri, acl)
+        if acl != None:
+            try:
+                self.set_acl(src_uri, acl)
+            except S3Error as exc:
+                # Ignore the exception and don't fail the modify
+                # if the server doesn't support setting ACLs
+                if exc.status != 501:
+                    raise exc
 
         return response
 
