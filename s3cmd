@@ -877,8 +877,8 @@ def cmd_info(args):
                 output(u"%s (bucket):" % uri.uri())
                 output(u"   Location:  %s" % info['bucket-location'])
                 output(u"   Payer:     %s" % info['requester-pays'])
-                try:
-                    expiration = s3.expiration_info(uri, cfg.bucket_location)
+                expiration = s3.expiration_info(uri, cfg.bucket_location)
+                if expiration:
                     expiration_desc = "Expiration Rule: "
                     if expiration['prefix'] == "":
                         expiration_desc += "all objects in this bucket "
@@ -890,11 +890,7 @@ def cmd_info(args):
                     elif expiration['date']:
                         expiration_desc += expiration['date'] + "' "
                     output(u"   %s" % expiration_desc)
-                except S3Error as exc:
-                    # Ignore the exception and don't fail the info
-                    # if the server doesn't support setting ACLs
-                    if exc.status not in [404, 501]:
-                        raise exc
+                else:
                     output(u"   Expiration Rule: none")
 
             try:

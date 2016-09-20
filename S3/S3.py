@@ -476,6 +476,9 @@ class S3(object):
             if e.status == 404:
                 debug("Could not get /?lifecycle - lifecycle probably not configured for this bucket")
                 return None
+            elif e.status == 501:
+                debug("Could not get /?lifecycle - lifecycle support not implemented by the server")
+                return None
             raise
 
     def expiration_set(self, uri, bucket_location = None):
