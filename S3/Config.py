@@ -319,7 +319,7 @@ class Config(object):
                 return
 
         ## allow yes/no, true/false, on/off and 1/0 for boolean options
-        elif type(getattr(Config, option)) is type(True):   # bool
+        elif type(getattr(Config, option)) is type(True) or option == 'acl_public':   # bool
             if str(value).lower() in ("true", "yes", "on", "1"):
                 value = True
             elif str(value).lower() in ("false", "no", "off", "0"):
