@@ -148,19 +148,25 @@ class S3UriFile(S3Uri):
         groups = match.groups()
         if groups[0] not in (None, "file://"):
             raise ValueError("%s: not a file:// URI" % string)
-        self._path = groups[1].split("/")
+        if groups[0] is None:
+            self._path = groups[1].split(os.sep)
+        else:
+            self._path = groups[1].split("/")
 
     def path(self):
-        return "/".join(self._path)
+        return os.sep.join(self._path)
 
     def uri(self):
-        return "/".join(["file:/", self.path()])
+        return "/".join(["file:/"]+self._path)
 
     def isdir(self):
         return os.path.isdir(deunicodise(self.path()))
 
     def dirname(self):
         return unicodise(os.path.dirname(deunicodise(self.path())))
+
+    def basename(self):
+        return unicodise(os.path.basename(deunicodise(self.path())))
 
 class S3UriCloudFront(S3Uri):
     type = "cf"
