@@ -114,6 +114,8 @@ def mime_magic(file):
 __all__ = []
 class S3Request(object):
     region_map = {}
+    ## S3 sometimes sends HTTP-301, HTTP-307 response
+    redir_map = {}
 
     def __init__(self, s3, method_string, resource, headers, body, params = {}):
         self.s3 = s3
@@ -184,11 +186,18 @@ class S3Request(object):
             hostname = self.s3.get_hostname(self.resource['bucket'])
 
             ## Default to bucket part of DNS.
-            resource_uri = self.resource['uri']
             ## If bucket is not part of DNS assume path style to complete the request.
-            if self.resource['bucket'] and not check_bucket_name_dns_support(self.s3.config.host_bucket, self.resource['bucket']):
-                if self.resource['bucket']:
-                    resource_uri = "/" + self.resource['bucket'] + self.resource['uri']
+            ## Like for format_uri, take care that redirection could be to base path
+            bucket_name = self.resource.get('bucket')
+            if bucket_name and (
+                (bucket_name in S3Request.redir_map
+                 and not S3Request.redir_map.get(bucket_name, '').startswith("%s."% bucket_name))
+                or (bucket_name not in S3Request.redir_map
+                 and not check_bucket_name_dns_support(Config().host_bucket, bucket_name))
+            ):
+                resource_uri = "/%s%s" % (bucket_name, self.resource['uri'])
+            else:
+                resource_uri = self.resource['uri']
 
             bucket_region = S3Request.region_map.get(self.resource['bucket'], Config().bucket_location)
             ## Sign the data.
@@ -240,9 +249,6 @@ class S3(object):
         "BucketAlreadyExists" : "Bucket '%s' already exists",
     }
 
-    ## S3 sometimes sends HTTP-307 response
-    redir_map = {}
-
     ## Maximum attempts of re-issuing failed requests
     _max_retries = 5
 
@@ -263,8 +269,8 @@ class S3(object):
 
     def get_hostname(self, bucket):
         if bucket and check_bucket_name_dns_support(self.config.host_bucket, bucket):
-            if bucket in self.redir_map:
-                host = self.redir_map[bucket]
+            if bucket in S3Request.redir_map:
+                host = S3Request.redir_map[bucket]
             else:
                 host = getHostnameFromBucket(bucket)
         else:
@@ -273,14 +279,14 @@ class S3(object):
         return host
 
     def set_hostname(self, bucket, redir_hostname):
-        self.redir_map[bucket] = redir_hostname
+        S3Request.redir_map[bucket] = redir_hostname
 
     def format_uri(self, resource, base_path=None):
         bucket_name = resource.get('bucket')
         if bucket_name and (
-             (bucket_name in self.redir_map
-              and not self.redir_map.get(bucket_name, '').startswith("%s."% bucket_name))
-             or (bucket_name not in self.redir_map
+             (bucket_name in S3Request.redir_map
+              and not S3Request.redir_map.get(bucket_name, '').startswith("%s."% bucket_name))
+             or (bucket_name not in S3Request.redir_map
                 and not check_bucket_name_dns_support(self.config.host_bucket, bucket_name))
             ):
                 uri = "/%s%s" % (bucket_name, resource['uri'])
