@@ -456,10 +456,7 @@ def check_bucket_name_dns_support(bucket_host, bucket_name):
     if "%(bucket)s" not in bucket_host:
         return False
 
-    try:
-        return check_bucket_name(bucket_name, dns_strict = True)
-    except Exceptions.ParameterError:
-        return False
+    return check_bucket_name_dns_conformity(bucket_name)
 __all__.append("check_bucket_name_dns_support")
 
 def getBucketFromHostname(hostname):

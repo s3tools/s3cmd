@@ -276,14 +276,20 @@ class S3(object):
         self.redir_map[bucket] = redir_hostname
 
     def format_uri(self, resource, base_path=None):
-        if resource['bucket'] and not check_bucket_name_dns_support(self.config.host_bucket, resource['bucket']):
-            uri = "/%s%s" % (resource['bucket'], resource['uri'])
+        bucket_name = resource.get('bucket')
+        if bucket_name and (
+             (bucket_name in self.redir_map
+              and not self.redir_map.get(bucket_name, '').startswith("%s."% bucket_name))
+             or (bucket_name not in self.redir_map
+                and not check_bucket_name_dns_support(self.config.host_bucket, bucket_name))
+            ):
+                uri = "/%s%s" % (bucket_name, resource['uri'])
         else:
             uri = resource['uri']
         if base_path:
             uri = "%s%s" % (base_path, uri)
         if self.config.proxy_host != "" and not self.config.use_https:
-            uri = "http://%s%s" % (self.get_hostname(resource['bucket']), uri)
+            uri = "http://%s%s" % (self.get_hostname(bucket_name), uri)
         debug('format_uri(): ' + uri)
         return uri
 
@@ -1133,6 +1139,8 @@ class S3(object):
 
         conn = ConnMan.get(self.get_hostname(resource['bucket']))
         try:
+            # TODO: Check what was supposed to be the usage of conn.path here
+            # Currently this is always "None" all the time as not defined in ConnMan
             uri = self.format_uri(resource, conn.path)
             debug("Sending request method_string=%r, uri=%r, headers=%r, body=(%i bytes)" % (method_string, uri, headers, len(request.body or "")))
             conn.c.request(method_string, uri, request.body, headers)
@@ -1174,7 +1182,7 @@ class S3(object):
         if response["status"] == 405: # Method Not Allowed.  Don't retry.
             raise S3Error(response)
 
-        if response["status"] == 307:
+        if response["status"] in [301, 307]:
             ## RedirectPermanent
             redir_bucket = getTextFromXml(response['data'], ".//Bucket")
             redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
@@ -1314,7 +1322,7 @@ class S3(object):
             progress.update()
             progress.done("done")
 
-        if response["status"] == 307:
+        if response["status"] in [301, 307]:
             ## RedirectPermanent
             redir_bucket = getTextFromXml(response['data'], ".//Bucket")
             redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
@@ -1436,7 +1444,7 @@ class S3(object):
             else:
                 raise S3DownloadError("Download failed for: %s" % resource['uri'])
 
-        if response["status"] == 307:
+        if response["status"] in [301, 307]:
             ## RedirectPermanent
             response['data'] = http_response.read()
             redir_bucket = getTextFromXml(response['data'], ".//Bucket")
