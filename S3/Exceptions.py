@@ -75,7 +75,7 @@ class S3Error (S3Exception):
     def get_error_code(self):
         if self.status in [301, 307]:
             return ExitCodes.EX_SERVERMOVED
-        elif self.status in [400, 405, 411, 416, 501, 504]:
+        elif self.status in [400, 405, 411, 416, 417, 501, 504]:
             return ExitCodes.EX_SERVERERROR
         elif self.status == 403:
             return ExitCodes.EX_ACCESSDENIED

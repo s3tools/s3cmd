@@ -133,6 +133,9 @@ class Config(object):
     content_disposition = None
     content_type = None
     stats = False
+    # Disabled by default because can create a latency with a CONTINUE status reply
+    # expected for every send file requests.
+    use_http_expect = False
 
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None, access_token=None):

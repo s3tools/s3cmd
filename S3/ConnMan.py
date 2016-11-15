@@ -7,7 +7,7 @@
 ## Copyright: TGRMN Software and contributors
 
 import sys
-import httplib
+from custom_httplib27 import httplib
 import ssl
 from threading import Semaphore
 from logging import debug
@@ -201,6 +201,8 @@ class http_connection(object):
 
 
 class ConnMan(object):
+    _CS_REQ_SENT = httplib._CS_REQ_SENT
+    CONTINUE = httplib.CONTINUE
     conn_pool_sem = Semaphore()
     conn_pool = {}
     conn_max_counter = 800    ## AWS closes connection after some ~90 requests

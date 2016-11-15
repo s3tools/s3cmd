@@ -17,6 +17,7 @@ from xml.sax import saxutils
 from logging import debug, info, warning, error
 from stat import ST_SIZE
 from urllib import quote_plus
+import select
 
 try:
     from hashlib import md5
@@ -110,6 +111,9 @@ def mime_magic(file):
     if result is None:
         result = (None, None)
     return result
+
+EXPECT_CONTINUE_TIMEOUT = 2
+
 
 __all__ = []
 class S3Request(object):
@@ -256,6 +260,7 @@ class S3(object):
         self.config = config
         self.fallback_to_signature_v2 = False
         self.endpoint_requires_signature_v4 = False
+        self.expect_continue_not_supported = False
 
     def storage_class(self):
         # Note - you cannot specify GLACIER here
@@ -1217,9 +1222,17 @@ class S3(object):
 
         return response
 
-    def send_file(self, request, file, labels, buffer = '', throttle = 0, retries = _max_retries, offset = 0, chunk_size = -1):
-        method_string, resource, headers = request.get_triplet()
+    def send_file(self, request, file, labels, buffer = '', throttle = 0,
+                  retries = _max_retries, offset = 0, chunk_size = -1,
+                  use_expect_continue = None):
+        if use_expect_continue is None:
+            use_expect_continue = self.config.use_http_expect
+        if self.expect_continue_not_supported and use_expect_continue:
+            use_expect_continue = False
+
+        headers = request.headers
         if S3Request.region_map.get(request.resource['bucket'], Config().bucket_location) is None:
+            method_string, resource, headers = request.get_triplet()
             s3_uri = S3Uri(u's3://' + request.resource['bucket'])
             region = self.get_bucket_location(s3_uri)
             if region is not None:
@@ -1239,6 +1252,13 @@ class S3(object):
         else:
             sha256_hash = checksum_sha256_file(filename, offset, size_total)
         request.body = sha256_hash
+
+        if use_expect_continue:
+            if not size_total:
+                use_expect_continue = False
+            else:
+                headers['expect'] = '100-continue'
+
         method_string, resource, headers = request.get_triplet()
         try:
             conn = ConnMan.get(self.get_hostname(resource['bucket']))
@@ -1264,34 +1284,52 @@ class S3(object):
         md5_hash = md5()
 
         try:
-            while (size_left > 0):
-                #debug("SendFile: Reading up to %d bytes from '%s' - remaining bytes: %s" % (self.config.send_chunk, filename, size_left))
-                l = min(self.config.send_chunk, size_left)
-                if buffer == '':
-                    data = file.read(l)
-                else:
-                    data = buffer
+            http_response = None
+            if use_expect_continue:
+                # Wait for the 100-Continue before sending the content
+                readable, writable, exceptional = select.select([conn.c.sock],[], [], EXPECT_CONTINUE_TIMEOUT)
+                if readable:
+                    # 100-CONTINUE STATUS RECEIVED, get it before continuing.
+                    http_response = conn.c.getresponse()
+                elif not writable and not exceptional:
+                    warning("HTTP Expect Continue feature disabled because of no reply of the server in %.2fs.", EXPECT_CONTINUE_TIMEOUT)
+                    self.expect_continue_not_supported = True
+                    use_expect_continue = False
 
-                if self.config.limitrate > 0:
-                    start_time = time.time()
+            if not use_expect_continue or (http_response and http_response.status == ConnMan.CONTINUE):
+                if http_response:
+                    # CONTINUE case. Reset the response
+                    http_response.read()
+                    conn.c._HTTPConnection__state = ConnMan._CS_REQ_SENT
+                while (size_left > 0):
+                    #debug("SendFile: Reading up to %d bytes from '%s' - remaining bytes: %s" % (self.config.send_chunk, filename, size_left))
+                    l = min(self.config.send_chunk, size_left)
+                    if buffer == '':
+                        data = file.read(l)
+                    else:
+                        data = buffer
 
-                md5_hash.update(data)
-                conn.c.send(data)
-                if self.config.progress_meter:
-                    progress.update(delta_position = len(data))
-                size_left -= len(data)
+                    if self.config.limitrate > 0:
+                        start_time = time.time()
 
-                #throttle
-                if self.config.limitrate > 0:
-                    real_duration = time.time() - start_time
-                    expected_duration = float(l)/self.config.limitrate
-                    throttle = max(expected_duration - real_duration, throttle)
-                if throttle:
-                    time.sleep(throttle)
-            md5_computed = md5_hash.hexdigest()
+                    md5_hash.update(data)
+                    conn.c.send(data)
+                    if self.config.progress_meter:
+                        progress.update(delta_position = len(data))
+                    size_left -= len(data)
+
+                    #throttle
+                    if self.config.limitrate > 0:
+                        real_duration = time.time() - start_time
+                        expected_duration = float(l)/self.config.limitrate
+                        throttle = max(expected_duration - real_duration, throttle)
+                    if throttle:
+                        time.sleep(throttle)
+                md5_computed = md5_hash.hexdigest()
+
+                http_response = conn.c.getresponse()
 
             response = {}
-            http_response = conn.c.getresponse()
             response["status"] = http_response.status
             response["reason"] = http_response.reason
             response["headers"] = convertTupleListToDict(http_response.getheaders())
@@ -1307,12 +1345,32 @@ class S3(object):
             if retries:
                 if retries < self._max_retries:
                     throttle = throttle and throttle * 5 or 0.01
-                warning("Upload failed: %s (%s)" % (resource['uri'], e))
-                warning("Retrying on lower speed (throttle=%0.2f)" % throttle)
-                warning("Waiting %d sec..." % self._fail_wait(retries))
-                time.sleep(self._fail_wait(retries))
-                # Connection error -> same throttle value
-                return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
+                known_error = False
+                if ((hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET))
+                   or "[Errno 104]" in str(e) or "[Errno 32]" in str(e)):
+                    # We have to detect these errors by looking at the error string
+                    # Connection reset by peer and Broken pipe
+                    # The server broke the connection early with an error like
+                    # in a HTTP Expect Continue case even if asked nothing.
+                    try:
+                        http_response = conn.c.getresponse()
+                        response = {}
+                        response["status"] = http_response.status
+                        response["reason"] = http_response.reason
+                        response["headers"] = convertTupleListToDict(http_response.getheaders())
+                        response["data"] = http_response.read()
+                        response["size"] = size_total
+                        known_error = True
+                    except:
+                        error("Cannot retrieve any response status before encountering an EPIPE or ECONNRESET exception")
+                if not known_error:
+                    warning("Upload failed: %s (%s)" % (resource['uri'], e))
+                    warning("Retrying on lower speed (throttle=%0.2f)" % throttle)
+                    warning("Waiting %d sec..." % self._fail_wait(retries))
+                    time.sleep(self._fail_wait(retries))
+                    # Connection error -> same throttle value
+                    return self.send_file(request, file, labels, buffer, throttle,
+                                      retries - 1, offset, chunk_size, use_expect_continue)
             else:
                 debug("Giving up on '%s' %s" % (filename, e))
                 raise S3UploadError("Upload failed for: %s" % resource['uri'])
@@ -1334,12 +1392,18 @@ class S3(object):
             redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
             self.set_hostname(redir_bucket, redir_hostname)
             info("Redirected to: %s" % (redir_hostname))
-            return self.send_file(request, file, labels, buffer, offset = offset, chunk_size = chunk_size)
+            return self.send_file(request, file, labels, buffer, offset = offset, chunk_size = chunk_size,
+                                  use_expect_continue = use_expect_continue)
 
         if response["status"] == 400:
-            return self._http_400_handler(request, response, self.send_file, request, file, labels, buffer, offset = offset, chunk_size = chunk_size)
+            return self._http_400_handler(request, response, self.send_file, request, file, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
         if response["status"] == 403:
-            return self._http_403_handler(request, response, self.send_file, request, file, labels, buffer, offset = offset, chunk_size = chunk_size)
+            return self._http_403_handler(request, response, self.send_file, request, file, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
+        if response["status"] == 417 and retries:
+            # Expect 100-continue not supported by proxy/server
+            self.expect_continue_not_supported = True
+            return self.send_file(request, file, labels, buffer, throttle,
+                                  retries - 1, offset, chunk_size, use_expect_continue = False)
 
         # S3 from time to time doesn't send ETag back in a response :-(
         # Force re-upload here.
@@ -1362,7 +1426,8 @@ class S3(object):
                     warning("Upload failed: %s (%s)" % (resource['uri'], S3Error(response)))
                     warning("Waiting %d sec..." % self._fail_wait(retries))
                     time.sleep(self._fail_wait(retries))
-                    return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
+                    return self.send_file(request, file, labels, buffer, throttle,
+                                          retries - 1, offset, chunk_size, use_expect_continue)
                 else:
                     warning("Too many failures. Giving up on '%s'" % (filename))
                     raise S3UploadError
@@ -1377,7 +1442,8 @@ class S3(object):
             warning("MD5 Sums don't match!")
             if retries:
                 warning("Retrying upload of %s" % (filename))
-                return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
+                return self.send_file(request, file, labels, buffer, throttle,
+                                      retries - 1, offset, chunk_size, use_expect_continue)
             else:
                 warning("Too many failures. Giving up on '%s'" % (filename))
                 raise S3UploadError
