@@ -71,7 +71,7 @@ setup(
     ## Packaging details
     author = "Michal Ludvig",
     author_email = "michal@logix.cz",
-    maintainer = "github.com/mdomsch, github.com/matteobar",
+    maintainer = "github.com/mdomsch, github.com/matteobar, github.com/fviard",
     maintainer_email = "s3tools-bugs@lists.sourceforge.net",
     url = S3.PkgInfo.url,
     license = S3.PkgInfo.license,
