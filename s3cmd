@@ -598,7 +598,7 @@ def cmd_object_del(args):
 
         if not recursive:
             rc = subcmd_object_del_uri(uri_str)
-        elif Config().exclude or cfg.max_delete > 0:
+        elif Config().exclude or Config().include or cfg.max_delete > 0:
             # subcmd_batch_del_iterative does not support file exclusion and can't
             # accurately know how many total files will be deleted, so revert to batch delete.
             rc = subcmd_batch_del(uri_str = uri_str)
