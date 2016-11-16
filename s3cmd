@@ -2329,7 +2329,7 @@ def process_patterns_from_file(fname, patterns_list):
         error(e)
         sys.exit(EX_IOERR)
     for pattern in fn:
-        pattern = pattern.strip()
+        pattern = unicodise(pattern).strip()
         if re.match("^#", pattern) or re.match("^\s*$", pattern):
             continue
         debug(u"%s: adding rule: %s" % (fname, pattern))
