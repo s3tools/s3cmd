@@ -1638,7 +1638,8 @@ def cmd_sync_local2remote(args):
         # Special case, "." for current folder.
         destbase_with_source_list = set()
         for source_arg in source_args:
-            if not source_arg.endswith('/') and os.path.basename(source_arg) != '.':
+            if not source_arg.endswith('/') and os.path.basename(source_arg) != '.' \
+               and not single_file_local:
                 destbase_with_source_list.add(os.path.join(destination_base,
                                                     os.path.basename(source_arg)))
             else:
