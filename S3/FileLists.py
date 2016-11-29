@@ -276,6 +276,8 @@ def fetch_local_list(args, is_src = False, recursive = None):
                 if not os.path.isfile(deunicodise(full_name)):
                     if os.path.exists(deunicodise(full_name)):
                         warning(u"Skipping over non regular file: %s" % full_name)
+                    elif u'\ufffd' in full_name:
+                        warning(u"Skipping file with encoding problem: %s" % full_name)
                     continue
                 if os.path.islink(deunicodise(full_name)):
                     if not cfg.follow_symlinks:
