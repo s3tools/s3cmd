@@ -2506,7 +2506,7 @@ class MyHelpFormatter(IndentedHelpFormatter):
         else:
             return ""
 
-def main():
+def main(cmd_args):
     global cfg
     cfg = Config()
     commands_list = get_commands_list()
@@ -2660,7 +2660,7 @@ def main():
     optparser.epilog = format_commands(optparser.get_prog_name(), commands_list)
     optparser.epilog += ("\nFor more information, updates and news, visit the s3cmd website:\n%s\n" % PkgInfo.url)
 
-    (options, args) = optparser.parse_args()
+    (options, args) = optparser.parse_args(cmd_args)
 
     ## Some mucking with logging levels to enable
     ## debugging/verbose output for config file parser on request
@@ -2925,34 +2925,34 @@ def report_exception(e, msg=u''):
 
         sys.stderr.write(alert_header % (u"above lines", u""))
 
+try:
+    ## Our modules
+    ## Keep them in try/except block to
+    ## detect any syntax errors in there
+    from S3.ExitCodes import *
+    from S3.Exceptions import *
+    from S3 import PkgInfo
+    from S3.S3 import S3
+    from S3.Config import Config
+    from S3.SortedDict import SortedDict
+    from S3.FileDict import FileDict
+    from S3.S3Uri import S3Uri
+    from S3 import Utils
+    from S3 import Crypto
+    from S3.Utils import *
+    from S3.Progress import Progress, StatsInfo
+    from S3.CloudFront import Cmd as CfCmd
+    from S3.CloudFront import CloudFront
+    from S3.FileLists import *
+    from S3.MultiPart import MultiPartUpload
+except Exception as e:
+    report_exception(e, "Error loading some components of s3cmd (Import Error)")
+    # 1 = EX_GENERAL but be safe in that situation
+    sys.exit(1)
+
 if __name__ == '__main__':
     try:
-        ## Our modules
-        ## Keep them in try/except block to
-        ## detect any syntax errors in there
-        from S3.ExitCodes import *
-        from S3.Exceptions import *
-        from S3 import PkgInfo
-        from S3.S3 import S3
-        from S3.Config import Config
-        from S3.SortedDict import SortedDict
-        from S3.FileDict import FileDict
-        from S3.S3Uri import S3Uri
-        from S3 import Utils
-        from S3 import Crypto
-        from S3.Utils import *
-        from S3.Progress import Progress, StatsInfo
-        from S3.CloudFront import Cmd as CfCmd
-        from S3.CloudFront import CloudFront
-        from S3.FileLists import *
-        from S3.MultiPart import MultiPartUpload
-    except Exception as e:
-        report_exception(e, "Error loading some components of s3cmd (Import Error)")
-        # 1 = EX_GENERAL but be safe in that situation
-        sys.exit(1)
-
-    try:
-        rc = main()
+        rc = main(sys.argv[1:])
         sys.exit(rc)
 
     except ImportError, e:

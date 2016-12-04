@@ -104,7 +104,11 @@ Authors:
         'Topic :: Utilities',
     ],
 
-    install_requires = ["python-dateutil", "python-magic"]
+    install_requires = ["python-dateutil", "python-magic"],
+
+    tests_require=["boto", "mock", "moto"],
+
+    test_suite="tests"
 )
 
 # vim:et:ts=4:sts=4:ai

@@ -82,10 +82,15 @@ def stripNameSpace(xml):
     """
     removeNameSpace(xml) -- remove top-level AWS namespace
     """
-    r = re.compile('^(<?[^>]+?>\s*)(<\w+) xmlns=[\'"](http://[^\'"]+)[\'"](.*)', re.MULTILINE)
-    if r.match(xml):
-        xmlns = r.match(xml).groups()[2]
-        xml = r.sub("\\1\\2\\4", xml)
+    r = re.compile('^(<?[^>]+?>\s*)?(<\w+) xmlns=[\'"](http://[^\'"]+)[\'"](.*)', re.MULTILINE)
+    matched = r.match(xml)
+    if matched:
+        xmlns = matched.groups()[2]
+        if matched.group(1):
+            xml = r.sub("\\1\\2\\4", xml)
+        else:
+            # moto might not return DTD
+            xml = r.sub("\\2\\4", xml)
     else:
         xmlns = None
     return xml, xmlns
