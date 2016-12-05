@@ -193,7 +193,7 @@ class ExpectationFailed(HTTPException):
 
 httplib.HTTPResponse.begin = httpresponse_patched_begin
 httplib.HTTPConnection.endheaders = httpconnection_patched_endheaders
-httplib.HTTPConnection.send_output = httpconnection_patched_send_output
+httplib.HTTPConnection._send_output = httpconnection_patched_send_output
 httplib.HTTPConnection._set_content_length = httpconnection_patched_set_content_length
 httplib.HTTPConnection._send_request = httpconnection_patched_send_request
 
