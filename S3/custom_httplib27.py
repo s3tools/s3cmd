@@ -2,7 +2,7 @@ import httplib
 
 from httplib import (_CS_REQ_SENT, CONTINUE, _MAXLINE, LineTooLong, UnknownProtocol,
                      HTTPMessage, NO_CONTENT, NOT_MODIFIED, HTTPException)
-_METHODS_EXPECTING_BODY = {'PATCH', 'POST', 'PUT'}
+_METHODS_EXPECTING_BODY = ['PATCH', 'POST', 'PUT']
 
 # Fixed python 2.X httplib to be able to support Expect: 100-Continue http feature
 # Inspired by:
