@@ -1,6 +1,6 @@
 import httplib
 
-from httplib import (_CS_REQ_SENT, CONTINUE, _MAXLINE, LineTooLong, UnknownProtocol,
+from httplib import (_CS_REQ_SENT, _CS_REQ_STARTED, CONTINUE, _MAXLINE, LineTooLong, UnknownProtocol,
                      HTTPMessage, NO_CONTENT, NOT_MODIFIED, HTTPException)
 _METHODS_EXPECTING_BODY = ['PATCH', 'POST', 'PUT']
 
@@ -145,18 +145,55 @@ def httpconnection_patched_send_request(self, method, url, body, headers):
         self.endheaders()
         resp = self.getresponse()
         resp.read()
-        self.__state = _CS_REQ_SENT
+        self._HTTPConnection__state = _CS_REQ_SENT
         if resp.status == EXPECTATION_FAILED:
             raise ExpectationFailed()
         elif resp.status == CONTINUE:
             self.send(body)
 
+def httpconnection_patched_endheaders(self, message_body=None):
+    """Indicate that the last header line has been sent to the server.
+
+    This method sends the request to the server.  The optional
+    message_body argument can be used to pass a message body
+    associated with the request.  The message body will be sent in
+    the same packet as the message headers if it is string, otherwise it is
+    sent as a separate packet.
+    """
+    if self._HTTPConnection__state == _CS_REQ_STARTED:
+        self._HTTPConnection__state = _CS_REQ_SENT
+    else:
+        raise CannotSendHeader()
+    self._send_output(message_body)
+
+def httpconnection_patched_send_output(self, message_body=None):
+    """Send the currently buffered request and clear the buffer.
+
+    Appends an extra \\r\\n to the buffer.
+    A message_body may be specified, to be appended to the request.
+    """
+    self._buffer.extend(("", ""))
+    msg = "\r\n".join(self._buffer)
+    del self._buffer[:]
+    # If msg and message_body are sent in a single send() call,
+    # it will avoid performance problems caused by the interaction
+    # between delayed ack and the Nagle algorithm.
+    if isinstance(message_body, str):
+        msg += message_body
+        message_body = None
+    self.send(msg)
+    if message_body is not None:
+        #message_body was not a string (i.e. it is a file) and
+        #we must run the risk of Nagle
+        self.send(message_body)
 
 
 class ExpectationFailed(HTTPException):
     pass
 
 httplib.HTTPResponse.begin = httpresponse_patched_begin
+httplib.HTTPConnection.endheaders = httpconnection_patched_endheaders
+httplib.HTTPConnection.send_output = httpconnection_patched_send_output
 httplib.HTTPConnection._set_content_length = httpconnection_patched_set_content_length
 httplib.HTTPConnection._send_request = httpconnection_patched_send_request
 
