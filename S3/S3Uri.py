@@ -6,13 +6,13 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
 import os
 import re
 import sys
-from Utils import unicodise, deunicodise, check_bucket_name_dns_support
-import Config
+from .Utils import unicodise, deunicodise, check_bucket_name_dns_support
+from . import Config
 
 class S3Uri(object):
     type = None

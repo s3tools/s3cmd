@@ -6,16 +6,18 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
+from __future__ import absolute_import
+
 import sys
-from custom_httplib27 import httplib
+from .custom_httplib27 import httplib
 import ssl
 from threading import Semaphore
 from logging import debug
 from urlparse import urlparse
 
-from Config import Config
-from Exceptions import ParameterError
-from Utils import getBucketFromHostname
+from .Config import Config
+from .Exceptions import ParameterError
+from .Utils import getBucketFromHostname
 
 if not 'CertificateError ' in ssl.__dict__:
     class CertificateError(Exception):

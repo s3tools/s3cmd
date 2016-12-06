@@ -6,13 +6,15 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
+from __future__ import absolute_import
+
 import sys
 import hmac
 import base64
 
-import Config
+from . import Config
 from logging import debug
-from Utils import encode_to_s3, time_to_epoch, deunicodise
+from .Utils import encode_to_s3, time_to_epoch, deunicodise
 
 import datetime
 import urllib
@@ -20,7 +22,7 @@ import urllib
 # hashlib backported to python 2.4 / 2.5 is not compatible with hmac!
 if sys.version_info[0] == 2 and sys.version_info[1] < 6:
     import sha as sha1
-    from Crypto.Hash import SHA256 as sha256
+    from .Crypto.Hash import SHA256 as sha256
 else:
     from hashlib import sha1, sha256
 

@@ -6,9 +6,9 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
-from BidirMap import BidirMap
+from .BidirMap import BidirMap
 
 class SortedDictIterator(object):
     def __init__(self, sorted_dict, keys):

@@ -6,6 +6,8 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
+from __future__ import absolute_import
+
 import sys
 import os
 import time
@@ -24,17 +26,17 @@ try:
 except ImportError:
     from md5 import md5
 
-from Utils import *
-from SortedDict import SortedDict
-from AccessLog import AccessLog
-from ACL import ACL, GranteeLogDelivery
-from BidirMap import BidirMap
-from Config import Config
-from Exceptions import *
-from MultiPart import MultiPartUpload
-from S3Uri import S3Uri
-from ConnMan import ConnMan, CertificateError
-from Crypto import sign_string_v2, sign_string_v4, checksum_sha256_file, checksum_sha256_buffer
+from .Utils import *
+from .SortedDict import SortedDict
+from .AccessLog import AccessLog
+from .ACL import ACL, GranteeLogDelivery
+from .BidirMap import BidirMap
+from .Config import Config
+from .Exceptions import *
+from .MultiPart import MultiPartUpload
+from .S3Uri import S3Uri
+from .ConnMan import ConnMan, CertificateError
+from .Crypto import sign_string_v2, sign_string_v4, checksum_sha256_file, checksum_sha256_buffer
 
 try:
     from ctypes import ArgumentError
