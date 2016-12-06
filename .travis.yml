@@ -5,7 +5,7 @@ python:
     - "3.5"
 matrix:
     allow_failures:
-        - python: 3.5
+        - python: "3.5"
 notifications:
     email: false
     irc: "chat.freenode.net#s3cmd"
