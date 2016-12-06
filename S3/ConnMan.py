@@ -126,7 +126,6 @@ class http_connection(object):
 
     @staticmethod
     def _https_connection(hostname, port=None):
-        check_hostname = True
         try:
             context = http_connection._ssl_context()
             # Wilcard certificates do not work with DNS-style named buckets.
@@ -140,6 +139,15 @@ class http_connection(object):
                 check_hostname = False
                 if context:
                     context.check_hostname = False
+            else:
+                if context:
+                    check_hostname = context.check_hostname
+                else:
+                    # Earliest version of python that don't have context,
+                    # don't check hostnames anyway
+                    check_hostname = True
+            # Note, we are probably needed to try to set check_hostname because of that bug:
+            # http://bugs.python.org/issue22959
             conn = httplib.HTTPSConnection(hostname, port, context=context, check_hostname=check_hostname)
             debug(u'httplib.HTTPSConnection() has both context and check_hostname')
         except TypeError:
