@@ -2,6 +2,16 @@ import httplib
 
 from httplib import (_CS_REQ_SENT, _CS_REQ_STARTED, CONTINUE, _MAXLINE, LineTooLong, UnknownProtocol,
                      HTTPMessage, NO_CONTENT, NOT_MODIFIED, HTTPException)
+try:
+    # python 2.6 support
+    from httplib import _MAXLINE, LineTooLong
+except ImportError:
+    _MAXLINE = 65536
+    class LineTooLong(HTTPException):
+        def __init__(self, line_type):
+            HTTPException.__init__(self, "got more than %d bytes when reading %s"
+                                        % (_MAXLINE, line_type))
+
 _METHODS_EXPECTING_BODY = ['PATCH', 'POST', 'PUT']
 
 # Fixed python 2.X httplib to be able to support Expect: 100-Continue http feature
