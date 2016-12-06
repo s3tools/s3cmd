@@ -30,6 +30,7 @@ before_script:
     - $HOME/cache/minio server $HOME/minio_tmp &
     - sleep 4 # give minio some time to start
 # command to run tests
-script: ./s3cmd -c .travis.s3cfg ls
+## Tests stopped at test 23 because minio doesn't support "quote_plus" used in signatures.
+script: ./run-tests-minio.py -c .travis.s3cfg -p baseauto 1..23
 after_script:
     - killall minio
