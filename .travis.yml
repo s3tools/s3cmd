@@ -1,32 +1,35 @@
 language: python
 python:
-  - "2.6"
-  - "2.7"
-  - "3.5"
+    - "2.6"
+    - "2.7"
+    - "3.5"
+matrix:
+    allow_failures:
+        - python: 3.5
 notifications:
-  email: false
-  irc: "chat.freenode.net#s3cmd"
+    email: false
+    irc: "chat.freenode.net#s3cmd"
 # command to install dependencies
 cache:
     directories:
         - $HOME/cache
 install:
-  - pip install .
+    - pip install .
 # command to prepare tests
 before_install:
-  - mkdir -p $HOME/cache
-  - test ! -e $HOME/cache/minio && wget -O $HOME/cache/minio https://dl.minio.io/server/minio/release/linux-amd64/minio || echo "Minio already in cache"
-  - mkdir -p $HOME/minio_tmp
+    - mkdir -p $HOME/cache
+    - test ! -e $HOME/cache/minio && wget -O $HOME/cache/minio https://dl.minio.io/server/minio/release/linux-amd64/minio || echo "Minio already in cache"
+    - mkdir -p $HOME/minio_tmp
 # Start a local instance of minio
 before_script:
-  - "export AWS_ACCESS_KEY_ID=Q3AM3UQ867SPQQA43P2F"
-  - "export AWS_SECRET_ACCESS_KEY=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
-  - "export MINIO_ACCESS_KEY=Q3AM3UQ867SPQQA43P2F"
-  - "export MINIO_SECRET_KEY=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
-  - chmod +x $HOME/cache/minio
-  - $HOME/cache/minio server $HOME/minio_tmp &
-  - sleep 4 # give minio some time to start
+    - "export AWS_ACCESS_KEY_ID=Q3AM3UQ867SPQQA43P2F"
+    - "export AWS_SECRET_ACCESS_KEY=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+    - "export MINIO_ACCESS_KEY=Q3AM3UQ867SPQQA43P2F"
+    - "export MINIO_SECRET_KEY=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+    - chmod +x $HOME/cache/minio
+    - $HOME/cache/minio server $HOME/minio_tmp &
+    - sleep 4 # give minio some time to start
 # command to run tests
 script: ./s3cmd -c .travis.s3cfg ls
 after_script:
-  - killall minio
+    - killall minio

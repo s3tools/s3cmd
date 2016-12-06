@@ -1,6 +1,6 @@
 import httplib
 
-from httplib import (_CS_REQ_SENT, _CS_REQ_STARTED, CONTINUE, _MAXLINE, LineTooLong, UnknownProtocol,
+from httplib import (_CS_REQ_SENT, _CS_REQ_STARTED, CONTINUE, UnknownProtocol,
                      HTTPMessage, NO_CONTENT, NOT_MODIFIED, HTTPException)
 try:
     # python 2.6 support
