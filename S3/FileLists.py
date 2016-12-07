@@ -6,13 +6,15 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
-from S3 import S3
-from Config import Config
-from S3Uri import S3Uri
-from FileDict import FileDict
-from Utils import *
-from Exceptions import ParameterError
-from HashCache import HashCache
+from __future__ import absolute_import
+
+from .S3 import S3
+from .Config import Config
+from .S3Uri import S3Uri
+from .FileDict import FileDict
+from .Utils import *
+from .Exceptions import ParameterError
+from .HashCache import HashCache
 
 from logging import debug, info, warning
 

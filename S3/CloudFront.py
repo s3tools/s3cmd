@@ -6,6 +6,8 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
+from __future__ import absolute_import
+
 import sys
 import time
 import random
@@ -17,13 +19,13 @@ try:
 except ImportError:
     import elementtree.ElementTree as ET
 
-from S3 import S3
-from Config import Config
-from Exceptions import *
-from Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, getBucketFromHostname, getHostnameFromBucket, deunicodise
-from Crypto import sign_string_v2
-from S3Uri import S3Uri, S3UriS3
-from ConnMan import ConnMan
+from .S3 import S3
+from .Config import Config
+from .Exceptions import *
+from .Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, getBucketFromHostname, getHostnameFromBucket, deunicodise
+from .Crypto import sign_string_v2
+from .S3Uri import S3Uri, S3UriS3
+from .ConnMan import ConnMan
 
 cloudfront_api_version = "2010-11-01"
 cloudfront_resource = "/%(api_ver)s/distribution" % { 'api_ver' : cloudfront_api_version }

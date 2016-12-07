@@ -6,12 +6,12 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
-import S3Uri
-from Exceptions import ParameterError
-from Utils import getTreeFromXml
-from ACL import GranteeAnonRead
+from . import S3Uri
+from .Exceptions import ParameterError
+from .Utils import getTreeFromXml
+from .ACL import GranteeAnonRead
 
 try:
     import xml.etree.ElementTree as ET

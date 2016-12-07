@@ -6,9 +6,11 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
-from Utils import getTreeFromXml, unicodise, deunicodise
+from __future__ import absolute_import
+
+from .Utils import getTreeFromXml, unicodise, deunicodise
 from logging import debug, error
-import ExitCodes
+from . import ExitCodes
 
 try:
     from xml.etree.ElementTree import ParseError as XmlParseError
