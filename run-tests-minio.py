@@ -7,7 +7,7 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
 import sys
 import os
