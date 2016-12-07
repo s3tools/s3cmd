@@ -8,7 +8,7 @@
 
 from __future__ import absolute_import
 
-from .Utils import getTreeFromXml, unicodise, deunicodise
+import S3.Utils
 from logging import debug, error
 from . import ExitCodes
 
@@ -20,12 +20,12 @@ except ImportError:
 
 class S3Exception(Exception):
     def __init__(self, message = ""):
-        self.message = unicodise(message)
+        self.message = S3.Utils.unicodise(message)
 
     def __str__(self):
         ## Call unicode(self) instead of self.message because
         ## __unicode__() method could be overridden in subclasses!
-        return deunicodise(unicode(self))
+        return S3.Utils.deunicodise(unicode(self))
 
     def __unicode__(self):
         return self.message
@@ -53,7 +53,7 @@ class S3Error (S3Exception):
                 debug("HttpHeader: %s: %s" % (header, response["headers"][header]))
         if "data" in response and response["data"]:
             try:
-                tree = getTreeFromXml(response["data"])
+                tree = S3.Utils.getTreeFromXml(response["data"])
             except XmlParseError:
                 debug("Not an XML response")
             else:

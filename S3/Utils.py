@@ -6,6 +6,8 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
+from __future__ import absolute_import
+
 import os
 import sys
 import time
@@ -15,7 +17,7 @@ import random
 import errno
 from calendar import timegm
 from logging import debug, warning, error
-from ExitCodes import EX_OSFILE
+from .ExitCodes import EX_OSFILE
 try:
     import dateutil.parser
 except ImportError:
@@ -33,8 +35,8 @@ $ pip install python-dateutil
     sys.stderr.flush()
     sys.exit(EX_OSFILE)
 
-import Config
-import Exceptions
+import S3.Config
+import S3.Exceptions
 import xml.dom.minidom
 
 # hashlib backported to python 2.4 / 2.5 is not compatible with hmac!
@@ -288,7 +290,7 @@ def unicodise(string, encoding = None, errors = "replace"):
     """
 
     if not encoding:
-        encoding = Config.Config().encoding
+        encoding = S3.Config.Config().encoding
 
     if type(string) == unicode:
         return string
@@ -306,7 +308,7 @@ def deunicodise(string, encoding = None, errors = "replace"):
     """
 
     if not encoding:
-        encoding = Config.Config().encoding
+        encoding = S3.Config.Config().encoding
 
     if type(string) != unicode:
         return str(string)
@@ -374,7 +376,7 @@ def replace_nonprintables(string):
             modified += 1
         else:
             new_string += c
-    if modified and Config.Config().urlencoding_mode != "fixbucket":
+    if modified and S3.Config.Config().urlencoding_mode != "fixbucket":
         warning("%d non-printable characters replaced in: %s" % (modified, new_string))
     return new_string
 __all__.append("replace_nonprintables")
@@ -410,41 +412,41 @@ def time_to_epoch(t):
                 # Will fall through
                 debug("Failed to parse date with strptime: %s", ex)
                 pass
-    raise Exceptions.ParameterError('Unable to convert %r to an epoch time. Pass an epoch time. Try `date -d \'now + 1 year\' +%%s` (shell) or time.mktime (Python).' % t)
+    raise S3.Exceptions.ParameterError('Unable to convert %r to an epoch time. Pass an epoch time. Try `date -d \'now + 1 year\' +%%s` (shell) or time.mktime (Python).' % t)
 
 
 def check_bucket_name(bucket, dns_strict = True):
     if dns_strict:
         invalid = re.search("([^a-z0-9\.-])", bucket, re.UNICODE)
         if invalid:
-            raise Exceptions.ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: lowercase us-ascii letters (a-z), digits (0-9), dot (.) and hyphen (-)." % (bucket, invalid.groups()[0]))
+            raise S3.Exceptions.ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: lowercase us-ascii letters (a-z), digits (0-9), dot (.) and hyphen (-)." % (bucket, invalid.groups()[0]))
     else:
         invalid = re.search("([^A-Za-z0-9\._-])", bucket, re.UNICODE)
         if invalid:
-            raise Exceptions.ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: us-ascii letters (a-z, A-Z), digits (0-9), dot (.), hyphen (-) and underscore (_)." % (bucket, invalid.groups()[0]))
+            raise S3.Exceptions.ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: us-ascii letters (a-z, A-Z), digits (0-9), dot (.), hyphen (-) and underscore (_)." % (bucket, invalid.groups()[0]))
 
     if len(bucket) < 3:
-        raise Exceptions.ParameterError("Bucket name '%s' is too short (min 3 characters)" % bucket)
+        raise S3.Exceptions.ParameterError("Bucket name '%s' is too short (min 3 characters)" % bucket)
     if len(bucket) > 255:
-        raise Exceptions.ParameterError("Bucket name '%s' is too long (max 255 characters)" % bucket)
+        raise S3.Exceptions.ParameterError("Bucket name '%s' is too long (max 255 characters)" % bucket)
     if dns_strict:
         if len(bucket) > 63:
-            raise Exceptions.ParameterError("Bucket name '%s' is too long (max 63 characters)" % bucket)
+            raise S3.Exceptions.ParameterError("Bucket name '%s' is too long (max 63 characters)" % bucket)
         if re.search("-\.", bucket, re.UNICODE):
-            raise Exceptions.ParameterError("Bucket name '%s' must not contain sequence '-.' for DNS compatibility" % bucket)
+            raise S3.Exceptions.ParameterError("Bucket name '%s' must not contain sequence '-.' for DNS compatibility" % bucket)
         if re.search("\.\.", bucket, re.UNICODE):
-            raise Exceptions.ParameterError("Bucket name '%s' must not contain sequence '..' for DNS compatibility" % bucket)
+            raise S3.Exceptions.ParameterError("Bucket name '%s' must not contain sequence '..' for DNS compatibility" % bucket)
         if not re.search("^[0-9a-z]", bucket, re.UNICODE):
-            raise Exceptions.ParameterError("Bucket name '%s' must start with a letter or a digit" % bucket)
+            raise S3.Exceptions.ParameterError("Bucket name '%s' must start with a letter or a digit" % bucket)
         if not re.search("[0-9a-z]$", bucket, re.UNICODE):
-            raise Exceptions.ParameterError("Bucket name '%s' must end with a letter or a digit" % bucket)
+            raise S3.Exceptions.ParameterError("Bucket name '%s' must end with a letter or a digit" % bucket)
     return True
 __all__.append("check_bucket_name")
 
 def check_bucket_name_dns_conformity(bucket):
     try:
         return check_bucket_name(bucket, dns_strict = True)
-    except Exceptions.ParameterError:
+    except S3.Exceptions.ParameterError:
         return False
 __all__.append("check_bucket_name_dns_conformity")
 
@@ -468,11 +470,11 @@ def getBucketFromHostname(hostname):
 
     Returns bucket name and a boolean success flag.
     """
-    if "%(bucket)s" not in Config.Config().host_bucket:
+    if "%(bucket)s" not in S3.Config.Config().host_bucket:
         return (hostname, False)
 
     # Create RE pattern from Config.host_bucket
-    pattern = Config.Config().host_bucket % { 'bucket' : '(?P<bucket>.*)' }
+    pattern = S3.Config.Config().host_bucket % { 'bucket' : '(?P<bucket>.*)' }
     m = re.match(pattern, hostname, re.UNICODE)
     if not m:
         return (hostname, False)
@@ -480,7 +482,7 @@ def getBucketFromHostname(hostname):
 __all__.append("getBucketFromHostname")
 
 def getHostnameFromBucket(bucket):
-    return Config.Config().host_bucket % { 'bucket' : bucket }
+    return S3.Config.Config().host_bucket % { 'bucket' : bucket }
 __all__.append("getHostnameFromBucket")
 
 

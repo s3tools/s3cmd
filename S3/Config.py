@@ -6,13 +6,15 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
+from __future__ import absolute_import
+
 import logging
 from logging import debug, warning, error
 import re
 import os
 import sys
-import Progress
-from SortedDict import SortedDict
+from . import Progress
+from .SortedDict import SortedDict
 import httplib
 import locale
 try:
