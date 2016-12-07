@@ -1,9 +1,14 @@
+# -*- coding: utf-8 -*-
+
 ## Amazon S3 - Access Control List representation
 ## Author: Michal Ludvig <michal@logix.cz>
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
+## Copyright: TGRMN Software and contributors
 
-from Utils import getTreeFromXml
+from __future__ import print_function
+
+from Utils import getTreeFromXml, deunicodise
 
 try:
     import xml.etree.ElementTree as ET
@@ -22,11 +27,11 @@ class Grantee(object):
         self.permission = None
 
     def __repr__(self):
-        return 'Grantee("%(tag)s", "%(name)s", "%(permission)s")' % {
+        return deunicodise('Grantee("%(tag)s", "%(name)s", "%(permission)s")' % {
             "tag" : self.tag,
             "name" : self.name,
             "permission" : self.permission
-        }
+        })
 
     def isAllUsers(self):
         return self.tag == "URI" and self.name == Grantee.ALL_USERS_URI
@@ -158,15 +163,15 @@ class ACL(object):
         grantee.name = name
         grantee.permission = permission
 
-        if  name.find('@') > -1:
-            grantee.name = grantee.name.lower
+        if  '@' in name:
+            grantee.name = grantee.name.lower()
             grantee.xsi_type = "AmazonCustomerByEmail"
             grantee.tag = "EmailAddress"
-        elif name.find('http://acs.amazonaws.com/groups/') > -1:
+        elif 'http://acs.amazonaws.com/groups/' in name:
             grantee.xsi_type = "Group"
             grantee.tag = "URI"
         else:
-            grantee.name = grantee.name.lower
+            grantee.name = grantee.name.lower()
             grantee.xsi_type = "CanonicalUser"
             grantee.tag = "ID"
 
@@ -178,9 +183,10 @@ class ACL(object):
         permission = permission.upper()
 
         if "ALL" == permission:
-            self.grantees = [g for g in self.grantees if not g.name.lower() == name]
+            self.grantees = [g for g in self.grantees if not (g.name.lower() == name or g.display_name.lower() == name)]
         else:
-            self.grantees = [g for g in self.grantees if not (g.name.lower() == name and g.permission.upper() ==  permission)]
+            self.grantees = [g for g in self.grantees if not ((g.display_name.lower() == name and g.permission.upper() == permission)\
+				 or (g.name.lower() == name and g.permission.upper() ==  permission))]
 
 
     def __str__(self):
@@ -218,11 +224,11 @@ if __name__ == "__main__":
 </AccessControlPolicy>
     """
     acl = ACL(xml)
-    print "Grants:", acl.getGrantList()
+    print("Grants:", acl.getGrantList())
     acl.revokeAnonRead()
-    print "Grants:", acl.getGrantList()
+    print("Grants:", acl.getGrantList())
     acl.grantAnonRead()
-    print "Grants:", acl.getGrantList()
-    print acl
+    print("Grants:", acl.getGrantList())
+    print(acl)
 
 # vim:et:ts=4:sts=4:ai

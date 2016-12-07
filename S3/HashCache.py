@@ -1,4 +1,7 @@
+# -*- coding: utf-8 -*-
+
 import cPickle as pickle
+from Utils import deunicodise
 
 class HashCache(object):
     def __init__(self):
@@ -45,12 +48,12 @@ class HashCache(object):
 
     def save(self, f):
         d = dict(inodes=self.inodes, version=1)
-        f = open(f, 'w')
-        p = pickle.dump(d, f)
+        f = open(deunicodise(f), 'w')
+        pickle.dump(d, f)
         f.close()
 
     def load(self, f):
-        f = open(f, 'r')
+        f = open(deunicodise(f), 'r')
         d = pickle.load(f)
         f.close()
         if d.get('version') == 1 and 'inodes' in d:

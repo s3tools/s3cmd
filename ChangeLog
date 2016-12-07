@@ -4,10 +4,7 @@
 
 No longer keeping ChangeLog up to date, use git log instead!
 
-Two "official" repositories (both the same content):
-
-* git://github.com/s3tools/s3cmd.git (primary)
-* git://s3tools.git.sourceforge.net/gitroot/s3tools/s3cmd.git
+* git://github.com/s3tools/s3cmd.git
 
 2011-04-11  Michal Ludvig  <mludvig@logix.net.nz>
 

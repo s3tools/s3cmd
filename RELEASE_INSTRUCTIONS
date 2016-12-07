@@ -1,0 +1,89 @@
+Instructions for s3cmd maintainers for doing a tagged release and publishing on sourceforge.net.
+In the below, 1.5.0-rc1 is the example version being released.  Salt to taste.
+
+1.  Make a fresh clone of the repo:
+   git clone ssh+git://git@github.com/s3tools/s3cmd s3cmd-release
+
+2.  Run ./run-tests.py to verify it all works OK.
+
+3.  Update version to 1.5.0-rc1 in S3/PkgInfo.py
+
+4.  Update manpage with ./s3cmd --help | ./format-manpage.pl > s3cmd.1
+
+5.  Update NEWS with info about new features. Best to extract from git
+    with:  git log --no-merges v1.5.0-beta1..
+    (list all tags with: "git tag")
+
+
+6.  Verify the above changes:
+    git diff --check && git diff
+    git status
+    (The only changed files should be NEWS, s3cmd.1, S3/PkgInfo.py)
+
+7.  Remove testsuite (intentionally inaccessible files break the next
+    step):
+    chmod -R +rwx testsuite/permission-tests/permission-denied-dir && rm -rf testsuite
+
+8.  If everything worked fine commit the above changes:
+    git commit -a -m "Update version to 1.5.0-rc1"
+
+9. Tag it:
+    git tag --sign -a v1.5.0-rc1 -m "Tag v1.5.0-rc1"
+
+10. Push back to github:
+    git push --tags
+
+11.  Build the "Source Distribution":
+    python setup.py sdist upload --sign
+    -> Creates dist/s3cmd-1.5.0-rc1.tar.gz* and dist/s3cmd-1.5.0-rc1.zip*
+
+The upload step publishes it to PyPi, so 'pip install s3cmd' downloads
+the new version.  It also generated the GPG signatures, so you don't
+have to do that manually, and have them available for the next steps.
+
+
+GitHub releases
+
+1. Login to github.com/s3tools/s3cmd
+
+2.  You will see your new tag in the Tags tab.  Click "Draft a new
+    release".
+
+3.  In the 'Tag version' drop-down, select your new tag.
+
+4.  In the 'Release title' field, name it v1.5.0-rc1.
+
+5.  In the 'Describe this release' text box, add in this release's
+    notes from the NEWS file.
+
+6.  Upload all 4 files from dist/.
+
+7.  Click "Publish release"
+
+
+
+SourceForge releases
+
+1.  Login to sf.net
+
+2.  Go to https://sourceforge.net/p/s3tools/admin/
+
+3.  Files -> s3cmd -> Add Folder -> Enter "1.5.0-rc1" -> Create
+
+4.  Go into 1.5.0-rc1 -> Add File -> upload dist/s3cmd-1.5.0-rc1.tar.gz
+
+5.  Once uploaded click the little "i" icon on the right and click
+    "Select all" under "Default Download For:" to update the default
+    download button to this new version.
+
+6.  Give it a few minutes and verify on the Summary page that the
+    download button has been updated to s3cmd-1.5.0-rc1.tar.gz
+
+Now it's time to send out an announcement email to
+s3cmd-announce@lists.sourceforge.net and
+s3cmd-general@lists.sourceforge.net (check out the s3cmd-announce
+archive for an inspiration :)
+
+And the last step is to ask the respective distribution maintainers
+(Fedora, Debian, Ubuntu, OpenSuse, ...?) to update the package in
+their builds.

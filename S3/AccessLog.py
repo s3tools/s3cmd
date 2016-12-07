@@ -1,7 +1,12 @@
+# -*- coding: utf-8 -*-
+
 ## Amazon S3 - Access Control List representation
 ## Author: Michal Ludvig <michal@logix.cz>
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
+## Copyright: TGRMN Software and contributors
+
+from __future__ import print_function
 
 import S3Uri
 from Exceptions import ParameterError
@@ -25,7 +30,7 @@ class AccessLog(object):
         self.tree.attrib['xmlns'] = "http://doc.s3.amazonaws.com/2006-03-01"
 
     def isLoggingEnabled(self):
-        return bool(self.tree.find(".//LoggingEnabled"))
+        return (self.tree.find(".//LoggingEnabled") is not None)
 
     def disableLogging(self):
         el = self.tree.find(".//LoggingEnabled")
@@ -42,8 +47,7 @@ class AccessLog(object):
 
     def targetPrefix(self):
         if self.isLoggingEnabled():
-            el = self.tree.find(".//LoggingEnabled")
-            target_prefix = "s3://%s/%s" % (
+            target_prefix = u"s3://%s/%s" % (
                 self.tree.find(".//LoggingEnabled//TargetBucket").text,
                 self.tree.find(".//LoggingEnabled//TargetPrefix").text)
             return S3Uri.S3Uri(target_prefix)
@@ -52,7 +56,7 @@ class AccessLog(object):
 
     def setAclPublic(self, acl_public):
         le = self.tree.find(".//LoggingEnabled")
-        if not le:
+        if le is None:
             raise ParameterError("Logging not enabled, can't set default ACL for logs")
         tg = le.find(".//TargetGrants")
         if not acl_public:
@@ -77,16 +81,15 @@ class AccessLog(object):
 __all__.append("AccessLog")
 
 if __name__ == "__main__":
-    from S3Uri import S3Uri
     log = AccessLog()
-    print log
-    log.enableLogging(S3Uri("s3://targetbucket/prefix/log-"))
-    print log
+    print(log)
+    log.enableLogging(S3Uri.S3Uri(u"s3://targetbucket/prefix/log-"))
+    print(log)
     log.setAclPublic(True)
-    print log
+    print(log)
     log.setAclPublic(False)
-    print log
+    print(log)
     log.disableLogging()
-    print log
+    print(log)
 
 # vim:et:ts=4:sts=4:ai

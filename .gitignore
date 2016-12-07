@@ -1,6 +1,9 @@
 *.pyc
 *.swp
 testsuite
+testsuite-out
 /MANIFEST
 /dist
 build/*
+s3cmd.spec
+.idea

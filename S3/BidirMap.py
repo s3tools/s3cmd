@@ -1,7 +1,10 @@
+# -*- coding: utf-8 -*-
+
 ## Amazon S3 manager
 ## Author: Michal Ludvig <michal@logix.cz>
 ##         http://www.logix.cz/michal
 ## License: GPL Version 2
+## Copyright: TGRMN Software and contributors
 
 class BidirMap(object):
     def __init__(self, **map):
@@ -11,7 +14,7 @@ class BidirMap(object):
             self.__setitem__(key, map[key])
 
     def __setitem__(self, key, value):
-        if self.v2k.has_key(value):
+        if value in self.v2k:
             if self.v2k[value] != key:
                 raise KeyError("Value '"+str(value)+"' already in use with key '"+str(self.v2k[value])+"'")
         try:

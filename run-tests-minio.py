@@ -7,8 +7,6 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
-from __future__ import print_function
-
 import sys
 import os
 import re
@@ -64,17 +62,17 @@ elif os.name == "nt" and os.getenv("USERPROFILE"):
 if not os.path.isdir('testsuite') and os.path.isfile('testsuite.tar.gz'):
     os.system("tar -xz -f testsuite.tar.gz")
 if not os.path.isdir('testsuite'):
-    print("Something went wrong while unpacking testsuite.tar.gz")
+    print "Something went wrong while unpacking testsuite.tar.gz"
     sys.exit(1)
 
 os.system("tar -xf testsuite/checksum.tar -C testsuite")
 if not os.path.isfile('testsuite/checksum/cksum33.txt'):
-    print("Something went wrong while unpacking testsuite/checkum.tar")
+    print "Something went wrong while unpacking testsuite/checkum.tar"
     sys.exit(1)
 
 ## Fix up permissions for permission-denied tests
-os.chmod("testsuite/permission-tests/permission-denied-dir", 0o444)
-os.chmod("testsuite/permission-tests/permission-denied.txt", 0o000)
+os.chmod("testsuite/permission-tests/permission-denied-dir", 0444)
+os.chmod("testsuite/permission-tests/permission-denied.txt", 0000)
 
 ## Patterns for Unicode tests
 patterns = {}
@@ -83,10 +81,10 @@ patterns['GBK'] = u"12月31日/1-特色條目"
 
 encoding = locale.getpreferredencoding()
 if not encoding:
-    print("Guessing current system encoding failed. Consider setting $LANG variable.")
+    print "Guessing current system encoding failed. Consider setting $LANG variable."
     sys.exit(1)
 else:
-    print("System encoding: " + encoding)
+    print "System encoding: " + encoding
 
 have_encoding = os.path.isdir('testsuite/encodings/' + encoding)
 if not have_encoding and os.path.isfile('testsuite/encodings/%s.tar.gz' % encoding):
@@ -97,7 +95,9 @@ if have_encoding:
     #enc_base_remote = "%s/xyz/%s/" % (pbucket(1), encoding)
     enc_pattern = patterns[encoding]
 else:
-    print(encoding + " specific files not found.")
+    print encoding + " specific files not found."
+# Minio: disable encoding tests
+have_encoding = False
 
 if not os.path.isdir('testsuite/crappy-file-name'):
     os.system("tar xvz -C testsuite -f testsuite/crappy-file-name.tar.gz")
@@ -106,17 +106,17 @@ if not os.path.isdir('testsuite/crappy-file-name'):
 
 def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = [], stdin = None):
     def command_output():
-        print("----")
-        print(" ".join([" " in arg and "'%s'" % arg or arg for arg in cmd_args]))
-        print("----")
-        print(stdout)
-        print("----")
+        print "----"
+        print " ".join([" " in arg and "'%s'" % arg or arg for arg in cmd_args])
+        print "----"
+        print stdout
+        print "----"
 
     def failure(message = ""):
         global count_fail
         if message:
             message = u"  (%r)" % message
-        print(u"\x1b[31;1mFAIL%s\x1b[0m" % (message))
+        print u"\x1b[31;1mFAIL%s\x1b[0m" % (message)
         count_fail += 1
         command_output()
         #return 1
@@ -125,7 +125,7 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
         global count_pass
         if message:
             message = "  (%r)" % message
-        print("\x1b[32;1mOK\x1b[0m%s" % (message))
+        print "\x1b[32;1mOK\x1b[0m%s" % (message)
         count_pass += 1
         if verbose:
             command_output()
@@ -134,7 +134,7 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
         global count_skip
         if message:
             message = "  (%r)" % message
-        print("\x1b[33;1mSKIP\x1b[0m%s" % (message))
+        print "\x1b[33;1mSKIP\x1b[0m%s" % (message)
         count_skip += 1
         return 0
     def compile_list(_list, regexps = False):
@@ -145,7 +145,7 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 
     global test_counter
     test_counter += 1
-    print(("%3d  %s " % (test_counter, label)).ljust(30, "."), end=' ')
+    print ("%3d  %s " % (test_counter, label)).ljust(30, "."),
     sys.stdout.flush()
 
     if run_tests.count(test_counter) == 0 or exclude_tests.count(test_counter) > 0:
@@ -204,7 +204,7 @@ def test_mkdir(label, dir_name):
     if os.name in ("posix", "nt"):
         cmd = ['mkdir', '-p']
     else:
-        print("Unknown platform: %s" % os.name)
+        print "Unknown platform: %s" % os.name
         sys.exit(1)
     cmd.append(dir_name)
     return test(label, cmd)
@@ -216,7 +216,7 @@ def test_rmdir(label, dir_name):
         elif os.name == "nt":
             cmd = ['rmdir', '/s/q']
         else:
-            print("Unknown platform: %s" % os.name)
+            print "Unknown platform: %s" % os.name
             sys.exit(1)
         cmd.append(dir_name)
         return test(label, cmd)
@@ -233,7 +233,7 @@ def test_copy(label, src_file, dst_file):
     elif os.name == "nt":
         cmd = ['copy']
     else:
-        print("Unknown platform: %s" % os.name)
+        print "Unknown platform: %s" % os.name
         sys.exit(1)
     cmd.append(src_file)
     cmd.append(dst_file)
@@ -250,11 +250,11 @@ argv = sys.argv[1:]
 while argv:
     arg = argv.pop(0)
     if arg.startswith('--bucket-prefix='):
-        print("Usage: '--bucket-prefix PREFIX', not '--bucket-prefix=PREFIX'")
+        print "Usage: '--bucket-prefix PREFIX', not '--bucket-prefix=PREFIX'"
         sys.exit(0)
     if arg in ("-h", "--help"):
-        print("%s A B K..O -N" % sys.argv[0])
-        print("Run tests number A, B and K through to O, except for N")
+        print "%s A B K..O -N" % sys.argv[0]
+        print "Run tests number A, B and K through to O, except for N"
         sys.exit(0)
 
     if arg in ("-c", "--config"):
@@ -270,7 +270,7 @@ while argv:
         try:
             bucket_prefix = argv.pop(0)
         except IndexError:
-            print("Bucket prefix option must explicitly supply a bucket name prefix")
+            print "Bucket prefix option must explicitly supply a bucket name prefix"
             sys.exit(0)
         continue
     if ".." in arg:
@@ -283,7 +283,7 @@ while argv:
     else:
         run_tests.append(int(arg))
 
-print("Using bucket prefix: '%s'" % bucket_prefix)
+print "Using bucket prefix: '%s'" % bucket_prefix
 
 cfg = S3.Config.Config(config_file)
 
@@ -295,7 +295,7 @@ def bucket(tail):
         '''Test bucket name'''
         label = 'autotest'
         if str(tail) == '3':
-                label = 'Autotest'
+                label = 'autotest'
         return '%ss3cmd-%s-%s' % (bucket_prefix, label, tail)
 
 def pbucket(tail):
@@ -311,9 +311,11 @@ test_s3cmd("Verify no test buckets", ['ls'],
 
 
 ## ====== Create one bucket (EU)
-test_s3cmd("Create one bucket (EU)", ['mb', '--bucket-location=EU', pbucket(1)],
+# Disabled for minio
+#test_s3cmd("Create one bucket (EU)", ['mb', '--bucket-location=EU', pbucket(1)],
+#    must_find = "Bucket '%s/' created" % pbucket(1))
+test_s3cmd("Create one bucket", ['mb', pbucket(1)],
     must_find = "Bucket '%s/' created" % pbucket(1))
-
 
 
 ## ====== Create multiple buckets
@@ -329,14 +331,15 @@ test_s3cmd("Invalid bucket name", ["mb", "--bucket-location=EU", pbucket('EU')],
 
 
 ## ====== Buckets list
+# Modified for Minio
 test_s3cmd("Buckets list", ["ls"],
-    must_find = [ "autotest-1", "autotest-2", "Autotest-3" ], must_not_find_re = "autotest-EU")
+    must_find = [ "autotest-1", "autotest-2", "autotest-3" ], must_not_find_re = "autotest-EU")
 
 
 ## ====== Sync to S3
-test_s3cmd("Sync to S3", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude', 'demo/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings' ],
+# Modified for Minio (exclude crappy dir)
+test_s3cmd("Sync to S3", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude', 'demo/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings', '--exclude', 'crappy-file-name/*' ],
            must_find = [ "ERROR: Upload of 'testsuite/permission-tests/permission-denied.txt' is not possible (Reason: Permission denied)",
-                         "WARNING: 32 non-printable characters replaced in: crappy-file-name/non-printables",
            ],
            must_not_find_re = [ "demo/", "^(?!WARNING: Skipping).*\.png$", "permission-denied-dir" ],
            retcode = EX_PARTIAL)
@@ -424,35 +427,41 @@ test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public'
 
 
 ## ====== Retrieve from URL
-if have_curl:
-    test_curl_HEAD("Retrieve from URL", 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base),
-                   must_find_re = ['Content-Length: 22059'])
+# Minio: disabled
+#if have_curl:
+#   test_curl_HEAD("Retrieve from URL", 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base),
+#                   must_find_re = ['Content-Length: 22059'])
 
 ## ====== Change ACL to Private
-test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', '%s/xyz/etc/l*.png' % pbucket(1)],
-    must_find = [ "logo.png: ACL set to Private" ])
+# Minio: disabled
+#test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', '%s/xyz/etc/l*.png' % pbucket(1)],
+#    must_find = [ "logo.png: ACL set to Private" ])
 
 
 ## ====== Verify Private ACL
-if have_curl:
-    test_curl_HEAD("Verify Private ACL", 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base),
-                   must_find_re = [ '403 Forbidden' ])
+# Minio: disabled
+#if have_curl:
+#    test_curl_HEAD("Verify Private ACL", 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base),
+#                   must_find_re = [ '403 Forbidden' ])
 
 
 ## ====== Change ACL to Public
-test_s3cmd("Change ACL to Public", ['setacl', '--acl-public', '--recursive', '%s/xyz/etc/' % pbucket(1) , '-v'],
-    must_find = [ "logo.png: ACL set to Public" ])
+# Minio: disabled
+#test_s3cmd("Change ACL to Public", ['setacl', '--acl-public', '--recursive', '%s/xyz/etc/' % pbucket(1) , '-v'],
+#    must_find = [ "logo.png: ACL set to Public" ])
 
 
 ## ====== Verify Public ACL
-if have_curl:
-    test_curl_HEAD("Verify Public ACL", 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base),
-                   must_find_re = [ '200 OK',
-                                    'Content-Length: 22059'])
+# Minio: disabled
+#if have_curl:
+#    test_curl_HEAD("Verify Public ACL", 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base),
+#                   must_find_re = [ '200 OK',
+#                                    'Content-Length: 22059'])
 
 
 ## ====== Sync more to S3
-test_s3cmd("Sync more to S3", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt' ],
+# Modified for Minio (exclude crappy dir)
+test_s3cmd("Sync more to S3", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--exclude', 'crappy-file-name/*' ],
            must_find = [ "'testsuite/demo/some-file.xml' -> '%s/xyz/demo/some-file.xml' " % pbucket(1) ],
            must_not_find = [ "'testsuite/etc/linked.png' -> '%s/xyz/etc/linked.png'" % pbucket(1) ],
            retcode = EX_PARTIAL)
@@ -461,14 +470,16 @@ test_s3cmd("Sync more to S3", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1),
 ## ====== Don't check MD5 sum on Sync
 test_copy("Change file cksum1.txt", "testsuite/checksum/cksum2.txt", "testsuite/checksum/cksum1.txt")
 test_copy("Change file cksum33.txt", "testsuite/checksum/cksum2.txt", "testsuite/checksum/cksum33.txt")
-test_s3cmd("Don't check MD5", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--no-check-md5'],
+# Modified for Minio (exclude crappy dir)
+test_s3cmd("Don't check MD5", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--no-check-md5', '--exclude', 'crappy-file-name/*'],
            must_find = [ "cksum33.txt" ],
            must_not_find = [ "cksum1.txt" ],
            retcode = EX_PARTIAL)
 
 
 ## ====== Check MD5 sum on Sync
-test_s3cmd("Check MD5", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--check-md5'],
+# Modified for Minio (exclude crappy dir)
+test_s3cmd("Check MD5", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--check-md5', '--exclude', 'crappy-file-name/*'],
            must_find = [ "cksum1.txt" ],
            retcode = EX_PARTIAL)
 
@@ -541,39 +552,38 @@ test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % p
     must_not_find = [ "demo/dir1/file1-1.txt" ])
 
 ## ====== Verify ACL and MIME type
+# Minio: disable acl check, not supported by minio
 test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
-    must_find_re = [ "MIME type:.*image/png",
-                     "ACL:.*\*anon\*: READ",
-                     "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+    must_find_re = [ "MIME type:.*image/png" ])
 
 ## ====== modify MIME type
-test_s3cmd("Modify MIME type", ['modify', '--mime-type=binary/octet-stream', '%s/copy/etc2/Logo.PNG' % pbucket(2) ])
+# Minio: disable acl check, not supported by minio
+# Minio: modifying mime type alone not allowed as copy of same file for them
+#test_s3cmd("Modify MIME type", ['modify', '--mime-type=binary/octet-stream', '%s/copy/etc2/Logo.PNG' % pbucket(2) ])
 
-test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
-    must_find_re = [ "MIME type:.*binary/octet-stream",
-                     "ACL:.*\*anon\*: READ",
-                     "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+#test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+#    must_find_re = [ "MIME type:.*binary/octet-stream" ])
 
-test_s3cmd("Modify MIME type back", ['modify', '--mime-type=image/png', '%s/copy/etc2/Logo.PNG' % pbucket(2) ])
+# Minio: disable acl check, not supported by minio
+#test_s3cmd("Modify MIME type back", ['modify', '--mime-type=image/png', '%s/copy/etc2/Logo.PNG' % pbucket(2) ])
 
-test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
-    must_find_re = [ "MIME type:.*image/png",
-                     "ACL:.*\*anon\*: READ",
-                     "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+# Minio: disable acl check, not supported by minio
+#test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+#    must_find_re = [ "MIME type:.*image/png" ])
 
-test_s3cmd("Add cache-control header", ['modify', '--add-header=cache-control: max-age=3600, public', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
-    must_find_re = [ "modify: .*" ])
+#test_s3cmd("Add cache-control header", ['modify', '--add-header=cache-control: max-age=3600, public', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+#    must_find_re = [ "modify: .*" ])
 
-if have_curl:
-    test_curl_HEAD("HEAD check Cache-Control present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
-                   must_find_re = [ "Cache-Control: max-age=3600" ])
+#if have_curl:
+#    test_curl_HEAD("HEAD check Cache-Control present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
+#                   must_find_re = [ "Cache-Control: max-age=3600" ])
 
-test_s3cmd("Remove cache-control header", ['modify', '--remove-header=cache-control', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
-           must_find_re = [ "modify: .*" ])
+#test_s3cmd("Remove cache-control header", ['modify', '--remove-header=cache-control', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+#           must_find_re = [ "modify: .*" ])
 
-if have_curl:
-    test_curl_HEAD("HEAD check Cache-Control not present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
-                   must_not_find_re = [ "Cache-Control: max-age=3600" ])
+#if have_curl:
+#    test_curl_HEAD("HEAD check Cache-Control not present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
+#                   must_not_find_re = [ "Cache-Control: max-age=3600" ])
 
 ## ====== sign
 test_s3cmd("sign string", ['sign', 's3cmd'], must_find_re = ["Signature:"])
@@ -593,17 +603,17 @@ test_s3cmd("Sync remote2remote", ['sync', '%s/xyz/' % pbucket(1), '%s/copy/' % p
     must_not_find = [ "blah.txt" ])
 
 ## ====== Don't Put symbolic link
-test_s3cmd("Don't put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),],
+test_s3cmd("Don't put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),  '--exclude', 'crappy-file-name/*'],
            retcode = EX_USAGE,
            must_find = ["WARNING: Skipping over symbolic link: testsuite/etc/linked1.png"],
            must_not_find_re = ["^(?!WARNING: Skipping).*linked1.png"])
 
 ## ====== Put symbolic link
-test_s3cmd("Put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),'--follow-symlinks' ],
+test_s3cmd("Put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),'--follow-symlinks' ,  '--exclude', 'crappy-file-name/*'],
            must_find = [ "'testsuite/etc/linked1.png' -> '%s/xyz/linked1.png'" % pbucket(1)])
 
 ## ====== Sync symbolic links
-test_s3cmd("Sync symbolic links", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--follow-symlinks' ],
+test_s3cmd("Sync symbolic links", ['sync', 'testsuite/', 's3://%s/xyz/' % bucket(1), '--no-encrypt', '--follow-symlinks',  '--exclude', 'crappy-file-name/*' ],
     must_find = ["remote copy: 'etc2/Logo.PNG' -> 'etc/linked.png'"],
            # Don't want to recursively copy linked directories!
            must_not_find_re = ["etc/more/linked-dir/more/give-me-more.txt",
@@ -640,45 +650,56 @@ test_s3cmd("Simple delete with rm", ['rm', '%s/xyz/test_rm/TypeRa.ttf' % pbucket
     must_find = [ "delete: '%s/xyz/test_rm/TypeRa.ttf'" % pbucket(1) ])
 
 ## ====== Create expiration rule with days and prefix
-test_s3cmd("Create expiration rule with days and prefix", ['expire', pbucket(1), '--expiry-days=365', '--expiry-prefix=log/'],
-    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+# Minio: disabled
+#test_s3cmd("Create expiration rule with days and prefix", ['expire', pbucket(1), '--expiry-days=365', '--expiry-prefix=log/'],
+#    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
 
 ## ====== Create expiration rule with date and prefix
-test_s3cmd("Create expiration rule with date and prefix", ['expire', pbucket(1), '--expiry-date=2020-12-31T00:00:00.000Z', '--expiry-prefix=log/'],
-    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+# Minio: disabled
+#test_s3cmd("Create expiration rule with date and prefix", ['expire', pbucket(1), '--expiry-date=2012-12-31T00:00:00.000Z', '--expiry-prefix=log/'],
+#    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
 
 ## ====== Create expiration rule with days only
-test_s3cmd("Create expiration rule with days only", ['expire', pbucket(1), '--expiry-days=365'],
-    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+# Minio: disabled
+#test_s3cmd("Create expiration rule with days only", ['expire', pbucket(1), '--expiry-days=365'],
+#    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
 
 ## ====== Create expiration rule with date only
-test_s3cmd("Create expiration rule with date only", ['expire', pbucket(1), '--expiry-date=2020-12-31T00:00:00.000Z'],
-    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
+# Minio: disabled
+#test_s3cmd("Create expiration rule with date only", ['expire', pbucket(1), '--expiry-date=2012-12-31T00:00:00.000Z'],
+#    must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
 
 ## ====== Get current expiration setting
-test_s3cmd("Get current expiration setting", ['info', pbucket(1)],
-    must_find = [ "Expiration Rule: all objects in this bucket will expire in '2020-12-31T00:00:00.000Z'"])
+# Minio: disabled
+#test_s3cmd("Get current expiration setting", ['info', pbucket(1)],
+#    must_find = [ "Expiration Rule: all objects in this bucket will expire in '2012-12-31T00:00:00.000Z'"])
 
 ## ====== Delete expiration rule
-test_s3cmd("Delete expiration rule", ['expire', pbucket(1)],
-    must_find = [ "Bucket '%s/': expiration configuration is deleted." % pbucket(1)])
+# Minio: disabled
+#test_s3cmd("Delete expiration rule", ['expire', pbucket(1)],
+#    must_find = [ "Bucket '%s/': expiration configuration is deleted." % pbucket(1)])
 
 ## ====== set Requester Pays flag
-test_s3cmd("Set requester pays", ['payer', '--requester-pays', pbucket(2)])
+# Minio: disabled
+#test_s3cmd("Set requester pays", ['payer', '--requester-pays', pbucket(2)])
 
 ## ====== get Requester Pays flag
-test_s3cmd("Get requester pays flag", ['info', pbucket(2)],
-    must_find = [ "Payer:     Requester"])
+# Minio: disabled
+#test_s3cmd("Get requester pays flag", ['info', pbucket(2)],
+#    must_find = [ "Payer:     Requester"])
 
 ## ====== ls using Requester Pays flag
-test_s3cmd("ls using requester pays flag", ['ls', '--requester-pays', pbucket(2)])
+# Minio: disabled
+#test_s3cmd("ls using requester pays flag", ['ls', '--requester-pays', pbucket(2)])
 
 ## ====== clear Requester Pays flag
-test_s3cmd("Clear requester pays", ['payer', pbucket(2)])
+# Minio: disabled
+#test_s3cmd("Clear requester pays", ['payer', pbucket(2)])
 
 ## ====== get Requester Pays flag
-test_s3cmd("Get requester pays flag", ['info', pbucket(2)],
-    must_find = [ "Payer:     BucketOwner"])
+# Minio: disabled
+#test_s3cmd("Get requester pays flag", ['info', pbucket(2)],
+#    must_find = [ "Payer:     BucketOwner"])
 
 ## ====== Recursive delete maximum exceeed
 test_s3cmd("Recursive delete maximum exceeded", ['del', '--recursive', '--max-delete=1', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],

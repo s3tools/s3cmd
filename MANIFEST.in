@@ -1,2 +1,2 @@
-include INSTALL README NEWS
+include INSTALL README.md NEWS
 include s3cmd.1

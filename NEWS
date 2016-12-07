@@ -1,3 +1,84 @@
+s3cmd-1.6.1      - 2016-01-20
+===============
+* Added --host and --host-bucket
+* Added --stats
+* Fix for newer python 2.7.x SSL library updates
+* Many other bug fixes
+
+
+s3cmd-1.6.0      - 2015-09-18
+===============
+* Support signed URL content disposition type
+* Added 'ls -l' long listing including storage class
+* Added --limit-rate=RATE
+* Added --server-side-encryption-kms-id=KEY_ID
+* Added --storage-class=CLASS
+* Added --requester-pays, [payer] command
+* Added --[no-]check-hostname
+* Added --stop-on-error, removed --ignore-failed-copy
+* Added [setcors], [delcors] commands
+* Added support for cn-north-1 region hostname checks
+* Output strings may have changed.  Scripts calling s3cmd expecting
+  specific text may need to be updated.
+* HTTPS is now the default
+* Many unicode fixes
+* Many other bug fixes
+
+s3cmd-1.5.2      - 2015-02-08
+===============
+* Handle unvalidated SSL certificate.  Necessary on Ubuntu 14.04 for
+  SSL to function at all.
+* packaging fixes (require python-magic, drop ez_setup)
+
+s3cmd-1.5.1.2      - 2015-02-04
+===============
+* fix PyPi install
+
+s3cmd-1.5.1        - 2015-02-04
+===============
+
+* Sort s3cmd ls output by bucket name (Andrew Gaul)
+* Support relative expiry times in signurl. (Chris Lamb)
+* Fixed issue with mixed path separators with s3cmd get --recursive on
+  Windows. (Luke Winslow)
+* fix S3 wildcard certificate checking
+* Handle headers with spaces in their values properly (#460)
+* Fix lack of SSL certificate checking libraries on older python
+* set content-type header for stdin from command line or Config()
+* fix uploads from stdin (#464)
+* Fix directory exclusions (#467)
+* fix signurl
+* Don't retry in response to HTTP 405 error (#422)
+* Don't crash when a proxy returns an invalid XML error document
+
+s3cmd-1.5.0        - 2015-01-12
+===============
+* add support for newer regions such as Frankfurt that
+  require newer authorization signature v4 support
+  (Vasileios Mitrousis, Michal Ludvig, Matt Domsch)
+* drop support for python 2.4 due to signature v4 code.
+  python 2.6 is now the minimum, and python 3 is still not supported.
+* handle redirects to the "right" region for a bucket.
+* add --ca-cert=FILE for self-signed certs (Matt Domsch)
+* allow proxied SSL connections with python >= 2.7 (Damian Gerow)
+* add --remove-headers for [modify] command (Matt Domsch)
+* add -s/--ssl and --no-ssl options (Viktor Szakáts)
+* add --signature-v2 for backwards compatibility with S3 clones.
+* bugfixes by 17 contributors
+
+s3cmd 1.5.0-rc1      -   2014-06-29
+===============
+* add environment variable S3CMD_CONFIG (Devon Jones),
+  access key and secre keys (Vasileios Mitrousis)
+* added modify command (Francois Gaudin)
+* better debug messages (Matt Domsch)
+* faster batch deletes (Matt Domsch)
+* Added support for restoring files from Glacier storage (Robert Palmer)
+* Add and remove full lifecycle policies (Sam Rudge)
+* Add support for object expiration (hrchu)
+* bugfixes by 26 contributors
+
+
 s3cmd 1.5.0-beta1    -   2013-12-02
 =================
 * Brougt to you by Matt Domsch and contributors, thanks guys! :)
@@ -142,7 +223,7 @@ Minor features and bugfixes:
 * Don't print nasty backtrace on KeyboardInterrupt.
 * Should work fine on non-UTF8 systems, provided all
   the files are in current system encoding.
-* System encoding can be overriden using --encoding.
+* System encoding can be overridden using --encoding.
 * Improved resistance to communication errors (Connection 
   reset by peer, etc.)
 
