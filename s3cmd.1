@@ -112,6 +112,9 @@ Set or delete expiration rule for the bucket
 s3cmd \fBsetlifecycle\fR \fIFILE s3://BUCKET\fR
 Upload a lifecycle policy for the bucket
 .TP
+s3cmd \fBgetlifecycle\fR \fIs3://BUCKET\fR
+Get a lifecycle policy for the bucket
+.TP
 s3cmd \fBdellifecycle\fR \fIs3://BUCKET\fR
 Remove a lifecycle policy for the bucket
 
@@ -181,6 +184,9 @@ AWS Access Key
 .TP
 \fB\-\-secret_key\fR=SECRET_KEY
 AWS Secret Key
+.TP
+\fB\-\-access_token\fR=ACCESS_TOKEN
+AWS Access Token
 .TP
 \fB\-n\fR, \fB\-\-dry\-run\fR
 Only show what should be uploaded or downloaded but
@@ -260,6 +266,31 @@ ite_acp, full_control, all
 Number of days to keep restored file available (only
 for 'restore' command).
 .TP
+\fB\-\-restore\-priority\fR=bulk,standard,expedited
+You can specify one of the following when restoring an
+S3 Glacier archived object (only for 'restore' command):
+.TP
+Expedited - Expedited retrievals allow you to quickly
+access your data when occasional urgent requests for a
+subset of archives are required. For all but the largest
+archived objects (250 MB+), data accessed using Expedited
+retrievals are typically made available within 1–5 minutes.
+There are two types of Expedited retrievals: On-Demand and
+Provisioned. On-Demand requests are similar to EC2 On-Demand
+instances and are available most of the time. Provisioned
+requests are guaranteed to be available when you need them.
+.TP
+Standard - Standard retrievals allow you to access any of
+your archived objects within several hours. Standard
+retrievals typically complete within 3–5 hours. This is the
+default option for retrieval requests that do not specify
+the retrieval option.
+.TP
+Bulk - Bulk retrievals are Amazon Glacier’s lowest-cost
+retrieval option, enabling you to retrieve large amounts,
+even petabytes, of data inexpensively in a day. Bulk
+retrievals typically complete within 5–12 hours.
+.TP
 \fB\-\-delete\-removed\fR
 Delete remote objects with no corresponding local file
 [sync]
@@ -276,6 +307,10 @@ Perform deletes after new uploads [sync]
 .TP
 \fB\-\-max\-delete\fR=NUM
 Do not delete more than NUM files. [del] and [sync]
+.TP
+\fB\-\-limit\fR=NUM
+Limit number of objects returned in the response body
+(only for [ls] and [la] commands)
 .TP
 \fB\-\-add\-destination\fR=ADDITIONAL_DESTINATIONS
 Additional destination for parallel uploads, in
