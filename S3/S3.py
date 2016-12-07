@@ -734,9 +734,16 @@ class S3(object):
     def object_restore(self, uri):
         if uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
-        body = '<RestoreRequest xmlns="http://s3.amazonaws.com/doc/2006-3-01">'
+        if self.config.restore_days < 1:
+            raise ParameterError("You must restore a file for 1 or more days")
+        if self.config.restore_priority not in ['Standard', 'Expedited', 'Bulk']:
+            raise ParameterError("Valid restoration priorities: bulk, standard, expedited")
+        body =   '<RestoreRequest xmlns="http://s3.amazonaws.com/doc/2006-3-01">'
         body += ('  <Days>%s</Days>' % self.config.restore_days)
-        body += '</RestoreRequest>'
+        body +=  '  <GlacierJobParameters>'
+        body += ('    <Tier>%s</Tier>' % self.config.restore_priority)
+        body +=  '  </GlacierJobParameters>'
+        body +=  '</RestoreRequest>'
         request = self.create_request("OBJECT_POST", uri = uri, extra = "?restore", body = body)
         response = self.send_request(request)
         debug("Received response '%s'" % (response))

@@ -52,6 +52,7 @@ class Config(object):
     skip_existing = False
     recursive = False
     restore_days = 1
+    restore_priority = "Standard"
     acl_public = None
     acl_grants = []
     acl_revokes = []
