@@ -161,6 +161,9 @@ class Config(object):
                 # Do not refresh the IAM role when an access token is provided.
                 self._access_token_refresh = False
 
+            if access_token:
+                self.access_token = access_token
+
             if len(self.access_key)==0:
                 env_access_key = os.environ.get("AWS_ACCESS_KEY", None) or os.environ.get("AWS_ACCESS_KEY_ID", None)
                 env_secret_key = os.environ.get("AWS_SECRET_KEY", None) or os.environ.get("AWS_SECRET_ACCESS_KEY", None)
