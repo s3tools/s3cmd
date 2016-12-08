@@ -17,7 +17,11 @@ from logging import debug
 from .Utils import encode_to_s3, time_to_epoch, deunicodise
 
 import datetime
-import urllib
+try:
+    # python 3 support
+    from urllib import quote_plus, unquote_plus
+except ImportError:
+    from urllib.parse import quote_plus, unquote_plus
 
 # hashlib backported to python 2.4 / 2.5 is not compatible with hmac!
 if sys.version_info[0] == 2 and sys.version_info[1] < 6:
@@ -72,13 +76,13 @@ def sign_url_base_v2(**parms):
         signtext += param_separator + 'response-content-type=' + content_type
         param_separator = '&'
     debug("Signing plaintext: %r", signtext)
-    parms['sig'] = urllib.quote_plus(sign_string_v2(signtext))
+    parms['sig'] = quote_plus(sign_string_v2(signtext))
     debug("Urlencoded signature: %s", parms['sig'])
     url = "http://%(bucket)s.%(host_base)s/%(object)s?AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s" % parms
     if content_disposition is not None:
-        url += "&response-content-disposition=" + urllib.quote_plus(content_disposition)
+        url += "&response-content-disposition=" + quote_plus(content_disposition)
     if content_type is not None:
-        url += "&response-content-type=" + urllib.quote_plus(content_type)
+        url += "&response-content-type=" + quote_plus(content_type)
     return url
 
 def sign(key, msg):
@@ -102,7 +106,7 @@ def sign_string_v4(method='GET', host='', canonical_uri='/', params={}, region='
     amzdate = t.strftime('%Y%m%dT%H%M%SZ')
     datestamp = t.strftime('%Y%m%d')
 
-    canonical_querystring = '&'.join(['%s=%s' % (urllib.quote_plus(p), quote_param(params[p])) for p in sorted(params.keys())])
+    canonical_querystring = '&'.join(['%s=%s' % (quote_plus(p), quote_param(params[p])) for p in sorted(params.keys())])
 
     splits = canonical_uri.split('?')
 
@@ -151,7 +155,7 @@ def sign_string_v4(method='GET', host='', canonical_uri='/', params={}, region='
 
 def quote_param(param, quote_backslashes=True):
     # As stated by Amazon the '/' in the filename should stay unquoted and %20 should be used for space instead of '+'
-    quoted = urllib.quote_plus(urllib.unquote_plus(param), safe='~').replace('+', '%20')
+    quoted = quote_plus(unquote_plus(param), safe='~').replace('+', '%20')
     if not quote_backslashes:
         quoted = quoted.replace('%2F', '/')
     return quoted

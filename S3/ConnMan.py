@@ -13,7 +13,11 @@ from .custom_httplib27 import httplib
 import ssl
 from threading import Semaphore
 from logging import debug
-from urlparse import urlparse
+try:
+    # python 3 support
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
 
 from .Config import Config
 from .Exceptions import ParameterError

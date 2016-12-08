@@ -15,7 +15,11 @@ import os
 import sys
 from . import Progress
 from .SortedDict import SortedDict
-import httplib
+try:
+    # python 3 support
+    import httplib
+except ImportError:
+    import http.client as httplib
 import locale
 try:
     import json

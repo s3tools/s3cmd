@@ -18,7 +18,11 @@ import pprint
 from xml.sax import saxutils
 from logging import debug, info, warning, error
 from stat import ST_SIZE
-from urllib import quote_plus
+try:
+    # python 3 support
+    from urllib import quote_plus
+except ImportError:
+    from urllib.parse import quote_plus
 import select
 
 try:
