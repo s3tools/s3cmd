@@ -19,6 +19,8 @@
 ## GNU General Public License for more details.
 ## --------------------------------------------------------------------
 
+from __future__ import absolute_import, print_function
+
 import sys
 
 if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.6:
@@ -35,7 +37,11 @@ import traceback
 import codecs
 import locale
 import subprocess
-import htmlentitydefs
+try:
+    # python 3 support
+    import htmlentitydefs
+except:
+    import html.entities as htmlentitydefs
 import socket
 import shutil
 import tempfile
@@ -102,12 +108,12 @@ def subcmd_bucket_usage(s3, uri):
                 bucket_size += int(obj["Size"])
                 object_count += 1
 
-    except S3Error, e:
+    except S3Error as e:
         if S3.codes.has_key(e.info["Code"]):
             error(S3.codes[e.info["Code"]] % bucket)
         raise
 
-    except KeyboardInterrupt, e:
+    except KeyboardInterrupt as e:
         extra_info = u' [interrupted]'
 
     total_size, size_coeff = formatSize(bucket_size, Config().human_readable_sizes)
@@ -154,7 +160,7 @@ def subcmd_bucket_list(s3, uri, limit):
         prefix = prefix[:-1]
     try:
         response = s3.bucket_list(bucket, prefix = prefix, limit = limit)
-    except S3Error, e:
+    except S3Error as e:
         if S3.codes.has_key(e.info["Code"]):
             error(S3.codes[e.info["Code"]] % bucket)
         raise
@@ -210,7 +216,7 @@ def cmd_bucket_create(args):
         try:
             response = s3.bucket_create(uri.bucket(), cfg.bucket_location)
             output(u"Bucket '%s' created" % uri.uri())
-        except S3Error, e:
+        except S3Error as e:
             if S3.codes.has_key(e.info["Code"]):
                 error(S3.codes[e.info["Code"]] % uri.bucket())
             raise
@@ -231,7 +237,7 @@ def cmd_website_info(args):
                 output(u"Error document:   %s" % response['error_document'])
             else:
                 output(u"Bucket %s: Unable to receive website configuration." % (uri.uri()))
-        except S3Error, e:
+        except S3Error as e:
             if S3.codes.has_key(e.info["Code"]):
                 error(S3.codes[e.info["Code"]] % uri.bucket())
             raise
@@ -246,7 +252,7 @@ def cmd_website_create(args):
         try:
             response = s3.website_create(uri, cfg.bucket_location)
             output(u"Bucket '%s': website configuration created." % (uri.uri()))
-        except S3Error, e:
+        except S3Error as e:
             if S3.codes.has_key(e.info["Code"]):
                 error(S3.codes[e.info["Code"]] % uri.bucket())
             raise
@@ -261,7 +267,7 @@ def cmd_website_delete(args):
         try:
             response = s3.website_delete(uri, cfg.bucket_location)
             output(u"Bucket '%s': website configuration deleted." % (uri.uri()))
-        except S3Error, e:
+        except S3Error as e:
             if S3.codes.has_key(e.info["Code"]):
                 error(S3.codes[e.info["Code"]] % uri.bucket())
             raise
@@ -279,7 +285,7 @@ def cmd_expiration_set(args):
                 output(u"Bucket '%s': expiration configuration is set." % (uri.uri()))
             elif response["status"] is 204:
                 output(u"Bucket '%s': expiration configuration is deleted." % (uri.uri()))
-        except S3Error, e:
+        except S3Error as e:
             if S3.codes.has_key(e.info["Code"]):
                 error(S3.codes[e.info["Code"]] % uri.bucket())
             raise
@@ -290,7 +296,7 @@ def cmd_bucket_delete(args):
         try:
             response = s3.bucket_delete(uri.bucket())
             output(u"Bucket '%s' removed" % uri.uri())
-        except S3Error, e:
+        except S3Error as e:
             if e.info['Code'] == 'NoSuchBucket':
                 if cfg.force:
                     return EX_OK
@@ -387,7 +393,7 @@ def cmd_object_put(args):
         extra_headers.update(attr_header)
         try:
             response = s3.object_put(full_name, uri_final, extra_headers, extra_label = seq_label)
-        except S3UploadError, exc:
+        except S3UploadError as exc:
             error(u"Upload of '%s' failed too many times (Last reason: %s)" % (full_name_orig, exc))
             if cfg.stop_on_error:
                 ret = EX_DATAERR
@@ -395,7 +401,7 @@ def cmd_object_put(args):
                 break
             ret = EX_PARTIAL
             continue
-        except InvalidFileError, exc:
+        except InvalidFileError as exc:
             error(u"Upload of '%s' is not possible (Reason: %s)" % (full_name_orig, exc))
             ret = EX_PARTIAL
             if cfg.stop_on_error:
@@ -526,7 +532,7 @@ def cmd_object_get(args):
                 file_exists = os.path.exists(deunicodise(destination))
                 try:
                     dst_stream = open(deunicodise(destination), "ab")
-                except IOError, e:
+                except IOError as e:
                     if e.errno == errno.ENOENT:
                         basename = destination[:destination.rindex(os.path.sep)]
                         info(u"Creating directory: %s" % basename)
@@ -538,8 +544,8 @@ def cmd_object_get(args):
                     if Config().get_continue:
                         start_position = dst_stream.tell()
                     elif Config().force:
-                        start_position = 0L
-                        dst_stream.seek(0L)
+                        start_position = 0
+                        dst_stream.seek(0)
                         dst_stream.truncate()
                     elif Config().skip_existing:
                         info(u"Skipping over existing file: %s" % (destination))
@@ -547,12 +553,12 @@ def cmd_object_get(args):
                     else:
                         dst_stream.close()
                         raise ParameterError(u"File %s already exists. Use either of --force / --continue / --skip-existing or give it a new name." % destination)
-            except IOError, e:
+            except IOError as e:
                 error(u"Skipping %s: %s" % (destination, e.strerror))
                 continue
         try:
             response = s3.object_get(uri, dst_stream, destination, start_position = start_position, extra_label = seq_label)
-        except S3DownloadError, e:
+        except S3DownloadError as e:
             error(u"%s: Skipping that file.  This is usually a transient error, please try again later." % e)
             if not file_exists: # Delete, only if file didn't exist before!
                 debug(u"object_get failed for '%s', deleting..." % (destination,))
@@ -562,7 +568,7 @@ def cmd_object_get(args):
                     ret = EX_DATAERR
                     break
             continue
-        except S3Error, e:
+        except S3Error as e:
             if not file_exists: # Delete, only if file didn't exist before!
                 debug(u"object_get failed for '%s', deleting..." % (destination,))
                 os.unlink(deunicodise(destination))
@@ -761,7 +767,7 @@ def cmd_object_restore(args):
             try:
                 response = s3.object_restore(S3Uri(item['object_uri_str']))
                 output(u"restore: '%s'" % item['object_uri_str'])
-            except S3Error, e:
+            except S3Error as e:
                 if e.code == "RestoreAlreadyInProgress":
                     warning("%s: %s" % (e.message, item['object_uri_str']))
                 else:
@@ -829,7 +835,7 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
             if Config().acl_public:
                 info(u"Public URL is: %s" % dst_uri.public_url())
             scoreboard.success()
-        except S3Error, e:
+        except S3Error as e:
             if e.code == "NoSuchKey":
                 scoreboard.notfound()
                 warning(u"Key not found %s" % item['object_uri_str'])
@@ -937,7 +943,7 @@ def cmd_info(args):
                     if header.startswith('x-amz-meta-'):
                         output(u"   %s: %s" % (header, value))
 
-        except S3Error, e:
+        except S3Error as e:
             if S3.codes.has_key(e.info["Code"]):
                 error(S3.codes[e.info["Code"]] % uri.bucket())
             raise
@@ -1037,7 +1043,7 @@ def cmd_sync_remote2remote(args):
                 output("remote copy: '%(src)s' -> '%(dst)s'" % { "src" : src_uri, "dst" : dst_uri })
                 total_nb_files += 1
                 total_size += item.get(u'size', 0)
-            except S3Error, e:
+            except S3Error as e:
                 ret = EX_PARTIAL
                 error("File '%(src)s' could not be copied: %(e)s" % { "src" : src_uri, "e" : e })
                 if cfg.stop_on_error:
@@ -1262,7 +1268,7 @@ def cmd_sync_remote2local(args):
                             pass
                     os.rename(deunicodise(chkptfname), deunicodise(dst_file))
                     debug(u"renamed chkptfname=%s to dst_file=%s" % (chkptfname, dst_file))
-            except OSError, exc:
+            except OSError as exc:
                 allow_partial = True
 
                 if exc.errno == errno.EISDIR:
@@ -1302,13 +1308,13 @@ def cmd_sync_remote2local(args):
                 else:
                     error(u"Exiting now because of fatal error")
                 raise
-            except S3DownloadError, exc:
+            except S3DownloadError as exc:
                 error(u"Download of '%s' failed too many times (Last Reason: %s). "
                       "This is usually a transient error, please try again "
                       "later." % (file, exc))
                 try:
                     os.unlink(deunicodise(chkptfname))
-                except Exception, sub_exc:
+                except Exception as sub_exc:
                     warning(u"Error deleting temporary file %s (Reason: %s)", (chkptfname, sub_exc))
                 if cfg.stop_on_error:
                     ret = EX_DATAERR
@@ -1316,11 +1322,11 @@ def cmd_sync_remote2local(args):
                     raise
                 ret = EX_PARTIAL
                 continue
-            except S3Error, exc:
+            except S3Error as exc:
                 warning(u"Remote file '%s'. S3Error: %s" % (exc.resource, exc))
                 try:
                     os.unlink(deunicodise(chkptfname))
-                except Exception, sub_exc:
+                except Exception as sub_exc:
                     warning(u"Error deleting temporary file %s (Reason: %s)", (chkptfname, sub_exc))
                 if cfg.stop_on_error:
                     raise
@@ -1330,9 +1336,9 @@ def cmd_sync_remote2local(args):
             try:
                 # set permissions on destination file
                 if not is_empty_directory: # a normal file
-                    mode = 0777 - original_umask;
+                    mode = 0o777 - original_umask;
                 else: # an empty directory, make them readable/executable
-                    mode = 0775
+                    mode = 0o775
                 debug(u"mode=%s" % oct(mode))
                 os.chmod(deunicodise(dst_file), mode);
             except:
@@ -1361,7 +1367,7 @@ def cmd_sync_remote2local(args):
                     last_modified = time.mktime(time.strptime(response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"))
                     os.utime(deunicodise(dst_file), (last_modified, last_modified))
                     debug("set mtime to %s" % last_modified)
-            except OSError, e:
+            except OSError as e:
                 try:
                     dst_stream.close()
                     os.remove(deunicodise(chkptfname))
@@ -1383,7 +1389,7 @@ def cmd_sync_remote2local(args):
                 except: pass
                 warning(u"Exiting after keyboard interrupt")
                 return
-            except Exception, e:
+            except Exception as e:
                 try:
                     dst_stream.close()
                     os.remove(deunicodise(chkptfname))
@@ -1391,7 +1397,7 @@ def cmd_sync_remote2local(args):
                 ret = EX_PARTIAL
                 error(u"%s: %s" % (file, e))
                 if cfg.stop_on_error:
-                    raise OSError, e
+                    raise OSError(e)
                 continue
             # We have to keep repeating this call because
             # Python 2.4 doesn't support try/except/finally
@@ -1471,7 +1477,7 @@ def local_copy(copy_pairs, destination_base):
             debug(u"Copying %s to %s" % (src_file, dst_file))
             shutil.copy2(deunicodise(src_file), deunicodise(dst_file))
             saved_bytes += src_obj.get(u'size', 0)
-        except (IOError, OSError), e:
+        except (IOError, OSError) as e:
             warning(u'Unable to copy or hardlink files %s -> %s (Reason: %s)' % (src_file, dst_file, e))
             failed_copy_list[relative_file] = src_obj
     return len(copy_pairs), saved_bytes, failed_copy_list
@@ -1604,7 +1610,7 @@ def cmd_sync_local2remote(args):
                     debug(u"attr_header: %s" % attr_header)
                     extra_headers.update(attr_header)
                     response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
-                except S3UploadError, exc:
+                except S3UploadError as exc:
                     error(u"Upload of '%s' failed too many times (Last reason: %s)" % (item['full_name'], exc))
                     if cfg.stop_on_error:
                         ret = EX_DATAERR
@@ -1612,7 +1618,7 @@ def cmd_sync_local2remote(args):
                         raise
                     ret = EX_PARTIAL
                     continue
-                except InvalidFileError, exc:
+                except InvalidFileError as exc:
                     error(u"Upload of '%s' is not possible (Reason: %s)" % (item['full_name'], exc))
                     ret = EX_PARTIAL
                     if cfg.stop_on_error:
@@ -2110,9 +2116,9 @@ def cmd_fixbucket(args):
                 debug("Step 3:  ... then to %s" % key_new)
                 src = S3Uri("s3://%s/%s" % (culprit.bucket(), key_bin))
                 dst = S3Uri("s3://%s/%s" % (culprit.bucket(), key_new))
-		if cfg.dry_run:
-		    output("[--dry-run] File %r would be renamed to %s" % (key_bin, key_new))
-		    continue
+                if cfg.dry_run:
+                    output("[--dry-run] File %r would be renamed to %s" % (key_bin, key_new))
+                    continue
                 try:
                     resp_move = s3.object_move(src, dst)
                     if resp_move['status'] == 200:
@@ -2287,14 +2293,14 @@ def run_configure(config_file, args):
                         else:
                             raise Exception("Encryption verification error.")
 
-                except S3Error, e:
+                except S3Error as e:
                     error(u"Test failed: %s" % (e))
                     if e.code == "AccessDenied":
                         error(u"Are you sure your keys have s3:ListAllMyBuckets permissions?")
                     val = raw_input("\nRetry configuration? [Y/n] ")
                     if val.lower().startswith("y") or val == "":
                         continue
-                except Exception, e:
+                except Exception as e:
                     error(u"Test failed: %s" % (e))
                     val = raw_input("\nRetry configuration? [Y/n] ")
                     if val.lower().startswith("y") or val == "":
@@ -2309,10 +2315,10 @@ def run_configure(config_file, args):
                 raise EOFError()
 
         ## Overwrite existing config file, make it user-readable only
-        old_mask = os.umask(0077)
+        old_mask = os.umask(0o077)
         try:
             os.remove(deunicodise(config_file))
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
         f = open(config_file, "w")
@@ -2325,14 +2331,14 @@ def run_configure(config_file, args):
         output(u"\nConfiguration aborted. Changes were NOT saved.")
         return
 
-    except IOError, e:
+    except IOError as e:
         error(u"Writing config file failed: %s: %s" % (config_file, e.strerror))
         sys.exit(EX_IOERR)
 
 def process_patterns_from_file(fname, patterns_list):
     try:
         fn = open(deunicodise(fname), "rt")
-    except IOError, e:
+    except IOError as e:
         error(e)
         sys.exit(EX_IOERR)
     for pattern in fn:
@@ -2694,7 +2700,7 @@ def main():
 
     try:
         cfg = Config(options.config, options.access_key, options.secret_key, options.access_token)
-    except IOError, e:
+    except IOError as e:
         if options.run_configure:
             cfg = Config()
         else:
@@ -2873,7 +2879,7 @@ def main():
         ## avoid catching all KeyError exceptions
         ## from inner functions.
         cmd_func = commands[command]["func"]
-    except KeyError, e:
+    except KeyError as e:
         error(u"Invalid command: %s", command)
         sys.exit(EX_USAGE)
 
@@ -2962,39 +2968,39 @@ if __name__ == '__main__':
         rc = main()
         sys.exit(rc)
 
-    except ImportError, e:
+    except ImportError as e:
         report_exception(e)
         sys.exit(EX_GENERAL)
 
-    except (ParameterError, InvalidFileError), e:
+    except (ParameterError, InvalidFileError) as e:
         error(u"Parameter problem: %s" % e)
         sys.exit(EX_USAGE)
 
-    except (S3DownloadError, S3UploadError, S3RequestError), e:
+    except (S3DownloadError, S3UploadError, S3RequestError) as e:
         error(u"S3 Temporary Error: %s.  Please try again later." % e)
         sys.exit(EX_TEMPFAIL)
 
-    except S3Error, e:
+    except S3Error as e:
         error(u"S3 error: %s" % e)
         sys.exit(e.get_error_code())
 
-    except (S3Exception, S3ResponseError, CloudFrontError), e:
+    except (S3Exception, S3ResponseError, CloudFrontError) as e:
         report_exception(e)
         sys.exit(EX_SOFTWARE)
 
-    except SystemExit, e:
+    except SystemExit as e:
         sys.exit(e.code)
 
     except KeyboardInterrupt:
         sys.stderr.write("See ya!\n")
         sys.exit(EX_BREAK)
 
-    except SSLError, e:
+    except SSLError as e:
         # SSLError is a subtype of IOError
         error("SSL certificate verification failure: %s" % e)
         sys.exit(EX_ACCESSDENIED)
 
-    except socket.gaierror, e:
+    except socket.gaierror as e:
         # gaierror is a subset of IOError
         # typically encountered error is:
         # gaierror: [Errno -2] Name or service not known
@@ -3003,7 +3009,7 @@ if __name__ == '__main__':
               "Please check the servers address specified in 'host_base', 'host_bucket', 'cloudfront_host', 'website_endpoint'")
         sys.exit(EX_IOERR)
 
-    except IOError, e:
+    except IOError as e:
         if e.errno == errno.EPIPE:
             # Fail silently on SIGPIPE. This likely means we wrote to a closed
             # pipe and user does not care for any more output.
@@ -3012,7 +3018,7 @@ if __name__ == '__main__':
         report_exception(e)
         sys.exit(EX_IOERR)
 
-    except OSError, e:
+    except OSError as e:
         error(e)
         sys.exit(EX_OSERR)
 
@@ -3027,7 +3033,7 @@ The solutions to this are:
         sys.stderr.write(msg)
         sys.exit(EX_OSERR)
 
-    except UnicodeEncodeError, e:
+    except UnicodeEncodeError as e:
         lang = os.getenv("LANG")
         msg = """
 You have encountered a UnicodeEncodeError.  Your environment
@@ -3038,7 +3044,7 @@ invoking s3cmd.
         report_exception(e, msg)
         sys.exit(EX_GENERAL)
 
-    except Exception, e:
+    except Exception as e:
         report_exception(e)
         sys.exit(EX_GENERAL)
 
