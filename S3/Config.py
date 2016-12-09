@@ -309,7 +309,11 @@ class Config(object):
             except ValueError:
                 try:
                     # otherwise it must be a key known to the logging module
-                    value = logging._levelNames[value]
+                    try:
+                        # python 3 support
+                        value = logging._levelNames[value]
+                    except AttributeError:
+                        value = logging._nameToLevel[value]
                 except KeyError:
                     error("Config: verbosity level '%s' is not valid" % value)
                     return
