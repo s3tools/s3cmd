@@ -279,11 +279,10 @@ class S3(object):
         return cls
 
     def get_hostname(self, bucket):
-        if bucket and check_bucket_name_dns_support(self.config.host_bucket, bucket):
-            if bucket in S3Request.redir_map:
-                host = S3Request.redir_map[bucket]
-            else:
-                host = getHostnameFromBucket(bucket)
+        if bucket and bucket in S3Request.redir_map:
+            host = S3Request.redir_map[bucket]
+        elif bucket and check_bucket_name_dns_support(self.config.host_bucket, bucket):
+            host = getHostnameFromBucket(bucket)
         else:
             host = self.config.host_base
         debug('get_hostname(%s): %s' % (bucket, host))
