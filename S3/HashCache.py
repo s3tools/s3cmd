@@ -2,7 +2,11 @@
 
 from __future__ import absolute_import
 
-import cPickle as pickle
+try:
+    # python 3 support
+    import cPickle as pickle
+except ImportError:
+    import pickle
 from .Utils import deunicodise
 
 class HashCache(object):

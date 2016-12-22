@@ -7,7 +7,7 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
 import sys
 import os
@@ -192,7 +192,7 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
 
 def test_s3cmd(label, cmd_args = [], **kwargs):
     if not cmd_args[0].endswith("s3cmd"):
-        cmd_args.insert(0, "python2")
+        cmd_args.insert(0, "python")
         cmd_args.insert(1, "s3cmd")
         if config_file:
             cmd_args.insert(2, "-c")

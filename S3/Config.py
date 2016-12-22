@@ -6,14 +6,20 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
+from __future__ import absolute_import
+
 import logging
 from logging import debug, warning, error
 import re
 import os
 import sys
-import Progress
-from SortedDict import SortedDict
-import httplib
+from . import Progress
+from .SortedDict import SortedDict
+try:
+    # python 3 support
+    import httplib
+except ImportError:
+    import http.client as httplib
 import locale
 try:
     import json
@@ -303,7 +309,11 @@ class Config(object):
             except ValueError:
                 try:
                     # otherwise it must be a key known to the logging module
-                    value = logging._levelNames[value]
+                    try:
+                        # python 3 support
+                        value = logging._levelNames[value]
+                    except AttributeError:
+                        value = logging._nameToLevel[value]
                 except KeyError:
                     error("Config: verbosity level '%s' is not valid" % value)
                     return
