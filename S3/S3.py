@@ -1103,37 +1103,54 @@ class S3(object):
         # Wait a few seconds. The more it fails the more we wait.
         return (self._max_retries - retries + 1) * 3
 
+    def _http_redirection_handler(self, request, response, fn, *args, **kwargs):
+        if 'data' in response and len(response['data']) > 0:
+            redir_bucket = getTextFromXml(response['data'], ".//Bucket")
+            redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
+            self.set_hostname(redir_bucket, redir_hostname)
+            info(u'Redirected to: %s', redir_hostname)
+            # Region info might already be available through the x-amz-bucket-region header
+            redir_region = response['headers'].get('x-amz-bucket-region')
+            if redir_region:
+                S3Request.region_map[redir_bucket] = redir_region
+                info(u'Redirected to region: %s', redir_region)
+            return fn(*args, **kwargs)
+
+        raise S3Error(response)
+
     def _http_400_handler(self, request, response, fn, *args, **kwargs):
         # AWS response AuthorizationHeaderMalformed means we sent the request to the wrong region
         # get the right region out of the response and send it there.
-        message = 'Unknown error'
         if 'data' in response and len(response['data']) > 0:
             failureCode = getTextFromXml(response['data'], 'Code')
-            message = getTextFromXml(response['data'], 'Message')
-            if failureCode == 'AuthorizationHeaderMalformed':  # we sent the request to the wrong region
+            if failureCode == 'AuthorizationHeaderMalformed':
+                # we sent the request to the wrong region
                 region = getTextFromXml(response['data'], 'Region')
                 if region is not None:
                     S3Request.region_map[request.resource['bucket']] = region
-                    info('Forwarding request to %s' % region)
+                    info('Forwarding request to %s', region)
                     return fn(*args, **kwargs)
                 else:
-                    message = u'Could not determine bucket location. Please consider using --region parameter.'
+                    warning(u'Could not determine bucket the location. Please consider using the --region parameter.')
 
             elif failureCode == 'InvalidRequest':
+                message = getTextFromXml(response['data'], 'Message')
                 if message == 'The authorization mechanism you have provided is not supported. Please use AWS4-HMAC-SHA256.':
                     debug(u'Endpoint requires signature v4')
                     self.endpoint_requires_signature_v4 = True
                     return fn(*args, **kwargs)
 
-            elif failureCode == 'InvalidArgument': # returned by DreamObjects on send_request and send_file,
-                                                   # which doesn't support signature v4. Retry with signature v2
+            elif failureCode == 'InvalidArgument':
+                # returned by DreamObjects on send_request and send_file,
+                # which doesn't support signature v4. Retry with signature v2
                 if not request.use_signature_v2() and not self.fallback_to_signature_v2: # have not tried with v2 yet
                     debug(u'Falling back to signature v2')
                     self.fallback_to_signature_v2 = True
                     return fn(*args, **kwargs)
-
-        else: # returned by DreamObjects on recv_file, which doesn't support signature v4. Retry with signature v2
-            if not request.use_signature_v2() and not self.fallback_to_signature_v2: # have not tried with v2 yet
+        else:
+            # returned by DreamObjects on recv_file, which doesn't support signature v4. Retry with signature v2
+            if not request.use_signature_v2() and not self.fallback_to_signature_v2:
+                # have not tried with v2 yet
                 debug(u'Falling back to signature v2')
                 self.fallback_to_signature_v2 = True
                 return fn(*args, **kwargs)
@@ -1141,11 +1158,11 @@ class S3(object):
         raise S3Error(response)
 
     def _http_403_handler(self, request, response, fn, *args, **kwargs):
-        message = 'Unknown error'
         if 'data' in response and len(response['data']) > 0:
             failureCode = getTextFromXml(response['data'], 'Code')
-            message = getTextFromXml(response['data'], 'Message')
-            if failureCode == 'AccessDenied':  # traditional HTTP 403
+            if failureCode == 'AccessDenied':
+                # traditional HTTP 403
+                message = getTextFromXml(response['data'], 'Message')
                 if message == 'AWS authentication requires a valid Date or x-amz-date header': # message from an Eucalyptus walrus server
                     if not request.use_signature_v2() and not self.fallback_to_signature_v2: # have not tried with v2 yet
                         debug(u'Falling back to signature v2')
@@ -1198,20 +1215,16 @@ class S3(object):
 
         debug("Response:\n" + pp.pformat(response))
 
+        if response["status"] in [301, 307]:
+            ## RedirectTemporary or RedirectPermanent
+            return self._http_redirection_handler(request, response, self.send_request, request)
+
         if response["status"] == 400:
             return self._http_400_handler(request, response, self.send_request, request)
         if response["status"] == 403:
             return self._http_403_handler(request, response, self.send_request, request)
         if response["status"] == 405: # Method Not Allowed.  Don't retry.
             raise S3Error(response)
-
-        if response["status"] in [301, 307]:
-            ## RedirectPermanent
-            redir_bucket = getTextFromXml(response['data'], ".//Bucket")
-            redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
-            self.set_hostname(redir_bucket, redir_hostname)
-            info("Redirected to: %s" % (redir_hostname))
-            return self.send_request(request)
 
         if response["status"] >= 500:
             e = S3Error(response)
@@ -1399,18 +1412,17 @@ class S3(object):
             progress.done("done")
 
         if response["status"] in [301, 307]:
-            ## RedirectPermanent
-            redir_bucket = getTextFromXml(response['data'], ".//Bucket")
-            redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
-            self.set_hostname(redir_bucket, redir_hostname)
-            info("Redirected to: %s" % (redir_hostname))
-            return self.send_file(request, file, labels, buffer, offset = offset, chunk_size = chunk_size,
-                                  use_expect_continue = use_expect_continue)
+            ## RedirectTemporary or RedirectPermanent
+            return self._http_redirection_handler(request, response,
+                                                  self.send_file, request, file, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
 
         if response["status"] == 400:
-            return self._http_400_handler(request, response, self.send_file, request, file, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
+            return self._http_400_handler(request, response,
+                                          self.send_file, request, file, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
         if response["status"] == 403:
-            return self._http_403_handler(request, response, self.send_file, request, file, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
+            return self._http_403_handler(request, response,
+                                          self.send_file, request, file, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
+
         if response["status"] == 417 and retries:
             # Expect 100-continue not supported by proxy/server
             self.expect_continue_not_supported = True
@@ -1529,22 +1541,28 @@ class S3(object):
                 raise S3DownloadError("Download failed for: %s" % resource['uri'])
 
         if response["status"] in [301, 307]:
-            ## RedirectPermanent
+            ## RedirectPermanent or RedirectTemporary
             response['data'] = http_response.read()
-            redir_bucket = getTextFromXml(response['data'], ".//Bucket")
-            redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
-            self.set_hostname(redir_bucket, redir_hostname)
-            info("Redirected to: %s" % (redir_hostname))
-            return self.recv_file(request, stream, labels, start_position)
+            return self._http_redirection_handler(request, response,
+                                                  self.recv_file, request,
+                                                  stream, labels, start_position)
 
         if response["status"] == 400:
-            return self._http_400_handler(request, response, self.recv_file, request, stream, labels, start_position)
+            response['data'] = http_response.read()
+            return self._http_400_handler(request, response, self.recv_file,
+                                          request, stream, labels, start_position)
+
         if response["status"] == 403:
-            return self._http_403_handler(request, response, self.recv_file, request, stream, labels, start_position)
+            response['data'] = http_response.read()
+            return self._http_403_handler(request, response, self.recv_file,
+                                          request, stream, labels, start_position)
+
         if response["status"] == 405: # Method Not Allowed.  Don't retry.
+            response['data'] = http_response.read()
             raise S3Error(response)
 
         if response["status"] < 200 or response["status"] > 299:
+            response['data'] = http_response.read()
             raise S3Error(response)
 
         if start_position == 0:
