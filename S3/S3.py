@@ -21,8 +21,10 @@ from stat import ST_SIZE
 try:
     # python 3 support
     from urllib import quote_plus
+    from urlparse import urlparse
 except ImportError:
-    from urllib.parse import quote_plus
+    from urllib.parse import quote_plus, urlparse
+
 import select
 
 try:
@@ -1104,17 +1106,39 @@ class S3(object):
         return (self._max_retries - retries + 1) * 3
 
     def _http_redirection_handler(self, request, response, fn, *args, **kwargs):
+        # Region info might already be available through the x-amz-bucket-region header
+        redir_region = response['headers'].get('x-amz-bucket-region')
+
         if 'data' in response and len(response['data']) > 0:
             redir_bucket = getTextFromXml(response['data'], ".//Bucket")
             redir_hostname = getTextFromXml(response['data'], ".//Endpoint")
             self.set_hostname(redir_bucket, redir_hostname)
             info(u'Redirected to: %s', redir_hostname)
-            # Region info might already be available through the x-amz-bucket-region header
-            redir_region = response['headers'].get('x-amz-bucket-region')
             if redir_region:
                 S3Request.region_map[redir_bucket] = redir_region
                 info(u'Redirected to region: %s', redir_region)
             return fn(*args, **kwargs)
+        elif request.method_string == 'HEAD':
+            # Head is a special case, redirection info usually are in the body
+            # but there is no body for an HEAD request.
+            location_url = response['headers'].get('location')
+            if location_url:
+                # Sometimes a "location" http header could be available and
+                # can help us deduce the redirection path.
+                # It is the case of "dns-style" syntax, but not for "path-style" syntax.
+                if location_url.startswith("http://"):
+                    location_url = location_url[7:]
+                elif location_url.startswith("https://"):
+                    location_url = location_url[8:]
+                location_url = urlparse('https://' + location_url).hostname
+                redir_bucket = request.resource['bucket']
+                self.set_hostname(redir_bucket, location_url)
+                info(u'Redirected to: %s', location_url)
+                if redir_region:
+                    S3Request.region_map[redir_bucket] = redir_region
+                    info(u'Redirected to region: %s', redir_region)
+                return fn(*args, **kwargs)
+            warning(u'Redirection error: No info provided by the server to where should be forwarded the request (HEAD request). (Hint target region: %s)', redir_region)
 
         raise S3Error(response)
 
