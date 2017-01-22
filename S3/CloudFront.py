@@ -22,7 +22,7 @@ except ImportError:
 from .S3 import S3
 from .Config import Config
 from .Exceptions import *
-from .Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, getBucketFromHostname, getHostnameFromBucket, deunicodise
+from .Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, getBucketFromHostname, getHostnameFromBucket, deunicodise, urlencode_string
 from .Crypto import sign_string_v2
 from .S3Uri import S3Uri, S3UriS3
 from .ConnMan import ConnMan
@@ -291,7 +291,7 @@ class InvalidationBatch(object):
         for path in self.paths:
             if len(path) < 1 or path[0] != "/":
                 path = "/" + path
-            appendXmlTextNode("Path", s3.urlencode_string(path), tree)
+            appendXmlTextNode("Path", urlencode_string(path), tree)
         appendXmlTextNode("CallerReference", self.reference, tree)
         return ET.tostring(tree)
 

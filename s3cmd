@@ -1499,14 +1499,13 @@ def remote_copy(s3, copy_pairs, destination_base):
             failed_copy_list[dst2] = src_obj
     return (len(copy_pairs), saved_bytes, failed_copy_list)
 
-
 def _build_attr_header(local_list, src):
     attrs = {}
     if cfg.preserve_attrs:
         for attr in cfg.preserve_attrs_list:
             if attr == 'uname':
                 try:
-                    val = Utils.getpwuid_username(local_list[src]['uid'])
+                    val = Utils.urlencode_string(Utils.getpwuid_username(local_list[src]['uid']))
                 except (KeyError, TypeError):
                     attr = "uid"
                     val = local_list[src].get('uid')
@@ -1514,7 +1513,7 @@ def _build_attr_header(local_list, src):
                         warning(u"%s: Owner username not known. Storing UID=%d instead." % (src, val))
             elif attr == 'gname':
                 try:
-                    val = Utils.getgrgid_grpname(local_list[src].get('gid'))
+                    val = Utils.urlencode_string(Utils.getgrgid_grpname(local_list[src].get('gid')))
                 except (KeyError, TypeError):
                     attr = "gid"
                     val = local_list[src].get('gid')

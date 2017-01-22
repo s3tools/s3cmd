@@ -35,6 +35,12 @@ $ pip install python-dateutil
     sys.stderr.flush()
     sys.exit(EX_OSFILE)
 
+try:
+    # python 3 support
+    from urllib import quote_plus, unquote_plus
+except ImportError:
+    from urllib.parse import quote_plus, unquote_plus
+
 import S3.Config
 import S3.Exceptions
 import xml.dom.minidom
@@ -356,6 +362,23 @@ def encode_to_s3(string, errors = "replace"):
     except UnicodeEncodeError:
         raise UnicodeEncodeError("Conversion from unicode failed: %r" % string)
 __all__.append("encode_to_s3")
+
+## Low level methods
+def urlencode_string(string, urlencoding_mode = None):
+    if type(string) == unicode:
+        string = string.encode("utf-8")
+
+    if urlencoding_mode is None:
+        urlencoding_mode = S3.Config.Config().urlencoding_mode
+
+    if urlencoding_mode == "verbatim":
+        ## Don't do any pre-processing
+        return string
+
+    encoded = quote_plus(string, safe="~/")
+    debug("String '%s' encoded to '%s'" % (string, encoded))
+    return encoded
+__all__.append("urlencode_string")
 
 def replace_nonprintables(string):
     """
