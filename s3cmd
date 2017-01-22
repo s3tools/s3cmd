@@ -765,13 +765,16 @@ def cmd_object_restore(args):
         uri = S3Uri(item['object_uri_str'])
         if not item['object_uri_str'].endswith("/"):
             try:
-                response = s3.object_restore(S3Uri(item['object_uri_str']))
-                output(u"restore: '%s'" % item['object_uri_str'])
-            except S3Error as e:
-                if e.code == "RestoreAlreadyInProgress":
-                    warning("%s: %s" % (e.message, item['object_uri_str']))
+                info_response = s3.object_info(uri)
+                if "x-amz-storage-class" in info_response["headers"] and \
+                    "GLACIER" == info_response["headers"]["x-amz-storage-class"] and \
+                    "x-amz-restore" not in info_response["headers"]:
+                    response = s3.object_restore(S3Uri(item['object_uri_str']))
+                    output(u"restore: '%s'" % item['object_uri_str'])
                 else:
-                    raise e
+                    debug(u"Skipping file that is not GLACIER or already started to restore.")
+            except S3Error as e:
+                raise e
         else:
             debug(u"Skipping directory since only files may be restored")
     return EX_OK
