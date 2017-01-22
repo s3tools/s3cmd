@@ -574,7 +574,7 @@ def cmd_object_get(args):
                 os.unlink(deunicodise(destination))
             raise
 
-        if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
+        if response["headers"].has_key("x-amz-meta-s3tools-gpgenc") and destination != '-':
             gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
             response["size"] = os.stat(deunicodise(destination))[6]
         if response["headers"].has_key("last-modified") and destination != "-":
