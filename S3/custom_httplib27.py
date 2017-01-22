@@ -1,20 +1,21 @@
+from __future__ import absolute_import, print_function
+
+import os
 import httplib
 
 from httplib import (_CS_REQ_SENT, _CS_REQ_STARTED, CONTINUE, UnknownProtocol,
-                     HTTPMessage, NO_CONTENT, NOT_MODIFIED, HTTPException)
+                     CannotSendHeader, NO_CONTENT, NOT_MODIFIED, EXPECTATION_FAILED,
+                     HTTPMessage, HTTPException)
+
 try:
-    # python 2.6 support
-    from httplib import _MAXLINE, LineTooLong
+    from cStringIO import StringIO
 except ImportError:
-    _MAXLINE = 65536
-    class LineTooLong(HTTPException):
-        def __init__(self, line_type):
-            HTTPException.__init__(self, "got more than %d bytes when reading %s"
-                                        % (_MAXLINE, line_type))
+    from StringIO import StringIO
 
 _METHODS_EXPECTING_BODY = ['PATCH', 'POST', 'PUT']
 
-# Fixed python 2.X httplib to be able to support Expect: 100-Continue http feature
+# Fixed python 2.X httplib to be able to support
+# Expect: 100-Continue http feature
 # Inspired by:
 # http://bugs.python.org/file26357/issue1346874-273.patch
 
@@ -53,7 +54,7 @@ def httpresponse_patched_begin(self):
     self.msg = HTTPMessage(self.fp, 0)
     if self.debuglevel > 0:
         for hdr in self.msg.headers:
-            print "header:", hdr,
+            print("header:", hdr, end=" ")
 
     # don't let the msg keep an fp
     self.msg.fp = None
@@ -117,7 +118,7 @@ def httpconnection_patched_set_content_length(self, body, method):
                 thelen = str(os.fstat(body.fileno()).st_size)
             except (AttributeError, OSError):
                 # Don't send a length if this failed
-                if self.debuglevel > 0: print "Cannot stat!!"
+                if self.debuglevel > 0: print("Cannot stat!!")
 
     if thelen is not None:
         self.putheader('Content-Length', thelen)
