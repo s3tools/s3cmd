@@ -2820,8 +2820,8 @@ def main():
         # encoding of the system, but just in case, still use it.
         # For that, we need to use directly the binary buffer
         # of stdout/stderr
-        sys.stdout = codecs.getwriter(cfg.encoding)(sys.stdout.detach(), "replace")
-        sys.stderr = codecs.getwriter(cfg.encoding)(sys.stderr.detach(), "replace")
+        sys.stdout = codecs.getwriter(cfg.encoding)(sys.stdout.buffer, "replace")
+        sys.stderr = codecs.getwriter(cfg.encoding)(sys.stderr.buffer, "replace")
     except AttributeError:
         sys.stdout = codecs.getwriter(cfg.encoding)(sys.stdout, "replace")
         sys.stderr = codecs.getwriter(cfg.encoding)(sys.stderr, "replace")
