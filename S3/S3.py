@@ -1209,7 +1209,7 @@ class S3(object):
             conn.counter = ConnMan.conn_max_counter
             ConnMan.put(conn)
             if retries:
-                warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
+                warning("Retrying failed request: %s (%s)" % (resource['uri'], unicodise(e)))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 return self.send_request(request, retries - 1)
@@ -1242,8 +1242,7 @@ class S3(object):
                 retries = 0
 
             if retries:
-                warning(u"Retrying failed request: %s" % resource['uri'])
-                warning(unicode(e))
+                warning(u"Retrying failed request: %s (%s)" % (resource['uri'], unicodise(e)))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 return self.send_request(request, retries - 1)
@@ -1305,7 +1304,7 @@ class S3(object):
             if self.config.progress_meter:
                 progress.done("failed")
             if retries:
-                warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
+                warning("Retrying failed request: %s (%s)" % (resource['uri'], unicodise(e)))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 # Connection error -> same throttle value
