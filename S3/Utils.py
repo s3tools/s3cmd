@@ -36,10 +36,17 @@ $ pip install python-dateutil
     sys.exit(EX_OSFILE)
 
 try:
-    # python 3 support
     from urllib import quote_plus, unquote_plus
 except ImportError:
+    # python 3 support
     from urllib.parse import quote_plus, unquote_plus
+
+try:
+    unicode
+except NameError:
+    # python 3 support
+    # In python 3, unicode -> str, and str -> bytes
+    unicode = str
 
 import S3.Config
 import S3.Exceptions
@@ -317,7 +324,7 @@ def deunicodise(string, encoding = None, errors = "replace"):
         encoding = S3.Config.Config().encoding
 
     if type(string) != unicode:
-        return str(string)
+        return string
     debug("DeUnicodising %r using %s" % (string, encoding))
     try:
         return string.encode(encoding, errors)
@@ -354,7 +361,7 @@ def encode_to_s3(string, errors = "replace"):
     all invalid characters with '?' or raise an exception.
     """
     if type(string) != unicode:
-        return str(string)
+        return string
     # Be quiet by default
     #debug("Encoding string to S3: %r" % string)
     try:
