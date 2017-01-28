@@ -13,6 +13,11 @@ S3tools / S3cmd mailing lists:
 * General questions and discussion: s3tools-general@lists.sourceforge.net
 * Bug reports: s3tools-bugs@lists.sourceforge.net
 
+S3cmd requires Python 2.6 or newer.
+
+(S3cmd is not yet compatible with Python 3.x. Work toward that is currently in progress)
+
+
 ### What is S3cmd
 
 S3cmd (`s3cmd`) is a free command line tool and client for uploading, retrieving and managing data in Amazon S3 and other cloud storage service providers that use the S3 protocol, such as Google Cloud Storage or DreamHost DreamObjects. It is best suited for power users who are familiar with command line programs. It is also ideal for batch scripts and automated backup to S3, triggered from cron, etc.
