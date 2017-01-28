@@ -52,17 +52,9 @@ import S3.Config
 import S3.Exceptions
 import xml.dom.minidom
 
-# hashlib backported to python 2.4 / 2.5 is not compatible with hmac!
-if sys.version_info[0] == 2 and sys.version_info[1] < 6:
-    from md5 import md5
-else:
-    from hashlib import md5
+from hashlib import md5
 
-try:
-    import xml.etree.ElementTree as ET
-except ImportError:
-    # xml.etree.ElementTree was only added in python 2.5
-    import elementtree.ElementTree as ET
+import xml.etree.ElementTree as ET
 
 __all__ = []
 def parseNodes(nodes):
