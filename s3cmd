@@ -109,7 +109,7 @@ def subcmd_bucket_usage(s3, uri):
                 object_count += 1
 
     except S3Error as e:
-        if S3.codes.has_key(e.info["Code"]):
+        if e.info["Code"] in S3.codes:
             error(S3.codes[e.info["Code"]] % bucket)
         raise
 
@@ -161,7 +161,7 @@ def subcmd_bucket_list(s3, uri, limit):
     try:
         response = s3.bucket_list(bucket, prefix = prefix, limit = limit)
     except S3Error as e:
-        if S3.codes.has_key(e.info["Code"]):
+        if e.info["Code"] in S3.codes:
             error(S3.codes[e.info["Code"]] % bucket)
         raise
 
@@ -217,7 +217,7 @@ def cmd_bucket_create(args):
             response = s3.bucket_create(uri.bucket(), cfg.bucket_location)
             output(u"Bucket '%s' created" % uri.uri())
         except S3Error as e:
-            if S3.codes.has_key(e.info["Code"]):
+            if e.info["Code"] in S3.codes:
                 error(S3.codes[e.info["Code"]] % uri.bucket())
             raise
     return EX_OK
@@ -238,7 +238,7 @@ def cmd_website_info(args):
             else:
                 output(u"Bucket %s: Unable to receive website configuration." % (uri.uri()))
         except S3Error as e:
-            if S3.codes.has_key(e.info["Code"]):
+            if e.info["Code"] in S3.codes:
                 error(S3.codes[e.info["Code"]] % uri.bucket())
             raise
     return EX_OK
@@ -253,7 +253,7 @@ def cmd_website_create(args):
             response = s3.website_create(uri, cfg.bucket_location)
             output(u"Bucket '%s': website configuration created." % (uri.uri()))
         except S3Error as e:
-            if S3.codes.has_key(e.info["Code"]):
+            if e.info["Code"] in S3.codes:
                 error(S3.codes[e.info["Code"]] % uri.bucket())
             raise
     return EX_OK
@@ -268,7 +268,7 @@ def cmd_website_delete(args):
             response = s3.website_delete(uri, cfg.bucket_location)
             output(u"Bucket '%s': website configuration deleted." % (uri.uri()))
         except S3Error as e:
-            if S3.codes.has_key(e.info["Code"]):
+            if e.info["Code"] in S3.codes:
                 error(S3.codes[e.info["Code"]] % uri.bucket())
             raise
     return EX_OK
@@ -286,7 +286,7 @@ def cmd_expiration_set(args):
             elif response["status"] is 204:
                 output(u"Bucket '%s': expiration configuration is deleted." % (uri.uri()))
         except S3Error as e:
-            if S3.codes.has_key(e.info["Code"]):
+            if e.info["Code"] in S3.codes:
                 error(S3.codes[e.info["Code"]] % uri.bucket())
             raise
     return EX_OK
@@ -309,7 +309,7 @@ def cmd_bucket_delete(args):
                     return _bucket_delete_one(uri, False)
                 else:
                     output(u"Bucket was not removed")
-            elif S3.codes.has_key(e.info["Code"]):
+            elif e.info["Code"] in S3.codes:
                 error(S3.codes[e.info["Code"]] % uri.bucket())
             raise
         return EX_OK
@@ -574,10 +574,10 @@ def cmd_object_get(args):
                 os.unlink(deunicodise(destination))
             raise
 
-        if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
+        if "x-amz-meta-s3tools-gpgenc" in response["headers"]:
             gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
             response["size"] = os.stat(deunicodise(destination))[6]
-        if response["headers"].has_key("last-modified") and destination != "-":
+        if "last-modified" in response["headers"] and destination != "-":
             last_modified = time.mktime(time.strptime(response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"))
             os.utime(deunicodise(destination), (last_modified, last_modified))
             debug("set mtime to %s" % last_modified)
@@ -944,7 +944,7 @@ def cmd_info(args):
                         output(u"   %s: %s" % (header, value))
 
         except S3Error as e:
-            if S3.codes.has_key(e.info["Code"]):
+            if e.info["Code"] in S3.codes:
                 error(S3.codes[e.info["Code"]] % uri.bucket())
             raise
     return EX_OK
@@ -1237,7 +1237,7 @@ def cmd_sync_remote2local(args):
             seq_label = "[%d of %d]" % (seq, total)
 
             dst_dir = unicodise(os.path.dirname(deunicodise(dst_file)))
-            if not dir_cache.has_key(dst_dir):
+            if not dst_dir in dir_cache:
                 dir_cache[dst_dir] = Utils.mkdir_with_parents(dst_dir)
             if dir_cache[dst_dir] == False:
                 if cfg.stop_on_error:
@@ -1351,19 +1351,19 @@ def cmd_sync_remote2local(args):
                 continue
 
             try:
-                if response.has_key('s3cmd-attrs') and cfg.preserve_attrs:
+                if 's3cmd-attrs' in response and cfg.preserve_attrs:
                     attrs = response['s3cmd-attrs']
-                    if attrs.has_key('mode'):
+                    if 'mode' in attrs:
                         os.chmod(deunicodise(dst_file), int(attrs['mode']))
-                    if attrs.has_key('mtime') or attrs.has_key('atime'):
-                        mtime = attrs.has_key('mtime') and int(attrs['mtime']) or int(time.time())
-                        atime = attrs.has_key('atime') and int(attrs['atime']) or int(time.time())
+                    if 'mtime' in attrs or 'atime' in attrs:
+                        mtime = ('mtime' in attrs) and int(attrs['mtime']) or int(time.time())
+                        atime = ('atime' in attrs) and int(attrs['atime']) or int(time.time())
                         os.utime(deunicodise(dst_file), (atime, mtime))
-                    if attrs.has_key('uid') and attrs.has_key('gid'):
+                    if 'uid' in attrs and 'gid' in attrs:
                         uid = int(attrs['uid'])
                         gid = int(attrs['gid'])
                         os.lchown(deunicodise(dst_file),uid,gid)
-                elif response["headers"].has_key("last-modified"):
+                elif 'last-modified' in response['headers']:
                     last_modified = time.mktime(time.strptime(response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"))
                     os.utime(deunicodise(dst_file), (last_modified, last_modified))
                     debug("set mtime to %s" % last_modified)
@@ -2072,7 +2072,7 @@ def cmd_fixbucket(args):
         # From: http://effbot.org/zone/re-sub.htm#unescape-html
         def _unescape_fixup(m):
             text = m.group(0)
-            if not htmlentitydefs.name2codepoint.has_key('apos'):
+            if not 'apos' in htmlentitydefs.name2codepoint:
                 htmlentitydefs.name2codepoint['apos'] = ord("'")
             if text[:2] == "&#":
                 # character reference
@@ -2525,8 +2525,8 @@ def main():
 
     ## Populate "commands" from "commands_list"
     for cmd in commands_list:
-        if cmd.has_key("cmd"):
-            commands[cmd["cmd"]] = cmd
+        if 'cmd' in cmd:
+            commands[cmd['cmd']] = cmd
 
     optparser = OptionParser(option_class=OptionAll, formatter=MyHelpFormatter())
     #optparser.disable_interspersed_args()
@@ -2712,7 +2712,6 @@ def main():
     if options.verbosity is not None:
         cfg.verbosity = options.verbosity
     logging.root.setLevel(cfg.verbosity)
-
     ## Unsupported features on Win32 platform
     if os.name == "nt":
         if cfg.preserve_attrs:
