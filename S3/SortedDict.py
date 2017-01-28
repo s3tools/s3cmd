@@ -15,11 +15,13 @@ class SortedDictIterator(object):
         self.sorted_dict = sorted_dict
         self.keys = keys
 
-    def next(self):
+    def __next__(self):
         try:
             return self.keys.pop(0)
         except IndexError:
             raise StopIteration
+
+    next = __next__
 
 class SortedDict(dict):
     def __init__(self, mapping = {}, ignore_case = True, **kwargs):
@@ -33,6 +35,9 @@ class SortedDict(dict):
         self.ignore_case = ignore_case
 
     def keys(self):
+        # TODO fix
+        # Probably not anymore memory efficient on python2
+        # as now 2 copies ok keys to sort thems.
         keys = dict.keys(self)
         if self.ignore_case:
             # Translation map
@@ -40,11 +45,10 @@ class SortedDict(dict):
             for key in keys:
                 xlat_map[key.lower()] = key
             # Lowercase keys
-            lc_keys = xlat_map.keys()
-            lc_keys.sort()
+            lc_keys = sorted(xlat_map.keys())
             return [xlat_map[k] for k in lc_keys]
         else:
-            keys.sort()
+            keys = sorted(keys)
             return keys
 
     def __iter__(self):
