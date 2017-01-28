@@ -38,10 +38,11 @@ import codecs
 import locale
 import subprocess
 try:
-    # python 3 support
     import htmlentitydefs
 except:
+    # python 3 support
     import html.entities as htmlentitydefs
+
 import socket
 import shutil
 import tempfile
@@ -2813,8 +2814,17 @@ def main():
         cfg.files_from = options.files_from
 
     ## Set output and filesystem encoding for printing out filenames.
-    sys.stdout = codecs.getwriter(cfg.encoding)(sys.stdout, "replace")
-    sys.stderr = codecs.getwriter(cfg.encoding)(sys.stderr, "replace")
+    try:
+        # Support for python3
+        # That don't need codecs if output is the
+        # encoding of the system, but just in case, still use it.
+        # For that, we need to use directly the binary buffer
+        # of stdout/stderr
+        sys.stdout = codecs.getwriter(cfg.encoding)(sys.stdout.detach(), "replace")
+        sys.stderr = codecs.getwriter(cfg.encoding)(sys.stderr.detach(), "replace")
+    except AttributeError:
+        sys.stdout = codecs.getwriter(cfg.encoding)(sys.stdout, "replace")
+        sys.stderr = codecs.getwriter(cfg.encoding)(sys.stderr, "replace")
 
     ## Process --exclude and --exclude-from
     patterns_list, patterns_textual = process_patterns(options.exclude, options.exclude_from, is_glob = True, option_txt = "exclude")
@@ -2908,7 +2918,7 @@ def report_exception(e, msg=u''):
 
 """
         sys.stderr.write(alert_header % (u"following lines", u"\n\n" + msg))
-        tb = traceback.format_exc(sys.exc_info())
+        tb = traceback.format_exc()
         try:
             s = u' '.join([unicodise(a) for a in sys.argv])
         except NameError:
@@ -2925,7 +2935,7 @@ def report_exception(e, msg=u''):
         sys.stderr.write(u"python:   %s\n" % sys.version)
         sys.stderr.write(u"environment LANG=%s\n" % os.getenv("LANG"))
         sys.stderr.write(u"\n")
-        sys.stderr.write(unicode(tb, errors="replace"))
+        sys.stderr.write(unicodise(tb, errors="replace"))
 
         if type(e) == ImportError:
             sys.stderr.write("\n")

@@ -13,6 +13,13 @@ from logging import debug, error
 from . import ExitCodes
 
 try:
+    unicode
+except NameError:
+    # python 3 support
+    # In python 3, unicode -> str, and str -> bytes
+    unicode = str
+
+try:
     from xml.etree.ElementTree import ParseError as XmlParseError
 except ImportError:
     # ParseError was only added in python2.7, before ET was raising ExpatError
