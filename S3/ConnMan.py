@@ -9,7 +9,10 @@
 from __future__ import absolute_import
 
 import sys
-from .custom_httplib27 import httplib
+if sys.version_info >= (3,0):
+    from .Custom_httplib3x import httplib
+else:
+    from .Custom_httplib27 import httplib
 import ssl
 from threading import Semaphore
 from logging import debug
