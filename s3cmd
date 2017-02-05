@@ -947,7 +947,13 @@ def cmd_info(args):
                     raise exc
 
             if uri.has_object():
-                for header, value in info['headers'].iteritems():
+                # Temporary hack for performance + python3 compatibility
+                try:
+                    # Check python 2 first
+                    info_headers_iter = info['headers'].iteritems()
+                except:
+                    info_headers_iter = info['headers'].items()
+                for header, value in info_headers_iter:
                     if header.startswith('x-amz-meta-'):
                         output(u"   %s: %s" % (header, value))
 

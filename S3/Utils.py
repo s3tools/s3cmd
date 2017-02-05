@@ -88,8 +88,9 @@ __all__.append("getPrettyFromXml")
 def stripNameSpace(xml):
     """
     removeNameSpace(xml) -- remove top-level AWS namespace
+    Operate on raw byte(utf-8) xml string. (Not unicode)
     """
-    r = re.compile('^(<?[^>]+?>\s*)(<\w+) xmlns=[\'"](http://[^\'"]+)[\'"](.*)', re.MULTILINE)
+    r = re.compile(b'^(<?[^>]+?>\s*)(<\w+) xmlns=[\'"](http://[^\'"]+)[\'"](.*)', re.MULTILINE)
     if r.match(xml):
         xmlns = r.match(xml).groups()[2]
         xml = r.sub("\\1\\2\\4", xml)
