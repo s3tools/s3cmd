@@ -31,7 +31,9 @@ cloudfront_api_version = "2010-11-01"
 cloudfront_resource = "/%(api_ver)s/distribution" % { 'api_ver' : cloudfront_api_version }
 
 def output(message):
-    sys.stdout.write(message + "\n")
+    if not Config().quiet:
+        sys.stdout.write(message + "\n")
+        sys.stdout.flush()
 
 def pretty_output(label, message):
     #label = ("%s " % label).ljust(20, ".")

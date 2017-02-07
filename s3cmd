@@ -62,8 +62,10 @@ from distutils.spawn import find_executable
 from ssl import SSLError
 
 def output(message):
-    sys.stdout.write(message + "\n")
-    sys.stdout.flush()
+    Config().quiet
+    if not Config().quiet:
+        sys.stdout.write(message + "\n")
+        sys.stdout.flush()
 
 def check_args_type(args, type, verbose_type):
     """NOTE: This function looks like to not be used."""
@@ -2693,13 +2695,6 @@ def main():
         sys.exit(EX_OK)
     debug(u"s3cmd version %s" % PkgInfo.version)
 
-    if options.quiet:
-        try:
-            f = open("/dev/null", "w")
-            sys.stdout = f
-        except IOError:
-            warning(u"Unable to open /dev/null: --quiet disabled.")
-
     ## Now finally parse the config file
     if not options.config:
         error(u"Can't find a config file. Please use --config option.")
@@ -2720,6 +2715,8 @@ def main():
     if options.verbosity is not None:
         cfg.verbosity = options.verbosity
     logging.root.setLevel(cfg.verbosity)
+    if options.quiet is not None:
+        cfg.quiet = options.quiet
     ## Unsupported features on Win32 platform
     if os.name == "nt":
         if cfg.preserve_attrs:
