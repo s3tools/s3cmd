@@ -14,6 +14,11 @@ import sys
 from .Utils import unicodise, deunicodise, check_bucket_name_dns_support
 from . import Config
 
+if sys.version_info >= (3,0):
+    PY3 = True
+else:
+    PY3 = False
+
 class S3Uri(object):
     type = None
     _subclasses = None
@@ -38,13 +43,16 @@ class S3Uri(object):
         raise ValueError("%s: not a recognized URI" % string)
 
     def __str__(self):
-        return self.uri()
+        if PY3:
+            return self.uri()
+        else:
+            return deunicodise(self.uri())
 
     def __unicode__(self):
         return self.uri()
 
     def __repr__(self):
-        return deunicodise("<%s: %s>" % (self.__class__.__name__, self.__unicode__()))
+        return repr("<%s: %s>" % (self.__class__.__name__, self.__unicode__()))
 
     def public_url(self):
         raise ValueError("This S3 URI does not have Anonymous URL representation")
@@ -138,7 +146,7 @@ class S3UriS3FS(S3Uri):
         return "/".join(self._path)
 
     def uri(self):
-        return "/".join([u"s3fs:/", self._fsname, self.path()])
+        return u"/".join([u"s3fs:/", self._fsname, self.path()])
 
 class S3UriFile(S3Uri):
     type = "file"
@@ -157,7 +165,7 @@ class S3UriFile(S3Uri):
         return os.sep.join(self._path)
 
     def uri(self):
-        return "/".join(["file:/"]+self._path)
+        return u"/".join([u"file:/"]+self._path)
 
     def isdir(self):
         return os.path.isdir(deunicodise(self.path()))
@@ -186,9 +194,9 @@ class S3UriCloudFront(S3Uri):
         return self._request_id
 
     def uri(self):
-        uri = "cf://" + self.dist_id()
+        uri = u"cf://" + self.dist_id()
         if self.request_id():
-            uri += "/" + self.request_id()
+            uri += u"/" + self.request_id()
         return uri
 
 if __name__ == "__main__":

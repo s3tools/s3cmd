@@ -8,16 +8,18 @@
 
 from __future__ import absolute_import
 
-import S3.Utils
 from logging import debug, error
+import sys
+import S3.Utils
 from . import ExitCodes
 
-try:
-    unicode
-except NameError:
-    # python 3 support
+if sys.version_info >= (3,0):
+    PY3 = True
     # In python 3, unicode -> str, and str -> bytes
     unicode = str
+else:
+    PY3 = False
+
 
 try:
     from xml.etree.ElementTree import ParseError as XmlParseError
@@ -30,9 +32,12 @@ class S3Exception(Exception):
         self.message = S3.Utils.unicodise(message)
 
     def __str__(self):
-        ## Call unicode(self) instead of self.message because
+        ## Don't return self.message directly because
         ## __unicode__() method could be overridden in subclasses!
-        return S3.Utils.deunicodise(unicode(self))
+        if PY3:
+            return self.__unicode__()
+        else:
+            return S3.Utils.deunicodise(self.__unicode__())
 
     def __unicode__(self):
         return self.message
