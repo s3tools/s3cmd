@@ -1345,7 +1345,7 @@ class S3(object):
                         start_time = time.time()
 
                     md5_hash.update(data)
-                    conn.c.send(data)
+                    conn.c.wrapper_send_body(data)
                     if self.config.progress_meter:
                         progress.update(delta_position = len(data))
                     size_left -= len(data)
