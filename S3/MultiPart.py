@@ -91,7 +91,7 @@ class MultiPartUpload(object):
 
         if filename != "<stdin>":
                 size_left = file_size = os.stat(deunicodise(filename))[ST_SIZE]
-                nr_parts = file_size / self.chunk_size + (file_size % self.chunk_size and 1)
+                nr_parts = file_size // self.chunk_size + (file_size % self.chunk_size and 1)
                 debug("MultiPart: Uploading %s in %d parts" % (filename, nr_parts))
         else:
             debug("MultiPart: Uploading from %s" % filename)

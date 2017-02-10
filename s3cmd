@@ -19,7 +19,7 @@
 ## GNU General Public License for more details.
 ## --------------------------------------------------------------------
 
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, print_function, division
 
 import sys
 
@@ -1105,7 +1105,7 @@ def cmd_sync_remote2remote(args):
     stats_info.files_deleted = deleted_count
 
     total_elapsed = max(1.0, time.time() - timestamp_start)
-    outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s." % (total_files_copied, total_elapsed, seq/total_elapsed)
+    outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s." % (total_files_copied, total_elapsed, seq / total_elapsed)
     if cfg.stats:
         outstr += stats_info.format_output()
         output(outstr)
@@ -1451,7 +1451,7 @@ def cmd_sync_remote2local(args):
         deleted_count, deleted_size = _do_deletes(local_list)
 
     total_elapsed = max(1.0, time.time() - timestamp_start)
-    speed_fmt = formatSize(size_transferred/total_elapsed, human_readable = True, floating_point = True)
+    speed_fmt = formatSize(size_transferred / total_elapsed, human_readable = True, floating_point = True)
 
     stats_info.files = orig_remote_count
     stats_info.size = remote_total_size
@@ -1747,7 +1747,7 @@ def cmd_sync_local2remote(args):
         if cfg.delete_removed and cfg.delete_after and remote_list:
             subcmd_batch_del(remote_list = remote_list)
         total_elapsed = max(1.0, time.time() - timestamp_start)
-        total_speed = total_elapsed and size_transferred/total_elapsed or 0.0
+        total_speed = total_elapsed and size_transferred / total_elapsed or 0.0
         speed_fmt = formatSize(total_speed, human_readable = True, floating_point = True)
 
 

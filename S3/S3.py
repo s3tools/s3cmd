@@ -6,7 +6,7 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 import sys
 import os
@@ -1605,7 +1605,7 @@ class S3(object):
                 #throttle
                 if self.config.limitrate > 0:
                     real_duration = time.time() - start_time
-                    expected_duration = float(this_chunk)/self.config.limitrate
+                    expected_duration = float(this_chunk) / self.config.limitrate
                     if expected_duration > real_duration:
                         time.sleep(expected_duration - real_duration)
 

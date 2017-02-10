@@ -6,7 +6,7 @@
 ## License: GPL Version 2
 ## Copyright: TGRMN Software and contributors
 
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 import sys
 import datetime
@@ -77,16 +77,18 @@ class Progress(object):
             print_size = S3.Utils.formatSize(self.current_position, True)
             if print_size[1] != "": print_size[1] += "B"
             timedelta = self.time_current - self.time_start
-            sec_elapsed = timedelta.days * 86400 + timedelta.seconds + float(timedelta.microseconds)/1000000.0
+            sec_elapsed = timedelta.days * 86400 + timedelta.seconds + float(timedelta.microseconds) / 1000000.0
             print_speed = S3.Utils.formatSize((self.current_position - self.initial_position) / sec_elapsed, True, True)
             self._stdout.write("100%%  %s%s in %.2fs (%.2f %sB/s)\n" %
                 (print_size[0], print_size[1], sec_elapsed, print_speed[0], print_speed[1]))
             self._stdout.flush()
             return
 
-        rel_position = self.current_position * 100 / self.total_size
+        rel_position = (self.current_position * 100) // self.total_size
         if rel_position >= self.last_milestone:
-            self.last_milestone = (int(rel_position) / 5) * 5
+            # Move by increments of 5.
+            # NOTE: to check: Looks like to not do what is looks like to be designed to do
+            self.last_milestone = (rel_position // 5) * 5
             self._stdout.write("%d%% ", self.last_milestone)
             self._stdout.flush()
             return
@@ -127,7 +129,7 @@ class ProgressANSI(Progress):
         self._stdout.write("%(current)s of %(total)s   %(percent)3d%% in %(elapsed)ds  %(speed).2f %(speed_coeff)sB/s" % {
             "current" : str(self.current_position).rjust(len(str(self.total_size))),
             "total" : self.total_size,
-            "percent" : self.total_size and (self.current_position * 100 / self.total_size) or 0,
+            "percent" : self.total_size and ((self.current_position * 100) // self.total_size) or 0,
             "elapsed" : sec_elapsed,
             "speed" : print_speed[0],
             "speed_coeff" : print_speed[1]
@@ -164,7 +166,7 @@ class ProgressCR(Progress):
         output = " %(current)s of %(total)s   %(percent)3d%% in %(elapsed)4ds  %(speed)7.2f %(speed_coeff)sB/s" % {
             "current" : str(self.current_position).rjust(len(str(self.total_size))),
             "total" : self.total_size,
-            "percent" : self.total_size and (self.current_position * 100 / self.total_size) or 0,
+            "percent" : self.total_size and ((self.current_position * 100) // self.total_size) or 0,
             "elapsed" : sec_elapsed,
             "speed" : print_speed[0],
             "speed_coeff" : print_speed[1]
