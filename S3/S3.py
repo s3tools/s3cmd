@@ -666,7 +666,7 @@ class S3(object):
                 info = None
 
             if info is not None:
-                remote_size = long(info['headers']['content-length'])
+                remote_size = int(info['headers']['content-length'])
                 remote_checksum = info['headers']['etag'].strip('"\'')
                 if size == remote_size:
                     checksum = calculateChecksum('', file, 0, size, self.config.send_chunk)
@@ -1271,7 +1271,7 @@ class S3(object):
             if region is not None:
                 S3Request.region_map[request.resource['bucket']] = region
 
-        size_left = size_total = long(headers["content-length"])
+        size_left = size_total = int(headers["content-length"])
         filename = unicodise(file.name)
         if self.config.progress_meter:
             labels[u'action'] = u'upload'
@@ -1577,7 +1577,7 @@ class S3(object):
             # Only compute MD5 on the fly if we're downloading from beginning
             # Otherwise we'd get a nonsense.
             md5_hash = md5()
-        size_left = long(response["headers"]["content-length"])
+        size_left = int(response["headers"]["content-length"])
         size_total = start_position + size_left
         current_position = start_position
 
@@ -1674,9 +1674,9 @@ class S3(object):
         response["elapsed"] = timestamp_end - timestamp_start
         response["size"] = current_position
         response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
-        if response["size"] != start_position + long(response["headers"]["content-length"]):
+        if response["size"] != start_position + int(response["headers"]["content-length"]):
             warning("Reported size (%s) does not match received size (%s)" % (
-                start_position + long(response["headers"]["content-length"]), response["size"]))
+                start_position + int(response["headers"]["content-length"]), response["size"]))
         debug("ReceiveFile: Computed MD5 = %s" % response.get("md5"))
         # avoid ETags from multipart uploads that aren't the real md5
         if ('-' not in md5_from_s3 and not response["md5match"]) and (response["headers"].get("x-amz-server-side-encryption") != 'aws:kms'):
