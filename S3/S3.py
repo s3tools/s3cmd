@@ -88,10 +88,11 @@ try:
             return magic_.file(deunicodise(file))
 
 except ImportError as e:
-    if 'magic' in str(e):
+    error_str = str(e)
+    if 'magic' in error_str:
         magic_message = "Module python-magic is not available."
     else:
-        magic_message = "Module python-magic can't be used (%s)." % e.message
+        magic_message = "Module python-magic can't be used (%s)." % error_str
     magic_message += " Guessing MIME types based on file extensions."
     magic_warned = False
     def mime_magic_file(file):
@@ -192,7 +193,7 @@ class S3Request(object):
             debug("Using signature v2")
             debug("SignHeaders: " + repr(h))
             signature = sign_string_v2(h)
-            self.headers["Authorization"] = "AWS "+self.s3.config.access_key+":"+signature
+            self.headers["Authorization"] = deunicodise("AWS ") + deunicodise(self.s3.config.access_key)+deunicodise(":")+signature
         else:
             debug("Using signature v4")
             hostname = self.s3.get_hostname(self.resource['bucket'])
@@ -1209,7 +1210,7 @@ class S3(object):
             conn.counter = ConnMan.conn_max_counter
             ConnMan.put(conn)
             if retries:
-                warning("Retrying failed request: %s (%s)" % (resource['uri'], unicodise(e)))
+                warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 return self.send_request(request, retries - 1)
@@ -1242,7 +1243,7 @@ class S3(object):
                 retries = 0
 
             if retries:
-                warning(u"Retrying failed request: %s (%s)" % (resource['uri'], unicodise(e)))
+                warning(u"Retrying failed request: %s (%s)" % (resource['uri'], e))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 return self.send_request(request, retries - 1)
@@ -1304,7 +1305,7 @@ class S3(object):
             if self.config.progress_meter:
                 progress.done("failed")
             if retries:
-                warning("Retrying failed request: %s (%s)" % (resource['uri'], unicodise(e)))
+                warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 # Connection error -> same throttle value

@@ -40,7 +40,7 @@ def sign_string_v2(string_to_sign):
 
     Useful for REST authentication. See http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html
     """
-    signature = base64.encodestring(hmac.new(Config.Config().secret_key, deunicodise(string_to_sign), sha1).digest()).strip()
+    signature = base64.encodestring(hmac.new(encode_to_s3(Config.Config().secret_key), encode_to_s3(string_to_sign), sha1).digest()).strip()
     return signature
 __all__.append("sign_string_v2")
 
@@ -113,7 +113,7 @@ def sign_string_v4(method='GET', host='', canonical_uri='/', params={}, region='
     canonical_uri = quote_param(splits[0], quote_backslashes=False)
     canonical_querystring += '&'.join([('%s' if '=' in qs else '%s=') % qs for qs in splits[1:]])
 
-    if type(body) == type(sha256('')):
+    if type(body) == type(sha256(b'')):
         payload_hash = body.hexdigest()
     else:
         payload_hash = sha256(body).hexdigest()
