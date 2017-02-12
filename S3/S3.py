@@ -1266,7 +1266,18 @@ class S3(object):
         if S3Request.region_map.get(request.resource['bucket'], Config().bucket_location) is None:
             method_string, resource, headers = request.get_triplet()
             s3_uri = S3Uri(u's3://' + request.resource['bucket'])
-            region = self.get_bucket_location(s3_uri)
+            try:
+                region = self.get_bucket_location(s3_uri)
+            except Exception, e:
+                if retries:
+                    warning("Retrying get_bucket_location: %s (%s)" % (s3_uri, e))
+                    warning("Waiting %d sec..." % self._fail_wait(retries))
+                    time.sleep(self._fail_wait(retries))
+                    # Connection error -> same throttle value
+                    return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
+                else:
+                    raise S3UploadError("Get bucket location failed for: %s" % resource['uri'])
+
             if region is not None:
                 S3Request.region_map[request.resource['bucket']] = region
 
