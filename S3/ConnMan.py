@@ -9,7 +9,11 @@
 from __future__ import absolute_import
 
 import sys
-from .custom_httplib27 import httplib
+try:
+    # python 3 support
+    import http.client as httplib
+except ImportError:
+    from .custom_httplib27 import httplib
 import ssl
 from threading import Semaphore
 from logging import debug
