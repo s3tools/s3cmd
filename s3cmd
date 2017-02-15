@@ -2699,6 +2699,10 @@ def main():
         sys.exit(EX_OK)
     debug(u"s3cmd version %s" % PkgInfo.version)
 
+    # TODO: PY3 warning, to remove when it will be stable
+    if sys.version_info >= (3,0):
+        warning("!!!!!!! Support for python3 is currently in a 'Work In Progress' state.\nPlease don't use s3cmd with python3 on production tasks or with sensitive data as unexpected behaviors could occur !!!!!!!")
+
     if options.quiet:
         try:
             f = open("/dev/null", "w")
