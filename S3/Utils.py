@@ -290,7 +290,7 @@ def mkdir_with_parents(dir_name):
     return True
 __all__.append("mkdir_with_parents")
 
-def unicodise(string, encoding = None, errors = "replace"):
+def unicodise(string, encoding = None, errors = "replace", silent=False):
     """
     Convert 'string' to Unicode or raise an exception.
     """
@@ -300,14 +300,23 @@ def unicodise(string, encoding = None, errors = "replace"):
 
     if type(string) == unicode:
         return string
-    debug("Unicodising %r using %s" % (string, encoding))
+
+    if not silent:
+        debug("Unicodising %r using %s" % (string, encoding))
     try:
         return unicode(string, encoding, errors)
     except UnicodeDecodeError:
         raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
 __all__.append("unicodise")
 
-def deunicodise(string, encoding = None, errors = "replace"):
+def unicodise_s(string, encoding = None, errors = "replace"):
+    """
+    Alias to silent version of unicodise
+    """
+    return unicodise(string, encoding, errors, True)
+__all__.append("unicodise_s")
+
+def deunicodise(string, encoding = None, errors = "replace", silent=False):
     """
     Convert unicode 'string' to <type str>, by default replacing
     all invalid characters with '?' or raise an exception.
@@ -318,12 +327,21 @@ def deunicodise(string, encoding = None, errors = "replace"):
 
     if type(string) != unicode:
         return string
-    debug("DeUnicodising %r using %s" % (string, encoding))
+
+    if not silent:
+        debug("DeUnicodising %r using %s" % (string, encoding))
     try:
         return string.encode(encoding, errors)
     except UnicodeEncodeError:
         raise UnicodeEncodeError("Conversion from unicode failed: %r" % string)
 __all__.append("deunicodise")
+
+def deunicodise_s(string, encoding = None, errors = "replace"):
+    """
+    Alias to silent version of deunicodise
+    """
+    return deunicodise(string, encoding, errors, True)
+__all__.append("deunicodise_s")
 
 def unicodise_safe(string, encoding = None):
     """
@@ -365,8 +383,7 @@ __all__.append("encode_to_s3")
 
 ## Low level methods
 def urlencode_string(string, urlencoding_mode = None):
-    if type(string) == unicode:
-        string = string.encode("utf-8")
+    string = encode_to_s3(string)
 
     if urlencoding_mode is None:
         urlencoding_mode = S3.Config.Config().urlencoding_mode
