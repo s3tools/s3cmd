@@ -56,7 +56,7 @@ def sign_request_v2(method='GET', canonical_uri='/', params={}, cur_headers={}):
                                'uploads', 'versionId', 'versioning',
                                'versions', 'website',
                                # Missing of aws s3 doc but needed
-                               'delete']
+                               'delete', 'cors']
 
     access_key = Config.Config().access_key
 
