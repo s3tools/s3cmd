@@ -1184,6 +1184,7 @@ class S3(object):
 
     def send_request(self, request, retries = _max_retries):
         pp = pprint.PrettyPrinter()
+        request.body = encode_to_s3(request.body)
         method_string, resource, headers = request.get_triplet()
         response = {}
         debug("Processing request, please wait...")

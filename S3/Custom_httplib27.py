@@ -12,6 +12,9 @@ try:
 except ImportError:
     from StringIO import StringIO
 
+from .Utils import encode_to_s3
+
+
 _METHODS_EXPECTING_BODY = ['PATCH', 'POST', 'PUT']
 
 # Fixed python 2.X httplib to be able to support
@@ -24,8 +27,6 @@ def httpresponse_patched_begin(self):
     to not loop over "100 CONTINUE" status replies
     but to report it to higher level so it can be processed.
     """
-
-
     if self.msg is not None:
         # we've already started reading the response
         return
@@ -177,19 +178,30 @@ def httpconnection_patched_endheaders(self, message_body=None):
         raise CannotSendHeader()
     self._send_output(message_body)
 
+# TCP Maximum Segment Size (MSS) is determined by the TCP stack on
+# a per-connection basis.  There is no simple and efficient
+# platform independent mechanism for determining the MSS, so
+# instead a reasonable estimate is chosen.  The getsockopt()
+# interface using the TCP_MAXSEG parameter may be a suitable
+# approach on some operating systems. A value of 16KiB is chosen
+# as a reasonable estimate of the maximum MSS.
+mss = 16384
+
 def httpconnection_patched_send_output(self, message_body=None):
     """Send the currently buffered request and clear the buffer.
 
     Appends an extra \\r\\n to the buffer.
     A message_body may be specified, to be appended to the request.
     """
-    self._buffer.extend(("", ""))
-    msg = "\r\n".join(self._buffer)
+    self._buffer.extend((b"", b""))
+    msg = b"\r\n".join(self._buffer)
     del self._buffer[:]
+
+    msg = encode_to_s3(msg)
     # If msg and message_body are sent in a single send() call,
     # it will avoid performance problems caused by the interaction
     # between delayed ack and the Nagle algorithm.
-    if isinstance(message_body, str):
+    if isinstance(message_body, str) and len(message_body) < mss:
         msg += message_body
         message_body = None
     self.send(msg)
