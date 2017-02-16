@@ -23,12 +23,7 @@ try:
 except ImportError:
     from urllib.parse import quote_plus, unquote_plus
 
-# hashlib backported to python 2.4 / 2.5 is not compatible with hmac!
-if sys.version_info[0] == 2 and sys.version_info[1] < 6:
-    import sha as sha1
-    from .Crypto.Hash import SHA256 as sha256
-else:
-    from hashlib import sha1, sha256
+from hashlib import sha1, sha256
 
 __all__ = []
 
