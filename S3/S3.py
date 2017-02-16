@@ -416,9 +416,31 @@ class S3(object):
         response = self.send_request(request)
         return response
 
-    def get_bucket_location(self, uri):
+    def get_bucket_location(self, uri, force_us_default=False):
+        bucket = uri.bucket()
         request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?location")
-        response = self.send_request(request)
+
+        saved_redir_map = S3Request.redir_map.get(bucket, '')
+        saved_region_map = S3Request.region_map.get(bucket, '')
+
+        try:
+            if force_us_default and not (saved_redir_map and saved_region_map):
+                S3Request.redir_map[bucket] = self.config.host_base
+                S3Request.region_map[bucket] = 'us-east-1'
+
+            response = self.send_request(request)
+        finally:
+            if bucket in saved_redir_map:
+                S3Request.redir_map[bucket] = saved_redir_map
+            elif bucket in S3Request.redir_map:
+                del S3Request.redir_map[bucket]
+
+            if bucket in saved_region_map:
+                S3Request.region_map[bucket] = saved_region_map
+            elif bucket in S3Request.region_map:
+                del S3Request.region_map[bucket]
+
+
         location = getTextFromXml(response['data'], "LocationConstraint")
         if not location or location in [ "", "US" ]:
             location = "us-east-1"
