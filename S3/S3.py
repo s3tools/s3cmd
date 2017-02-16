@@ -1205,7 +1205,6 @@ class S3(object):
         raise S3Error(response)
 
     def send_request(self, request, retries = _max_retries):
-        pp = pprint.PrettyPrinter()
         request.body = encode_to_s3(request.body)
         method_string, resource, headers = request.get_triplet()
         response = {}
@@ -1228,7 +1227,7 @@ class S3(object):
                 response["s3cmd-attrs"] = attrs
             ConnMan.put(conn)
         except (IOError, Exception) as e:
-            debug("Response:\n" + pp.pformat(response))
+            debug("Response:\n" + pprint.pformat(response))
             if hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET):
                 raise
             # close the connection and re-establish
@@ -1244,10 +1243,10 @@ class S3(object):
 
         except:
             # Only KeyboardInterrupt and SystemExit will not be covered by Exception
-            debug("Response:\n" + pp.pformat(response))
+            debug("Response:\n" + pprint.pformat(response))
             raise
 
-        debug("Response:\n" + pp.pformat(response))
+        debug("Response:\n" + pprint.pformat(response))
 
         if response["status"] in [301, 307]:
             ## RedirectTemporary or RedirectPermanent
@@ -1394,7 +1393,7 @@ class S3(object):
             response["data"] = http_response.read()
             response["size"] = size_total
             ConnMan.put(conn)
-            debug(u"Response: %s" % response)
+            debug(u"Response:\n" + pprint.pformat(response))
         except ParameterError as e:
             raise
         except Exception as e:
@@ -1550,7 +1549,7 @@ class S3(object):
             if "x-amz-meta-s3cmd-attrs" in response["headers"]:
                 attrs = parse_attrs_header(response["headers"]["x-amz-meta-s3cmd-attrs"])
                 response["s3cmd-attrs"] = attrs
-            debug("Response: %s" % response)
+            debug("Response:\n" + pprint.pformat(response))
         except ParameterError as e:
             raise
         except OSError as e:
