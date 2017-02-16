@@ -1205,7 +1205,27 @@ class S3(object):
         raise S3Error(response)
 
     def send_request(self, request, retries = _max_retries):
+        if request.resource.get('bucket') \
+           and not request.use_signature_v2() \
+           and S3Request.region_map.get(request.resource['bucket'],
+                                        Config().bucket_location) == "US":
+            debug("===== Send_request inner request to determine the bucket region =====")
+            try:
+                s3_uri = S3Uri(u's3://' + request.resource['bucket'])
+                # "force_us_default" should prevent infinite recursivity because
+                # it will set the region_map dict.
+                region = self.get_bucket_location(s3_uri, force_us_default=True)
+                if region is not None:
+                    S3Request.region_map[request.resource['bucket']] = region
+                debug("===== END send_request inner request to determine the bucket region (%r) =====",
+                      region)
+            except Exception as exc:
+                # Ignore errors, it is just an optimisation, so nothing critical
+                debug("Error getlocation inner request: %s", exc)
+
         request.body = encode_to_s3(request.body)
+        headers = request.headers
+
         method_string, resource, headers = request.get_triplet()
         response = {}
         debug("Processing request, please wait...")
@@ -1282,18 +1302,30 @@ class S3(object):
     def send_file(self, request, file, labels, buffer = '', throttle = 0,
                   retries = _max_retries, offset = 0, chunk_size = -1,
                   use_expect_continue = None):
+        if request.resource.get('bucket') \
+           and not request.use_signature_v2() \
+           and S3Request.region_map.get(request.resource['bucket'],
+                                        Config().bucket_location) == "US":
+            debug("===== Send_file inner request to determine the bucket region =====")
+            try:
+                s3_uri = S3Uri(u's3://' + request.resource['bucket'])
+                # "force_us_default" should prevent infinite recursivity because
+                # it will set the region_map dict.
+                region = self.get_bucket_location(s3_uri, force_us_default=True)
+                if region is not None:
+                    S3Request.region_map[request.resource['bucket']] = region
+                debug("===== END Send_file inner request to determine the bucket region (%r) =====",
+                      region)
+            except Exception as exc:
+                # Ignore errors, it is just an optimisation, so nothing critical
+                debug("Error getlocation inner request: %s", exc)
+
         if use_expect_continue is None:
             use_expect_continue = self.config.use_http_expect
         if self.expect_continue_not_supported and use_expect_continue:
             use_expect_continue = False
 
         headers = request.headers
-        if S3Request.region_map.get(request.resource['bucket'], Config().bucket_location) is None:
-            method_string, resource, headers = request.get_triplet()
-            s3_uri = S3Uri(u's3://' + request.resource['bucket'])
-            region = self.get_bucket_location(s3_uri)
-            if region is not None:
-                S3Request.region_map[request.resource['bucket']] = region
 
         size_left = size_total = int(headers["content-length"])
         filename = unicodise(file.name)
@@ -1523,6 +1555,24 @@ class S3(object):
         return response
 
     def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
+        if request.resource.get('bucket') \
+           and not request.use_signature_v2() \
+           and S3Request.region_map.get(request.resource['bucket'],
+                                        Config().bucket_location) == "US":
+            debug("===== Recv_file inner request to determine the bucket region =====")
+            try:
+                s3_uri = S3Uri(u's3://' + request.resource['bucket'])
+                # "force_us_default" should prevent infinite recursivity because
+                # it will set the region_map dict.
+                region = self.get_bucket_location(s3_uri, force_us_default=True)
+                if region is not None:
+                    S3Request.region_map[request.resource['bucket']] = region
+                debug("===== END recv_file Inner request to determine the bucket region (%r) =====",
+                      region)
+            except Exception as exc:
+                # Ignore errors, it is just an optimisation, so nothing critical
+                debug("Error getlocation inner request: %s", exc)
+
         method_string, resource, headers = request.get_triplet()
         filename = unicodise(stream.name)
         if self.config.progress_meter:
