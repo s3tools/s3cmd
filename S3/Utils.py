@@ -36,10 +36,10 @@ $ pip install python-dateutil
     sys.exit(EX_OSFILE)
 
 try:
-    from urllib import quote_plus, unquote_plus
+    from urllib import quote
 except ImportError:
     # python 3 support
-    from urllib.parse import quote_plus, unquote_plus
+    from urllib.parse import quote
 
 try:
     unicode
@@ -206,12 +206,15 @@ def formatDateTime(s3timestamp):
     return date_obj.strftime("%Y-%m-%d %H:%M")
 __all__.append("formatDateTime")
 
-def convertTupleListToDict(list):
+def convertHeaderTupleListToDict(list):
+    """
+    Header keys are always in lowercase in python2 but not in python3.
+    """
     retval = {}
     for tuple in list:
-        retval[tuple[0]] = tuple[1]
+        retval[tuple[0].lower()] = tuple[1]
     return retval
-__all__.append("convertTupleListToDict")
+__all__.append("convertHeaderTupleListToDict")
 
 _rnd_chars = string.ascii_letters+string.digits
 _rnd_chars_len = len(_rnd_chars)
@@ -392,8 +395,9 @@ def urlencode_string(string, urlencoding_mode = None):
         ## Don't do any pre-processing
         return string
 
-    encoded = quote_plus(string, safe="~/")
+    encoded = quote(string, safe="~/")
     debug("String '%s' encoded to '%s'" % (string, encoded))
+    encoded = encode_to_s3(encoded)
     return encoded
 __all__.append("urlencode_string")
 
@@ -437,7 +441,7 @@ def time_to_epoch(t):
     elif hasattr(t, 'strftime'):
         # Looks like the object supports standard srftime()
         return int(t.strftime('%s'))
-    elif isinstance(t, str) or isinstance(t, unicode):
+    elif isinstance(t, str) or isinstance(t, unicode) or isinstance(t, bytes):
         # See if it's a string representation of an epoch
         try:
             # Support relative times (eg. "+60")
@@ -549,21 +553,21 @@ try:
     import pwd
     def getpwuid_username(uid):
         """returns a username from the password databse for the given uid"""
-        return pwd.getpwuid(uid).pw_name
+        return unicodise_s(pwd.getpwuid(uid).pw_name)
 except ImportError:
     import getpass
     def getpwuid_username(uid):
-        return getpass.getuser()
+        return unicodise_s(getpass.getuser())
 __all__.append("getpwuid_username")
 
 try:
     import grp
     def getgrgid_grpname(gid):
         """returns a groupname from the group databse for the given gid"""
-        return  grp.getgrgid(gid).gr_name
+        return unicodise_s(grp.getgrgid(gid).gr_name)
 except ImportError:
     def getgrgid_grpname(gid):
-        return "nobody"
+        return u"nobody"
 
 __all__.append("getgrgid_grpname")
 

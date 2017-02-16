@@ -1519,7 +1519,7 @@ def _build_attr_header(local_list, src):
         for attr in cfg.preserve_attrs_list:
             if attr == 'uname':
                 try:
-                    val = Utils.urlencode_string(Utils.getpwuid_username(local_list[src]['uid']))
+                    val = unicodise_s(Utils.urlencode_string(Utils.getpwuid_username(local_list[src]['uid'])))
                 except (KeyError, TypeError):
                     attr = "uid"
                     val = local_list[src].get('uid')
@@ -1527,7 +1527,7 @@ def _build_attr_header(local_list, src):
                         warning(u"%s: Owner username not known. Storing UID=%d instead." % (src, val))
             elif attr == 'gname':
                 try:
-                    val = Utils.urlencode_string(Utils.getgrgid_grpname(local_list[src].get('gid')))
+                    val = unicodise_s(Utils.urlencode_string(Utils.getgrgid_grpname(local_list[src].get('gid'))))
                 except (KeyError, TypeError):
                     attr = "gid"
                     val = local_list[src].get('gid')
@@ -1551,7 +1551,7 @@ def _build_attr_header(local_list, src):
 
     if attrs:
         result = ""
-        for k in attrs:
+        for k in sorted(attrs.keys()):
             result += "%s:%s/" % (k, attrs[k])
         return {'x-amz-meta-s3cmd-attrs' : result[:-1]}
     else:
@@ -2061,8 +2061,8 @@ def cmd_accesslog(args):
 def cmd_sign(args):
     string_to_sign = args.pop()
     debug("string-to-sign: %r" % string_to_sign)
-    signature = Crypto.sign_string_v2(string_to_sign)
-    output("Signature: %s" % signature)
+    signature = Crypto.sign_string_v2(encode_to_s3(string_to_sign))
+    output("Signature: %s" % decode_from_s3(signature))
     return EX_OK
 
 def cmd_signurl(args):

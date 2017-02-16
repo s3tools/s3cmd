@@ -22,7 +22,7 @@ except ImportError:
 from .S3 import S3
 from .Config import Config
 from .Exceptions import *
-from .Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, getBucketFromHostname, getHostnameFromBucket, deunicodise, urlencode_string
+from .Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, getBucketFromHostname, getHostnameFromBucket, deunicodise, urlencode_string, convertHeaderTupleListToDict
 from .Crypto import sign_string_v2
 from .S3Uri import S3Uri, S3UriS3
 from .ConnMan import ConnMan
@@ -510,7 +510,7 @@ class CloudFront(object):
         response = {}
         response["status"] = http_response.status
         response["reason"] = http_response.reason
-        response["headers"] = dict(http_response.getheaders())
+        response["headers"] = convertHeaderTupleListToDict(http_response.getheaders())
         response["data"] =  http_response.read()
         ConnMan.put(conn)
 

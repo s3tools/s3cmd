@@ -20,10 +20,9 @@ from logging import debug, info, warning, error
 from stat import ST_SIZE
 try:
     # python 3 support
-    from urllib import quote_plus
     from urlparse import urlparse
 except ImportError:
-    from urllib.parse import quote_plus, urlparse
+    from urllib.parse import urlparse
 
 import select
 
@@ -42,7 +41,7 @@ from .Exceptions import *
 from .MultiPart import MultiPartUpload
 from .S3Uri import S3Uri
 from .ConnMan import ConnMan, CertificateError
-from .Crypto import sign_string_v2, sign_string_v4, checksum_sha256_file, checksum_sha256_buffer
+from .Crypto import sign_request_v2, sign_request_v4, checksum_sha256_file, checksum_sha256_buffer, s3_quote
 
 try:
     from ctypes import ArgumentError
@@ -177,23 +176,16 @@ class S3Request(object):
         return False
 
     def sign(self):
+        bucket_name = self.resource.get('bucket')
+
         if self.use_signature_v2():
-            h  = self.method_string + "\n"
-            h += self.headers.get("content-md5", "")+"\n"
-            h += self.headers.get("content-type", "")+"\n"
-            h += self.headers.get("date", "")+"\n"
-            for header in sorted(self.headers.keys()):
-                if header.startswith("x-amz-"):
-                    h += header+":"+str(self.headers[header])+"\n"
-                if header.startswith("x-emc-"):
-                    h += header+":"+str(self.headers[header])+"\n"
-            if self.resource['bucket']:
-                h += "/" + self.resource['bucket']
-            h += self.resource['uri']
             debug("Using signature v2")
-            debug("SignHeaders: " + repr(h))
-            signature = sign_string_v2(h)
-            self.headers["Authorization"] = deunicodise("AWS ") + deunicodise(self.s3.config.access_key)+deunicodise(":")+signature
+            if bucket_name:
+                resource_uri = "/%s%s" % (bucket_name, self.resource['uri'])
+            else:
+                resource_uri = self.resource['uri']
+
+            self.headers = sign_request_v2(self.method_string, resource_uri, self.params, self.headers)
         else:
             debug("Using signature v4")
             hostname = self.s3.get_hostname(self.resource['bucket'])
@@ -201,7 +193,6 @@ class S3Request(object):
             ## Default to bucket part of DNS.
             ## If bucket is not part of DNS assume path style to complete the request.
             ## Like for format_uri, take care that redirection could be to base path
-            bucket_name = self.resource.get('bucket')
             if bucket_name and (
                 (bucket_name in S3Request.redir_map
                  and not S3Request.redir_map.get(bucket_name, '').startswith("%s."% bucket_name))
@@ -214,13 +205,24 @@ class S3Request(object):
 
             bucket_region = S3Request.region_map.get(self.resource['bucket'], Config().bucket_location)
             ## Sign the data.
-            self.headers = sign_string_v4(self.method_string, hostname, resource_uri, self.params,
+            self.headers = sign_request_v4(self.method_string, hostname, resource_uri, self.params,
                                           bucket_region, self.headers, self.body)
 
     def get_triplet(self):
         self.update_timestamp()
         self.sign()
+
         resource = dict(self.resource)  ## take a copy
+
+        # URL Encode the uri for the http request
+        splits = resource['uri'].split('?', 1)
+        resource['uri'] = s3_quote(splits[0], quote_backslashes=False, unicode_output=True)
+        # Get the final uri by adding the uri parameters
+        if len(splits) > 1:
+            resource['uri'] += '?' + splits[1]
+
+        # Note: all the things about self.params are only potentially used
+        # in backup_list_noparse. Nowhere else.
         resource['uri'] += self.format_param_str()
         return (self.method_string, resource, self.headers)
 
@@ -1073,9 +1075,9 @@ class S3(object):
             object = uri.has_object() and uri.object() or None
 
         if bucket:
-            resource['bucket'] = str(bucket)
+            resource['bucket'] = bucket
             if object:
-                resource['uri'] = "/" + urlencode_string(object)
+                resource['uri'] = "/" + object
         if extra:
             resource['uri'] += extra
 
@@ -1083,7 +1085,7 @@ class S3(object):
 
         request = S3Request(self, method_string, resource, headers, body, params)
 
-        debug("CreateRequest: resource[uri]=" + resource['uri'])
+        debug("CreateRequest: resource[uri]=%s", resource['uri'])
         return request
 
     def _fail_wait(self, retries):
@@ -1196,7 +1198,7 @@ class S3(object):
             http_response = conn.c.getresponse()
             response["status"] = http_response.status
             response["reason"] = http_response.reason
-            response["headers"] = convertTupleListToDict(http_response.getheaders())
+            response["headers"] = convertHeaderTupleListToDict(http_response.getheaders())
             response["data"] =  http_response.read()
             if "x-amz-meta-s3cmd-attrs" in response["headers"]:
                 attrs = parse_attrs_header(response["headers"]["x-amz-meta-s3cmd-attrs"])
@@ -1365,7 +1367,7 @@ class S3(object):
             response = {}
             response["status"] = http_response.status
             response["reason"] = http_response.reason
-            response["headers"] = convertTupleListToDict(http_response.getheaders())
+            response["headers"] = convertHeaderTupleListToDict(http_response.getheaders())
             response["data"] = http_response.read()
             response["size"] = size_total
             ConnMan.put(conn)
@@ -1390,7 +1392,7 @@ class S3(object):
                         response = {}
                         response["status"] = http_response.status
                         response["reason"] = http_response.reason
-                        response["headers"] = convertTupleListToDict(http_response.getheaders())
+                        response["headers"] = convertHeaderTupleListToDict(http_response.getheaders())
                         response["data"] = http_response.read()
                         response["size"] = size_total
                         known_error = True
@@ -1467,7 +1469,7 @@ class S3(object):
             ## Non-recoverable error
             raise S3Error(response)
 
-        debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
+        debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"].get('etag', '').strip('"\'')))
         ## when using KMS encryption, MD5 etag value will not match
         md5_from_s3 = response["headers"].get("etag", "").strip('"\'')
         if (md5_from_s3 != md5_hash.hexdigest()) and response["headers"].get("x-amz-server-side-encryption") != 'aws:kms':
@@ -1521,7 +1523,7 @@ class S3(object):
             http_response = conn.c.getresponse()
             response["status"] = http_response.status
             response["reason"] = http_response.reason
-            response["headers"] = convertTupleListToDict(http_response.getheaders())
+            response["headers"] = convertHeaderTupleListToDict(http_response.getheaders())
             if "x-amz-meta-s3cmd-attrs" in response["headers"]:
                 attrs = parse_attrs_header(response["headers"]["x-amz-meta-s3cmd-attrs"])
                 response["s3cmd-attrs"] = attrs
@@ -1647,7 +1649,7 @@ class S3(object):
             progress.update()
             progress.done("done")
 
-        md5_from_s3 = response["headers"].get("etag", "").strip('"')
+        md5_from_s3 = response["headers"].get("etag", "").strip('"\'')
         if not 'x-amz-meta-s3tools-gpgenc' in response["headers"]:
             # we can't trust our stored md5 because we
             # encrypted the file after calculating it but before
