@@ -49,6 +49,15 @@ def sign_request_v2(method='GET', canonical_uri='/', params={}, cur_headers={}):
     Useful for REST authentication. See http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html
     string_to_sign should be utf-8 "bytes".
     """
+    # valid sub-resources to be included in sign v2:
+    SUBRESOURCES_TO_INCLUDE = ['acl', 'lifecycle', 'location', 'logging',
+                               'notification', 'partNumber', 'policy',
+                               'requestPayment', 'torrent', 'uploadId',
+                               'uploads', 'versionId', 'versioning',
+                               'versions', 'website',
+                               # Missing of aws s3 doc but needed
+                               'delete']
+
     access_key = Config.Config().access_key
 
     string_to_sign  = method + "\n"
@@ -62,13 +71,12 @@ def sign_request_v2(method='GET', canonical_uri='/', params={}, cur_headers={}):
         if header.startswith("x-emc-"):
             string_to_sign += header + ":"+ cur_headers[header] + "\n"
 
-
     # WARNING Is it used with following value? possible bug missing first "&" if canonical_querystring is concatenated later.
-    canonical_querystring = '&'.join(['%s=%s' % (s3_quote(p, unicode_output=True), s3_quote(params[p], unicode_output=True)) for p in sorted(params.keys())])
+    canonical_querystring = '&'.join(['%s=%s' % (s3_quote(p, unicode_output=True), s3_quote(params[p], unicode_output=True)) for p in sorted(params.keys()) if p in SUBRESOURCES_TO_INCLUDE])
 
     splits = canonical_uri.split('?')
     canonical_uri = s3_quote(splits[0], quote_backslashes=False, unicode_output=True)
-    canonical_querystring += '&'.join(['%s' % qs for qs in splits[1:]])
+    canonical_querystring += '&'.join(['%s' % qs for qs in splits[1:] if qs in SUBRESOURCES_TO_INCLUDE])
     if canonical_querystring:
         canonical_uri += '?' + canonical_querystring
     string_to_sign += canonical_uri
