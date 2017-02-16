@@ -235,6 +235,29 @@ def httpconnection_patched_read_readable(self, readable):
             datablock = datablock.encode("iso-8859-1")
         yield datablock
 
+def httpconnection_patched_send_output(self, message_body=None,
+                                       encode_chunked=False):
+    """REIMPLEMENTED because needed by endheaders and parameter
+    encode_chunked was added"""
+    """Send the currently buffered request and clear the buffer.
+
+    Appends an extra \\r\\n to the buffer.
+    A message_body may be specified, to be appended to the request.
+    """
+    self._buffer.extend((b"", b""))
+    msg = b"\r\n".join(self._buffer)
+    del self._buffer[:]
+    self.send(msg)
+
+    if message_body is not None:
+        self.wrapper_send_body(message_body, encode_chunked)
+
+
+class ExpectationFailed(HTTPException):
+    pass
+
+# Wrappers #
+
 def httpconnection_patched_wrapper_send_body(self, message_body, encode_chunked=False):
     # create a consistent interface to message_body
     if hasattr(message_body, 'read'):
@@ -277,26 +300,7 @@ def httpconnection_patched_wrapper_send_body(self, message_body, encode_chunked=
         # end chunked transfer
         self.send(b'0\r\n\r\n')
 
-def httpconnection_patched_send_output(self, message_body=None,
-                                       encode_chunked=False):
-    """REIMPLEMENTED because needed by endheaders and parameter
-    encode_chunked was added"""
-    """Send the currently buffered request and clear the buffer.
 
-    Appends an extra \\r\\n to the buffer.
-    A message_body may be specified, to be appended to the request.
-    """
-    self._buffer.extend((b"", b""))
-    msg = b"\r\n".join(self._buffer)
-    del self._buffer[:]
-    self.send(msg)
-
-    if message_body is not None:
-        self.wrapper_send_body(message_body, encode_chunked)
-
-
-class ExpectationFailed(HTTPException):
-    pass
 
 httplib.HTTPResponse.begin = httpresponse_patched_begin
 httplib.HTTPConnection.endheaders = httpconnection_patched_endheaders

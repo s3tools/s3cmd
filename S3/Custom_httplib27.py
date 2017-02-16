@@ -177,9 +177,6 @@ def httpconnection_patched_endheaders(self, message_body=None):
         raise CannotSendHeader()
     self._send_output(message_body)
 
-def httpconnection_patched_wrapper_send_body(self, message_body):
-    self.send(message_body)
-
 def httpconnection_patched_send_output(self, message_body=None):
     """Send the currently buffered request and clear the buffer.
 
@@ -204,6 +201,12 @@ def httpconnection_patched_send_output(self, message_body=None):
 
 class ExpectationFailed(HTTPException):
     pass
+
+# Wrappers #
+
+def httpconnection_patched_wrapper_send_body(self, message_body):
+    self.send(message_body)
+
 
 httplib.HTTPResponse.begin = httpresponse_patched_begin
 httplib.HTTPConnection.endheaders = httpconnection_patched_endheaders
