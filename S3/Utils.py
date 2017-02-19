@@ -385,7 +385,7 @@ def encode_to_s3(string, errors = "replace"):
 __all__.append("encode_to_s3")
 
 ## Low level methods
-def urlencode_string(string, urlencoding_mode = None):
+def urlencode_string(string, urlencoding_mode = None, unicode_output=False):
     string = encode_to_s3(string)
 
     if urlencoding_mode is None:
@@ -397,8 +397,10 @@ def urlencode_string(string, urlencoding_mode = None):
 
     encoded = quote(string, safe="~/")
     debug("String '%s' encoded to '%s'" % (string, encoded))
-    encoded = encode_to_s3(encoded)
-    return encoded
+    if unicode_output:
+        return decode_from_s3(encoded)
+    else:
+        return encode_to_s3(encoded)
 __all__.append("urlencode_string")
 
 def replace_nonprintables(string):

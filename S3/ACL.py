@@ -8,12 +8,15 @@
 
 from __future__ import absolute_import, print_function
 
-from .Utils import getTreeFromXml, deunicodise
+import sys
+from .Utils import getTreeFromXml, deunicodise, encode_to_s3, decode_from_s3
 
 try:
     import xml.etree.ElementTree as ET
 except ImportError:
     import elementtree.ElementTree as ET
+
+PY3 = (sys.version_info >= (3,0))
 
 class Grantee(object):
     ALL_USERS_URI = "http://acs.amazonaws.com/groups/global/AllUsers"
@@ -71,7 +74,7 @@ class GranteeLogDelivery(Grantee):
         self.permission = permission
 
 class ACL(object):
-    EMPTY_ACL = "<AccessControlPolicy><Owner><ID></ID></Owner><AccessControlList></AccessControlList></AccessControlPolicy>"
+    EMPTY_ACL = b"<AccessControlPolicy><Owner><ID></ID></Owner><AccessControlList></AccessControlList></AccessControlPolicy>"
 
     def __init__(self, xml = None):
         if not xml:
@@ -81,7 +84,7 @@ class ACL(object):
         self.owner_id = ""
         self.owner_nick = ""
 
-        tree = getTreeFromXml(xml)
+        tree = getTreeFromXml(encode_to_s3(xml))
         self.parseOwner(tree)
         self.parseGrants(tree)
 
@@ -186,10 +189,9 @@ class ACL(object):
             self.grantees = [g for g in self.grantees if not (g.name.lower() == name or g.display_name.lower() == name)]
         else:
             self.grantees = [g for g in self.grantees if not ((g.display_name.lower() == name and g.permission.upper() == permission)\
-				 or (g.name.lower() == name and g.permission.upper() ==  permission))]
+                or (g.name.lower() == name and g.permission.upper() ==  permission))]
 
-
-    def __str__(self):
+    def get_printable_tree(self):
         tree = getTreeFromXml(ACL.EMPTY_ACL)
         tree.attrib['xmlns'] = "http://s3.amazonaws.com/doc/2006-03-01/"
         owner = tree.find(".//Owner//ID")
@@ -197,10 +199,21 @@ class ACL(object):
         acl = tree.find(".//AccessControlList")
         for grantee in self.grantees:
             acl.append(grantee.getElement())
-        return ET.tostring(tree)
+        return tree
+
+    def __unicode__(self):
+        return decode_from_s3(ET.tostring(self.get_printable_tree()))
+
+    def __str__(self):
+        if PY3:
+            # Return unicode
+            return ET.tostring(self.get_printable_tree(), encoding="unicode")
+        else:
+            # Return bytes
+            return ET.tostring(self.get_printable_tree())
 
 if __name__ == "__main__":
-    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    xml = b"""<?xml version="1.0" encoding="UTF-8"?>
 <AccessControlPolicy xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
 <Owner>
     <ID>12345678901234567890</ID>

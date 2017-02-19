@@ -366,9 +366,11 @@ class S3(object):
             if truncated:
                 if limit == -1 or num_objects + num_prefixes < limit:
                     if current_list:
-                        uri_params['marker'] = urlencode_string(current_list[-1]["Key"])
+                        uri_params['marker'] = urlencode_string(current_list[-1]["Key"],
+                                                                unicode_output=True)
                     else:
-                        uri_params['marker'] = urlencode_string(current_prefixes[-1]["Prefix"])
+                        uri_params['marker'] = urlencode_string(current_prefixes[-1]["Prefix"],
+                                                                unicode_output=True)
                     debug("Listing continues after '%s'" % uri_params['marker'])
                 else:
                     yield truncated, current_prefixes, current_list
@@ -378,7 +380,7 @@ class S3(object):
 
     def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = {}, max_keys = -1):
         if prefix:
-            uri_params['prefix'] = urlencode_string(prefix)
+            uri_params['prefix'] = urlencode_string(prefix, unicode_output=True)
         if not self.config.recursive and not recursive:
             uri_params['delimiter'] = "/"
         if max_keys != -1:
@@ -746,9 +748,7 @@ class S3(object):
             raise ValueError("Key list is empty")
         bucket = S3Uri(batch[0]).bucket()
         request_body = compose_batch_del_xml(bucket, batch)
-        md5_hash = md5()
-        md5_hash.update(request_body)
-        headers = {'content-md5': base64.b64encode(md5_hash.digest()),
+        headers = {'content-md5': compute_content_md5(request_body),
                    'content-type': 'application/xml'}
         request = self.create_request("BATCH_DELETE", bucket = bucket, extra = '?delete', headers = headers, body = request_body)
         response = self.send_request(request)
@@ -816,7 +816,8 @@ class S3(object):
                     raise exc
                 acl = None
         headers = SortedDict(ignore_case = True)
-        headers['x-amz-copy-source'] = encode_to_s3("/%s/%s" % (src_uri.bucket(), urlencode_string(src_uri.object())))
+        headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(),
+                                                   urlencode_string(src_uri.object(), unicode_output=True))
         headers['x-amz-metadata-directive'] = "COPY"
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
@@ -874,7 +875,8 @@ class S3(object):
                 raise exc
             acl = None
 
-        headers['x-amz-copy-source'] = encode_to_s3("/%s/%s" % (src_uri.bucket(), urlencode_string(src_uri.object())))
+        headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(),
+                                                   urlencode_string(src_uri.object(), unicode_output=True))
         headers['x-amz-metadata-directive'] = "REPLACE"
 
         # cannot change between standard and reduced redundancy with a REPLACE.
@@ -942,7 +944,7 @@ class S3(object):
         if 'objects.dreamhost.com' in self.config.host_base:
             return { 'status' : 501 } # not implemented
 
-        body = str(acl)
+        body = u"%s"% acl
         debug(u"set_acl(%s): acl-xml: %s" % (uri, body))
 
         headers = {'content-type': 'application/xml'}
@@ -1057,10 +1059,10 @@ class S3(object):
 
     def set_accesslog_acl(self, uri):
         acl = self.get_acl(uri)
-        debug("Current ACL(%s): %s" % (uri.uri(), str(acl)))
+        debug("Current ACL(%s): %s" % (uri.uri(), acl))
         acl.appendGrantee(GranteeLogDelivery("READ_ACP"))
         acl.appendGrantee(GranteeLogDelivery("WRITE"))
-        debug("Updated ACL(%s): %s" % (uri.uri(), str(acl)))
+        debug("Updated ACL(%s): %s" % (uri.uri(), acl))
         self.set_acl(uri, acl)
 
     def set_accesslog(self, uri, enable, log_target_prefix_uri = None, acl_public = False):
@@ -1071,7 +1073,7 @@ class S3(object):
         else:
             accesslog.disableLogging()
 
-        body = str(accesslog)
+        body = "%s" % accesslog
         debug(u"set_accesslog(%s): accesslog-xml: %s" % (uri, body))
 
         request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(), extra = "?logging", body = body)
@@ -1767,9 +1769,10 @@ def parse_attrs_header(attrs_header):
     return attrs
 
 def compute_content_md5(body):
-    m = md5(body)
+    m = md5(encode_to_s3(body))
     base64md5 = base64.encodestring(m.digest())
+    base64md5 = decode_from_s3(base64md5)
     if base64md5[-1] == '\n':
         base64md5 = base64md5[0:-1]
-    return base64md5
+    return decode_from_s3(base64md5)
 # vim:et:ts=4:sts=4:ai

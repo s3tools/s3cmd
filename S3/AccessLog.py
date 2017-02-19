@@ -8,15 +8,19 @@
 
 from __future__ import absolute_import, print_function
 
+import sys
+
 from . import S3Uri
 from .Exceptions import ParameterError
-from .Utils import getTreeFromXml
+from .Utils import getTreeFromXml, decode_from_s3
 from .ACL import GranteeAnonRead
 
 try:
     import xml.etree.ElementTree as ET
 except ImportError:
     import elementtree.ElementTree as ET
+
+PY3 = (sys.version_info >= (3,0))
 
 __all__ = []
 class AccessLog(object):
@@ -75,6 +79,17 @@ class AccessLog(object):
 
     def isAclPublic(self):
         raise NotImplementedError()
+
+    def __unicode__(self):
+        return decode_from_s3(ET.tostring(self.tree))
+
+    def __str__(self):
+        if PY3:
+            # Return unicode
+            return ET.tostring(self.tree, encoding="unicode")
+        else:
+            # Return bytes
+            return ET.tostring(self.tree)
 
     def __str__(self):
         return ET.tostring(self.tree)
