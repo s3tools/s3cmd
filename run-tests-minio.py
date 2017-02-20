@@ -20,6 +20,8 @@ import S3.Exceptions
 import S3.Config
 from S3.ExitCodes import *
 
+PY3 = (sys.version_info >= (3,0))
+
 count_pass = 0
 count_fail = 0
 count_skip = 0
@@ -141,7 +143,7 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
         return 0
     def compile_list(_list, regexps = False):
         if regexps == False:
-            _list = [re.escape(item.encode(encoding, "replace")) for item in _list]
+            _list = [re.escape(item.encode(encoding, "replace")).decode(encoding) for item in _list]
 
         return [re.compile(item, re.MULTILINE) for item in _list]
 
