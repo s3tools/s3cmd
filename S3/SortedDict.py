@@ -54,11 +54,14 @@ class SortedDict(dict):
     def __iter__(self):
         return SortedDictIterator(self, self.keys())
 
-    def __getslice__(self, i=0, j=-1):
-        keys = self.keys()[i:j]
-        r = SortedDict(ignore_case = self.ignore_case)
-        for k in keys:
-            r[k] = self[k]
+    def __getitem__(self, index):
+        """Override to support the "get_slice" for python3 """
+        if isinstance(index, slice):
+            r = SortedDict(ignore_case = self.ignore_case)
+            for k in self.keys()[index]:
+                r[k] = self[k]
+        else:
+            r = super(SortedDict, self).__getitem__(index)
         return r
 
 
