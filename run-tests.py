@@ -377,6 +377,7 @@ test_s3cmd("Put from stdin", ['put', '-', '%s/single-file/single-file.txt' % pbu
 f.close()
 
 ## ====== Multipart put
+os.system('mkdir -p testsuite-out')
 os.system('dd if=/dev/urandom of=testsuite-out/urandom.bin bs=1M count=16 > /dev/null 2>&1')
 test_s3cmd("Put multipart", ['put', '--multipart-chunk-size-mb=5', 'testsuite-out/urandom.bin', '%s/urandom.bin' % pbucket(1)],
            must_not_find = ['abortmp'])
