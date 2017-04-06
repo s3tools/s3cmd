@@ -262,6 +262,7 @@ class Config(object):
             option_type = type(getattr(Config, option))
             if option.startswith("_") or \
                not (option_type in (
+                    type(None),     # None
                     type("string"), # str
                         type(42),   # int
                     type(True))):   # bool
