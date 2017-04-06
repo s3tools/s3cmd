@@ -1247,7 +1247,7 @@ def cmd_sync_remote2local(args):
             item = remote_list[file]
             uri = S3Uri(item['object_uri_str'])
             dst_file = item['local_filename']
-            is_empty_directory = dst_file.endswith('/')
+            is_empty_directory = dst_file.endswith('/') or dst_file.endswith('\\')
             seq_label = "[%d of %d]" % (seq, total)
 
             dst_dir = unicodise(os.path.dirname(deunicodise(dst_file)))
