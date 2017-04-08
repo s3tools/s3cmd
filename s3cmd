@@ -812,6 +812,8 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
         for key in remote_list:
             remote_list[key]['dest_name'] = destination_base + key
     else:
+        if len(remote_list) > 1 and not destination_base.endswith("/"):
+            destination_base += "/"
         for key in remote_list:
             if destination_base.endswith("/"):
                 remote_list[key]['dest_name'] = destination_base + key

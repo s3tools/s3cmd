@@ -393,13 +393,26 @@ f.close()
 ## ====== Clean up local destination dir
 test_flushdir("Clean testsuite-out/", "testsuite-out")
 
+## ====== Move multiple files into directory
+must_find = ["'%s/urandom1.bin' -> '%s/dir/urandom1.bin'" % (pbucket(1),pbucket(1)), "'%s/urandom2.bin' -> '%s/dir/urandom2.bin'" % (pbucket(1),pbucket(1))]
+must_not_find = ["'%s/urandom1.bin' -> '%s/dir'" % (pbucket(1),pbucket(1)), "'%s/urandom2.bin' -> '%s/dir'" % (pbucket(1),pbucket(1))]
+os.system('dd if=/dev/urandom of=testsuite-out/urandom1.bin bs=1k count=1 > /dev/null 2>&1')
+os.system('dd if=/dev/urandom of=testsuite-out/urandom2.bin bs=1k count=1 > /dev/null 2>&1')
+test_s3cmd("Put multiple files", ['put', 'testsuite-out/urandom1.bin', 'testsuite-out/urandom2.bin', '%s/' % pbucket(1)],
+           must_find = ["%s/urandom1.bin" % pbucket(1), "%s/urandom2.bin" % pbucket(1)])
+test_s3cmd("Move multiple files", ['mv', '%s/urandom1.bin' % pbucket(1), '%s/urandom2.bin' % pbucket(1), '%s/dir' % pbucket(1)],
+           must_find = must_find,
+           must_not_find = must_not_find)
+
+## ====== Clean up local destination dir
+test_flushdir("Clean testsuite-out/", "testsuite-out")
+
 ## ====== Sync from S3
 must_find = [ "'%s/xyz/binary/random-crap.md5' -> 'testsuite-out/xyz/binary/random-crap.md5'" % pbucket(1) ]
 if have_encoding:
     must_find.append(u"'%(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s' -> 'testsuite-out/xyz/encodings/%(encoding)s/%(pattern)s' " % { 'encoding' : encoding, 'pattern' : enc_pattern, 'pbucket' : pbucket(1) })
 test_s3cmd("Sync from S3", ['sync', '%s/xyz' % pbucket(1), 'testsuite-out'],
     must_find = must_find)
-
 
 ## ====== Remove 'demo' directory
 test_rmdir("Remove 'dir-test/'", "testsuite-out/xyz/dir-test/")
