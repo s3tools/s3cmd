@@ -395,6 +395,8 @@ def cmd_object_put(args):
         full_name = full_name_orig
         seq_label = "[%d of %d]" % (seq, local_count)
         if Config().encrypt:
+	    if key == "-" :
+		 raise ParameterError("Cannot encrypt before uploading from stdin")
             gpg_exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
         attr_header = _build_attr_header(local_list, key)
         debug(u"attr_header: %s" % attr_header)
