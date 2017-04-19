@@ -1141,8 +1141,6 @@ def cmd_sync_remote2local(args):
     if not destination_base.endswith(os.path.sep):
         if fetch_source_args[0].endswith(u'/') or len(fetch_source_args) > 1:
             raise ParameterError("Destination must be a directory and end with '/' when downloading multiple sources.")
-        elif fetch_source_args[0].endswith(u'/'):
-            fetch_source_args[0] += u'/'
 
     stats_info = StatsInfo()
 
