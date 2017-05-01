@@ -23,6 +23,7 @@ import sys
 import glob
 import re
 import errno
+import io
 
 __all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists"]
 
@@ -158,23 +159,26 @@ def _get_filelist_from_file(cfg, local_path):
 
     filelist = {}
     for fname in cfg.files_from:
-        if fname == u'-':
-            f = sys.stdin
-        else:
-            try:
-                f = open(deunicodise(fname), 'r')
-            except IOError as e:
-                warning(u"--files-from input file %s could not be opened for reading (%s), skipping." % (fname, e.strerror))
-                continue
+        try:
+            f = None
+            if fname == u'-':
+                f = io.open(sys.stdin.fileno(), mode='r', closefd=False)
+            else:
+                try:
+                    f = io.open(deunicodise(fname), mode='r')
+                except IOError as e:
+                    warning(u"--files-from input file %s could not be opened for reading (%s), skipping." % (fname, e.strerror))
+                    continue
 
-        for line in f:
-            line = unicodise(line).strip()
-            line = os.path.normpath(os.path.join(local_path, line))
-            dirname = unicodise(os.path.dirname(deunicodise(line)))
-            basename = unicodise(os.path.basename(deunicodise(line)))
-            _append(filelist, dirname, basename)
-        if f != sys.stdin:
-            f.close()
+            for line in f:
+                line = unicodise(line).strip()
+                line = os.path.normpath(os.path.join(local_path, line))
+                dirname = unicodise(os.path.dirname(deunicodise(line)))
+                basename = unicodise(os.path.basename(deunicodise(line)))
+                _append(filelist, dirname, basename)
+        finally:
+            if f:
+                f.close()
 
     # reformat to match os.walk()
     result = []

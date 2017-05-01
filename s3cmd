@@ -60,6 +60,7 @@ from logging import debug, info, warning, error
 from distutils.spawn import find_executable
 
 from ssl import SSLError
+import io
 
 def output(message):
     sys.stdout.write(message + "\n")
@@ -532,20 +533,23 @@ def cmd_object_get(args):
 
         if destination == "-":
             ## stdout
-            dst_stream = sys.__stdout__
+            dst_stream = io.open(sys.__stdout__.fileno(), mode='wb', closefd=False)
+            dst_stream.stream_name = u'<stdout>'
             file_exists = True
         else:
             ## File
             try:
                 file_exists = os.path.exists(deunicodise(destination))
                 try:
-                    dst_stream = open(deunicodise(destination), "ab")
+                    dst_stream = io.open(deunicodise(destination), mode='ab')
+                    dst_stream.stream_name = destination
                 except IOError as e:
                     if e.errno == errno.ENOENT:
                         basename = destination[:destination.rindex(os.path.sep)]
                         info(u"Creating directory: %s" % basename)
                         os.makedirs(deunicodise(basename))
-                        dst_stream = open(deunicodise(destination), "ab")
+                        dst_stream = io.open(deunicodise(destination), mode='ab')
+                        dst_stream.stream_name = destination
                     else:
                         raise
                 if file_exists:
@@ -565,7 +569,10 @@ def cmd_object_get(args):
                 error(u"Skipping %s: %s" % (destination, e.strerror))
                 continue
         try:
-            response = s3.object_get(uri, dst_stream, destination, start_position = start_position, extra_label = seq_label)
+            try:
+                response = s3.object_get(uri, dst_stream, destination, start_position = start_position, extra_label = seq_label)
+            finally:
+                dst_stream.close()
         except S3DownloadError as e:
             error(u"%s: Skipping that file.  This is usually a transient error, please try again later." % e)
             if not file_exists: # Delete, only if file didn't exist before!
@@ -1262,17 +1269,19 @@ def cmd_sync_remote2local(args):
                 continue
 
             try:
-                chkptfname = ''
+                chkptfname_b = ''
                 if not is_empty_directory: # ignore empty directory at S3:
                     debug(u"dst_file=%s" % dst_file)
                     # create temporary files (of type .s3cmd.XXXX.tmp) in the same directory
                     # for downloading and then rename once downloaded
-                    chkptfd, chkptfname = tempfile.mkstemp(".tmp",".s3cmd.",os.path.dirname(deunicodise(dst_file)))
-                    chkptfname = unicodise(chkptfname)
-                    debug(u"created chkptfname=%s" % chkptfname)
-                    dst_stream = os.fdopen(chkptfd, "wb")
-                    response = s3.object_get(uri, dst_stream, dst_file, extra_label = seq_label)
-                    dst_stream.close()
+                    # unicode provided to mkstemp argument
+                    chkptfd, chkptfname_b = tempfile.mkstemp(u".tmp", u".s3cmd.",
+                                                           os.path.dirname(dst_file))
+                    with io.open(chkptfd, mode='wb') as dst_stream:
+                        dst_stream.stream_name = unicodise(chkptfname_b)
+                        debug(u"created chkptfname=%s" % dst_stream.stream_name)
+                        response = s3.object_get(uri, dst_stream, dst_file, extra_label = seq_label)
+
                     # download completed, rename the file to destination
                     if os.name == "nt":
                         # Windows is really a bad OS. Rename can't overwrite an existing file
@@ -1280,8 +1289,8 @@ def cmd_sync_remote2local(args):
                             os.unlink(deunicodise(dst_file))
                         except OSError:
                             pass
-                    os.rename(deunicodise(chkptfname), deunicodise(dst_file))
-                    debug(u"renamed chkptfname=%s to dst_file=%s" % (chkptfname, dst_file))
+                    os.rename(chkptfname_b, deunicodise(dst_file))
+                    debug(u"renamed chkptfname=%s to dst_file=%s" % (dst_stream.stream_name, dst_file))
             except OSError as exc:
                 allow_partial = True
 
@@ -1307,8 +1316,8 @@ def cmd_sync_remote2local(args):
 
                 try:
                     # Try to remove the temp file if it exists
-                    if chkptfname:
-                        os.unlink(deunicodise(chkptfname))
+                    if chkptfname_b:
+                        os.unlink(chkptfname_b)
                 except:
                     pass
 
@@ -1327,9 +1336,10 @@ def cmd_sync_remote2local(args):
                       "This is usually a transient error, please try again "
                       "later." % (file, exc))
                 try:
-                    os.unlink(deunicodise(chkptfname))
+                    os.unlink(chkptfname_b)
                 except Exception as sub_exc:
-                    warning(u"Error deleting temporary file %s (Reason: %s)", (chkptfname, sub_exc))
+                    warning(u"Error deleting temporary file %s (Reason: %s)",
+                            (dst_stream.stream_name, sub_exc))
                 if cfg.stop_on_error:
                     ret = EX_DATAERR
                     error(u"Exiting now because of --stop-on-error")
@@ -1339,9 +1349,10 @@ def cmd_sync_remote2local(args):
             except S3Error as exc:
                 warning(u"Remote file '%s'. S3Error: %s" % (exc.resource, exc))
                 try:
-                    os.unlink(deunicodise(chkptfname))
+                    os.unlink(chkptfname_b)
                 except Exception as sub_exc:
-                    warning(u"Error deleting temporary file %s (Reason: %s)", (chkptfname, sub_exc))
+                    warning(u"Error deleting temporary file %s (Reason: %s)",
+                            (dst_stream.stream_name, sub_exc))
                 if cfg.stop_on_error:
                     raise
                 ret = EX_PARTIAL
@@ -1382,10 +1393,6 @@ def cmd_sync_remote2local(args):
                     os.utime(deunicodise(dst_file), (last_modified, last_modified))
                     debug("set mtime to %s" % last_modified)
             except OSError as e:
-                try:
-                    dst_stream.close()
-                    os.remove(deunicodise(chkptfname))
-                except: pass
                 ret = EX_PARTIAL
                 if e.errno == errno.EEXIST:
                     warning(u"%s exists - not overwriting" % dst_file)
@@ -1397,29 +1404,20 @@ def cmd_sync_remote2local(args):
                     continue
                 raise e
             except KeyboardInterrupt:
-                try:
-                    dst_stream.close()
-                    os.remove(deunicodise(chkptfname))
-                except: pass
                 warning(u"Exiting after keyboard interrupt")
                 return
             except Exception as e:
-                try:
-                    dst_stream.close()
-                    os.remove(deunicodise(chkptfname))
-                except: pass
                 ret = EX_PARTIAL
                 error(u"%s: %s" % (file, e))
                 if cfg.stop_on_error:
                     raise OSError(e)
                 continue
-            # We have to keep repeating this call because
-            # Python 2.4 doesn't support try/except/finally
-            # construction :-(
-            try:
-                dst_stream.close()
-                os.remove(deunicodise(chkptfname))
-            except: pass
+            finally:
+                try:
+                    os.remove(chkptfname_b)
+                except:
+                    pass
+
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
             if not Config().progress_meter:
                 output(u"download: '%s' -> '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %

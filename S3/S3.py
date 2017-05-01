@@ -14,6 +14,7 @@ import time
 import errno
 import base64
 import mimetypes
+import io
 import pprint
 from xml.sax import saxutils
 from logging import debug, info, warning, error
@@ -637,10 +638,12 @@ class S3(object):
             raise InvalidFileError(u"Not a regular file")
         try:
             if filename == "-":
-                file = sys.stdin
+                src_stream = io.open(sys.stdin.fileno(), mode='rb', closefd=False)
+                src_stream.stream_name = u'<stdin>'
                 size = 0
             else:
-                file = open(deunicodise(filename), "rb")
+                src_stream = io.open(deunicodise(filename), mode='rb')
+                src_stream.stream_name = filename
                 size = os.stat(deunicodise(filename))[ST_SIZE]
         except (IOError, OSError) as e:
             raise InvalidFileError(u"%s" % e.strerror)
@@ -678,7 +681,7 @@ class S3(object):
                           (self.config.multipart_chunk_size_mb, self.config.multipart_max_chunks))
         if multipart:
             # Multipart requests are quite different... drop here
-            return self.send_file_multipart(file, headers, uri, size, extra_label)
+            return self.send_file_multipart(src_stream, headers, uri, size, extra_label)
 
         ## Not multipart...
         if self.config.put_continue:
@@ -695,7 +698,7 @@ class S3(object):
                 remote_size = int(info['headers']['content-length'])
                 remote_checksum = info['headers']['etag'].strip('"\'')
                 if size == remote_size:
-                    checksum = calculateChecksum('', file, 0, size, self.config.send_chunk)
+                    checksum = calculateChecksum('', src_stream, 0, size, self.config.send_chunk)
                     if remote_checksum == checksum:
                         warning("Put: size and md5sum match for %s, skipping." % uri)
                         return
@@ -709,7 +712,7 @@ class S3(object):
         headers["content-length"] = str(size)
         request = self.create_request("OBJECT_PUT", uri = uri, headers = headers)
         labels = { 'source' : filename, 'destination' : uri.uri(), 'extra' : extra_label }
-        response = self.send_file(request, file, labels)
+        response = self.send_file(request, src_stream, labels)
         return response
 
     def object_get(self, uri, stream, dest_name, start_position = 0, extra_label = ""):
@@ -1301,7 +1304,7 @@ class S3(object):
 
         return response
 
-    def send_file(self, request, file, labels, buffer = '', throttle = 0,
+    def send_file(self, request, stream, labels, buffer = '', throttle = 0,
                   retries = _max_retries, offset = 0, chunk_size = -1,
                   use_expect_continue = None):
         if request.resource.get('bucket') \
@@ -1330,7 +1333,8 @@ class S3(object):
         headers = request.headers
 
         size_left = size_total = int(headers["content-length"])
-        filename = unicodise(file.name)
+
+        filename = stream.stream_name
         if self.config.progress_meter:
             labels[u'action'] = u'upload'
             progress = self.config.progress_class(labels, size_total)
@@ -1367,11 +1371,11 @@ class S3(object):
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 # Connection error -> same throttle value
-                return self.send_file(request, file, labels, buffer, throttle, retries - 1, offset, chunk_size)
+                return self.send_file(request, stream, labels, buffer, throttle, retries - 1, offset, chunk_size)
             else:
                 raise S3UploadError("Upload failed for: %s" % resource['uri'])
         if buffer == '':
-            file.seek(offset)
+            stream.seek(offset)
         md5_hash = md5()
 
         try:
@@ -1396,7 +1400,7 @@ class S3(object):
                     #debug("SendFile: Reading up to %d bytes from '%s' - remaining bytes: %s" % (self.config.send_chunk, filename, size_left))
                     l = min(self.config.send_chunk, size_left)
                     if buffer == '':
-                        data = file.read(l)
+                        data = stream.read(l)
                     else:
                         data = buffer
 
@@ -1460,7 +1464,7 @@ class S3(object):
                     warning("Waiting %d sec..." % self._fail_wait(retries))
                     time.sleep(self._fail_wait(retries))
                     # Connection error -> same throttle value
-                    return self.send_file(request, file, labels, buffer, throttle,
+                    return self.send_file(request, stream, labels, buffer, throttle,
                                       retries - 1, offset, chunk_size, use_expect_continue)
             else:
                 debug("Giving up on '%s' %s" % (filename, e))
@@ -1480,19 +1484,19 @@ class S3(object):
         if response["status"] in [301, 307]:
             ## RedirectTemporary or RedirectPermanent
             return self._http_redirection_handler(request, response,
-                                                  self.send_file, request, file, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
+                                                  self.send_file, request, stream, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
 
         if response["status"] == 400:
             return self._http_400_handler(request, response,
-                                          self.send_file, request, file, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
+                                          self.send_file, request, stream, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
         if response["status"] == 403:
             return self._http_403_handler(request, response,
-                                          self.send_file, request, file, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
+                                          self.send_file, request, stream, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
 
         if response["status"] == 417 and retries:
             # Expect 100-continue not supported by proxy/server
             self.expect_continue_not_supported = True
-            return self.send_file(request, file, labels, buffer, throttle,
+            return self.send_file(request, stream, labels, buffer, throttle,
                                   retries - 1, offset, chunk_size, use_expect_continue = False)
 
         # S3 from time to time doesn't send ETag back in a response :-(
@@ -1516,7 +1520,7 @@ class S3(object):
                     warning("Upload failed: %s (%s)" % (resource['uri'], S3Error(response)))
                     warning("Waiting %d sec..." % self._fail_wait(retries))
                     time.sleep(self._fail_wait(retries))
-                    return self.send_file(request, file, labels, buffer, throttle,
+                    return self.send_file(request, stream, labels, buffer, throttle,
                                           retries - 1, offset, chunk_size, use_expect_continue)
                 else:
                     warning("Too many failures. Giving up on '%s'" % (filename))
@@ -1532,7 +1536,7 @@ class S3(object):
             warning("MD5 Sums don't match!")
             if retries:
                 warning("Retrying upload of %s" % (filename))
-                return self.send_file(request, file, labels, buffer, throttle,
+                return self.send_file(request, stream, labels, buffer, throttle,
                                       retries - 1, offset, chunk_size, use_expect_continue)
             else:
                 warning("Too many failures. Giving up on '%s'" % (filename))
@@ -1540,9 +1544,9 @@ class S3(object):
 
         return response
 
-    def send_file_multipart(self, file, headers, uri, size, extra_label = ""):
+    def send_file_multipart(self, stream, headers, uri, size, extra_label = ""):
         timestamp_start = time.time()
-        upload = MultiPartUpload(self, file, uri, headers)
+        upload = MultiPartUpload(self, stream, uri, headers)
         upload.upload_all_parts(extra_label)
         response = upload.complete_multipart_upload()
         timestamp_end = time.time()
@@ -1576,7 +1580,7 @@ class S3(object):
                 debug("Error getlocation inner request: %s", exc)
 
         method_string, resource, headers = request.get_triplet()
-        filename = unicodise(stream.name)
+        filename = stream.stream_name
         if self.config.progress_meter:
             labels[u'action'] = u'download'
             progress = self.config.progress_class(labels, 0)

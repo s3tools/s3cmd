@@ -18,9 +18,9 @@ class MultiPartUpload(object):
     MAX_CHUNK_SIZE_MB = 5120    # 5GB
     MAX_FILE_SIZE = 42949672960 # 5TB
 
-    def __init__(self, s3, file, uri, headers_baseline = {}):
+    def __init__(self, s3, file_stream, uri, headers_baseline = {}):
         self.s3 = s3
-        self.file = file
+        self.file_stream = file_stream
         self.uri = uri
         self.parts = {}
         self.headers_baseline = headers_baseline
@@ -87,9 +87,9 @@ class MultiPartUpload(object):
             raise RuntimeError("Attempting to use a multipart upload that has not been initiated.")
 
         self.chunk_size = self.s3.config.multipart_chunk_size_mb * 1024 * 1024
-        filename = unicodise(self.file.name)
+        filename = self.file_stream.stream_name
 
-        if filename != "<stdin>":
+        if filename != u"<stdin>":
                 size_left = file_size = os.stat(deunicodise(filename))[ST_SIZE]
                 nr_parts = file_size // self.chunk_size + (file_size % self.chunk_size and 1)
                 debug("MultiPart: Uploading %s in %d parts" % (filename, nr_parts))
@@ -103,7 +103,7 @@ class MultiPartUpload(object):
         if extra_label:
             extra_label = u' ' + extra_label
         seq = 1
-        if filename != "<stdin>":
+        if filename != u"<stdin>":
             while size_left > 0:
                 offset = self.chunk_size * (seq - 1)
                 current_chunk_size = min(file_size - offset, self.chunk_size)
@@ -122,7 +122,7 @@ class MultiPartUpload(object):
                 seq += 1
         else:
             while True:
-                buffer = self.file.read(self.chunk_size)
+                buffer = self.file_stream.read(self.chunk_size)
                 offset = 0 # send from start of the buffer
                 current_chunk_size = len(buffer)
                 labels = {
@@ -152,7 +152,7 @@ class MultiPartUpload(object):
 
         if remote_status is not None:
             if int(remote_status['size']) == chunk_size:
-                checksum = calculateChecksum(buffer, self.file, offset, chunk_size, self.s3.config.send_chunk)
+                checksum = calculateChecksum(buffer, self.file_stream, offset, chunk_size, self.s3.config.send_chunk)
                 remote_checksum = remote_status['checksum'].strip('"\'')
                 if remote_checksum == checksum:
                     warning("MultiPart: size and md5sum match for %s part %d, skipping." % (self.uri, seq))
@@ -168,7 +168,7 @@ class MultiPartUpload(object):
         headers = { "content-length": str(chunk_size) }
         query_string = "?partNumber=%i&uploadId=%s" % (seq, self.upload_id)
         request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
-        response = self.s3.send_file(request, self.file, labels, buffer, offset = offset, chunk_size = chunk_size)
+        response = self.s3.send_file(request, self.file_stream, labels, buffer, offset = offset, chunk_size = chunk_size)
         self.parts[seq] = response["headers"].get('etag', '').strip('"\'')
         return response
 
