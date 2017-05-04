@@ -161,9 +161,9 @@ class S3Request(object):
         param_str = ""
         for param in self.params:
             if self.params[param] not in (None, ""):
-                param_str += "&%s=%s" % (param, self.params[param])
+                param_str += "&%s=%s" % (param, s3_quote(self.params[param], unicode_output=True))
             else:
-                param_str += "&%s" % param
+                param_str += "&%s" % s3_quote(param, unicode_output=True)
         return param_str and "?" + param_str[1:]
 
     def use_signature_v2(self):
@@ -367,11 +367,9 @@ class S3(object):
             if truncated:
                 if limit == -1 or num_objects + num_prefixes < limit:
                     if current_list:
-                        uri_params['marker'] = urlencode_string(current_list[-1]["Key"],
-                                                                unicode_output=True)
+                        uri_params['marker'] = current_list[-1]["Key"]
                     else:
-                        uri_params['marker'] = urlencode_string(current_prefixes[-1]["Prefix"],
-                                                                unicode_output=True)
+                        uri_params['marker'] = current_prefixes[-1]["Prefix"]
                     debug("Listing continues after '%s'" % uri_params['marker'])
                 else:
                     yield truncated, current_prefixes, current_list
@@ -381,7 +379,7 @@ class S3(object):
 
     def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = {}, max_keys = -1):
         if prefix:
-            uri_params['prefix'] = urlencode_string(prefix, unicode_output=True)
+            uri_params['prefix'] = prefix
         if not self.config.recursive and not recursive:
             uri_params['delimiter'] = "/"
         if max_keys != -1:
