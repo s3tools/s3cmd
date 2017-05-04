@@ -93,6 +93,9 @@ class DistributionList(object):
         self.info['IsTruncated'] = (self.info['IsTruncated'].lower() == "true")
 
         self.dist_summs = []
+        self.marker = self.info.get('Marker')
+        self.next_marker = self.info.get('NextMarker')
+        self.max_items = self.info.get('MaxItems')
         for dist_summ in tree.findall(".//DistributionSummary"):
             self.dist_summs.append(DistributionSummary(dist_summ))
 
@@ -299,7 +302,7 @@ class CloudFront(object):
     operations = {
         "CreateDist" : { 'method' : "POST", 'resource' : "" },
         "DeleteDist" : { 'method' : "DELETE", 'resource' : "/%(dist_id)s" },
-        "GetList" : { 'method' : "GET", 'resource' : "" },
+        "GetList" : { 'method' : "GET", 'resource' : "?Marker=%(Marker)s" },
         "GetDistInfo" : { 'method' : "GET", 'resource' : "/%(dist_id)s" },
         "GetDistConfig" : { 'method' : "GET", 'resource' : "/%(dist_id)s/config" },
         "SetDistConfig" : { 'method' : "PUT", 'resource' : "/%(dist_id)s/config" },
@@ -319,12 +322,9 @@ class CloudFront(object):
     ## Methods implementing CloudFront API
     ## --------------------------------------------------
 
-    def GetList(self):
-        response = self.send_request("GetList")
+    def GetList(self, marker = ''):
+        response = self.send_request("GetList", marker = marker)
         response['dist_list'] = DistributionList(response['data'])
-        if response['dist_list'].info['IsTruncated']:
-            raise NotImplementedError("List is truncated. Ask s3cmd author to add support.")
-        ## TODO: handle Truncated
         return response
 
     def CreateDistribution(self, uri, cnames_add = [], comment = None, logging = None, default_root_object = None):
@@ -498,11 +498,11 @@ class CloudFront(object):
     ## Low-level methods for handling CloudFront requests
     ## --------------------------------------------------
 
-    def send_request(self, op_name, dist_id = None, request_id = None, body = None, headers = {}, retries = _max_retries):
+    def send_request(self, op_name, dist_id = None, request_id = None, body = None, headers = {}, retries = _max_retries, marker = None):
         operation = self.operations[op_name]
         if body:
             headers['content-type'] = 'text/plain'
-        request = self.create_request(operation, dist_id, request_id, headers)
+        request = self.create_request(operation, dist_id, request_id, headers, marker)
         conn = self.get_connection()
         debug("send_request(): %s %s" % (request['method'], request['resource']))
         conn.c.request(request['method'], request['resource'], body, request['headers'])
@@ -532,9 +532,9 @@ class CloudFront(object):
 
         return response
 
-    def create_request(self, operation, dist_id = None, request_id = None, headers = None):
+    def create_request(self, operation, dist_id = None, request_id = None, headers = None, marker = ''):
         resource = cloudfront_resource + (
-                   operation['resource'] % { 'dist_id' : dist_id, 'request_id' : request_id })
+                   operation['resource'] % { 'dist_id' : dist_id, 'request_id' : request_id, 'Marker': marker})
 
         if not headers:
             headers = {}
@@ -620,6 +620,7 @@ class Cmd(object):
 
     class Options(object):
         cf_cnames_add = []
+        cf_marker = ''
         cf_cnames_remove = []
         cf_comment = None
         cf_enable = None
@@ -647,7 +648,13 @@ class Cmd(object):
     def info(args):
         cf = CloudFront(Config())
         if not args:
-            response = cf.GetList()
+            response = cf.GetList( marker=Cmd.options.cf_marker )
+            pretty_output("Current Marker", response['dist_list'].marker)
+            pretty_output("Next Marker", response['dist_list'].next_marker)
+            pretty_output("Max Items", response['dist_list'].max_items)
+            pretty_output("Items", len(response['dist_list'].dist_summs))
+            output("")
+
             for d in response['dist_list'].dist_summs:
                 if "S3Origin" in d.info:
                     origin = S3UriS3.httpurl_to_s3uri(d.info['S3Origin']['DNSName'])
