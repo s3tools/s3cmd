@@ -42,7 +42,8 @@ from .Exceptions import *
 from .MultiPart import MultiPartUpload
 from .S3Uri import S3Uri
 from .ConnMan import ConnMan, CertificateError
-from .Crypto import sign_request_v2, sign_request_v4, checksum_sha256_file, checksum_sha256_buffer, s3_quote
+from .Crypto import (sign_request_v2, sign_request_v4, checksum_sha256_file,
+                    checksum_sha256_buffer, s3_quote, format_param_str)
 
 try:
     from ctypes import ArgumentError
@@ -130,7 +131,7 @@ class S3Request(object):
     ## S3 sometimes sends HTTP-301, HTTP-307 response
     redir_map = {}
 
-    def __init__(self, s3, method_string, resource, headers, body, params = {}):
+    def __init__(self, s3, method_string, resource, headers, body, params = None):
         self.s3 = s3
         self.headers = SortedDict(headers or {}, ignore_case = True)
         if len(self.s3.config.access_token)>0:
@@ -138,7 +139,7 @@ class S3Request(object):
             self.headers['x-amz-security-token']=self.s3.config.access_token
         self.resource = resource
         self.method_string = method_string
-        self.params = params
+        self.params = params or {}
         self.body = body
         self.requester_pays()
 
@@ -150,21 +151,6 @@ class S3Request(object):
         if "date" in self.headers:
             del(self.headers["date"])
         self.headers["x-amz-date"] = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
-
-    def format_param_str(self):
-        """
-        Format URL parameters from self.params and returns
-        ?parm1=val1&parm2=val2 or an empty string if there
-        are no parameters.  Output of this function should
-        be appended directly to self.resource['uri']
-        """
-        param_str = ""
-        for param in self.params:
-            if self.params[param] not in (None, ""):
-                param_str += "&%s=%s" % (param, s3_quote(self.params[param], unicode_output=True))
-            else:
-                param_str += "&%s" % s3_quote(param, unicode_output=True)
-        return param_str and "?" + param_str[1:]
 
     def use_signature_v2(self):
         if self.s3.endpoint_requires_signature_v4:
@@ -216,15 +202,9 @@ class S3Request(object):
         resource = dict(self.resource)  ## take a copy
 
         # URL Encode the uri for the http request
-        splits = resource['uri'].split('?', 1)
-        resource['uri'] = s3_quote(splits[0], quote_backslashes=False, unicode_output=True)
+        resource['uri'] = s3_quote(resource['uri'], quote_backslashes=False, unicode_output=True)
         # Get the final uri by adding the uri parameters
-        if len(splits) > 1:
-            resource['uri'] += '?' + splits[1]
-
-        # Note: all the things about self.params are only potentially used
-        # in backup_list_noparse. Nowhere else.
-        resource['uri'] += self.format_param_str()
+        resource['uri'] += format_param_str(self.params)
         return (self.method_string, resource, self.headers)
 
 class S3(object):
@@ -384,7 +364,7 @@ class S3(object):
             uri_params['delimiter'] = "/"
         if max_keys != -1:
             uri_params['max-keys'] = str(max_keys)
-        request = self.create_request("BUCKET_LIST", bucket = bucket, **uri_params)
+        request = self.create_request("BUCKET_LIST", bucket = bucket, uri_params = uri_params)
         response = self.send_request(request)
         #debug(response)
         return response
@@ -419,7 +399,8 @@ class S3(object):
 
     def get_bucket_location(self, uri, force_us_default=False):
         bucket = uri.bucket()
-        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?location")
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
+                                      uri_params = {'location': None})
 
         saved_redir_map = S3Request.redir_map.get(bucket, '')
         saved_region_map = S3Request.region_map.get(bucket, '')
@@ -450,7 +431,8 @@ class S3(object):
         return location
 
     def get_bucket_requester_pays(self, uri):
-        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?requestPayment")
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
+                                      uri_params = {'requestPayment': None})
         response = self.send_request(request)
         payer = getTextFromXml(response['data'], "Payer")
         return payer
@@ -467,7 +449,8 @@ class S3(object):
     def website_info(self, uri, bucket_location = None):
         bucket = uri.bucket()
 
-        request = self.create_request("BUCKET_LIST", bucket = bucket, extra="?website")
+        request = self.create_request("BUCKET_LIST", bucket = bucket,
+                                      uri_params = {'website': None})
         try:
             response = self.send_request(request)
             response['index_document'] = getTextFromXml(response['data'], ".//IndexDocument//Suffix")
@@ -494,7 +477,8 @@ class S3(object):
             body += '  </ErrorDocument>'
         body += '</WebsiteConfiguration>'
 
-        request = self.create_request("BUCKET_CREATE", bucket = bucket, extra="?website", body = body)
+        request = self.create_request("BUCKET_CREATE", bucket = bucket, body = body,
+                                      uri_params = {'website': None})
         response = self.send_request(request)
         debug("Received response '%s'" % (response))
 
@@ -503,7 +487,8 @@ class S3(object):
     def website_delete(self, uri, bucket_location = None):
         bucket = uri.bucket()
 
-        request = self.create_request("BUCKET_DELETE", bucket = bucket, extra="?website")
+        request = self.create_request("BUCKET_DELETE", bucket = bucket,
+                                      uri_params = {'website': None})
         response = self.send_request(request)
         debug("Received response '%s'" % (response))
 
@@ -515,7 +500,8 @@ class S3(object):
     def expiration_info(self, uri, bucket_location = None):
         bucket = uri.bucket()
 
-        request = self.create_request("BUCKET_LIST", bucket = bucket, extra="?lifecycle")
+        request = self.create_request("BUCKET_LIST", bucket = bucket,
+                                      uri_params = {'lifecycle': None})
         try:
             response = self.send_request(request)
             response['prefix'] = getTextFromXml(response['data'], ".//Rule//Prefix")
@@ -539,7 +525,8 @@ class S3(object):
                  raise ParameterError("Expect either --expiry-day or --expiry-date")
              debug("del bucket lifecycle")
              bucket = uri.bucket()
-             request = self.create_request("BUCKET_DELETE", bucket = bucket, extra="?lifecycle")
+             request = self.create_request("BUCKET_DELETE", bucket = bucket,
+                                           uri_params = {'lifecycle': None})
         else:
              request = self._expiration_set(uri)
         response = self.send_request(request)
@@ -564,7 +551,9 @@ class S3(object):
         headers = SortedDict(ignore_case = True)
         headers['content-md5'] = compute_content_md5(body)
         bucket = uri.bucket()
-        request =  self.create_request("BUCKET_CREATE", bucket = bucket, headers = headers, extra="?lifecycle", body = body)
+        request =  self.create_request("BUCKET_CREATE", bucket = bucket,
+                                       headers = headers, body = body,
+                                       uri_params = {'lifecycle': None})
         return (request)
 
     def _guess_content_type(self, filename):
@@ -751,7 +740,9 @@ class S3(object):
         request_body = compose_batch_del_xml(bucket, batch)
         headers = {'content-md5': compute_content_md5(request_body),
                    'content-type': 'application/xml'}
-        request = self.create_request("BATCH_DELETE", bucket = bucket, extra = '?delete', headers = headers, body = request_body)
+        request = self.create_request("BATCH_DELETE", bucket = bucket,
+                                      headers = headers, body = request_body,
+                                      uri_params = {'delete': None})
         response = self.send_request(request)
         return response
 
@@ -775,7 +766,8 @@ class S3(object):
         body += ('    <Tier>%s</Tier>' % self.config.restore_priority)
         body +=  '  </GlacierJobParameters>'
         body +=  '</RestoreRequest>'
-        request = self.create_request("OBJECT_POST", uri = uri, extra = "?restore", body = body)
+        request = self.create_request("OBJECT_POST", uri = uri, body = body,
+                                      uri_params = {'restore': None})
         response = self.send_request(request)
         debug("Received response '%s'" % (response))
         return response
@@ -932,9 +924,11 @@ class S3(object):
 
     def get_acl(self, uri):
         if uri.has_object():
-            request = self.create_request("OBJECT_GET", uri = uri, extra = "?acl")
+            request = self.create_request("OBJECT_GET", uri = uri,
+                                          uri_params = {'acl': None})
         else:
-            request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?acl")
+            request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
+                                          uri_params = {'acl': None})
 
         response = self.send_request(request)
         acl = ACL(response['data'])
@@ -950,15 +944,20 @@ class S3(object):
 
         headers = {'content-type': 'application/xml'}
         if uri.has_object():
-            request = self.create_request("OBJECT_PUT", uri = uri, extra = "?acl", headers = headers, body = body)
+            request = self.create_request("OBJECT_PUT", uri = uri,
+                                          headers = headers, body = body,
+                                          uri_params = {'acl': None})
         else:
-            request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(), extra = "?acl", headers = headers, body = body)
+            request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(),
+                                          headers = headers, body = body,
+                                          uri_params = {'acl': None})
 
         response = self.send_request(request)
         return response
 
     def get_policy(self, uri):
-        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?policy")
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
+                                      uri_params = {'policy': None})
         response = self.send_request(request)
         return response['data']
 
@@ -967,18 +966,21 @@ class S3(object):
         # TODO check policy is proper json string
         headers['content-type'] = 'application/json'
         request = self.create_request("BUCKET_CREATE", uri = uri,
-                                      extra = "?policy", headers=headers, body = policy)
+                                      headers=headers, body = policy,
+                                      uri_params = {'policy': None})
         response = self.send_request(request)
         return response
 
     def delete_policy(self, uri):
-        request = self.create_request("BUCKET_DELETE", uri = uri, extra = "?policy")
+        request = self.create_request("BUCKET_DELETE", uri = uri,
+                                      uri_params = {'policy': None})
         debug(u"delete_policy(%s)" % uri)
         response = self.send_request(request)
         return response
 
     def get_cors(self, uri):
-        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?cors")
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
+                                      uri_params = {'cors': None})
         response = self.send_request(request)
         return response['data']
 
@@ -988,12 +990,14 @@ class S3(object):
         headers['content-type'] = 'application/xml'
         headers['content-md5'] = compute_content_md5(cors)
         request = self.create_request("BUCKET_CREATE", uri = uri,
-                                      extra = "?cors", headers=headers, body = cors)
+                                      headers=headers, body = cors,
+                                      uri_params = {'cors': None})
         response = self.send_request(request)
         return response
 
     def delete_cors(self, uri):
-        request = self.create_request("BUCKET_DELETE", uri = uri, extra = "?cors")
+        request = self.create_request("BUCKET_DELETE", uri = uri,
+                                      uri_params = {'cors': None})
         debug(u"delete_cors(%s)" % uri)
         response = self.send_request(request)
         return response
@@ -1002,7 +1006,8 @@ class S3(object):
         headers = SortedDict(ignore_case = True)
         headers['content-md5'] = compute_content_md5(policy)
         request = self.create_request("BUCKET_CREATE", uri = uri,
-                                      extra = "?lifecycle", headers=headers, body = policy)
+                                      headers=headers, body = policy,
+                                      uri_params = {'lifecycle': None})
         debug(u"set_lifecycle_policy(%s): policy-xml: %s" % (uri, policy))
         response = self.send_request(request)
         return response
@@ -1016,13 +1021,14 @@ class S3(object):
         else:
             body += '<Payer>BucketOwner</Payer>\n'
         body += '</RequestPaymentConfiguration>\n'
-        request = self.create_request("BUCKET_CREATE", uri = uri,
-                                      extra = "?requestPayment", body = body)
+        request = self.create_request("BUCKET_CREATE", uri = uri, body = body,
+                                      uri_params = {'requestPayment': None})
         response = self.send_request(request)
         return response
 
     def get_lifecycle_policy(self, uri):
-        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?lifecycle")
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
+                                      uri_params = {'lifecycle': None})
         debug(u"get_lifecycle_policy(%s)" % uri)
         response = self.send_request(request)
 
@@ -1030,30 +1036,33 @@ class S3(object):
         return response
 
     def delete_lifecycle_policy(self, uri):
-        request = self.create_request("BUCKET_DELETE", uri = uri, extra = "?lifecycle")
+        request = self.create_request("BUCKET_DELETE", uri = uri,
+                                      uri_params = {'lifecycle': None})
         debug(u"delete_lifecycle_policy(%s)" % uri)
         response = self.send_request(request)
         return response
 
     def get_multipart(self, uri):
-        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?uploads")
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
+                                      uri_params = {'uploads': None})
         response = self.send_request(request)
         return response
 
     def abort_multipart(self, uri, id):
-        request = self.create_request("OBJECT_DELETE", uri=uri,
-                                      extra = ("?uploadId=%s" % id))
+        request = self.create_request("OBJECT_DELETE", uri = uri,
+                                      uri_params = {'uploadId': id})
         response = self.send_request(request)
         return response
 
     def list_multipart(self, uri, id):
-        request = self.create_request("OBJECT_GET", uri=uri,
-                                      extra = ("?uploadId=%s" % id))
+        request = self.create_request("OBJECT_GET", uri = uri,
+                                      uri_params = {'uploadId': id})
         response = self.send_request(request)
         return response
 
     def get_accesslog(self, uri):
-        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?logging")
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
+                                      uri_params = {'logging': None})
         response = self.send_request(request)
         accesslog = AccessLog(response['data'])
         return accesslog
@@ -1077,7 +1086,8 @@ class S3(object):
         body = "%s" % accesslog
         debug(u"set_accesslog(%s): accesslog-xml: %s" % (uri, body))
 
-        request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(), extra = "?logging", body = body)
+        request = self.create_request("BUCKET_CREATE", bucket = uri.bucket(),
+                                      body = body, uri_params = {'logging': None})
         try:
             response = self.send_request(request)
         except S3Error as e:
@@ -1089,7 +1099,7 @@ class S3(object):
                 raise
         return accesslog, response
 
-    def create_request(self, operation, uri = None, bucket = None, object = None, headers = None, extra = None, body = "", **params):
+    def create_request(self, operation, uri = None, bucket = None, object = None, headers = None, body = "", uri_params = None):
         resource = { 'bucket' : None, 'uri' : "/" }
 
         if uri and (bucket or object):
@@ -1103,12 +1113,10 @@ class S3(object):
             resource['bucket'] = bucket
             if object:
                 resource['uri'] = "/" + object
-        if extra:
-            resource['uri'] += extra
 
         method_string = S3.http_methods.getkey(S3.operations[operation] & S3.http_methods["MASK"])
 
-        request = S3Request(self, method_string, resource, headers, body, params)
+        request = S3Request(self, method_string, resource, headers, body, uri_params)
 
         debug("CreateRequest: resource[uri]=%s", resource['uri'])
         return request

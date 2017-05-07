@@ -27,6 +27,30 @@ from hashlib import sha1, sha256
 
 __all__ = []
 
+def format_param_str(params, limited_keys = None):
+    """
+    Format URL parameters from a params dict and returns
+    ?parm1=val1&parm2=val2 or an empty string if there
+    are no parameters.  Output of this function should
+    be appended directly to self.resource['uri']
+    Set "limited_keys" list to restrict the param string to keys that are
+    defined in it.
+    """
+    if not params:
+        return ""
+
+    param_str = ""
+    for key in sorted(params.keys()):
+        if limited_keys and key not in limited_keys:
+            continue
+        value = params[key]
+        if value in (None, ""):
+            param_str += "&%s" % s3_quote(key, unicode_output=True)
+        else:
+            param_str += "&%s=%s" % (key, s3_quote(params[key], unicode_output=True))
+    return param_str and "?" + param_str[1:]
+__all__.append("format_param_str")
+
 ### AWS Version 2 signing
 def sign_string_v2(string_to_sign):
     """Sign a string with the secret key, returning base64 encoded results.
@@ -41,7 +65,7 @@ def sign_string_v2(string_to_sign):
     return signature
 __all__.append("sign_string_v2")
 
-def sign_request_v2(method='GET', canonical_uri='/', params={}, cur_headers={}):
+def sign_request_v2(method='GET', canonical_uri='/', params=None, cur_headers={}):
     """Sign a string with the secret key, returning base64 encoded results.
     By default the configured secret key is used, but may be overridden as
     an argument.
@@ -71,14 +95,13 @@ def sign_request_v2(method='GET', canonical_uri='/', params={}, cur_headers={}):
         if header.startswith("x-emc-"):
             string_to_sign += header + ":"+ cur_headers[header] + "\n"
 
-    # WARNING Is it used with following value? possible bug missing first "&" if canonical_querystring is concatenated later.
-    canonical_querystring = '&'.join(['%s=%s' % (s3_quote(p, unicode_output=True), s3_quote(params[p], unicode_output=True)) for p in sorted(params.keys()) if p in SUBRESOURCES_TO_INCLUDE])
 
-    splits = canonical_uri.split('?')
-    canonical_uri = s3_quote(splits[0], quote_backslashes=False, unicode_output=True)
-    canonical_querystring += '&'.join(['%s' % qs for qs in splits[1:] if qs in SUBRESOURCES_TO_INCLUDE])
-    if canonical_querystring:
-        canonical_uri += '?' + canonical_querystring
+    canonical_uri = s3_quote(canonical_uri, quote_backslashes=False, unicode_output=True)
+    canonical_querystring = format_param_str(params, SUBRESOURCES_TO_INCLUDE)
+    # canonical_querystring would be empty if no param given, otherwise it will
+    # starts with a "?"
+    canonical_uri += canonical_querystring
+
     string_to_sign += canonical_uri
 
     debug("SignHeaders: " + repr(string_to_sign))
@@ -146,7 +169,7 @@ def getSignatureKey(key, dateStamp, regionName, serviceName):
     kSigning = sign(kService, 'aws4_request')
     return kSigning
 
-def sign_request_v4(method='GET', host='', canonical_uri='/', params={}, region='us-east-1', cur_headers={}, body=b''):
+def sign_request_v4(method='GET', host='', canonical_uri='/', params=None, region='us-east-1', cur_headers={}, body=b''):
     service = 's3'
 
     cfg = Config.Config()
@@ -159,13 +182,10 @@ def sign_request_v4(method='GET', host='', canonical_uri='/', params={}, region=
 
     signing_key = getSignatureKey(secret_key, datestamp, region, service)
 
-    # WARNING Is it used with following value? possible bug missing first "&" if canonical_querystring is concatenated later.
-    canonical_querystring = '&'.join(['%s=%s' % (s3_quote(p, unicode_output=True), s3_quote(params[p], unicode_output=True)) for p in sorted(params.keys())])
 
-    splits = canonical_uri.split('?')
+    canonical_uri = s3_quote(canonical_uri, quote_backslashes=False, unicode_output=True)
+    canonical_querystring = format_param_str(params).lstrip('?')
 
-    canonical_uri = s3_quote(splits[0], quote_backslashes=False, unicode_output=True)
-    canonical_querystring += '&'.join([('%s' if '=' in qs else '%s=') % qs for qs in splits[1:]])
 
     if type(body) == type(sha256(b'')):
         payload_hash = decode_from_s3(body.hexdigest())

@@ -70,7 +70,9 @@ class MultiPartUpload(object):
             self.upload_id = None
 
         if self.upload_id is None:
-            request = self.s3.create_request("OBJECT_POST", uri = self.uri, headers = self.headers_baseline, extra = "?uploads")
+            request = self.s3.create_request("OBJECT_POST", uri = self.uri,
+                                             headers = self.headers_baseline,
+                                             uri_params = {'uploads': None})
             response = self.s3.send_request(request)
             data = response["data"]
             self.upload_id = getTextFromXml(data, "UploadId")
@@ -166,8 +168,11 @@ class MultiPartUpload(object):
                         % (int(remote_status['size']), chunk_size, self.uri, seq))
 
         headers = { "content-length": str(chunk_size) }
-        query_string = "?partNumber=%i&uploadId=%s" % (seq, self.upload_id)
-        request = self.s3.create_request("OBJECT_PUT", uri = self.uri, headers = headers, extra = query_string)
+        query_string_params = {'partNumber':'%s' % seq,
+                               'uploadId': self.upload_id}
+        request = self.s3.create_request("OBJECT_PUT", uri = self.uri,
+                                         headers = headers,
+                                         uri_params = query_string_params)
         response = self.s3.send_file(request, self.file_stream, labels, buffer, offset = offset, chunk_size = chunk_size)
         self.parts[seq] = response["headers"].get('etag', '').strip('"\'')
         return response
@@ -186,7 +191,9 @@ class MultiPartUpload(object):
         body = "<CompleteMultipartUpload>%s</CompleteMultipartUpload>" % ("".join(parts_xml))
 
         headers = { "content-length": str(len(body)) }
-        request = self.s3.create_request("OBJECT_POST", uri = self.uri, headers = headers, extra = "?uploadId=%s" % self.upload_id, body = body)
+        request = self.s3.create_request("OBJECT_POST", uri = self.uri,
+                                         headers = headers, body = body,
+                                         uri_params = {'uploadId': self.upload_id})
         response = self.s3.send_request(request)
 
         return response
@@ -197,7 +204,8 @@ class MultiPartUpload(object):
         http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadAbort.html
         """
         debug("MultiPart: Aborting upload: %s" % self.upload_id)
-        #request = self.s3.create_request("OBJECT_DELETE", uri = self.uri, extra = "?uploadId=%s" % (self.upload_id))
+        #request = self.s3.create_request("OBJECT_DELETE", uri = self.uri,
+        #                                  uri_params = {'uploadId': self.upload_id})
         #response = self.s3.send_request(request)
         response = None
         return response
