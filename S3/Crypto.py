@@ -27,25 +27,28 @@ from hashlib import sha1, sha256
 
 __all__ = []
 
-def format_param_str(params, limited_keys=None):
+def format_param_str(params, always_have_equal=False, limited_keys=None):
     """
     Format URL parameters from a params dict and returns
     ?parm1=val1&parm2=val2 or an empty string if there
     are no parameters.  Output of this function should
     be appended directly to self.resource['uri']
-    Set "limited_keys" list to restrict the param string to keys that are
+    - Set "always_have_equal" to always have the "=" char for a param even when
+    there is no value for it.
+    - Set "limited_keys" list to restrict the param string to keys that are
     defined in it.
     """
     if not params:
         return ""
 
     param_str = ""
+    equal_str = always_have_equal and u'=' or ''
     for key in sorted(params.keys()):
         if limited_keys and key not in limited_keys:
             continue
         value = params[key]
         if value in (None, ""):
-            param_str += "&%s" % s3_quote(key, unicode_output=True)
+            param_str += "&%s%s" % (s3_quote(key, unicode_output=True), equal_str)
         else:
             param_str += "&%s=%s" % (key, s3_quote(params[key], unicode_output=True))
     return param_str and "?" + param_str[1:]
@@ -185,7 +188,7 @@ def sign_request_v4(method='GET', host='', canonical_uri='/', params=None,
 
 
     canonical_uri = s3_quote(canonical_uri, quote_backslashes=False, unicode_output=True)
-    canonical_querystring = format_param_str(params).lstrip('?')
+    canonical_querystring = format_param_str(params, always_have_equal=True).lstrip('?')
 
 
     if type(body) == type(sha256(b'')):
