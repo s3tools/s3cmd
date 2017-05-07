@@ -30,7 +30,7 @@ class Grantee(object):
         self.permission = None
 
     def __repr__(self):
-        return deunicodise('Grantee("%(tag)s", "%(name)s", "%(permission)s")' % {
+        return repr('Grantee("%(tag)s", "%(name)s", "%(permission)s")' % {
             "tag" : self.tag,
             "name" : self.name,
             "permission" : self.permission
