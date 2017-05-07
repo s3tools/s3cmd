@@ -91,8 +91,6 @@ class AccessLog(object):
             # Return bytes
             return ET.tostring(self.tree)
 
-    def __str__(self):
-        return ET.tostring(self.tree)
 __all__.append("AccessLog")
 
 if __name__ == "__main__":
