@@ -302,7 +302,7 @@ class S3(object):
         response["list"] = getListFromXml(response["data"], "Bucket")
         return response
 
-    def bucket_list(self, bucket, prefix = None, recursive = None, uri_params = {}, limit = -1):
+    def bucket_list(self, bucket, prefix = None, recursive = None, uri_params = None, limit = -1):
         item_list = []
         prefixes = []
         for truncated, dirs, objects in self.bucket_list_streaming(bucket, prefix, recursive, uri_params, limit):
@@ -315,7 +315,7 @@ class S3(object):
         response['truncated'] = truncated
         return response
 
-    def bucket_list_streaming(self, bucket, prefix = None, recursive = None, uri_params = {}, limit = -1):
+    def bucket_list_streaming(self, bucket, prefix = None, recursive = None, uri_params = None, limit = -1):
         """ Generator that produces <dir_list>, <object_list> pairs of groups of content of a specified bucket. """
         def _list_truncated(data):
             ## <IsTruncated> can either be "true" or "false" or be missing completely
@@ -328,7 +328,7 @@ class S3(object):
         def _get_common_prefixes(data):
             return getListFromXml(data, "CommonPrefixes")
 
-        uri_params = uri_params.copy()
+        uri_params = uri_params and uri_params.copy() or {}
         truncated = True
         prefixes = []
 
@@ -357,7 +357,9 @@ class S3(object):
 
             yield truncated, current_prefixes, current_list
 
-    def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = {}, max_keys = -1):
+    def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = None, max_keys = -1):
+        if uri_params is None:
+            uri_params = {}
         if prefix:
             uri_params['prefix'] = prefix
         if not self.config.recursive and not recursive:

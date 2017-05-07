@@ -18,12 +18,12 @@ class MultiPartUpload(object):
     MAX_CHUNK_SIZE_MB = 5120    # 5GB
     MAX_FILE_SIZE = 42949672960 # 5TB
 
-    def __init__(self, s3, file_stream, uri, headers_baseline = {}):
+    def __init__(self, s3, file_stream, uri, headers_baseline=None):
         self.s3 = s3
         self.file_stream = file_stream
         self.uri = uri
         self.parts = {}
-        self.headers_baseline = headers_baseline
+        self.headers_baseline = headers_baseline or {}
         self.upload_id = self.initiate_multipart_upload()
 
     def get_parts_information(self, uri, upload_id):

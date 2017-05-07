@@ -27,7 +27,7 @@ from hashlib import sha1, sha256
 
 __all__ = []
 
-def format_param_str(params, limited_keys = None):
+def format_param_str(params, limited_keys=None):
     """
     Format URL parameters from a params dict and returns
     ?parm1=val1&parm2=val2 or an empty string if there
@@ -169,7 +169,8 @@ def getSignatureKey(key, dateStamp, regionName, serviceName):
     kSigning = sign(kService, 'aws4_request')
     return kSigning
 
-def sign_request_v4(method='GET', host='', canonical_uri='/', params=None, region='us-east-1', cur_headers={}, body=b''):
+def sign_request_v4(method='GET', host='', canonical_uri='/', params=None,
+                    region='us-east-1', cur_headers={}, body=b''):
     service = 's3'
 
     cfg = Config.Config()
@@ -223,12 +224,12 @@ def sign_request_v4(method='GET', host='', canonical_uri='/', params=None, regio
 
     signature = decode_from_s3(hmac.new(signing_key, encode_to_s3(string_to_sign), sha256).hexdigest())
     authorization_header = algorithm + ' ' + 'Credential=' + access_key + '/' + credential_scope + ',' +  'SignedHeaders=' + signed_headers + ',' + 'Signature=' + signature
-    headers = dict(list(cur_headers.items()) + list({'x-amz-date':amzdate,
+    new_headers = dict(list(cur_headers.items()) + list({'x-amz-date':amzdate,
                                           'Authorization':authorization_header,
                                           'x-amz-content-sha256': payload_hash
                                          }.items()))
-    debug("signature-v4 headers: %s" % headers)
-    return headers
+    debug("signature-v4 headers: %s" % new_headers)
+    return new_headers
 __all__.append("sign_request_v4")
 
 def s3_quote(param, quote_backslashes=True, unicode_output=False):

@@ -498,7 +498,9 @@ class CloudFront(object):
     ## Low-level methods for handling CloudFront requests
     ## --------------------------------------------------
 
-    def send_request(self, op_name, dist_id = None, request_id = None, body = None, headers = {}, retries = _max_retries):
+    def send_request(self, op_name, dist_id = None, request_id = None, body = None, headers = None, retries = _max_retries):
+        if headers is None:
+            headers = {}
         operation = self.operations[op_name]
         if body:
             headers['content-type'] = 'text/plain'

@@ -17,8 +17,8 @@ zero_length_md5 = "d41d8cd98f00b204e9800998ecf8427e"
 cfg = Config.Config()
 
 class FileDict(SortedDict):
-    def __init__(self, mapping = {}, ignore_case = True, **kwargs):
-        SortedDict.__init__(self, mapping = mapping, ignore_case = ignore_case, **kwargs)
+    def __init__(self, mapping = None, ignore_case = True, **kwargs):
+        SortedDict.__init__(self, mapping = mapping or {}, ignore_case = ignore_case, **kwargs)
         self.hardlinks = dict() # { dev: { inode : {'md5':, 'relative_files':}}}
         self.by_md5 = dict() # {md5: set(relative_files)}
 
