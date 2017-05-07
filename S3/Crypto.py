@@ -100,7 +100,7 @@ def sign_request_v2(method='GET', canonical_uri='/', params=None, cur_headers={}
 
 
     canonical_uri = s3_quote(canonical_uri, quote_backslashes=False, unicode_output=True)
-    canonical_querystring = format_param_str(params, SUBRESOURCES_TO_INCLUDE)
+    canonical_querystring = format_param_str(params, limited_keys=SUBRESOURCES_TO_INCLUDE)
     # canonical_querystring would be empty if no param given, otherwise it will
     # starts with a "?"
     canonical_uri += canonical_querystring
