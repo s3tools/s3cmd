@@ -2987,6 +2987,7 @@ if __name__ == '__main__':
         from S3.MultiPart import MultiPartUpload
     except Exception as e:
         report_exception(e, "Error loading some components of s3cmd (Import Error)")
+        traceback.print_exc(file=sys.stderr)
         # 1 = EX_GENERAL but be safe in that situation
         sys.exit(1)
 
@@ -3024,6 +3025,7 @@ if __name__ == '__main__':
     except SSLError as e:
         # SSLError is a subtype of IOError
         error("SSL certificate verification failure: %s" % e)
+        report_exception(e)
         sys.exit(EX_ACCESSDENIED)
 
     except socket.gaierror as e:
