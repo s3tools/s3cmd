@@ -200,7 +200,7 @@ class http_connection(object):
 
         if not cfg.proxy_host:
             if ssl:
-                self.c = http_connection._https_connection(hostname)
+                self.c = http_connection._https_connection(self.hostname, self.port)
                 debug(u'non-proxied HTTPSConnection(%s, %s)', self.hostname, self.port)
             else:
                 self.c = httplib.HTTPConnection(self.hostname, self.port)
