@@ -37,7 +37,7 @@ class SortedDict(dict):
     def keys(self):
         # TODO fix
         # Probably not anymore memory efficient on python2
-        # as now 2 copies ok keys to sort thems.
+        # as now 2 copies ok keys to sort them.
         keys = dict.keys(self)
         if self.ignore_case:
             # Translation map
@@ -74,7 +74,7 @@ if __name__ == "__main__":
         print("%s," % key, end=' ')
     print("   [used: __iter__()]")
     d = SortedDict(d, ignore_case = False)
-    print("Wanted: AWS, Action, Auckland, america,    [case sensitive]")
+    print("Wanted: AWS, Action, America, Auckland, america,    [case sensitive]")
     print("Got:   ", end=' ')
     for key in d.keys():
         print("%s," % key, end=' ')
