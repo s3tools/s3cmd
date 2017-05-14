@@ -19,22 +19,23 @@ cfg = Config.Config()
 class FileDict(SortedDict):
     def __init__(self, mapping = None, ignore_case = True, **kwargs):
         SortedDict.__init__(self, mapping = mapping or {}, ignore_case = ignore_case, **kwargs)
-        self.hardlinks = dict() # { dev: { inode : {'md5':, 'relative_files':}}}
+        self.hardlinks_md5 = dict() # { dev: { inode : {'md5':, 'relative_files':}}}
         self.by_md5 = dict() # {md5: set(relative_files)}
 
     def record_md5(self, relative_file, md5):
-        if md5 is None: return
-        if md5 == zero_length_md5: return
+        if not relative_file:
+            return
+        if md5 is None:
+            return
+        if md5 == zero_length_md5:
+            return
         if md5 not in self.by_md5:
-            self.by_md5[md5] = set()
-        self.by_md5[md5].add(relative_file)
+            self.by_md5[md5] = relative_file
 
     def find_md5_one(self, md5):
-        if not md5: return None
-        try:
-            return list(self.by_md5.get(md5, set()))[0]
-        except:
+        if not md5:
             return None
+        return self.by_md5.get(md5, None)
 
     def get_md5(self, relative_file):
         """returns md5 if it can, or raises IOError if file is unreadable"""
@@ -50,21 +51,24 @@ class FileDict(SortedDict):
         return md5
 
     def record_hardlink(self, relative_file, dev, inode, md5, size):
-        if md5 is None: return
-        if size == 0: return # don't record 0-length files
-        if dev == 0 or inode == 0: return # Windows
-        if dev not in self.hardlinks:
-            self.hardlinks[dev] = dict()
-        if inode not in self.hardlinks[dev]:
-            self.hardlinks[dev][inode] = dict(md5=md5, relative_files=set())
-        self.hardlinks[dev][inode]['relative_files'].add(relative_file)
+        if md5 is None:
+            return
+        if size == 0:
+            # don't record 0-length files
+            return
+        if dev == 0 or inode == 0:
+            # Windows
+            return
+        if dev not in self.hardlinks_md5:
+            self.hardlinks_md5[dev] = dict()
+        if inode not in self.hardlinks_md5[dev]:
+            self.hardlinks_md5[dev][inode] = md5
 
     def get_hardlink_md5(self, relative_file):
-        md5 = None
         try:
             dev = self[relative_file]['dev']
             inode = self[relative_file]['inode']
-            md5 = self.hardlinks[dev][inode]['md5']
+            md5 = self.hardlinks_md5[dev][inode]
         except KeyError:
-            pass
+            md5 = None
         return md5
