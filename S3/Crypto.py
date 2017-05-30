@@ -15,6 +15,7 @@ import base64
 from . import Config
 from logging import debug
 from .Utils import encode_to_s3, time_to_epoch, deunicodise, decode_from_s3
+from .SortedDict import SortedDict
 
 import datetime
 try:
@@ -227,10 +228,10 @@ def sign_request_v4(method='GET', host='', canonical_uri='/', params=None,
 
     signature = decode_from_s3(hmac.new(signing_key, encode_to_s3(string_to_sign), sha256).hexdigest())
     authorization_header = algorithm + ' ' + 'Credential=' + access_key + '/' + credential_scope + ',' +  'SignedHeaders=' + signed_headers + ',' + 'Signature=' + signature
-    new_headers = dict(list(cur_headers.items()) + list({'x-amz-date':amzdate,
-                                          'Authorization':authorization_header,
-                                          'x-amz-content-sha256': payload_hash
-                                         }.items()))
+    new_headers = SortedDict(cur_headers.items())
+    new_headers.update({'x-amz-date':amzdate,
+                       'Authorization':authorization_header,
+                       'x-amz-content-sha256': payload_hash})
     debug("signature-v4 headers: %s" % new_headers)
     return new_headers
 __all__.append("sign_request_v4")
