@@ -385,7 +385,7 @@ test_s3cmd("List bucket recursive", ['ls', '--recursive', pbucket(1)],
     must_not_find = [ "logo.png" ])
 
 ## ====== FIXME
-# test_s3cmd("Recursive put", ['put', '--recursive', 'testsuite/etc', '%s/xyz/' % pbucket(1) ])
+test_s3cmd("Recursive put", ['put', '--recursive', 'testsuite/etc', '%s/xyz/' % pbucket(1) ])
 
 
 ## ====== Clean up local destination dir

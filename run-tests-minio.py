@@ -120,9 +120,6 @@ def deunicodise(string):
 
     return string.encode("UTF-8", "replace")
 
-# Minio: disable encoding tests
-have_encoding = False
-
 if not os.path.isdir('testsuite/crappy-file-name'):
     os.system("tar xvz -C testsuite -f testsuite/crappy-file-name.tar.gz")
     # TODO: also unpack if the tarball is newer than the directory timestamp
