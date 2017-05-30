@@ -22,6 +22,13 @@ from S3.ExitCodes import *
 
 PY3 = (sys.version_info >= (3,0))
 
+try:
+    unicode
+except NameError:
+    # python 3 support
+    # In python 3, unicode -> str, and str -> bytes
+    unicode = str
+
 count_pass = 0
 count_fail = 0
 count_skip = 0
@@ -100,6 +107,19 @@ if have_encoding:
     enc_pattern = patterns[encoding]
 else:
     print(encoding + " specific files not found.")
+
+def unicodise(string):
+    if type(string) == unicode:
+        return string
+
+    return unicode(string, "UTF-8", "replace")
+
+def deunicodise(string):
+    if type(string) != unicode:
+        return string
+
+    return string.encode("UTF-8", "replace")
+
 # Minio: disable encoding tests
 have_encoding = False
 
@@ -143,7 +163,7 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
         return 0
     def compile_list(_list, regexps = False):
         if regexps == False:
-            _list = [re.escape(item.encode(encoding, "replace")).decode(encoding) for item in _list]
+            _list = [re.escape(item) for item in _list]
 
         return [re.compile(item, re.MULTILINE) for item in _list]
 
@@ -184,6 +204,7 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
     not_find_list_patterns.extend(must_not_find_re)
 
     for index in range(len(find_list)):
+        stdout = unicodise(stdout)
         match = find_list[index].search(stdout)
         if not match:
             return failure("pattern not found: %s" % find_list_patterns[index])
@@ -384,6 +405,7 @@ test_s3cmd("Put from stdin", ['put', '-', '%s/single-file/single-file.txt' % pbu
 f.close()
 
 ## ====== Multipart put
+os.system('mkdir -p testsuite-out')
 os.system('dd if=/dev/urandom of=testsuite-out/urandom.bin bs=1M count=16 > /dev/null 2>&1')
 test_s3cmd("Put multipart", ['put', '--multipart-chunk-size-mb=5', 'testsuite-out/urandom.bin', '%s/urandom.bin' % pbucket(1)],
            must_not_find = ['abortmp'])
