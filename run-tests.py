@@ -266,7 +266,7 @@ def test_curl_HEAD(label, src_file, **kwargs):
     cmd.append(src_file)
     return test(label, cmd, **kwargs)
 
-bucket_prefix = u"%s-" % getpass.getuser()
+bucket_prefix = u"%s-" % getpass.getuser().lower()
 
 argv = sys.argv[1:]
 while argv:
