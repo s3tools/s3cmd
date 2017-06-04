@@ -2585,8 +2585,8 @@ def main():
     optparser.add_option("-D", "--restore-days", dest="restore_days", action="store", help="Number of days to keep restored file available (only for 'restore' command).", metavar="NUM")
     optparser.add_option(      "--restore-priority", dest="restore_priority", action="store", choices=['standard', 'expedited', 'bulk'], help="Priority for restoring files from S3 Glacier (only for 'restore' command). Choices available: bulk, standard, expedited")
 
-    optparser.add_option(      "--delete-removed", dest="delete_removed", action="store_true", help="Delete remote objects with no corresponding local file [sync]")
-    optparser.add_option(      "--no-delete-removed", dest="delete_removed", action="store_false", help="Don't delete remote objects.")
+    optparser.add_option(      "--delete-removed", dest="delete_removed", action="store_true", help="Delete destination objects with no corresponding source file [sync]")
+    optparser.add_option(      "--no-delete-removed", dest="delete_removed", action="store_false", help="Don't delete destination objects.")
     optparser.add_option(      "--delete-after", dest="delete_after", action="store_true", help="Perform deletes after new uploads [sync]")
     optparser.add_option(      "--delay-updates", dest="delay_updates", action="store_true", help="*OBSOLETE* Put all updated files into place at end [sync]")  # OBSOLETE
     optparser.add_option(      "--max-delete", dest="max_delete", action="store", help="Do not delete more than NUM files. [del] and [sync]", metavar="NUM")
