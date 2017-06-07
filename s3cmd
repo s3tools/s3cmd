@@ -629,6 +629,137 @@ def cmd_object_del(args):
             return rc
     return EX_OK
 
+def cmd_object_get_torrent(args):
+    if len(args) == 0:
+        raise ParameterError("Nothing to download. Expecting S3 URI.")
+
+    if S3Uri(args[-1]).type == 'file':
+        destination_base = args.pop()
+    else:
+        destination_base = "."
+
+    if len(args) == 0:
+        raise ParameterError("Nothing to download. Expecting S3 URI.")
+     
+    cfg = Config()
+    s3 = S3(cfg)
+
+    remote_list, exclude_list, remote_total_size = fetch_remote_list(args, require_attribs = False)
+
+    remote_count = len(remote_list)
+
+    info(u"Summary: %d remote files to download" % remote_count)
+
+    if remote_count > 0: 
+        if destination_base == "-": 
+            ## stdout is ok for multiple remote files!
+            for key in remote_list:
+                remote_list[key]['local_filename'] = "-"
+        elif not os.path.isdir(deunicodise(destination_base)):
+            ## We were either given a file name (existing or not)
+            if remote_count > 1: 
+                raise ParameterError("Destination must be a directory or stdout when downloading multiple sources.")
+            remote_list[remote_list.keys()[0]]['local_filename'] = destination_base
+        elif os.path.isdir(deunicodise(destination_base)):
+            if destination_base[-1] != os.path.sep:
+                destination_base += os.path.sep
+            for key in remote_list:
+                local_filename = destination_base + key + ".torrent"
+                if os.path.sep != "/": 
+                    local_filename = os.path.sep.join(local_filename.split("/"))
+                remote_list[key]['local_filename'] = local_filename
+        else:
+            raise InternalError("WTF? Is it a dir or not? -- %s" % destination_base)
+
+    if cfg.dry_run:
+        for key in exclude_list:
+            output(u"exclude: %s" % key)
+        for key in remote_list:
+            output(u"download: '%s' -> '%s'" % (remote_list[key]['object_uri_str'], remote_list[key]['local_filename']))
+
+        warning(u"Exiting now because of --dry-run")
+        return EX_OK
+
+    seq = 0
+    ret = EX_OK
+    for key in remote_list:
+        seq += 1
+        item = remote_list[key]
+        uri = S3Uri(item['object_uri_str'])
+        ## Encode / Decode destination with "replace" to make sure it's compatible with current encoding
+        destination = unicodise_safe(item['local_filename'])
+        seq_label = "[%d of %d]" % (seq, remote_count)
+
+        start_position = 0
+
+        if destination == "-":
+            ## stdout
+            dst_stream = sys.__stdout__
+            file_exists = True
+        else:
+            ## File
+            try:
+                file_exists = os.path.exists(deunicodise(destination))
+                try:
+                    dst_stream = open(deunicodise(destination), "ab")
+                except IOError, e:
+                    if e.errno == errno.ENOENT:
+                        basename = destination[:destination.rindex(os.path.sep)]
+                        info(u"Creating directory: %s" % basename)
+                        os.makedirs(deunicodise(basename))
+                        dst_stream = open(deunicodise(destination), "ab")
+                    else:
+                        raise
+                if file_exists:
+                    if Config().get_continue:
+                        start_position = dst_stream.tell()
+                    elif Config().force:
+                        start_position = 0L
+                        dst_stream.seek(0L)
+                        dst_stream.truncate()
+                    elif Config().skip_existing:
+                        info(u"Skipping over existing file: %s" % (destination))
+                        continue
+                    else:
+                        dst_stream.close()
+                        raise ParameterError(u"File %s already exists. Use either of --force / --continue / --skip-existing or give it a new name." % destination)
+            except IOError, e:
+                error(u"Skipping %s: %s" % (destination, e.strerror))
+                continue
+        try:
+            response = s3.object_get_torrent(uri, dst_stream, destination, start_position = start_position, extra_label = seq_label)
+        except S3DownloadError, e:
+            error(u"%s: Skipping that file.  This is usually a transient error, please try again later." % e)
+            if not file_exists: # Delete, only if file didn't exist before!
+                debug(u"object_get failed for '%s', deleting..." % (destination,))
+                os.unlink(deunicodise(destination))
+                ret = EX_PARTIAL
+                if cfg.stop_on_error:
+                    ret = EX_DATAERR
+                    break
+            continue
+        except S3Error, e:
+            if not file_exists: # Delete, only if file didn't exist before!
+                debug(u"object_get failed for '%s', deleting..." % (destination,))
+                os.unlink(deunicodise(destination))
+            raise
+
+        if response["headers"].has_key("x-amz-meta-s3tools-gpgenc"):
+            gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
+            response["size"] = os.stat(deunicodise(destination))[6]
+        if response["headers"].has_key("last-modified") and destination != "-":
+            last_modified = time.mktime(time.strptime(response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"))
+            os.utime(deunicodise(destination), (last_modified, last_modified))
+            debug("set mtime to %s" % last_modified)
+        if not Config().progress_meter and destination != "-":
+            speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
+            output(u"download: '%s' -> '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s)" %
+                (uri, destination, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1]))
+        if Config().delete_after_fetch:
+            s3.object_delete(uri)
+            output(u"File '%s' removed after fetch" % (uri))
+    return EX_OK	
+
 def subcmd_batch_del_iterative(uri_str = None, bucket = None):
     """ Streaming version of batch deletion (doesn't realize whole list in memory before deleting).
 
@@ -2399,6 +2530,7 @@ def get_commands_list():
     {"cmd":"la", "label":"List all object in all buckets", "param":"", "func":cmd_all_buckets_list_all_content, "argc":0},
     {"cmd":"put", "label":"Put file into bucket", "param":"FILE [FILE...] s3://BUCKET[/PREFIX]", "func":cmd_object_put, "argc":2},
     {"cmd":"get", "label":"Get file from bucket", "param":"s3://BUCKET/OBJECT LOCAL_FILE", "func":cmd_object_get, "argc":1},
+    {"cmd":"gettorrent", "label":"Get torrent file from server", "param":"s3://BUCKET/OBJECT", "func":cmd_object_get_torrent, "argc":1},
     {"cmd":"del", "label":"Delete file from bucket", "param":"s3://BUCKET/OBJECT", "func":cmd_object_del, "argc":1},
     {"cmd":"rm", "label":"Delete file from bucket (alias for del)", "param":"s3://BUCKET/OBJECT", "func":cmd_object_del, "argc":1},
     #{"cmd":"mkdir", "label":"Make a virtual S3 directory", "param":"s3://BUCKET/path/to/dir", "func":cmd_mkdir, "argc":1},

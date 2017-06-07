@@ -712,6 +712,16 @@ class S3(object):
         response = self.recv_file(request, stream, labels, start_position)
         return response
 
+    def object_get_torrent(self, uri, stream, dest_name, start_position = 0, extra_label = ""):
+        if uri.type != "s3":
+            raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
+        query = {}
+        query["get_torrent"] = ""
+        request = self.create_request("OBJECT_GET", uri = uri, **query)
+        labels = { 'source' : uri.uri(), 'destination' : dest_name, 'extra' : extra_label }
+        response = self.recv_file(request, stream, labels, start_position)
+        return response
+
     def object_batch_delete(self, remote_list):
         """ Batch delete given a remote_list """
         uris = [remote_list[item]['object_uri_str'] for item in remote_list]
