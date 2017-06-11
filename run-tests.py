@@ -582,7 +582,7 @@ test_s3cmd("Copy between buckets", ['cp', '%s/xyz/etc2/Logo.PNG' % pbucket(1), '
     must_find = [ "remote copy: '%s/xyz/etc2/Logo.PNG' -> '%s/xyz/etc2/logo.png'" % (pbucket(1), pbucket(3)) ])
 
 ## ====== Recursive copy
-test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % pbucket(1), '%s/copy' % pbucket(2), '--exclude', 'demo/dir?/*.txt', '--exclude', 'non-printables*'],
+test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % pbucket(1), '%s/copy/' % pbucket(2), '--exclude', 'demo/dir?/*.txt', '--exclude', 'non-printables*'],
     must_find = [ "remote copy: '%s/xyz/etc2/Logo.PNG' -> '%s/copy/etc2/Logo.PNG'" % (pbucket(1), pbucket(2)),
                   "remote copy: '%s/xyz/blahBlah/Blah.txt' -> '%s/copy/blahBlah/Blah.txt'" % (pbucket(1), pbucket(2)),
                   "remote copy: '%s/xyz/blahBlah/blah.txt' -> '%s/copy/blahBlah/blah.txt'" % (pbucket(1), pbucket(2)) ],

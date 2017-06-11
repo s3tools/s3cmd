@@ -817,7 +817,7 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
         # Trying to mv dir1/ to dir2 will not pass a test in S3.FileLists,
         # so we don't need to test for it here.
         if len(remote_list) > 1 or cfg.recursive:
-           raise ParameterError("Destination must be a directory and end with '/' when acting on multiple sources.")
+           raise ParameterError("Destination must be a directory and end with '/' when acting on a folder content or on multiple sources.")
 
     if cfg.recursive:
         for key in remote_list:
