@@ -813,9 +813,13 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
 
     info(u"Summary: %d remote files to %s" % (remote_count, action_str))
 
+    if not destination_base.endswith('/'):
+        # Trying to mv dir1/ to dir2 will not pass a test in S3.FileLists,
+        # so we don't need to test for it here.
+        if len(remote_list) > 1 or cfg.recursive:
+           raise ParameterError("Destination must be a directory and end with '/' when acting on multiple sources.")
+
     if cfg.recursive:
-        if not destination_base.endswith("/"):
-            destination_base += "/"
         for key in remote_list:
             remote_list[key]['dest_name'] = destination_base + key
     else:
@@ -1144,8 +1148,6 @@ def cmd_sync_remote2local(args):
     if not destination_base.endswith(os.path.sep):
         if fetch_source_args[0].endswith(u'/') or len(fetch_source_args) > 1:
             raise ParameterError("Destination must be a directory and end with '/' when downloading multiple sources.")
-        elif fetch_source_args[0].endswith(u'/'):
-            fetch_source_args[0] += u'/'
 
     stats_info = StatsInfo()
 
