@@ -266,37 +266,17 @@ ite_acp, full_control, all
 Number of days to keep restored file available (only
 for 'restore' command).
 .TP
-\fB\-\-restore\-priority\fR=bulk,standard,expedited
-You can specify one of the following when restoring an
-S3 Glacier archived object (only for 'restore' command):
-.TP
-Expedited - Expedited retrievals allow you to quickly
-access your data when occasional urgent requests for a
-subset of archives are required. For all but the largest
-archived objects (250 MB+), data accessed using Expedited
-retrievals are typically made available within 1–5 minutes.
-There are two types of Expedited retrievals: On-Demand and
-Provisioned. On-Demand requests are similar to EC2 On-Demand
-instances and are available most of the time. Provisioned
-requests are guaranteed to be available when you need them.
-.TP
-Standard - Standard retrievals allow you to access any of
-your archived objects within several hours. Standard
-retrievals typically complete within 3–5 hours. This is the
-default option for retrieval requests that do not specify
-the retrieval option.
-.TP
-Bulk - Bulk retrievals are Amazon Glacier’s lowest-cost
-retrieval option, enabling you to retrieve large amounts,
-even petabytes, of data inexpensively in a day. Bulk
-retrievals typically complete within 5–12 hours.
+\fB\-\-restore\-priority\fR=RESTORE_PRIORITY
+Priority for restoring files from S3 Glacier (only for
+'restore' command). Choices available: bulk, standard,
+expedited
 .TP
 \fB\-\-delete\-removed\fR
-Delete remote objects with no corresponding local file
-[sync]
+Delete destination objects with no corresponding
+source file [sync]
 .TP
 \fB\-\-no\-delete\-removed\fR
-Don't delete remote objects.
+Don't delete destination objects.
 .TP
 \fB\-\-delete\-after\fR
 Perform deletes after new uploads [sync]
@@ -543,7 +523,7 @@ Enable verbose output.
 Enable debug output.
 .TP
 \fB\-\-version\fR
-Show s3cmd version (1.6.1) and exit.
+Show s3cmd version (2.0.0) and exit.
 .TP
 \fB\-F\fR, \fB\-\-follow\-symlinks\fR
 Follow symbolic links as if they are regular files

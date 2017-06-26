@@ -1,3 +1,21 @@
+s3cmd-2.0.0      - 2017-06-26
+===============
+* Added support for Python 3 (Shaform, Florent Viard)
+* Added getlifecycle command (Daniel Gryniewicz)
+* Added --cf-inval for invalidating multiple CF distributions (Joe Mifsud)
+* Added --limit to "ls" and "la" commands to return the specified number of objects (Masashi Ozawa)
+* Added --token-refresh and --no-token-refresh and get the access token from the environment (Marco Jakob)
+* Added --restore-priority and --restore-days for S3 Glacier (Robert Palmer)
+* Fixed requester pays header with HEAD requests  (Christian Rodriguez)
+* Don't allow mv/cp of multiple files to single file (Guy Gur-Ari)
+* Generalize wildcard certificate forgiveness (Mark Titorenko)
+* Multiple fixes for SSL connections and proxies
+* Added support for HTTP 100-CONTINUE
+* Fixes for s3-like servers
+* Big cleanup and many unicode fixes
+* Many other bug fixes
+
+
 s3cmd-1.6.1      - 2016-01-20
 ===============
 * Added --host and --host-bucket
@@ -136,7 +154,7 @@ s3cmd 1.1.0   -   (never released)
 * Increased socket_timeout from 10 secs to 5 mins.
 * Added "Static WebSite" support [ws-create / ws-delete / ws-info]
   (contributed by Jens Braeuer)
-* Force MIME type with --mime-type=abc/xyz, also --guess-mime-type 
+* Force MIME type with --mime-type=abc/xyz, also --guess-mime-type
   is now on by default, -M is no longer shorthand for --guess-mime-type
 * Allow parameters in MIME types, for example:
   --mime-type="text/plain; charset=utf-8"
@@ -161,7 +179,7 @@ s3cmd 1.0.0   -   2011-01-18
 * Network connections now have 10s timeout
 * [sync] now supports bucket-to-bucket synchronisation
 * Added [accesslog] command.
-* Added access logging for CloudFront distributions 
+* Added access logging for CloudFront distributions
   using [cfmodify --log]
 * Added --acl-grant and --acl-revoke [Timothee Groleau]
 * Allow s3:// URI as well as cf:// URI as a distribution
@@ -177,9 +195,9 @@ s3cmd 0.9.9.91 -  2009-10-08
 s3cmd 0.9.9.90 -  2009-10-06
 ==============
 * New command 'sign' for signing e.g. POST upload policies.
-* Fixed handling of filenames that differ only in 
+* Fixed handling of filenames that differ only in
   capitalisation (eg blah.txt vs Blah.TXT).
-* Added --verbatim mode, preventing most filenames 
+* Added --verbatim mode, preventing most filenames
   pre-processing. Good for fixing unreadable buckets.
 * Added --recursive support for [cp] and [mv], including
   multiple-source arguments, --include/--exclude, --dry-run, etc.
@@ -193,11 +211,11 @@ s3cmd 0.9.9.90 -  2009-10-06
 s3cmd 0.9.9   -   2009-02-17
 ===========
 New commands:
-* Commands for copying and moving objects, within or 
+* Commands for copying and moving objects, within or
   between buckets: [cp] and [mv] (Andrew Ryan)
-* CloudFront support through [cfcreate], [cfdelete], 
+* CloudFront support through [cfcreate], [cfdelete],
   [cfmodify] and [cfinfo] commands. (sponsored by Joseph Denne)
-* New command [setacl] for setting ACL on existing objects, 
+* New command [setacl] for setting ACL on existing objects,
   use together with --acl-public/--acl-private (sponsored by
   Joseph Denne)
 
@@ -208,9 +226,9 @@ Other major features:
 * Enabled --dry-run for [put], [get] and [sync].
 * Allowed removal of non-empty buckets with [rb --force].
 * Implemented progress meter (--progress / --no-progress)
-* Added --include / --rinclude / --(r)include-from 
+* Added --include / --rinclude / --(r)include-from
   options to override --exclude exclusions.
-* Added --add-header option for [put], [sync], [cp] and [mv]. 
+* Added --add-header option for [put], [sync], [cp] and [mv].
   Good for setting e.g. Expires or Cache-control headers.
 * Added --list-md5 option for [ls].
 * Continue [get] partially downloaded files with --continue
@@ -224,7 +242,7 @@ Minor features and bugfixes:
 * Should work fine on non-UTF8 systems, provided all
   the files are in current system encoding.
 * System encoding can be overridden using --encoding.
-* Improved resistance to communication errors (Connection 
+* Improved resistance to communication errors (Connection
   reset by peer, etc.)
 
 s3cmd 0.9.8.4 -   2008-11-07
@@ -236,9 +254,9 @@ s3cmd 0.9.8.4 -   2008-11-07
   on Amazon EC2)
 * Re-issue failed requests (e.g. connection errors, internal
   server errors, etc).
-* Sync skips over files that can't be open instead of 
+* Sync skips over files that can't be open instead of
   terminating the sync completely.
-* Doesn't run out of open files quota on sync with lots of 
+* Doesn't run out of open files quota on sync with lots of
   files.
 
 s3cmd 0.9.8.3 -   2008-07-29
@@ -248,7 +266,7 @@ s3cmd 0.9.8.3 -   2008-07-29
 
 s3cmd 0.9.8.2 -   2008-06-27
 =============
-* Bugfix release. Re-upload file if Amazon doesn't send ETag 
+* Bugfix release. Re-upload file if Amazon doesn't send ETag
   back.
 
 s3cmd 0.9.8.1 -   2008-06-27
@@ -313,7 +331,7 @@ s3cmd 0.9.1   -   2007-02-06
 ===========
 * All commands now use S3-URIs
 * Removed hard dependency on Python 2.5
-* Experimental support for Python 2.4 
+* Experimental support for Python 2.4
   (requires external ElementTree module)
 
 
