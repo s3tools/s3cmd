@@ -21,10 +21,6 @@ try:
 except ImportError:
     import http.client as httplib
 import locale
-try:
-    import json
-except ImportError:
-    pass
 
 class Config(object):
     _instance = None
@@ -189,12 +185,9 @@ class Config(object):
                 raise Exception('KMS encryption requires signature v4. Please set signature_v2 to False')
 
     def role_config(self):
-        if sys.version_info[0] * 10 + sys.version_info[1] < 26:
-            error("IAM authentication requires Python 2.6 or newer")
-            raise
-        if not 'json' in sys.modules:
-            error("IAM authentication not available -- missing module json")
-            raise
+        """
+        Get credentials from IAM authentication
+        """
         try:
             conn = httplib.HTTPConnection(host='169.254.169.254', timeout = 2)
             conn.request('GET', "/latest/meta-data/iam/security-credentials/")
