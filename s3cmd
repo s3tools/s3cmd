@@ -930,9 +930,12 @@ def cmd_info(args):
             except S3Error as exc:
                 # Ignore the exception and don't fail the info
                 # if the server doesn't support setting ACLs
-                if exc.status not in [404, 501]:
+                if exc.status == 405:
+                    output(u"   policy:    Not available: Only the bucket owner can read the policy")
+                elif exc.status not in [404, 501]:
                     raise exc
-                output(u"   policy:    none")
+                else:
+                    output(u"   policy:    none")
 
             try:
                 cors = s3.get_cors(uri)
