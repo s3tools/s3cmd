@@ -577,9 +577,9 @@ class CloudFront(object):
         return (self._max_retries - retries + 1) * 3
 
     def get_dist_name_for_bucket(self, uri):
-        if (uri.type == "cf"):
-            return uri
-        if (uri.type != "s3"):
+        if uri.type == "cf":
+            return [uri]
+        if uri.type != "s3":
             raise ParameterError("CloudFront or S3 URI required instead of: %s" % uri)
 
         debug("_get_dist_name_for_bucket(%r)" % uri)
