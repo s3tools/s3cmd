@@ -793,19 +793,19 @@ def cmd_object_restore(args):
 
 
 def subcmd_cp_mv(args, process_fce, action_str, message):
-    if action_str != 'modify' and len(args) < 2:
-        raise ParameterError("Expecting two or more S3 URIs for " + action_str)
-    if action_str == 'modify' and len(args) < 1:
-        raise ParameterError("Expecting one or more S3 URIs for " + action_str)
-    if action_str != 'modify':
-        dst_base_uri = S3Uri(args.pop())
+    if action_str == 'modify':
+        if len(args) < 1:
+            raise ParameterError("Expecting one or more S3 URIs for " + action_str)
+        destination_base = None
     else:
-        dst_base_uri = S3Uri(args[-1])
+        if len(args) < 2:
+            raise ParameterError("Expecting two or more S3 URIs for " + action_str)
+        dst_base_uri = S3Uri(args.pop())
+        if dst_base_uri.type != "s3":
+            raise ParameterError("Destination must be S3 URI. To download a file use 'get' or 'sync'.")
+        destination_base = dst_base_uri.uri()
 
     scoreboard = ExitScoreboard()
-    if dst_base_uri.type != "s3":
-        raise ParameterError("Destination must be S3 URI. To download a file use 'get' or 'sync'.")
-    destination_base = dst_base_uri.uri()
 
     remote_list, exclude_list, remote_total_size = fetch_remote_list(args, require_attribs = False)
 
@@ -813,21 +813,25 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
 
     info(u"Summary: %d remote files to %s" % (remote_count, action_str))
 
-    if not destination_base.endswith('/'):
+    if destination_base:
         # Trying to mv dir1/ to dir2 will not pass a test in S3.FileLists,
         # so we don't need to test for it here.
-        if len(remote_list) > 1 or cfg.recursive:
-           raise ParameterError("Destination must be a directory and end with '/' when acting on a folder content or on multiple sources.")
+        if not destination_base.endswith('/') \
+           and (len(remote_list) > 1 or cfg.recursive):
+            raise ParameterError("Destination must be a directory and end with '/' when acting on a folder content or on multiple sources.")
 
-    if cfg.recursive:
-        for key in remote_list:
-            remote_list[key]['dest_name'] = destination_base + key
+        if cfg.recursive:
+            for key in remote_list:
+                remote_list[key]['dest_name'] = destination_base + key
+        else:
+            for key in remote_list:
+                if destination_base.endswith("/"):
+                    remote_list[key]['dest_name'] = destination_base + key
+                else:
+                    remote_list[key]['dest_name'] = destination_base
     else:
         for key in remote_list:
-            if destination_base.endswith("/"):
-                remote_list[key]['dest_name'] = destination_base + key
-            else:
-                remote_list[key]['dest_name'] = destination_base
+            remote_list[key]['dest_name'] = remote_list[key]['object_uri_str']
 
     if cfg.dry_run:
         for key in exclude_list:
