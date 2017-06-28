@@ -942,7 +942,7 @@ def cmd_info(args):
                 # if the server doesn't support setting ACLs
                 if exc.status not in [404, 501]:
                     raise exc
-                output(u"   cors:    none")
+                output(u"   cors:      none")
 
             try:
                 acl = s3.get_acl(uri)
