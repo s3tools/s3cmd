@@ -286,7 +286,6 @@ class InvalidationBatch(object):
 
     def __str__(self):
         tree = ET.Element("InvalidationBatch")
-        s3 = S3(Config())
 
         for path in self.paths:
             if len(path) < 1 or path[0] != "/":
