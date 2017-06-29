@@ -13,6 +13,7 @@ from logging import debug, warning, error
 import re
 import os
 import sys
+import json
 from . import Progress
 from .SortedDict import SortedDict
 try:
