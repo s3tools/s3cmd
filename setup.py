@@ -53,7 +53,7 @@ if not os.getenv("S3CMD_PACKAGING"):
     man_path = os.getenv("S3CMD_INSTPATH_MAN") or "share/man"
     doc_path = os.getenv("S3CMD_INSTPATH_DOC") or "share/doc/packages"
     data_files = [
-        (doc_path+"/s3cmd", [ "README.md", "INSTALL", "NEWS" ]),
+        (doc_path+"/s3cmd", [ "README.md", "INSTALL", "LICENSE", "NEWS" ]),
         (man_path+"/man1", [ "s3cmd.1" ] ),
     ]
 else:

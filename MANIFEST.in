@@ -1,2 +1,2 @@
-include INSTALL README.md NEWS
+include INSTALL README.md LICENSE NEWS
 include s3cmd.1

@@ -63,7 +63,7 @@ rm -rf $RPM_BUILD_ROOT
 %if 0%{?fedora} >= 9 || 0%{?rhel} >= 6
 %{python_sitelib}/s3cmd*.egg-info
 %endif
-%doc NEWS README.md
+%doc NEWS README.md LICENSE
 
 
 %changelog
