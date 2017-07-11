@@ -930,26 +930,28 @@ def cmd_info(args):
 
             try:
                 policy = s3.get_policy(uri)
-                output(u"   policy:    %s" % policy)
+                output(u"   Policy:    %s" % policy)
             except S3Error as exc:
                 # Ignore the exception and don't fail the info
                 # if the server doesn't support setting ACLs
-                if exc.status == 405:
-                    output(u"   policy:    Not available: Only the bucket owner can read the policy")
+                if exc.status == 403:
+                    output(u"   Policy:    Not available: GetPolicy permission is needed to read the policy")
+                elif exc.status == 405:
+                    output(u"   Policy:    Not available: Only the bucket owner can read the policy")
                 elif exc.status not in [404, 501]:
                     raise exc
                 else:
-                    output(u"   policy:    none")
+                    output(u"   Policy:    none")
 
             try:
                 cors = s3.get_cors(uri)
-                output(u"   cors:      %s" % cors)
+                output(u"   CORS:      %s" % cors)
             except S3Error as exc:
                 # Ignore the exception and don't fail the info
                 # if the server doesn't support setting ACLs
                 if exc.status not in [404, 501]:
                     raise exc
-                output(u"   cors:      none")
+                output(u"   CORS:      none")
 
             try:
                 acl = s3.get_acl(uri)
@@ -963,6 +965,8 @@ def cmd_info(args):
                 # if the server doesn't support setting ACLs
                 if exc.status not in [404, 501]:
                     raise exc
+                else:
+                    output(u"   ACL:       none")
 
             if uri.has_object():
                 # Temporary hack for performance + python3 compatibility
