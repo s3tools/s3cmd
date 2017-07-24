@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function
 
 import os
+import sys
 import http.client as httplib
 
 from http.client import (_CS_REQ_SENT, _CS_REQ_STARTED, CONTINUE, UnknownProtocol,
@@ -23,14 +24,18 @@ def _encode(data, name='data'):
     try:
         return data.encode("latin-1")
     except UnicodeEncodeError as err:
-        raise UnicodeEncodeError(
+        # The following is equivalent to raise Exception() from None
+        # but is still byte-compilable compatible with python 2.
+        exc = UnicodeEncodeError(
             err.encoding,
             err.object,
             err.start,
             err.end,
             "%s (%.20r) is not valid Latin-1. Use %s.encode('utf-8') "
             "if you want to send it encoded in UTF-8." %
-            (name.title(), data[err.start:err.end], name)) from None
+            (name.title(), data[err.start:err.end], name))
+        exc.__cause__ = None
+        raise exc
 
 def httpresponse_patched_begin(self):
     """ Re-implemented httplib begin function
@@ -204,7 +209,7 @@ def httpconnection_patched_send_request(self, method, url, body, headers,
         elif resp.status == CONTINUE:
             self.wrapper_send_body(body, encode_chunked)
 
-def httpconnection_patched_endheaders(self, message_body=None, *, encode_chunked=False):
+def httpconnection_patched_endheaders(self, message_body=None, encode_chunked=False):
     """REIMPLEMENTED because new argument encode_chunked added after py 3.4"""
     """Indicate that the last header line has been sent to the server.
 
