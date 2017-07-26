@@ -411,8 +411,15 @@ class ConfigDumper(object):
             value = getattr(config, option)
             if option == "verbosity":
                 # we turn level numbers back into strings if possible
-                if isinstance(value,int) and value in logging._levelNames:
-                    value = logging._levelNames[value]
+                if isinstance(value, int):
+                    try:
+                        try:
+                            # python 3 support
+                            value = logging._levelNames[value]
+                        except AttributeError:
+                            value = logging._levelToName[value]
+                    except KeyError:
+                        pass
 
             self.stream.write("%s = %s\n" % (option, value))
 
