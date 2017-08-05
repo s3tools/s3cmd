@@ -452,9 +452,8 @@ class CloudFront(object):
         if len(paths) > 999:
             try:
                 tmp_filename = Utils.mktmpfile()
-                f = open(deunicodise(tmp_filename), "w")
-                f.write(deunicodise("\n".join(paths)+"\n"))
-                f.close()
+                with open(deunicodise(tmp_filename), "w") as fp:
+                    fp.write(deunicodise("\n".join(paths)+"\n"))
                 warning("Request to invalidate %d paths (max 999 supported)" % len(paths))
                 warning("All the paths are now saved in: %s" % tmp_filename)
             except:

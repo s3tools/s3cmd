@@ -255,14 +255,13 @@ __all__.append("mktmpfile")
 
 def hash_file_md5(filename):
     h = md5()
-    f = open(deunicodise(filename), "rb")
-    while True:
-        # Hash 32kB chunks
-        data = f.read(32*1024)
-        if not data:
-            break
-        h.update(data)
-    f.close()
+    with open(deunicodise(filename), "rb") as fp:
+        while True:
+            # Hash 32kB chunks
+            data = fp.read(32*1024)
+            if not data:
+                break
+            h.update(data)
     return h.hexdigest()
 __all__.append("hash_file_md5")
 
