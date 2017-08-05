@@ -2235,7 +2235,15 @@ def run_configure(config_file, args):
             setattr(cfg, "proxy_port", re_match.groups()[2])
 
     try:
-        while 1:
+        # Support for python3
+        # raw_input only exists in py2 and was renamed to input in py3
+        global input
+        input = raw_input
+    except NameError:
+        pass
+
+    try:
+        while True:
             output(u"\nEnter new values or accept defaults in brackets with Enter.")
             output(u"Refer to user manual for detailed description of all options.")
             for option in options:
@@ -2260,7 +2268,7 @@ def run_configure(config_file, args):
                 if len(option) >= 3:
                     output(u"\n%s" % option[2])
 
-                val = raw_input(prompt + ": ")
+                val = unicodise_s(input(prompt + ": "))
                 if val != "":
                     if type(getattr(cfg, option[0])) is bool:
                         # Turn 'Yes' into True, everything else into False
@@ -2269,7 +2277,7 @@ def run_configure(config_file, args):
             output(u"\nNew settings:")
             for option in options:
                 output(u"  %s: %s" % (option[1], getattr(cfg, option[0])))
-            val = raw_input("\nTest access with supplied credentials? [Y/n] ")
+            val = input("\nTest access with supplied credentials? [Y/n] ")
             if val.lower().startswith("y") or val == "":
                 try:
                     # Default, we try to list 'all' buckets which requires
@@ -2299,9 +2307,8 @@ def run_configure(config_file, args):
                         if not os.path.isfile(deunicodise(getattr(cfg, "gpg_command"))):
                             raise Exception("GPG program not found")
                         filename = Utils.mktmpfile()
-                        f = open(deunicodise(filename), "w")
-                        f.write(os.sys.copyright)
-                        f.close()
+                        with open(deunicodise(filename), "w") as fp:
+                            fp.write(os.sys.copyright)
                         ret_enc = gpg_encrypt(filename)
                         ret_dec = gpg_decrypt(ret_enc[1], ret_enc[2], False)
                         hash = [
@@ -2321,20 +2328,20 @@ def run_configure(config_file, args):
                     error(u"Test failed: %s" % (e))
                     if e.code == "AccessDenied":
                         error(u"Are you sure your keys have s3:ListAllMyBuckets permissions?")
-                    val = raw_input("\nRetry configuration? [Y/n] ")
+                    val = input("\nRetry configuration? [Y/n] ")
                     if val.lower().startswith("y") or val == "":
                         continue
                 except Exception as e:
                     error(u"Test failed: %s" % (e))
-                    val = raw_input("\nRetry configuration? [Y/n] ")
+                    val = input("\nRetry configuration? [Y/n] ")
                     if val.lower().startswith("y") or val == "":
                         continue
 
 
-            val = raw_input("\nSave settings? [y/N] ")
+            val = input("\nSave settings? [y/N] ")
             if val.lower().startswith("y"):
                 break
-            val = raw_input("Retry configuration? [Y/n] ")
+            val = input("Retry configuration? [Y/n] ")
             if val.lower().startswith("n"):
                 raise EOFError()
 
@@ -2345,10 +2352,11 @@ def run_configure(config_file, args):
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
-        f = open(config_file, "w")
-        os.umask(old_mask)
-        cfg.dump_config(f)
-        f.close()
+        try:
+            with io.open(deunicodise(config_file), "w", encoding=cfg.encoding) as fp:
+                cfg.dump_config(fp)
+        finally:
+            os.umask(old_mask)
         output(u"Configuration saved to '%s'" % config_file)
 
     except (EOFError, KeyboardInterrupt):
@@ -2724,6 +2732,8 @@ def main():
 
     try:
         cfg = Config(options.config, options.access_key, options.secret_key, options.access_token)
+    except ValueError as exc:
+        raise ParameterError(unicode(exc))
     except IOError as e:
         if options.run_configure:
             cfg = Config()
@@ -2846,6 +2856,10 @@ def main():
         # of stdout/stderr
         sys.stdout = codecs.getwriter(cfg.encoding)(sys.stdout.buffer, "replace")
         sys.stderr = codecs.getwriter(cfg.encoding)(sys.stderr.buffer, "replace")
+        # getwriter with create an "IObuffer" that have not the encoding attribute
+        # better to add it to not break some functions like "input".
+        sys.stdout.encoding = cfg.encoding
+        sys.stderr.encoding = cfg.encoding
     except AttributeError:
         sys.stdout = codecs.getwriter(cfg.encoding)(sys.stdout, "replace")
         sys.stderr = codecs.getwriter(cfg.encoding)(sys.stderr, "replace")

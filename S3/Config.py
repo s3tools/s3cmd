@@ -12,6 +12,7 @@ import logging
 from logging import debug, warning, error
 import re
 import os
+import io
 import sys
 import json
 from . import Progress
@@ -284,15 +285,15 @@ class Config(object):
         self._parsed_files.append(configfile)
 
     def dump_config(self, stream):
-        ConfigDumper(stream).dump("default", self)
+        ConfigDumper(stream).dump(u"default", self)
 
     def update_option(self, option, value):
         if value is None:
             return
 
         #### Handle environment reference
-        if str(value).startswith("$"):
-            return self.update_option(option, os.getenv(str(value)[1:]))
+        if value.startswith("$"):
+            return self.update_option(option, os.getenv(value[1:]))
 
         #### Special treatment of some options
         ## verbosity must be known to "logging" module
@@ -309,8 +310,7 @@ class Config(object):
                     except AttributeError:
                         value = logging._nameToLevel[value]
                 except KeyError:
-                    error("Config: verbosity level '%s' is not valid" % value)
-                    return
+                    raise ValueError("Config: verbosity level '%s' is not valid" % value)
 
         elif option == "limitrate":
             #convert kb,mb to bytes
@@ -323,8 +323,7 @@ class Config(object):
             try:
                 value = shift and int(value[:-1]) << shift or int(value)
             except:
-                error("Config: value of option %s must have suffix m, k, or nothing, not '%s'" % (option, value))
-                return
+                raise ValueError("Config: value of option %s must have suffix m, k, or nothing, not '%s'" % (option, value))
 
         ## allow yes/no, true/false, on/off and 1/0 for boolean options
         elif type(getattr(Config, option)) is type(True):   # bool
@@ -333,15 +332,13 @@ class Config(object):
             elif str(value).lower() in ("false", "no", "off", "0"):
                 value = False
             else:
-                error("Config: value of option '%s' must be Yes or No, not '%s'" % (option, value))
-                return
+                raise ValueError("Config: value of option '%s' must be Yes or No, not '%s'" % (option, value))
 
         elif type(getattr(Config, option)) is type(42):     # int
             try:
                 value = int(value)
             except ValueError:
-                error("Config: value of option '%s' must be an integer, not '%s'" % (option, value))
-                return
+                raise ValueError("Config: value of option '%s' must be an integer, not '%s'" % (option, value))
 
         elif option in ["host_base", "host_bucket", "cloudfront_host"]:
             if value.startswith("http://"):
@@ -362,33 +359,33 @@ class ConfigParser(object):
         if type(sections) != type([]):
             sections = [sections]
         in_our_section = True
-        f = open(file, "r")
         r_comment = re.compile("^\s*#.*")
         r_empty = re.compile("^\s*$")
         r_section = re.compile("^\[([^\]]+)\]")
         r_data = re.compile("^\s*(?P<key>\w+)\s*=\s*(?P<value>.*)")
         r_quotes = re.compile("^\"(.*)\"\s*$")
-        for line in f:
-            if r_comment.match(line) or r_empty.match(line):
-                continue
-            is_section = r_section.match(line)
-            if is_section:
-                section = is_section.groups()[0]
-                in_our_section = (section in sections) or (len(sections) == 0)
-                continue
-            is_data = r_data.match(line)
-            if is_data and in_our_section:
-                data = is_data.groupdict()
-                if r_quotes.match(data["value"]):
-                    data["value"] = data["value"][1:-1]
-                self.__setitem__(data["key"], data["value"])
-                if data["key"] in ("access_key", "secret_key", "gpg_passphrase"):
-                    print_value = ("%s...%d_chars...%s") % (data["value"][:2], len(data["value"]) - 3, data["value"][-1:])
-                else:
-                    print_value = data["value"]
-                debug("ConfigParser: %s->%s" % (data["key"], print_value))
-                continue
-            warning("Ignoring invalid line in '%s': %s" % (file, line))
+        with io.open(file, "r", encoding=self.get('encoding', 'UTF-8')) as fp:
+            for line in fp:
+                if r_comment.match(line) or r_empty.match(line):
+                    continue
+                is_section = r_section.match(line)
+                if is_section:
+                    section = is_section.groups()[0]
+                    in_our_section = (section in sections) or (len(sections) == 0)
+                    continue
+                is_data = r_data.match(line)
+                if is_data and in_our_section:
+                    data = is_data.groupdict()
+                    if r_quotes.match(data["value"]):
+                        data["value"] = data["value"][1:-1]
+                    self.__setitem__(data["key"], data["value"])
+                    if data["key"] in ("access_key", "secret_key", "gpg_passphrase"):
+                        print_value = ("%s...%d_chars...%s") % (data["value"][:2], len(data["value"]) - 3, data["value"][-1:])
+                    else:
+                        print_value = data["value"]
+                    debug("ConfigParser: %s->%s" % (data["key"], print_value))
+                    continue
+                warning("Ignoring invalid line in '%s': %s" % (file, line))
 
     def __getitem__(self, name):
         return self.cfg[name]
@@ -406,7 +403,7 @@ class ConfigDumper(object):
         self.stream = stream
 
     def dump(self, section, config):
-        self.stream.write("[%s]\n" % section)
+        self.stream.write(u"[%s]\n" % section)
         for option in config.option_list():
             value = getattr(config, option)
             if option == "verbosity":
@@ -420,7 +417,6 @@ class ConfigDumper(object):
                             value = logging._levelToName[value]
                     except KeyError:
                         pass
-
-            self.stream.write("%s = %s\n" % (option, value))
+            self.stream.write(u"%s = %s\n" % (option, value))
 
 # vim:et:ts=4:sts=4:ai
