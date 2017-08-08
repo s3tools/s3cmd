@@ -28,16 +28,16 @@ class Config(object):
     _instance = None
     _parsed_files = []
     _doc = {}
-    access_key = ""
-    secret_key = ""
-    access_token = ""
+    access_key = u""
+    secret_key = u""
+    access_token = u""
     _access_token_refresh = True
-    host_base = "s3.amazonaws.com"
-    host_bucket = "%(bucket)s.s3.amazonaws.com"
-    kms_key = ""    #can't set this and Server Side Encryption at the same time
+    host_base = u"s3.amazonaws.com"
+    host_bucket = u"%(bucket)s.s3.amazonaws.com"
+    kms_key = u""    #can't set this and Server Side Encryption at the same time
     # simpledb_host looks useless, legacy? to remove?
-    simpledb_host = "sdb.amazonaws.com"
-    cloudfront_host = "cloudfront.amazonaws.com"
+    simpledb_host = u"sdb.amazonaws.com"
+    cloudfront_host = u"cloudfront.amazonaws.com"
     verbosity = logging.WARNING
     progress_meter = sys.stdout.isatty()
     progress_class = Progress.ProgressCR
@@ -56,48 +56,48 @@ class Config(object):
     skip_existing = False
     recursive = False
     restore_days = 1
-    restore_priority = "Standard"
+    restore_priority = u"Standard"
     acl_public = None
     acl_grants = []
     acl_revokes = []
-    proxy_host = ""
+    proxy_host = u""
     proxy_port = 3128
     encrypt = False
     dry_run = False
-    add_encoding_exts = ""
+    add_encoding_exts = u""
     preserve_attrs = True
     preserve_attrs_list = [
-        'uname',    # Verbose owner Name (e.g. 'root')
-        'uid',      # Numeric user ID (e.g. 0)
-        'gname',    # Group name (e.g. 'users')
-        'gid',      # Numeric group ID (e.g. 100)
-        'atime',    # Last access timestamp
-        'mtime',    # Modification timestamp
-        'ctime',    # Creation timestamp
-        'mode',     # File mode (e.g. rwxr-xr-x = 755)
-        'md5',      # File MD5 (if known)
-        #'acl',     # Full ACL (not yet supported)
+        u'uname',    # Verbose owner Name (e.g. 'root')
+        u'uid',      # Numeric user ID (e.g. 0)
+        u'gname',    # Group name (e.g. 'users')
+        u'gid',      # Numeric group ID (e.g. 100)
+        u'atime',    # Last access timestamp
+        u'mtime',    # Modification timestamp
+        u'ctime',    # Creation timestamp
+        u'mode',     # File mode (e.g. rwxr-xr-x = 755)
+        u'md5',      # File MD5 (if known)
+        #u'acl',     # Full ACL (not yet supported)
     ]
     delete_removed = False
     delete_after = False
     delete_after_fetch = False
     max_delete = -1
     limit = -1
-    _doc['delete_removed'] = "[sync] Remove remote S3 objects when local file has been deleted"
+    _doc['delete_removed'] = u"[sync] Remove remote S3 objects when local file has been deleted"
     delay_updates = False  # OBSOLETE
-    gpg_passphrase = ""
-    gpg_command = ""
-    gpg_encrypt = "%(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
-    gpg_decrypt = "%(gpg_command)s -d --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
+    gpg_passphrase = u""
+    gpg_command = u""
+    gpg_encrypt = u"%(gpg_command)s -c --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
+    gpg_decrypt = u"%(gpg_command)s -d --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
     use_https = True
-    ca_certs_file = ""
+    ca_certs_file = u""
     check_ssl_certificate = True
     check_ssl_hostname = True
-    bucket_location = "US"
-    default_mime_type = "binary/octet-stream"
+    bucket_location = u"US"
+    default_mime_type = u"binary/octet-stream"
     guess_mime_type = True
     use_mime_magic = True
-    mime_type = ""
+    mime_type = u""
     enable_multipart = True
     multipart_chunk_size_mb = 15    # MB
     multipart_max_chunks = 10000    # Maximum chunks on AWS S3, could be different on other S3-compatible APIs
@@ -110,27 +110,27 @@ class Config(object):
     debug_exclude = {}
     debug_include = {}
     encoding = locale.getpreferredencoding() or "UTF-8"
-    urlencoding_mode = "normal"
-    log_target_prefix = ""
+    urlencoding_mode = u"normal"
+    log_target_prefix = u""
     reduced_redundancy = False
-    storage_class = ""
+    storage_class = u""
     follow_symlinks = False
     socket_timeout = 300
     invalidate_on_cf = False
     # joseprio: new flags for default index invalidation
     invalidate_default_index_on_cf = False
     invalidate_default_index_root_on_cf = True
-    website_index = "index.html"
-    website_error = ""
-    website_endpoint = "http://%(bucket)s.s3-website-%(location)s.amazonaws.com/"
+    website_index = u"index.html"
+    website_error = u""
+    website_endpoint = u"http://%(bucket)s.s3-website-%(location)s.amazonaws.com/"
     additional_destinations = []
     files_from = []
-    cache_file = ""
-    add_headers = ""
+    cache_file = u""
+    add_headers = u""
     remove_headers = []
-    expiry_days = ""
-    expiry_date = ""
-    expiry_prefix = ""
+    expiry_days = u""
+    expiry_date = u""
+    expiry_prefix = u""
     signature_v2 = False
     limitrate = 0
     requester_pays = False
@@ -257,7 +257,7 @@ class Config(object):
             option_type = type(getattr(Config, option))
             if option.startswith("_") or \
                not (option_type in (
-                    type("string"), # str
+                    type(u"string"), # str
                         type(42),   # int
                     type(True))):   # bool
                 continue
