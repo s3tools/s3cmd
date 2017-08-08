@@ -54,13 +54,11 @@ class HashCache(object):
 
     def save(self, f):
         d = dict(inodes=self.inodes, version=1)
-        f = open(deunicodise(f), 'w')
-        pickle.dump(d, f)
-        f.close()
+        with open(deunicodise(f), 'wb') as fp:
+            pickle.dump(d, fp)
 
     def load(self, f):
-        f = open(deunicodise(f), 'r')
-        d = pickle.load(f)
-        f.close()
+        with open(deunicodise(f), 'rb') as fp:
+            d = pickle.load(fp)
         if d.get('version') == 1 and 'inodes' in d:
             self.inodes = d['inodes']
