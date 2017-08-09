@@ -131,7 +131,8 @@ def subcmd_bucket_usage(s3, uri):
     return bucket_size
 
 def cmd_ls(args):
-    s3 = S3(Config())
+    cfg = Config()
+    s3 = S3(cfg)
     if len(args) > 0:
         uri = S3Uri(args[0])
         if uri.type == "s3" and uri.has_bucket():
@@ -151,7 +152,8 @@ def subcmd_all_buckets_list(s3):
                                  bucket["Name"]))
 
 def cmd_all_buckets_list_all_content(args):
-    s3 = S3(Config())
+    cfg = Config()
+    s3 = S3(cfg)
 
     response = s3.list_all_buckets()
 
@@ -161,6 +163,8 @@ def cmd_all_buckets_list_all_content(args):
     return EX_OK
 
 def subcmd_bucket_list(s3, uri, limit):
+    cfg = Config()
+
     bucket = uri.bucket()
     prefix = uri.object()
 
@@ -217,7 +221,8 @@ def subcmd_bucket_list(s3, uri, limit):
         warning(u"The list is truncated because the settings limit was reached.")
 
 def cmd_bucket_create(args):
-    s3 = S3(Config())
+    cfg = Config()
+    s3 = S3(cfg)
     for arg in args:
         uri = S3Uri(arg)
         if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
@@ -232,7 +237,8 @@ def cmd_bucket_create(args):
     return EX_OK
 
 def cmd_website_info(args):
-    s3 = S3(Config())
+    cfg = Config()
+    s3 = S3(cfg)
     for arg in args:
         uri = S3Uri(arg)
         if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
@@ -253,7 +259,8 @@ def cmd_website_info(args):
     return EX_OK
 
 def cmd_website_create(args):
-    s3 = S3(Config())
+    cfg = Config()
+    s3 = S3(cfg)
     for arg in args:
         uri = S3Uri(arg)
         if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
@@ -268,7 +275,8 @@ def cmd_website_create(args):
     return EX_OK
 
 def cmd_website_delete(args):
-    s3 = S3(Config())
+    cfg = Config()
+    s3 = S3(cfg)
     for arg in args:
         uri = S3Uri(arg)
         if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
@@ -283,7 +291,8 @@ def cmd_website_delete(args):
     return EX_OK
 
 def cmd_expiration_set(args):
-    s3 = S3(Config())
+    cfg = Config()
+    s3 = S3(cfg)
     for arg in args:
         uri = S3Uri(arg)
         if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
@@ -301,6 +310,9 @@ def cmd_expiration_set(args):
     return EX_OK
 
 def cmd_bucket_delete(args):
+    cfg = Config()
+    s3 = S3(cfg)
+
     def _bucket_delete_one(uri, retry=True):
         try:
             response = s3.bucket_delete(uri.bucket())
@@ -323,7 +335,6 @@ def cmd_bucket_delete(args):
             raise
         return EX_OK
 
-    s3 = S3(Config())
     for arg in args:
         uri = S3Uri(arg)
         if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
@@ -639,6 +650,7 @@ def subcmd_batch_del_iterative(uri_str = None, bucket = None):
         raise ValueError("Pass only one of uri_str or bucket")
     if bucket: # bucket specified
         uri_str = "s3://%s" % bucket
+    cfg = Config()
     s3 = S3(cfg)
     uri = S3Uri(uri_str)
     bucket = uri.bucket()
@@ -675,9 +687,9 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
     Returns: EX_OK
     Raises: ValueError
     """
-
+    cfg = Config()
+    s3 = S3(cfg)
     def _batch_del(remote_list):
-        s3 = S3(cfg)
         to_delete = remote_list[:1000]
         remote_list = remote_list[1000:]
         while len(to_delete):
@@ -718,6 +730,7 @@ def subcmd_object_del_uri(uri_str, recursive = None):
     Returns: True if XXX, False if XXX
     Raises: ValueError
     """
+    cfg = Config()
     s3 = S3(cfg)
 
     if recursive is None:
@@ -748,6 +761,7 @@ def subcmd_object_del_uri(uri_str, recursive = None):
     return True
 
 def cmd_object_restore(args):
+    cfg = Config()
     s3 = S3(cfg)
 
     if cfg.restore_days < 1:
@@ -880,7 +894,8 @@ def cmd_mv(args):
     return subcmd_cp_mv(args, s3.object_move, "move", u"move: '%(src)s' -> '%(dst)s'")
 
 def cmd_info(args):
-    s3 = S3(Config())
+    cfg = Config()
+    s3 = S3(cfg)
 
     while (len(args)):
         uri_arg = args.pop(0)
@@ -994,7 +1009,8 @@ def filedicts_to_keys(*args):
     return keys
 
 def cmd_sync_remote2remote(args):
-    s3 = S3(Config())
+    cfg = Config()
+    s3 = S3(cfg)
 
     # Normalise s3://uri (e.g. assert trailing slash)
     destination_base = S3Uri(args[-1]).uri()
@@ -1139,6 +1155,9 @@ def cmd_sync_remote2remote(args):
     return ret
 
 def cmd_sync_remote2local(args):
+    cfg = Config()
+    s3 = S3(cfg)
+
     def _do_deletes(local_list):
         total_size = 0
         if cfg.max_delete > 0 and len(local_list) > cfg.max_delete:
@@ -1149,8 +1168,6 @@ def cmd_sync_remote2local(args):
             output(u"delete: '%s'" % local_list[key]['full_name'])
             total_size += local_list[key].get(u'size', 0)
         return len(local_list), total_size
-
-    s3 = S3(Config())
 
     destination_base = args[-1]
     source_args = args[:-1]
@@ -1508,6 +1525,7 @@ def local_copy(copy_pairs, destination_base):
     return len(copy_pairs), saved_bytes, failed_copy_list
 
 def remote_copy(s3, copy_pairs, destination_base):
+    cfg = Config()
     saved_bytes = 0
     failed_copy_list = FileDict()
     for (src_obj, dst1, dst2) in copy_pairs:
@@ -1525,6 +1543,7 @@ def remote_copy(s3, copy_pairs, destination_base):
     return (len(copy_pairs), saved_bytes, failed_copy_list)
 
 def _build_attr_header(local_list, src):
+    cfg = Config()
     attrs = {}
     if cfg.preserve_attrs:
         for attr in cfg.preserve_attrs_list:
@@ -1570,6 +1589,9 @@ def _build_attr_header(local_list, src):
 
 
 def cmd_sync_local2remote(args):
+    cfg = Config()
+    s3 = S3(cfg)
+
     def _single_process(source_args):
         for dest in destinations:
             ## Normalize URI to convert s3://bkt to s3://bkt/ (trailing slash)
@@ -1801,7 +1823,6 @@ def cmd_sync_local2remote(args):
                 output(u"Check progress with: s3cmd cfinvalinfo cf://%s/%s" % (result['dist_id'], result['request_id']))
 
     # main execution
-    s3 = S3(cfg)
     uploaded_objects_list = []
 
     if cfg.encrypt:
@@ -1835,6 +1856,7 @@ def cmd_sync_local2remote(args):
     return ret
 
 def cmd_sync(args):
+    cfg = Config()
     if (len(args) < 2):
         raise ParameterError("Too few parameters! Expected: %s" % commands['sync']['param'])
     if cfg.delay_updates:
@@ -1853,6 +1875,7 @@ def cmd_sync(args):
     raise ParameterError("Invalid source/destination: '%s'" % "' '".join(args))
 
 def cmd_setacl(args):
+    cfg = Config()
     s3 = S3(cfg)
 
     set_to_acl = cfg.acl_public and "Public" or "Private"
@@ -1896,6 +1919,7 @@ def cmd_setacl(args):
     return EX_OK
 
 def cmd_setpolicy(args):
+    cfg = Config()
     s3 = S3(cfg)
     uri = S3Uri(args[1])
     policy_file = args[0]
@@ -1912,6 +1936,7 @@ def cmd_setpolicy(args):
     return EX_OK
 
 def cmd_delpolicy(args):
+    cfg = Config()
     s3 = S3(cfg)
     uri = S3Uri(args[0])
     if cfg.dry_run: return EX_OK
@@ -1924,6 +1949,7 @@ def cmd_delpolicy(args):
     return EX_OK
 
 def cmd_setcors(args):
+    cfg = Config()
     s3 = S3(cfg)
     uri = S3Uri(args[1])
     cors_file = args[0]
@@ -1940,6 +1966,7 @@ def cmd_setcors(args):
     return EX_OK
 
 def cmd_delcors(args):
+    cfg = Config()
     s3 = S3(cfg)
     uri = S3Uri(args[0])
     if cfg.dry_run: return EX_OK
@@ -1952,6 +1979,7 @@ def cmd_delcors(args):
     return EX_OK
 
 def cmd_set_payer(args):
+    cfg = Config()
     s3 = S3(cfg)
     uri = S3Uri(args[0])
 
@@ -1966,6 +1994,7 @@ def cmd_set_payer(args):
         return EX_CONFLICT
 
 def cmd_setlifecycle(args):
+    cfg = Config()
     s3 = S3(cfg)
     uri = S3Uri(args[1])
     lifecycle_policy_file = args[0]
@@ -1981,6 +2010,7 @@ def cmd_setlifecycle(args):
     return EX_OK
 
 def cmd_getlifecycle(args):
+    cfg = Config()
     s3 = S3(cfg)
     uri = S3Uri(args[0])
 
@@ -1990,6 +2020,7 @@ def cmd_getlifecycle(args):
     return EX_OK
 
 def cmd_dellifecycle(args):
+    cfg = Config()
     s3 = S3(cfg)
     uri = S3Uri(args[0])
     if cfg.dry_run: return EX_OK
@@ -2001,6 +2032,7 @@ def cmd_dellifecycle(args):
     return EX_OK
 
 def cmd_multipart(args):
+    cfg = Config()
     s3 = S3(cfg)
     uri = S3Uri(args[0])
 
@@ -2022,6 +2054,7 @@ def cmd_multipart(args):
 
 def cmd_abort_multipart(args):
     '''{"cmd":"abortmp",   "label":"abort a multipart upload", "param":"s3://BUCKET Id", "func":cmd_abort_multipart, "argc":2},'''
+    cfg = Config()
     s3 = S3(cfg)
     uri = S3Uri(args[0])
     id = args[1]
@@ -2032,6 +2065,7 @@ def cmd_abort_multipart(args):
 
 def cmd_list_multipart(args):
     '''{"cmd":"abortmp",   "label":"list a multipart upload", "param":"s3://BUCKET Id", "func":cmd_list_multipart, "argc":2},'''
+    cfg = Config()
     s3 = S3(cfg)
     uri = S3Uri(args[0])
     id = args[1]
@@ -2048,6 +2082,7 @@ def cmd_list_multipart(args):
     return EX_OK
 
 def cmd_accesslog(args):
+    cfg = Config()
     s3 = S3(cfg)
     bucket_uri = S3Uri(args.pop())
     if bucket_uri.object():
@@ -2118,6 +2153,7 @@ def cmd_fixbucket(args):
             text = text.encode('ascii', 'xmlcharrefreplace')
         return re.sub("&#?\w+;", _unescape_fixup, text)
 
+    cfg = Config()
     cfg.urlencoding_mode = "fixbucket"
     s3 = S3(cfg)
 
@@ -2180,6 +2216,7 @@ def gpg_command(command, passphrase = ""):
     return p_exitcode
 
 def gpg_encrypt(filename):
+    cfg = Config()
     tmp_filename = Utils.mktmpfile()
     args = {
         "gpg_command" : cfg.gpg_command,
@@ -2193,6 +2230,7 @@ def gpg_encrypt(filename):
     return (code, tmp_filename, "gpg")
 
 def gpg_decrypt(filename, gpgenc_header = "", in_place = True):
+    cfg = Config()
     tmp_filename = Utils.mktmpfile(filename)
     args = {
         "gpg_command" : cfg.gpg_command,
@@ -2477,6 +2515,7 @@ def format_commands(progname, commands_list):
 
 
 def update_acl(s3, uri, seq_label=""):
+    cfg = Config()
     something_changed = False
     acl = s3.get_acl(uri)
     debug(u"acl: %s - %r" % (uri, acl.grantees))
@@ -2551,7 +2590,6 @@ class MyHelpFormatter(IndentedHelpFormatter):
             return ""
 
 def main():
-    global cfg
     cfg = Config()
     commands_list = get_commands_list()
     commands = {}
