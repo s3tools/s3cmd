@@ -24,6 +24,13 @@ except ImportError:
     import http.client as httplib
 import locale
 
+try:
+    unicode
+except NameError:
+    # python 3 support
+    # In python 3, unicode -> str, and str -> bytes
+    unicode = str
+
 class Config(object):
     _instance = None
     _parsed_files = []
@@ -292,7 +299,7 @@ class Config(object):
             return
 
         #### Handle environment reference
-        if value.startswith("$"):
+        if unicode(value).startswith("$"):
             return self.update_option(option, os.getenv(value[1:]))
 
         #### Special treatment of some options
