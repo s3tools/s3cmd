@@ -209,8 +209,9 @@ class http_connection(object):
             if ssl:
                 self.c = http_connection._https_connection(cfg.proxy_host, cfg.proxy_port)
                 debug(u'proxied HTTPSConnection(%s, %s)', cfg.proxy_host, cfg.proxy_port)
-                self.c.set_tunnel(self.hostname, self.port)
-                debug(u'tunnel to %s, %s', self.hostname, self.port)
+                port = self.port and self.port or 443
+                self.c.set_tunnel(self.hostname, port)
+                debug(u'tunnel to %s, %s', self.hostname, port)
             else:
                 self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
                 debug(u'proxied HTTPConnection(%s, %s)', cfg.proxy_host, cfg.proxy_port)
