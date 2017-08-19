@@ -138,12 +138,13 @@ def httpconnection_patched_send_request(self, method, url, body, headers):
         if 'expect' == hdr.lower() and '100-continue' in value.lower():
             expect_continue = True
 
+    url = encode_to_s3(url)
     self.putrequest(method, url, **skips)
 
     if 'content-length' not in header_names:
         self._set_content_length(body, method)
     for hdr, value in headers.iteritems():
-        self.putheader(hdr, value)
+        self.putheader(encode_to_s3(hdr), encode_to_s3(value))
 
     # If an Expect: 100-continue was sent, we need to check for a 417
     # Expectation Failed to avoid unecessarily sending the body

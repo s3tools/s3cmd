@@ -26,6 +26,7 @@ from .Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toP
 from .Crypto import sign_string_v2
 from .S3Uri import S3Uri, S3UriS3
 from .ConnMan import ConnMan
+from .SortedDict import SortedDict
 
 cloudfront_api_version = "2010-11-01"
 cloudfront_resource = "/%(api_ver)s/distribution" % { 'api_ver' : cloudfront_api_version }
@@ -397,7 +398,7 @@ class CloudFront(object):
                     break
                 warning("Still waiting...")
                 time.sleep(10)
-        headers = {}
+        headers = SortedDict(ignore_case = True)
         headers['if-match'] = response['headers']['etag']
         response = self.send_request("DeleteDist", dist_id = cfuri.dist_id(),
                                      headers = headers)
@@ -424,7 +425,7 @@ class CloudFront(object):
         debug("SetDistConfig(): Etag = %s" % etag)
         request_body = str(dist_config)
         debug("SetDistConfig(): request_body: %s" % request_body)
-        headers = {}
+        headers = SortedDict(ignore_case = True)
         headers['if-match'] = etag
         response = self.send_request("SetDistConfig", dist_id = cfuri.dist_id(),
                                      body = request_body, headers = headers)
@@ -498,7 +499,7 @@ class CloudFront(object):
 
     def send_request(self, op_name, dist_id = None, request_id = None, body = None, headers = None, retries = _max_retries):
         if headers is None:
-            headers = {}
+            headers = SortedDict(ignore_case = True)
         operation = self.operations[op_name]
         if body:
             headers['content-type'] = 'text/plain'
@@ -537,7 +538,7 @@ class CloudFront(object):
                    operation['resource'] % { 'dist_id' : dist_id, 'request_id' : request_id })
 
         if not headers:
-            headers = {}
+            headers = SortedDict(ignore_case = True)
 
         if "date" in headers:
             if "x-amz-date" not in headers:

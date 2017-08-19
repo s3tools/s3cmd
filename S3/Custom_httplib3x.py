@@ -11,6 +11,8 @@ from http.client import (_CS_REQ_SENT, _CS_REQ_STARTED, CONTINUE, UnknownProtoco
 
 from io import StringIO
 
+from .Utils import encode_to_s3
+
 
 _METHODS_EXPECTING_BODY = ['PATCH', 'POST', 'PUT']
 
@@ -162,7 +164,6 @@ def httpconnection_patched_send_request(self, method, url, body, headers,
     # 1. content-length has not been explicitly set
     # 2. the body is a file or iterable, but not a str or bytes-like
     # 3. Transfer-Encoding has NOT been explicitly set by the caller
-
     if 'content-length' not in header_names:
         # only chunk body if not explicitly set for backwards
         # compatibility, assuming the client code is already handling the
@@ -184,7 +185,7 @@ def httpconnection_patched_send_request(self, method, url, body, headers,
         encode_chunked = False
 
     for hdr, value in headers.items():
-        self.putheader(hdr, value)
+        self.putheader(encode_to_s3(hdr), encode_to_s3(value))
 
     if isinstance(body, str):
         # RFC 2616 Section 3.7.1 says that text default has a

@@ -69,7 +69,7 @@ def sign_string_v2(string_to_sign):
     return signature
 __all__.append("sign_string_v2")
 
-def sign_request_v2(method='GET', canonical_uri='/', params=None, cur_headers={}):
+def sign_request_v2(method='GET', canonical_uri='/', params=None, cur_headers=None):
     """Sign a string with the secret key, returning base64 encoded results.
     By default the configured secret key is used, but may be overridden as
     an argument.
@@ -85,6 +85,9 @@ def sign_request_v2(method='GET', canonical_uri='/', params=None, cur_headers={}
                                'versions', 'website',
                                # Missing of aws s3 doc but needed
                                'delete', 'cors']
+
+    if cur_headers is None:
+        cur_headers = SortedDict(ignore_case = True)
 
     access_key = Config.Config().access_key
 
@@ -111,7 +114,7 @@ def sign_request_v2(method='GET', canonical_uri='/', params=None, cur_headers={}
     debug("SignHeaders: " + repr(string_to_sign))
     signature = decode_from_s3(sign_string_v2(encode_to_s3(string_to_sign)))
 
-    new_headers = dict(list(cur_headers.items()))
+    new_headers = SortedDict(list(cur_headers.items()), ignore_case=True)
     new_headers["Authorization"] = "AWS " + access_key + ":" + signature
 
     return new_headers
@@ -174,8 +177,10 @@ def getSignatureKey(key, dateStamp, regionName, serviceName):
     return kSigning
 
 def sign_request_v4(method='GET', host='', canonical_uri='/', params=None,
-                    region='us-east-1', cur_headers={}, body=b''):
+                    region='us-east-1', cur_headers=None, body=b''):
     service = 's3'
+    if cur_headers is None:
+        cur_headers = SortedDict(ignore_case = True)
 
     cfg = Config.Config()
     access_key = cfg.access_key
@@ -207,7 +212,7 @@ def sign_request_v4(method='GET', host='', canonical_uri='/', params=None,
         # avoid duplicate headers and previous Authorization
         if header == 'Authorization' or header in signed_headers.split(';'):
             continue
-        canonical_headers[header.strip()] = str(cur_headers[header]).strip()
+        canonical_headers[header.strip()] = cur_headers[header].strip()
         signed_headers += ';' + header.strip()
 
     # sort headers into a string

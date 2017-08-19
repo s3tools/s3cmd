@@ -740,8 +740,8 @@ class S3(object):
             raise ValueError("Key list is empty")
         bucket = S3Uri(batch[0]).bucket()
         request_body = compose_batch_del_xml(bucket, batch)
-        headers = {'content-md5': compute_content_md5(request_body),
-                   'content-type': 'application/xml'}
+        headers = SortedDict({'content-md5': compute_content_md5(request_body),
+                   'content-type': 'application/xml'}, ignore_case=True)
         request = self.create_request("BATCH_DELETE", bucket = bucket,
                                       headers = headers, body = request_body,
                                       uri_params = {'delete': None})
@@ -944,7 +944,7 @@ class S3(object):
         body = u"%s"% acl
         debug(u"set_acl(%s): acl-xml: %s" % (uri, body))
 
-        headers = {'content-type': 'application/xml'}
+        headers = SortedDict({'content-type': 'application/xml'}, ignore_case = True)
         if uri.has_object():
             request = self.create_request("OBJECT_PUT", uri = uri,
                                           headers = headers, body = body,
@@ -964,7 +964,7 @@ class S3(object):
         return response['data']
 
     def set_policy(self, uri, policy):
-        headers = {}
+        headers = SortedDict(ignore_case = True)
         # TODO check policy is proper json string
         headers['content-type'] = 'application/json'
         request = self.create_request("BUCKET_CREATE", uri = uri,
@@ -987,7 +987,7 @@ class S3(object):
         return response['data']
 
     def set_cors(self, uri, cors):
-        headers = {}
+        headers = SortedDict(ignore_case = True)
         # TODO check cors is proper json string
         headers['content-type'] = 'application/xml'
         headers['content-md5'] = compute_content_md5(cors)
@@ -1015,7 +1015,7 @@ class S3(object):
         return response
 
     def set_payer(self, uri):
-        headers = {}
+        headers = SortedDict(ignore_case = True)
         headers['content-type'] = 'application/xml'
         body = '<RequestPaymentConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">\n'
         if self.config.requester_pays:
@@ -1367,7 +1367,7 @@ class S3(object):
             conn = ConnMan.get(self.get_hostname(resource['bucket']))
             conn.c.putrequest(method_string, self.format_uri(resource, conn.path))
             for header in headers.keys():
-                conn.c.putheader(header, str(headers[header]))
+                conn.c.putheader(encode_to_s3(header), encode_to_s3(headers[header]))
             conn.c.endheaders()
         except ParameterError as e:
             raise
@@ -1600,7 +1600,7 @@ class S3(object):
         try:
             conn.c.putrequest(method_string, self.format_uri(resource, conn.path))
             for header in headers.keys():
-                conn.c.putheader(header, str(headers[header]))
+                conn.c.putheader(encode_to_s3(header), encode_to_s3(headers[header]))
             if start_position > 0:
                 debug("Requesting Range: %d .. end" % start_position)
                 conn.c.putheader("Range", "bytes=%d-" % start_position)

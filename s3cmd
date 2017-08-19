@@ -2801,16 +2801,16 @@ def main():
     if options.add_header:
         for hdr in options.add_header:
             try:
-                key, val = hdr.split(":", 1)
+                key, val = unicodise_s(hdr).split(":", 1)
             except ValueError:
-                raise ParameterError("Invalid header format: %s" % hdr)
+                raise ParameterError("Invalid header format: %s" % unicodise_s(hdr))
             key_inval = re.sub("[a-zA-Z0-9-.]", "", key)
             if key_inval:
                 key_inval = key_inval.replace(" ", "<space>")
                 key_inval = key_inval.replace("\t", "<tab>")
                 raise ParameterError("Invalid character(s) in header name '%s': \"%s\"" % (key, key_inval))
-            debug(u"Updating Config.Config extra_headers[%s] -> %s" % (key.strip().lower(), val.strip()))
-            cfg.extra_headers[key.strip().lower()] = val.strip()
+            debug(u"Updating Config.Config extra_headers[%s] -> %s" % (key.replace('_', '-').strip().lower(), val.strip()))
+            cfg.extra_headers[key.replace('_', '-').strip().lower()] = val.strip()
 
     # Process --remove-header
     if options.remove_headers:
@@ -2841,9 +2841,12 @@ def main():
     ## Update Config with other parameters
     for option in cfg.option_list():
         try:
-            if getattr(options, option) != None:
-                debug(u"Updating Config.Config %s -> %s" % (option, getattr(options, option)))
-                cfg.update_option(option, getattr(options, option))
+            value = getattr(options, option)
+            if value != None:
+                if type(value) == type(b''):
+                    value = unicodise_s(value)
+                debug(u"Updating Config.Config %s -> %s" % (option, value))
+                cfg.update_option(option, value)
         except AttributeError:
             ## Some Config() options are not settable from command line
             pass
@@ -2876,9 +2879,13 @@ def main():
     ## Update CloudFront options if some were set
     for option in CfCmd.options.option_list():
         try:
-            if getattr(options, option) != None:
-                debug(u"Updating CloudFront.Cmd %s -> %s" % (option, getattr(options, option)))
-                CfCmd.options.update_option(option, getattr(options, option))
+            value = getattr(options, option)
+            if value != None:
+                if type(value) == type(b''):
+                    value = unicodise_s(value)
+            if value != None:
+                debug(u"Updating CloudFront.Cmd %s -> %s" % (option, value))
+                CfCmd.options.update_option(option, value)
         except AttributeError:
             ## Some CloudFront.Cmd.Options() options are not settable from command line
             pass
