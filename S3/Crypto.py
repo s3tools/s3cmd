@@ -143,6 +143,9 @@ def sign_url_base_v2(**parms):
     parms['access_key']=Config.Config().access_key
     parms['host_base']=Config.Config().host_base
     parms['object'] = s3_quote(parms['object'], quote_backslashes=False, unicode_output=True)
+    parms['proto'] = 'http'
+    if Config.Config().signurl_use_https:
+        parms['proto'] = 'https'
     debug("Expiry interpreted as epoch time %s", parms['expiry'])
     signtext = 'GET\n\n\n%(expiry)d\n/%(bucket)s/%(object)s' % parms
     param_separator = '?'
@@ -155,7 +158,7 @@ def sign_url_base_v2(**parms):
     debug("Signing plaintext: %r", signtext)
     parms['sig'] = s3_quote(sign_string_v2(encode_to_s3(signtext)), unicode_output=True)
     debug("Urlencoded signature: %s", parms['sig'])
-    url = "http://%(bucket)s.%(host_base)s/%(object)s?AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s" % parms
+    url = "%(proto)s://%(bucket)s.%(host_base)s/%(object)s?AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s" % parms
     if content_disposition is not None:
         url += "&response-content-disposition=" + s3_quote(content_disposition, unicode_output=True)
     if content_type is not None:
