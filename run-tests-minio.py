@@ -39,6 +39,33 @@ exclude_tests = []
 
 verbose = False
 
+encoding = locale.getpreferredencoding()
+if not encoding:
+    print("Guessing current system encoding failed. Consider setting $LANG variable.")
+    sys.exit(1)
+else:
+    print("System encoding: " + encoding)
+
+try:
+    unicode
+except NameError:
+    # python 3 support
+    # In python 3, unicode -> str, and str -> bytes
+    unicode = str
+
+def unicodise(string, encoding = "utf-8", errors = "replace"):
+    """
+    Convert 'string' to Unicode or raise an exception.
+    Config can't use toolbox from Utils that is itself using Config
+    """
+    if type(string) == unicode:
+        return string
+
+    try:
+        return unicode(string, encoding, errors)
+    except UnicodeDecodeError:
+        raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
+
 # https://stackoverflow.com/questions/377017/test-if-executable-exists-in-python/377028#377028
 def which(program):
     def is_exe(fpath):
@@ -64,9 +91,12 @@ else:
 
 config_file = None
 if os.getenv("HOME"):
-    config_file = os.path.join(os.getenv("HOME"), ".s3cfg")
+    config_file = os.path.join(unicodise(os.getenv("HOME"), encoding), ".s3cfg")
 elif os.name == "nt" and os.getenv("USERPROFILE"):
-    config_file = os.path.join(os.getenv("USERPROFILE").decode('mbcs'), os.getenv("APPDATA").decode('mbcs') or 'Application Data', "s3cmd.ini")
+    config_file = os.path.join(unicodise(os.getenv("USERPROFILE"), encoding),
+                               os.getenv("APPDATA") and unicodise(os.getenv("APPDATA"), encoding)
+                               or 'Application Data',
+                               "s3cmd.ini")
 
 
 ## Unpack testsuite/ directory
@@ -89,13 +119,6 @@ os.chmod("testsuite/permission-tests/permission-denied.txt", 0o000)
 patterns = {}
 patterns['UTF-8'] = u"ŪņЇЌœđЗ/☺ unicode € rocks ™"
 patterns['GBK'] = u"12月31日/1-特色條目"
-
-encoding = locale.getpreferredencoding()
-if not encoding:
-    print("Guessing current system encoding failed. Consider setting $LANG variable.")
-    sys.exit(1)
-else:
-    print("System encoding: " + encoding)
 
 have_encoding = os.path.isdir('testsuite/encodings/' + encoding)
 if not have_encoding and os.path.isfile('testsuite/encodings/%s.tar.gz' % encoding):

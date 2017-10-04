@@ -31,6 +31,19 @@ except NameError:
     # In python 3, unicode -> str, and str -> bytes
     unicode = str
 
+def config_unicodise(string, encoding = "utf-8", errors = "replace"):
+    """
+    Convert 'string' to Unicode or raise an exception.
+    Config can't use toolbox from Utils that is itself using Config
+    """
+    if type(string) == unicode:
+        return string
+
+    try:
+        return unicode(string, encoding, errors)
+    except UnicodeDecodeError:
+        raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
+
 class Config(object):
     _instance = None
     _parsed_files = []
@@ -168,7 +181,6 @@ class Config(object):
             if access_key and secret_key:
                 self.access_key = access_key
                 self.secret_key = secret_key
-                
             if access_token:
                 self.access_token = access_token
                 # Do not refresh the IAM role when an access token is provided.
@@ -179,12 +191,13 @@ class Config(object):
                 env_secret_key = os.getenv('AWS_SECRET_KEY') or os.getenv('AWS_SECRET_ACCESS_KEY')
                 env_access_token = os.getenv('AWS_SESSION_TOKEN') or os.getenv('AWS_SECURITY_TOKEN')
                 if env_access_key:
-                    self.access_key = env_access_key
-                    self.secret_key = env_secret_key
+                    # py3 getenv returns unicode and py2 returns bytes.
+                    self.access_key = config_unicodise(env_access_key)
+                    self.secret_key = config_unicodise(env_secret_key)
                     if env_access_token:
                         # Do not refresh the IAM role when an access token is provided.
                         self._access_token_refresh = False
-                        self.access_token = env_access_token
+                        self.access_token = config_unicodise(env_access_token)
                 else:
                     self.role_config()
 

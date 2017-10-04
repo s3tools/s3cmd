@@ -2270,7 +2270,9 @@ def run_configure(config_file, args):
         setattr(cfg, "gpg_command", find_executable("gpg"))
 
     if getattr(cfg, "proxy_host") == "" and os.getenv("http_proxy"):
-        re_match=re.match("(http://)?([^:]+):(\d+)", os.getenv("http_proxy"))
+        autodetected_encoding = locale.getpreferredencoding() or "UTF-8"
+        re_match=re.match("(http://)?([^:]+):(\d+)",
+                          unicodise_s(os.getenv("http_proxy"), autodetected_encoding))
         if re_match:
             setattr(cfg, "proxy_host", re_match.groups()[1])
             setattr(cfg, "proxy_port", re_match.groups()[2])
@@ -2605,16 +2607,19 @@ def main():
     optparser = OptionParser(option_class=OptionAll, formatter=MyHelpFormatter())
     #optparser.disable_interspersed_args()
 
+    autodetected_encoding = locale.getpreferredencoding() or "UTF-8"
+
     config_file = None
     if os.getenv("S3CMD_CONFIG"):
-        config_file = os.getenv("S3CMD_CONFIG")
+        config_file = unicodise_s(os.getenv("S3CMD_CONFIG"), autodetected_encoding)
     elif os.name == "nt" and os.getenv("USERPROFILE"):
-        config_file = os.path.join(os.getenv("USERPROFILE").decode('mbcs'), os.getenv("APPDATA").decode('mbcs') or 'Application Data', "s3cmd.ini")
+        config_file = os.path.join(unicodise_s(os.getenv("USERPROFILE"), autodetected_encoding),
+                                   os.getenv("APPDATA") and unicodise_s(os.getenv("APPDATA"), autodetected_encoding)
+                                   or 'Application Data',
+                                   "s3cmd.ini")
     else:
         from os.path import expanduser
         config_file = os.path.join(expanduser("~"), ".s3cfg")
-
-    autodetected_encoding = locale.getpreferredencoding() or "UTF-8"
 
     optparser.set_defaults(config = config_file)
 
@@ -3019,7 +3024,7 @@ def report_exception(e, msg=u''):
         except NameError:
             sys.stderr.write(u"S3cmd:   unknown version. Module import problem?\n")
         sys.stderr.write(u"python:   %s\n" % sys.version)
-        sys.stderr.write(u"environment LANG=%s\n" % os.getenv("LANG"))
+        sys.stderr.write(u"environment LANG=%s\n" % unicodise_s(os.getenv("LANG"), 'ascii'))
         sys.stderr.write(u"\n")
         if type(tb) == unicode:
             sys.stderr.write(tb)
@@ -3131,7 +3136,7 @@ The solutions to this are:
         sys.exit(EX_OSERR)
 
     except UnicodeEncodeError as e:
-        lang = os.getenv("LANG")
+        lang = unicodise_s(os.getenv("LANG"), 'ascii')
         msg = """
 You have encountered a UnicodeEncodeError.  Your environment
 variable LANG=%s may not specify a Unicode encoding (e.g. UTF-8).

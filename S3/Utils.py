@@ -544,8 +544,6 @@ def calculateChecksum(buffer, mfile, offset, chunk_size, send_chunk):
         md5_hash.update(buffer)
 
     return md5_hash.hexdigest()
-
-
 __all__.append("calculateChecksum")
 
 
