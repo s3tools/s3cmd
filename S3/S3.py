@@ -328,6 +328,9 @@ class S3(object):
         def _get_common_prefixes(data):
             return getListFromXml(data, "CommonPrefixes")
 
+        def _get_next_marker(data, current_list):
+            return getTextFromXml(response["data"], "NextMarker") or current_list[-1]["Key"]
+
         uri_params = uri_params and uri_params.copy() or {}
         truncated = True
         prefixes = []
@@ -347,7 +350,7 @@ class S3(object):
             if truncated:
                 if limit == -1 or num_objects + num_prefixes < limit:
                     if current_list:
-                        uri_params['marker'] = current_list[-1]["Key"]
+                        uri_params['marker'] = _get_next_marker(response["data"], current_list)
                     else:
                         uri_params['marker'] = current_prefixes[-1]["Prefix"]
                     debug("Listing continues after '%s'" % uri_params['marker'])
