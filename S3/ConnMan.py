@@ -107,17 +107,19 @@ class http_connection(object):
         """
         debug(u'checking SSL subjectAltName as forgiving wildcard cert')
         san = cert.get('subjectAltName', ())
+        hostname = hostname.lower()
         cleaned_host_bucket_config = urlparse('https://' + Config.host_bucket).hostname
         for key, value in san:
             if key == 'DNS':
+                value = value.lower()
                 if value.startswith('*.s3') and \
                    (value.endswith('.amazonaws.com') and hostname.endswith('.amazonaws.com')) or \
                    (value.endswith('.amazonaws.com.cn') and hostname.endswith('.amazonaws.com.cn')):
                     return True
                 elif value == cleaned_host_bucket_config % \
-                               {'bucket': '*', 'location': Config.bucket_location} and \
+                               {'bucket': '*', 'location': Config.bucket_location.lower()} and \
                      hostname.endswith(cleaned_host_bucket_config % \
-                                       {'bucket': '', 'location': Config.bucket_location}):
+                                       {'bucket': '', 'location': Config.bucket_location.lower()}):
                     return True
         return False
 

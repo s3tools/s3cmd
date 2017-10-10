@@ -527,7 +527,7 @@ def getBucketFromHostname(hostname):
 __all__.append("getBucketFromHostname")
 
 def getHostnameFromBucket(bucket):
-    return S3.Config.Config().host_bucket % { 'bucket' : bucket }
+    return S3.Config.Config().host_bucket.lower() % { 'bucket' : bucket }
 __all__.append("getHostnameFromBucket")
 
 

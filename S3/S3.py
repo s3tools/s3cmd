@@ -270,12 +270,12 @@ class S3(object):
         elif bucket and check_bucket_name_dns_support(self.config.host_bucket, bucket):
             host = getHostnameFromBucket(bucket)
         else:
-            host = self.config.host_base
+            host = self.config.host_base.lower()
         debug('get_hostname(%s): %s' % (bucket, host))
         return host
 
     def set_hostname(self, bucket, redir_hostname):
-        S3Request.redir_map[bucket] = redir_hostname
+        S3Request.redir_map[bucket] = redir_hostname.lower()
 
     def format_uri(self, resource, base_path=None):
         bucket_name = resource.get('bucket')
