@@ -88,7 +88,7 @@ try:
         def mime_magic_file(file):
             return magic_.file(deunicodise(file))
 
-except ImportError as e:
+except (ImportError, OSError) as e:
     error_str = str(e)
     if 'magic' in error_str:
         magic_message = "Module python-magic is not available."
