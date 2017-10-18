@@ -519,7 +519,7 @@ def getBucketFromHostname(hostname):
         return (hostname, False)
 
     # Create RE pattern from Config.host_bucket
-    pattern = S3.Config.Config().host_bucket % { 'bucket' : '(?P<bucket>.*)' }
+    pattern = S3.Config.Config().host_bucket.lower() % { 'bucket' : '(?P<bucket>.*)' }
     m = re.match(pattern, hostname, re.UNICODE)
     if not m:
         return (hostname, False)
