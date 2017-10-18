@@ -26,10 +26,11 @@ from .Config import Config
 from .Exceptions import ParameterError
 from .Utils import getBucketFromHostname
 
-if not 'CertificateError ' in ssl.__dict__:
+if not 'CertificateError' in ssl.__dict__:
     class CertificateError(Exception):
         pass
-    ssl.CertificateError = CertificateError
+else:
+    CertificateError = ssl.CertificateError
 
 __all__ = [ "ConnMan" ]
 
@@ -131,7 +132,7 @@ class http_connection(object):
             return
         except ValueError: # empty SSL cert means underlying SSL library didn't validate it, we don't either.
             return
-        except ssl.CertificateError as e:
+        except CertificateError as e:
             if not self.forgive_wildcard_cert(cert, self.hostname):
                 raise e
 

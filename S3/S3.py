@@ -41,7 +41,7 @@ from .Config import Config
 from .Exceptions import *
 from .MultiPart import MultiPartUpload
 from .S3Uri import S3Uri
-from .ConnMan import ConnMan, CertificateError
+from .ConnMan import ConnMan
 from .Crypto import (sign_request_v2, sign_request_v4, checksum_sha256_file,
                     checksum_sha256_buffer, s3_quote, format_param_str)
 
