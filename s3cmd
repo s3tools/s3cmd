@@ -869,6 +869,10 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
         dst_uri = S3Uri(item['dest_name'])
 
         extra_headers = copy(cfg.extra_headers)
+        if action_str == 'modify':
+          for header in extra_headers:
+            if header.startswith('x-amz-meta-') == False:
+              raise ParameterError("Expect header key start with x-amz-meta-")
         try:
             response = process_fce(src_uri, dst_uri, extra_headers)
             output(message % { "src" : src_uri, "dst" : dst_uri })
