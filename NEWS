@@ -1,3 +1,20 @@
+s3cmd-2.0.1      - 2017-10-21
+===============
+* Support for Python 3 is now stable
+* Fixed signature issues due to upper cases in hostname (#920)
+* Improved support for Minio Azure gateway (Julien Maitrehenry, Harshavardhana)
+* Added signurl_use_https option to use https prefix for signurl (Julien Recurt)
+* Fixed a lot of remaining issues and regressions for Python 3 (#922, #921, #908)
+* Fixed --configure option with Python 3
+* Fixed non string cmdline parameters being ignored
+* Windows support fixes (#922)
+* Don't force anymore to have a / on last parameter for the "modify" command (#886)
+* Removed the python3 support warning
+* Detect and report error 403 in getpolicy for info command (#894)
+* Added a specific error message when getting policy by non owner (#885)
+* Many other bug fixes (#905, #892, #890, #888, #889, #887)
+
+
 s3cmd-2.0.0      - 2017-06-26
 ===============
 * Added support for Python 3 (Shaform, Florent Viard)
