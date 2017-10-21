@@ -80,8 +80,8 @@ SourceForge releases
     download button has been updated to s3cmd-1.5.0-rc1.tar.gz
 
 Now it's time to send out an announcement email to
-s3cmd-announce@lists.sourceforge.net and
-s3cmd-general@lists.sourceforge.net (check out the s3cmd-announce
+s3tools-announce@lists.sourceforge.net and
+s3tools-general@lists.sourceforge.net (check out the s3cmd-announce
 archive for an inspiration :)
 
 And the last step is to ask the respective distribution maintainers
