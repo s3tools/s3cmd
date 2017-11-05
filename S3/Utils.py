@@ -84,16 +84,17 @@ def getPrettyFromXml(xmlstr):
 
 __all__.append("getPrettyFromXml")
 
+RE_XML_NAMESPACE = re.compile(b'^(<?[^>]+?>\s*|\s*)(<\w+) xmlns=[\'"](http://[^\'"]+)[\'"]', re.MULTILINE)
 
 def stripNameSpace(xml):
     """
     removeNameSpace(xml) -- remove top-level AWS namespace
     Operate on raw byte(utf-8) xml string. (Not unicode)
     """
-    r = re.compile(b'^(<?[^>]+?>\s*)(<\w+) xmlns=[\'"](http://[^\'"]+)[\'"](.*)', re.MULTILINE)
-    if r.match(xml):
-        xmlns = r.match(xml).groups()[2]
-        xml = r.sub("\\1\\2\\4", xml)
+    xmlns_match = RE_XML_NAMESPACE.match(xml)
+    if xmlns_match:
+        xmlns = xmlns_match.group(3)
+        xml = RE_XML_NAMESPACE.sub("\\1\\2", xml, 1)
     else:
         xmlns = None
     return xml, xmlns
@@ -169,9 +170,11 @@ def appendXmlTextNode(tag_name, text, parent):
     return el
 __all__.append("appendXmlTextNode")
 
+RE_S3_DATESTRING = re.compile('\.[0-9]*(?:[Z\\-\\+]*?)')
+
 def dateS3toPython(date):
     # Reset milliseconds to 000
-    date = re.compile('\.[0-9]*(?:[Z\\-\\+]*?)').sub(".000", date)
+    date = RE_S3_DATESTRING.sub(".000", date)
     return dateutil.parser.parse(date, fuzzy=True)
 __all__.append("dateS3toPython")
 
