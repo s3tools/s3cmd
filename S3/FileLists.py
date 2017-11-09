@@ -591,7 +591,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
                     md5 = None
                 if md5 is not None and md5 in dst_list.by_md5:
                     # Found one, we want to copy
-                    dst1 = list(dst_list.by_md5[md5])[0]
+                    dst1 = dst_list.find_md5_one(md5)
                     debug(u"DST COPY src: %s -> %s" % (dst1, relative_file))
                     copy_pairs.append((src_list[relative_file], dst1, relative_file))
                     del(src_list[relative_file])
