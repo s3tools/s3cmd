@@ -783,10 +783,12 @@ class Cmd(object):
             cfuri = S3Uri(req)
             inval_info = cf.GetInvalInfo(cfuri)
             st = inval_info['inval_status'].info
+            paths = st['InvalidationBatch']['Path']
+            nr_of_paths = len(paths) if isinstance(paths, list) else 1
             pretty_output("URI", str(cfuri))
             pretty_output("Status", st['Status'])
             pretty_output("Created", st['CreateTime'])
-            pretty_output("Nr of paths", len(st['InvalidationBatch']['Path']))
+            pretty_output("Nr of paths", nr_of_paths)
             pretty_output("Reference", st['InvalidationBatch']['CallerReference'])
             output("")
 
