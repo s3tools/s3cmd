@@ -1119,7 +1119,7 @@ def cmd_sync_remote2remote(args):
     total_size_copied += size
 
 
-    n_copied, bytes_saved, failed_copy_files = remote_copy(s3, copy_pairs, destination_base)
+    n_copied, bytes_saved, failed_copy_files = remote_copy(s3, copy_pairs, destination_base, None)
     total_files_copied += n_copied
     total_size_copied += bytes_saved
 
@@ -1527,7 +1527,7 @@ def local_copy(copy_pairs, destination_base):
             failed_copy_list[relative_file] = src_obj
     return len(copy_pairs), saved_bytes, failed_copy_list
 
-def remote_copy(s3, copy_pairs, destination_base):
+def remote_copy(s3, copy_pairs, destination_base, uploaded_objects_list=None):
     cfg = Config()
     saved_bytes = 0
     failed_copy_list = FileDict()
@@ -1540,6 +1540,8 @@ def remote_copy(s3, copy_pairs, destination_base):
             s3.object_copy(dst1_uri, dst2_uri, extra_headers)
             saved_bytes += src_obj.get(u'size', 0)
             output(u"remote copy: '%s' -> '%s'" % (dst1, dst2))
+            if uploaded_objects_list is not None:
+                uploaded_objects_list.append(dst2)
         except:
             warning(u"Unable to remote copy files '%s' -> '%s'" % (dst1_uri, dst2_uri))
             failed_copy_list[dst2] = src_obj
@@ -1770,7 +1772,12 @@ def cmd_sync_local2remote(args):
         status, n, size_transferred = _upload(update_list, n, upload_count, size_transferred)
         if ret == EX_OK:
             ret = status
-        n_copies, saved_bytes, failed_copy_files  = remote_copy(s3, copy_pairs, destination_base)
+        # uploaded_objects_list reference is passed so it can be filled with
+        # destination object of succcessful copies so that they can be
+        # invalidated by cf
+        n_copies, saved_bytes, failed_copy_files  = remote_copy(s3, copy_pairs,
+                                                                destination_base,
+                                                                uploaded_objects_list)
 
         #upload file that could not be copied
         debug("Process files that were not remote copied")
