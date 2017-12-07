@@ -1770,7 +1770,10 @@ def cmd_sync_local2remote(args):
         status, n, size_transferred = _upload(update_list, n, upload_count, size_transferred)
         if ret == EX_OK:
             ret = status
-        n_copies, saved_bytes, failed_copy_files  = remote_copy(s3, copy_pairs, destination_base)
+        n_copies, saved_bytes, failed_copy_files = remote_copy(s3, copy_pairs, destination_base)
+        for (_, _, dst2) in copy_pairs:
+            if not dst2 in failed_copy_files:
+                uploaded_objects_list.append(dst2)
 
         #upload file that could not be copied
         debug("Process files that were not remote copied")
