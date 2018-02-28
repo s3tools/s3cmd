@@ -17,6 +17,7 @@ import mimetypes
 import io
 import pprint
 from xml.sax import saxutils
+from socket import timeout as SocketTimeoutException
 from logging import debug, info, warning, error
 from stat import ST_SIZE
 try:
@@ -1248,8 +1249,9 @@ class S3(object):
         response = {}
         debug("Processing request, please wait...")
 
-        conn = ConnMan.get(self.get_hostname(resource['bucket']))
+        conn = None
         try:
+            conn = ConnMan.get(self.get_hostname(resource['bucket']))
             # TODO: Check what was supposed to be the usage of conn.path here
             # Currently this is always "None" all the time as not defined in ConnMan
             uri = self.format_uri(resource, conn.path)
@@ -1266,11 +1268,13 @@ class S3(object):
             ConnMan.put(conn)
         except (IOError, Exception) as e:
             debug("Response:\n" + pprint.pformat(response))
-            if hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET):
+            if ((hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT))
+               or "[Errno 104]" in str(e) or "[Errno 32]" in str(e)) and not isinstance(e, SocketTimeoutException):
                 raise
-            # close the connection and re-establish
-            conn.counter = ConnMan.conn_max_counter
-            ConnMan.put(conn)
+            if conn:
+                # close the connection and re-establish
+                conn.counter = ConnMan.conn_max_counter
+                ConnMan.put(conn)
             if retries:
                 warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
@@ -1454,8 +1458,8 @@ class S3(object):
                 if retries < self._max_retries:
                     throttle = throttle and throttle * 5 or 0.01
                 known_error = False
-                if ((hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET))
-                   or "[Errno 104]" in str(e) or "[Errno 32]" in str(e)):
+                if ((hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT))
+                   or "[Errno 104]" in str(e) or "[Errno 32]" in str(e)) and not isinstance(e, SocketTimeoutException):
                     # We have to detect these errors by looking at the error string
                     # Connection reset by peer and Broken pipe
                     # The server broke the connection early with an error like
@@ -1601,8 +1605,9 @@ class S3(object):
             info("Receiving file '%s', please wait..." % filename)
         timestamp_start = time.time()
 
-        conn = ConnMan.get(self.get_hostname(resource['bucket']))
+        conn = None
         try:
+            conn = ConnMan.get(self.get_hostname(resource['bucket']))
             conn.c.putrequest(method_string, self.format_uri(resource, conn.path))
             for header in headers.keys():
                 conn.c.putheader(encode_to_s3(header), encode_to_s3(headers[header]))
@@ -1626,11 +1631,13 @@ class S3(object):
         except (IOError, Exception) as e:
             if self.config.progress_meter:
                 progress.done("failed")
-            if hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET):
+            if ((hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT))
+               or "[Errno 104]" in str(e) or "[Errno 32]" in str(e)) and not isinstance(e, SocketTimeoutException):
                 raise
-            # close the connection and re-establish
-            conn.counter = ConnMan.conn_max_counter
-            ConnMan.put(conn)
+            if conn:
+                # close the connection and re-establish
+                conn.counter = ConnMan.conn_max_counter
+                ConnMan.put(conn)
 
             if retries:
                 warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
@@ -1715,7 +1722,8 @@ class S3(object):
         except (IOError, Exception) as e:
             if self.config.progress_meter:
                 progress.done("failed")
-            if hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET):
+            if ((hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT))
+               or "[Errno 104]" in str(e) or "[Errno 32]" in str(e)) and not isinstance(e, SocketTimeoutException):
                 raise
             # close the connection and re-establish
             conn.counter = ConnMan.conn_max_counter
