@@ -135,6 +135,8 @@ class Config(object):
     reduced_redundancy = False
     storage_class = u""
     follow_symlinks = False
+    # If too big, this value can be overriden by the OS socket timeouts max values.
+    # For example, on Linux, a connection attempt will automatically timeout after 120s.
     socket_timeout = 300
     invalidate_on_cf = False
     # joseprio: new flags for default index invalidation
