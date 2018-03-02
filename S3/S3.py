@@ -1171,6 +1171,9 @@ class S3(object):
         raise S3Error(response)
 
     def _http_400_handler(self, request, response, fn, *args, **kwargs):
+        """
+        Returns None if no handler available for the specific error code
+        """
         # AWS response AuthorizationHeaderMalformed means we sent the request to the wrong region
         # get the right region out of the response and send it there.
         if 'data' in response and len(response['data']) > 0:
@@ -1207,7 +1210,7 @@ class S3(object):
                 self.fallback_to_signature_v2 = True
                 return fn(*args, **kwargs)
 
-        raise S3Error(response)
+        return None
 
     def _http_403_handler(self, request, response, fn, *args, **kwargs):
         if 'data' in response and len(response['data']) > 0:
@@ -1295,7 +1298,18 @@ class S3(object):
             return self._http_redirection_handler(request, response, self.send_request, request)
 
         if response["status"] == 400:
-            return self._http_400_handler(request, response, self.send_request, request)
+            handler_fn = self._http_400_handler(request, response, self.send_request, request)
+            if handler_fn:
+                return handler_fn
+            err = S3Error(response)
+            if retries and err.code in ['BadDigest', 'OperationAborted',
+                                        'TokenRefreshRequired', 'RequestTimeout']:
+                warning(u"Retrying failed request: %s (%s)" % (resource['uri'], err))
+                warning("Waiting %d sec..." % self._fail_wait(retries))
+                time.sleep(self._fail_wait(retries))
+                return self.send_request(request, retries - 1)
+            raise err
+
         if response["status"] == 403:
             return self._http_403_handler(request, response, self.send_request, request)
         if response["status"] == 405: # Method Not Allowed.  Don't retry.
@@ -1504,8 +1518,16 @@ class S3(object):
                                                   self.send_file, request, stream, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
 
         if response["status"] == 400:
-            return self._http_400_handler(request, response,
-                                          self.send_file, request, stream, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
+            handler_fn = self._http_400_handler(request, response,
+                                                self.send_file, request, stream, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
+            if handler_fn:
+                return handler_fn
+            err = S3Error(response)
+            if err.code not in ['BadDigest', 'OperationAborted',
+                                'TokenRefreshRequired', 'RequestTimeout']:
+                raise err
+            # else the error will be handled later with a retry
+
         if response["status"] == 403:
             return self._http_403_handler(request, response,
                                           self.send_file, request, stream, labels, buffer, offset = offset, chunk_size = chunk_size, use_expect_continue = use_expect_continue)
@@ -1529,7 +1551,7 @@ class S3(object):
             elif response["status"] >= 400:
                 err = S3Error(response)
                 ## Retriable client error?
-                if err.code in [ 'BadDigest', 'OperationAborted', 'TokenRefreshRequired', 'RequestTimeout' ]:
+                if err.code in ['BadDigest', 'OperationAborted', 'TokenRefreshRequired', 'RequestTimeout']:
                     try_retry = True
 
             if try_retry:
@@ -1657,8 +1679,11 @@ class S3(object):
 
         if response["status"] == 400:
             response['data'] = http_response.read()
-            return self._http_400_handler(request, response, self.recv_file,
-                                          request, stream, labels, start_position)
+            handler_fn = self._http_400_handler(request, response, self.recv_file,
+                                                request, stream, labels, start_position)
+            if handler_fn:
+                return handler_fn
+            raise S3Error(response)
 
         if response["status"] == 403:
             response['data'] = http_response.read()
