@@ -1427,6 +1427,7 @@ class S3(object):
                     # CONTINUE case. Reset the response
                     http_response.read()
                     conn.c._HTTPConnection__state = ConnMan._CS_REQ_SENT
+
                 while (size_left > 0):
                     #debug("SendFile: Reading up to %d bytes from '%s' - remaining bytes: %s" % (self.config.send_chunk, filename, size_left))
                     l = min(self.config.send_chunk, size_left)
@@ -1439,20 +1440,22 @@ class S3(object):
                         start_time = time.time()
 
                     md5_hash.update(data)
+
                     conn.c.wrapper_send_body(data)
                     if self.config.progress_meter:
                         progress.update(delta_position = len(data))
                     size_left -= len(data)
 
                     #throttle
+                    limitrate_throttle = throttle
                     if self.config.limitrate > 0:
                         real_duration = time.time() - start_time
-                        expected_duration = float(l)/self.config.limitrate
-                        throttle = max(expected_duration - real_duration, throttle)
-                    if throttle:
-                        time.sleep(throttle)
-                md5_computed = md5_hash.hexdigest()
+                        expected_duration = float(l) / self.config.limitrate
+                        limitrate_throttle = max(expected_duration - real_duration, limitrate_throttle)
+                    if limitrate_throttle:
+                        time.sleep(min(limitrate_throttle, self.config.throttle_max))
 
+                md5_computed = md5_hash.hexdigest()
                 http_response = conn.c.getresponse()
 
             response = {}
