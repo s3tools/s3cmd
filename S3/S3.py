@@ -1469,8 +1469,6 @@ class S3(object):
             if self.config.progress_meter:
                 progress.done("failed")
             if retries:
-                if retries < self._max_retries:
-                    throttle = throttle and throttle * 5 or 0.01
                 known_error = False
                 if ((hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT))
                    or "[Errno 104]" in str(e) or "[Errno 32]" in str(e)) and not isinstance(e, SocketTimeoutException):
@@ -1491,7 +1489,6 @@ class S3(object):
                         error("Cannot retrieve any response status before encountering an EPIPE or ECONNRESET exception")
                 if not known_error:
                     warning("Upload failed: %s (%s)" % (resource['uri'], e))
-                    warning("Retrying on lower speed (throttle=%0.2f)" % throttle)
                     warning("Waiting %d sec..." % self._fail_wait(retries))
                     time.sleep(self._fail_wait(retries))
                     # Connection error -> same throttle value
@@ -1548,6 +1545,9 @@ class S3(object):
             if response["status"] >= 500:
                 ## AWS internal error - retry
                 try_retry = True
+                if response["status"] == 503:
+                    ## SlowDown error
+                    throttle = throttle and throttle * 5 or 0.01
             elif response["status"] >= 400:
                 err = S3Error(response)
                 ## Retriable client error?
@@ -1557,6 +1557,8 @@ class S3(object):
             if try_retry:
                 if retries:
                     warning("Upload failed: %s (%s)" % (resource['uri'], S3Error(response)))
+                    if throttle:
+                        warning("Retrying on lower speed (throttle=%0.2f)" % throttle)
                     warning("Waiting %d sec..." % self._fail_wait(retries))
                     time.sleep(self._fail_wait(retries))
                     return self.send_file(request, stream, labels, buffer, throttle,
