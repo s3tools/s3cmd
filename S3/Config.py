@@ -222,7 +222,7 @@ class Config(object):
             resp = conn.getresponse()
             files = resp.read()
             if resp.status == 200 and len(files)>1:
-                conn.request('GET', "/latest/meta-data/iam/security-credentials/%s"%files.decode())
+                conn.request('GET', "/latest/meta-data/iam/security-credentials/%s"%files.decode('UTF-8'))
                 resp=conn.getresponse()
                 if resp.status == 200:
                     creds=json.load(resp)
