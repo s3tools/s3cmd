@@ -149,19 +149,19 @@ def sign_url_base_v2(**parms):
     debug("Expiry interpreted as epoch time %s", parms['expiry'])
     signtext = 'GET\n\n\n%(expiry)d\n/%(bucket)s/%(object)s' % parms
     param_separator = '?'
-    if content_disposition is not None:
+    if content_disposition:
         signtext += param_separator + 'response-content-disposition=' + content_disposition
         param_separator = '&'
-    if content_type is not None:
+    if content_type:
         signtext += param_separator + 'response-content-type=' + content_type
         param_separator = '&'
     debug("Signing plaintext: %r", signtext)
     parms['sig'] = s3_quote(sign_string_v2(encode_to_s3(signtext)), unicode_output=True)
     debug("Urlencoded signature: %s", parms['sig'])
     url = "%(proto)s://%(bucket)s.%(host_base)s/%(object)s?AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s" % parms
-    if content_disposition is not None:
+    if content_disposition:
         url += "&response-content-disposition=" + s3_quote(content_disposition, unicode_output=True)
-    if content_type is not None:
+    if content_type:
         url += "&response-content-type=" + s3_quote(content_type, unicode_output=True)
     return url
 

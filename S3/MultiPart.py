@@ -40,7 +40,7 @@ class MultiPartUpload(object):
         return parts
 
     def get_unique_upload_id(self, uri):
-        upload_id = None
+        upload_id = ""
         multipart_response = self.s3.get_multipart(uri)
         tree = getTreeFromXml(multipart_response['data'])
         for mpupload in parseNodes(tree):
@@ -49,7 +49,7 @@ class MultiPartUpload(object):
                 mp_path = mpupload['Key']
                 info("mp_path: %s, object: %s" % (mp_path, uri.object()))
                 if mp_path == uri.object():
-                    if upload_id is not None:
+                    if upload_id:
                         raise ValueError("More than one UploadId for URI %s.  Disable multipart upload, or use\n %s multipart %s\nto list the Ids, then pass a unique --upload-id into the put command." % (uri, sys.argv[0], uri))
                     upload_id = mp_upload_id
             except KeyError:
@@ -62,14 +62,14 @@ class MultiPartUpload(object):
         Begin a multipart upload
         http://docs.amazonwebservices.com/AmazonS3/latest/API/index.html?mpUploadInitiate.html
         """
-        if self.s3.config.upload_id is not None:
+        if self.s3.config.upload_id:
             self.upload_id = self.s3.config.upload_id
         elif self.s3.config.put_continue:
             self.upload_id = self.get_unique_upload_id(self.uri)
         else:
-            self.upload_id = None
+            self.upload_id = ""
 
-        if self.upload_id is None:
+        if not self.upload_id:
             request = self.s3.create_request("OBJECT_POST", uri = self.uri,
                                              headers = self.headers_baseline,
                                              uri_params = {'uploads': None})

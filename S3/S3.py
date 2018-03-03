@@ -582,7 +582,7 @@ class S3(object):
 
     def stdin_content_type(self):
         content_type = self.config.mime_type
-        if content_type == '':
+        if not content_type:
             content_type = self.config.default_mime_type
 
         content_type += "; charset=" + self.config.encoding.upper()

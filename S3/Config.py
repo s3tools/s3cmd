@@ -104,7 +104,7 @@ class Config(object):
     enable = None
     get_continue = False
     put_continue = False
-    upload_id = None
+    upload_id = u""
     skip_existing = False
     recursive = False
     restore_days = 1
@@ -189,8 +189,8 @@ class Config(object):
     limitrate = 0
     requester_pays = False
     stop_on_error = False
-    content_disposition = None
-    content_type = None
+    content_disposition = u""
+    content_type = u""
     stats = False
     # Disabled by default because can create a latency with a CONTINUE status reply
     # expected for every send file requests.

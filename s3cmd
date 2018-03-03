@@ -2875,7 +2875,7 @@ def main():
         raise ParameterError("Chunk size %d MB is too large, must be <= %d MB. Please adjust --multipart-chunk-size-mb" % (cfg.multipart_chunk_size_mb, MultiPartUpload.MAX_CHUNK_SIZE_MB))
 
     ## If an UploadId was provided, set put_continue True
-    if options.upload_id is not None:
+    if options.upload_id:
         cfg.upload_id = options.upload_id
         cfg.put_continue = True
 
