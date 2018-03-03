@@ -44,6 +44,28 @@ def config_unicodise(string, encoding = "utf-8", errors = "replace"):
     except UnicodeDecodeError:
         raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
 
+def is_true(value):
+    """Check to see if a string is true, yes, on, or 1
+
+    value may be a str, or unicode.
+
+    Return True if it is
+    """
+    return value.lower() in ("true", "yes", "on", "1")
+
+def is_false(value):
+    """Check to see if a string is false, no, off, or 0
+
+    value may be a str, or unicode.
+
+    Return True if it is
+    """
+    return value.lower() in ("false", "no", "off", "0")
+
+def is_bool(value):
+    """Check a string value to see if it is bool"""
+    return is_true(value) or is_false(value)
+
 class Config(object):
     _instance = None
     _parsed_files = []
@@ -352,10 +374,12 @@ class Config(object):
                 raise ValueError("Config: value of option %s must have suffix m, k, or nothing, not '%s'" % (option, value))
 
         ## allow yes/no, true/false, on/off and 1/0 for boolean options
-        elif type(getattr(Config, option)) is type(True):   # bool
-            if str(value).lower() in ("true", "yes", "on", "1"):
+        ## Some options default to None, if that's the case check the value to see if it is bool
+        elif (type(getattr(Config, option)) is type(True) or              # Config is bool
+             (getattr(Config, option) is None and is_bool(value))):  # Config is None and value is bool
+            if is_true(value):
                 value = True
-            elif str(value).lower() in ("false", "no", "off", "0"):
+            elif is_false(value):
                 value = False
             else:
                 raise ValueError("Config: value of option '%s' must be Yes or No, not '%s'" % (option, value))
