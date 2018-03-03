@@ -26,7 +26,7 @@ class Grantee(object):
         self.xsi_type = None
         self.tag = None
         self.name = None
-        self.display_name = None
+        self.display_name = ''
         self.permission = None
 
     def __repr__(self):
@@ -188,8 +188,8 @@ class ACL(object):
         if "ALL" == permission:
             self.grantees = [g for g in self.grantees if not (g.name.lower() == name or g.display_name.lower() == name)]
         else:
-            self.grantees = [g for g in self.grantees if not ((g.display_name.lower() == name and g.permission.upper() == permission)\
-                or (g.name.lower() == name and g.permission.upper() ==  permission))]
+            self.grantees = [g for g in self.grantees if not ((g.display_name.lower() == name or g.name.lower() == name)
+                and g.permission.upper() == permission)]
 
     def get_printable_tree(self):
         tree = getTreeFromXml(ACL.EMPTY_ACL)
