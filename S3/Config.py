@@ -23,7 +23,11 @@ try:
 except ImportError:
     import http.client as httplib
 import locale
-import configparser
+
+try:
+    import configparser as defaultConfigParser
+except ImportError:
+    import ConfigParser as defaultConfigParser
 
 try:
     unicode
@@ -278,7 +282,7 @@ class Config(object):
 
     def aws_credential_file(self):
         try:
-            config = configparser.ConfigParser()
+            config = defaultConfigParser.ConfigParser()
 
             aws_credential_file = os.path.expanduser('~/.aws/credentials') 
             if 'AWS_CREDENTIAL_FILE' in os.environ and os.path.isfile(os.environ['AWS_CREDENTIAL_FILE']):
@@ -298,12 +302,12 @@ class Config(object):
             try:
                 profile_access_token = config.get(profile, 'aws_session_token')
                 Config().access_token = config_unicodise(profile_access_token) 
-            except configparser.NoOptionError:
+            except defaultConfigParser.NoOptionError:
                 pass
 
         except IOError as e:
             error("%d accessing credentials file %s" % (e.errno,os.environ['AWS_CREDENTIAL_FILE']))
-        except (configparser.NoOptionError, configparser.NoSectionError) as e:
+        except (defaultConfigParser.NoOptionError, defaultConfigParser.NoSectionError) as e:
             error(e)
 
     def option_list(self):
