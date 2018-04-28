@@ -23,6 +23,7 @@ try:
 except ImportError:
     import http.client as httplib
 import locale
+import configparser
 
 try:
     unicode
@@ -211,8 +212,8 @@ class Config(object):
             try:
                 self.read_config_file(configfile)
             except IOError:
-                if 'AWS_CREDENTIAL_FILE' in os.environ:
-                    self.env_config()
+                if 'AWS_CREDENTIAL_FILE' in os.environ or 'AWS_PROFILE' in os.environ:
+                    self.aws_credential_file()
 
             # override these if passed on the command-line
             if access_key and secret_key:
@@ -275,38 +276,35 @@ class Config(object):
             except:
                 warning("Could not refresh role")
 
-    def env_config(self):
-        cred_content = ""
+    def aws_credential_file(self):
         try:
-            cred_file = open(os.environ['AWS_CREDENTIAL_FILE'],'r')
-            cred_content = cred_file.read()
-        except IOError as e:
-            debug("Error %d accessing credentials file %s" % (e.errno,os.environ['AWS_CREDENTIAL_FILE']))
-        r_data = re.compile("^\s*(?P<orig_key>\w+)\s*=\s*(?P<value>.*)")
-        r_quotes = re.compile("^\"(.*)\"\s*$")
-        if len(cred_content)>0:
-            for line in cred_content.splitlines():
-                is_data = r_data.match(line)
-                if is_data:
-                    data = is_data.groupdict()
-                    if r_quotes.match(data["value"]):
-                        data["value"] = data["value"][1:-1]
-                    if data["orig_key"] == "AWSAccessKeyId" \
-                       or data["orig_key"] == "aws_access_key_id":
-                        data["key"] = "access_key"
-                    elif data["orig_key"]=="AWSSecretKey" \
-                       or data["orig_key"]=="aws_secret_access_key":
-                        data["key"] = "secret_key"
-                    else:
-                        debug("env_config: key = %r will be ignored", data["orig_key"])
+            config = configparser.ConfigParser()
 
-                    if "key" in data:
-                        Config().update_option(data["key"], data["value"])
-                        if data["key"] in ("access_key", "secret_key", "gpg_passphrase"):
-                            print_value = ("%s...%d_chars...%s") % (data["value"][:2], len(data["value"]) - 3, data["value"][-1:])
-                        else:
-                            print_value = data["value"]
-                        debug("env_Config: %s->%s" % (data["key"], print_value))
+            aws_credential_file = os.path.expanduser('~/.aws/credentials') 
+            if 'AWS_CREDENTIAL_FILE' in os.environ and os.path.isfile(os.environ['AWS_CREDENTIAL_FILE']):
+                aws_credential_file = os.environ['AWS_CREDENTIAL_FILE']
+
+            debug("Reading AWS credentials from", aws_credential_file)
+            config.read(aws_credential_file)
+            profile = "default"
+            if 'AWS_PROFILE' in os.environ:
+                profile = os.environ['AWS_PROFILE'] 
+
+            profile_access_key = config.get(profile, 'aws_access_key_id')
+            profile_secret_key = config.get(profile, 'aws_secret_access_key')
+            self.access_key = config_unicodise(profile_access_key)
+            self.secret_key = config_unicodise(profile_secret_key)
+
+            try:
+                profile_access_token = config.get(profile, 'aws_session_token')
+                Config().access_token = config_unicodise(profile_access_token) 
+            except configparser.NoOptionError:
+                pass
+
+        except IOError as e:
+            error("%d accessing credentials file %s" % (e.errno,os.environ['AWS_CREDENTIAL_FILE']))
+        except (configparser.NoOptionError, configparser.NoSectionError) as e:
+            error(e)
 
     def option_list(self):
         retval = []
