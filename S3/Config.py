@@ -301,7 +301,7 @@ class Config(object):
 
             try:
                 profile_access_token = config.get(profile, 'aws_session_token')
-                Config().access_token = config_unicodise(profile_access_token) 
+                self.access_token = config_unicodise(profile_access_token) 
             except defaultConfigParser.NoOptionError:
                 pass
 
