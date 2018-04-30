@@ -57,7 +57,7 @@ import tempfile
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
 from logging import debug, info, warning, error
-from distutils.spawn import find_executable
+from shutil import which
 
 from ssl import SSLError
 import io
@@ -2274,7 +2274,7 @@ def run_configure(config_file, args):
         ]
     ## Option-specfic defaults
     if getattr(cfg, "gpg_command") == "":
-        setattr(cfg, "gpg_command", find_executable("gpg"))
+        setattr(cfg, "gpg_command", which("gpg"))
 
     if getattr(cfg, "proxy_host") == "" and os.getenv("http_proxy"):
         autodetected_encoding = locale.getpreferredencoding() or "UTF-8"
