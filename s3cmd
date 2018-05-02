@@ -57,7 +57,12 @@ import tempfile
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
 from logging import debug, info, warning, error
-from shutil import which
+
+try:
+    from shutil import which
+except ImportError:
+    # python2 fallback code
+    from distutils.spawn import find_executable as which
 
 from ssl import SSLError
 import io
