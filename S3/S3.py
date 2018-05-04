@@ -789,6 +789,7 @@ class S3(object):
             'x-amz-delete-marker',
             # other headers returned from object_info() we don't want to send
             'accept-ranges',
+            'connection',
             'etag',
             'server',
             'x-amz-id-2',
