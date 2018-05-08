@@ -296,7 +296,7 @@ class Config(object):
                 # if header is missing, this could be deprecated credentials file format
                 # as described here: https://blog.csanchez.org/2011/05/
                 # then do the hacky-hack and add default header
-                # to be able to readt he file with PyConfigParser() 
+                # to be able to read the file with PyConfigParser() 
                 config_string = None
                 with open(aws_credential_file, 'r') as f:
                     config_string = '[default]\n' + f.read()
@@ -314,16 +314,16 @@ class Config(object):
                 try:
                     result = config.get(profile, key)
                 except NoOptionError as e:
-                    if print_warning:
+                    if print_warning: # we may want to skip warning message for optional keys
                         warning("Couldn't find key '%s' for the AWS Profile '%s' in the credentials file '%s'" % (e.option, e.section, aws_credential_file))
-                    if legacy_key: 
+                    if legacy_key: # if the legacy_key defined and original one wasn't found, try read the legacy_key
                         try:
                             key = legacy_key
                             profile = "default"
                             result = config.get(profile, key)
                             warning(
                                     "Legacy configuratin key '%s' used, " % (key) + 
-                                    "please use the standartized config format as described here: " +
+                                    "please use the standardized config format as described here: " +
                                     "https://aws.amazon.com/blogs/security/a-new-and-standardized-way-to-manage-credentials-in-the-aws-sdks/"
                                      )
                         except NoOptionError as e:
