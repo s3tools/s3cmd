@@ -285,42 +285,46 @@ class Config(object):
         try:
             aws_credential_file = os.path.expanduser('~/.aws/credentials') 
             if 'AWS_CREDENTIAL_FILE' in os.environ and os.path.isfile(os.environ['AWS_CREDENTIAL_FILE']):
-                aws_credential_file = os.environ['AWS_CREDENTIAL_FILE']
+                aws_credential_file = config_unicodise(os.environ['AWS_CREDENTIAL_FILE'])
 
             config = PyConfigParser()
 
-            debug("Reading AWS credentials from", aws_credential_file)
+            debug("Reading AWS credentials from %s" % (aws_credential_file))
             config.read(aws_credential_file)
 
-            profile = "default"
-            if 'AWS_PROFILE' in os.environ:
-                profile = os.environ['AWS_PROFILE']
+            profile = config_unicodise(os.environ.get('AWS_PROFILE', "default"))
             
-            debug("Using AWS profile '{}'".format(profile))
+            debug("Using AWS profile '%s'" % (profile))
 
             # trying to read aws_access_key_id from credentials file
-            profile_access_key = config.get(profile, 'aws_access_key_id')
-            debug('Setting "aws_access_key_id" from file {} as "access_key"'.format(aws_credential_file))
-            Config().update_option('access_key', config_unicodise(profile_access_key))
+            try:
+                profile_access_key = config.get(profile, 'aws_access_key_id')
+                debug('Setting "aws_access_key_id" from file %s as "access_key"' % (aws_credential_file))
+                Config().update_option('access_key', config_unicodise(profile_access_key))
+            except NoOptionError as e:
+                warning("Couldn't find key '%s' for the AWS Profile '%s' in the credentials file '%s'" % (e.option, e.section, aws_credential_file))
+                pass # treat each key as optional
 
             # trying to read aws_secret_access_key from credentials file
-            profile_secret_key = config.get(profile, 'aws_secret_access_key')
-            debug('Setting "aws_secret_access_key" from file {} as "secret_key"'.format(aws_credential_file))
-            Config().update_option('secret_key', config_unicodise(profile_secret_key))
-            
             try:
-                # trying to read aws_session_token from credentials file
+                profile_secret_key = config.get(profile, 'aws_secret_access_key')
+                debug('Setting "aws_secret_access_key" from file %s as "secret_key"' % (aws_credential_file))
+                Config().update_option('secret_key', config_unicodise(profile_secret_key))
+            except NoOptionError as e:
+                warning("Couldn't find key '%s' for the AWS Profile '%s' in the credentials file '%s'" % (e.option, e.section, aws_credential_file))
+                pass # treat each key as optional
+
+            # trying to read aws_session_token from credentials file
+            try:
                 profile_access_token = config.get(profile, 'aws_session_token')
                 debug('Setting "aws_session_token" from file {} as "access_token"'.format(aws_credential_file))
                 Config().update_option('access_token', config_unicodise(profile_access_token))
             except NoOptionError:
                 pass # do nothing, because "access_token" is optional 
         except IOError as e:
-            error("%d accessing credentials file %s" % (e.errno, aws_credential_file))
-        except NoOptionError as e:
-            error("Couldn't find required key '{}' for the AWS Profile '{}' in the credentials file '{}'".format(e.option, e.section, aws_credential_file))
+            warning("%d accessing credentials file %s" % (e.errno, aws_credential_file))
         except NoSectionError as e:
-            error("Couldn't find AWS Profile '{}' in the credentials file '{}'".format(profile, aws_credential_file))
+            warning("Couldn't find AWS Profile '%s' in the credentials file '%s'" % (profile, aws_credential_file))
 
     def option_list(self):
         retval = []
