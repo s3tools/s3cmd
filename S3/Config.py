@@ -25,10 +25,10 @@ except ImportError:
 import locale
 
 try: 
- from configparser import NoOptionError, NoSectionError, ConfigParser as PyConfigParser
+ from configparser import NoOptionError, NoSectionError, MissingSectionHeaderError, ConfigParser as PyConfigParser
 except ImportError:
   # Python2 fallback code
-  from ConfigParser import NoOptionError, NoSectionError, ConfigParser as PyConfigParser
+  from ConfigParser import NoOptionError, NoSectionError, MissingSectionHeaderError, ConfigParser as PyConfigParser
 
 try:
     unicode
@@ -290,37 +290,61 @@ class Config(object):
             config = PyConfigParser()
 
             debug("Reading AWS credentials from %s" % (aws_credential_file))
-            config.read(aws_credential_file)
+            try:
+                config.read(aws_credential_file)
+            except MissingSectionHeaderError:
+                # if header is missing, this could be deprecated credentials file format
+                # as described here: https://blog.csanchez.org/2011/05/
+                # then do the hacky-hack and add default header
+                # to be able to readt he file with PyConfigParser() 
+                config_string = None
+                with open(aws_credential_file, 'r') as f:
+                    config_string = '[default]\n' + f.read()
+                config.read_string(config_string.decode('utf-8'))
+
 
             profile = config_unicodise(os.environ.get('AWS_PROFILE', "default"))
-            
             debug("Using AWS profile '%s'" % (profile))
 
-            # trying to read aws_access_key_id from credentials file
-            try:
-                profile_access_key = config.get(profile, 'aws_access_key_id')
-                debug('Setting "aws_access_key_id" from file %s as "access_key"' % (aws_credential_file))
+            # get_key - helper function to read the aws profile credentials
+            # including the legacy ones as described here: https://blog.csanchez.org/2011/05/ 
+            def get_key(profile, key, legacy_key, print_warning=True):
+                result = None
+
+                try:
+                    result = config.get(profile, key)
+                except NoOptionError as e:
+                    if print_warning:
+                        warning("Couldn't find key '%s' for the AWS Profile '%s' in the credentials file '%s'" % (e.option, e.section, aws_credential_file))
+                    if legacy_key: 
+                        try:
+                            key = legacy_key
+                            profile = "default"
+                            result = config.get(profile, key)
+                            warning(
+                                    "Legacy configuratin key '%s' used, " % (key) + 
+                                    "please use the standartized config format as described here: " +
+                                    "https://aws.amazon.com/blogs/security/a-new-and-standardized-way-to-manage-credentials-in-the-aws-sdks/"
+                                     )
+                        except NoOptionError as e:
+                            pass
+
+                if result:
+                    debug("Found the configuration option '%s' for the AWS Profile '%s' in the credentials file %s" % (key, profile, aws_credential_file)) 
+                return result
+
+            profile_access_key = get_key(profile, "aws_access_key_id", "AWSAccessKeyId") 
+            if profile_access_key:
                 Config().update_option('access_key', config_unicodise(profile_access_key))
-            except NoOptionError as e:
-                warning("Couldn't find key '%s' for the AWS Profile '%s' in the credentials file '%s'" % (e.option, e.section, aws_credential_file))
-                pass # treat each key as optional
 
-            # trying to read aws_secret_access_key from credentials file
-            try:
-                profile_secret_key = config.get(profile, 'aws_secret_access_key')
-                debug('Setting "aws_secret_access_key" from file %s as "secret_key"' % (aws_credential_file))
+            profile_secret_key = get_key(profile, "aws_secret_access_key", "AWSSecretKey") 
+            if profile_secret_key:
                 Config().update_option('secret_key', config_unicodise(profile_secret_key))
-            except NoOptionError as e:
-                warning("Couldn't find key '%s' for the AWS Profile '%s' in the credentials file '%s'" % (e.option, e.section, aws_credential_file))
-                pass # treat each key as optional
 
-            # trying to read aws_session_token from credentials file
-            try:
-                profile_access_token = config.get(profile, 'aws_session_token')
-                debug('Setting "aws_session_token" from file {} as "access_token"'.format(aws_credential_file))
+            profile_access_token = get_key(profile, "aws_session_token", None, False) 
+            if profile_access_token:
                 Config().update_option('access_token', config_unicodise(profile_access_token))
-            except NoOptionError:
-                pass # do nothing, because "access_token" is optional 
+
         except IOError as e:
             warning("%d accessing credentials file %s" % (e.errno, aws_credential_file))
         except NoSectionError as e:
