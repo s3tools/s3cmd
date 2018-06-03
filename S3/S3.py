@@ -1272,9 +1272,15 @@ class S3(object):
             ConnMan.put(conn)
         except (IOError, Exception) as e:
             debug("Response:\n" + pprint.pformat(response))
-            if ((hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT))
-               or "[Errno 104]" in str(e) or "[Errno 32]" in str(e)) and not isinstance(e, SocketTimeoutException):
+            if ((hasattr(e, 'errno') and e.errno
+                 and e.errno not in (errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT))
+                or "[Errno 104]" in str(e)
+                or "[Errno 32]" in str(e)
+               ) and not isinstance(e, SocketTimeoutException):
                 raise
+            # When the connection is broken, BadStatusLine is raised with py2
+            # and RemoteDisconnected is raised by py3 with a trap:
+            # RemoteDisconnected has an errno field with a None value.
             if conn:
                 # close the connection and re-establish
                 conn.counter = ConnMan.conn_max_counter
@@ -1474,8 +1480,10 @@ class S3(object):
                 progress.done("failed")
             if retries:
                 known_error = False
-                if ((hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT))
-                   or "[Errno 104]" in str(e) or "[Errno 32]" in str(e)) and not isinstance(e, SocketTimeoutException):
+                if ((hasattr(e, 'errno') and e.errno
+                     and e.errno not in (errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT))
+                    or "[Errno 104]" in str(e) or "[Errno 32]" in str(e)
+                   ) and not isinstance(e, SocketTimeoutException):
                     # We have to detect these errors by looking at the error string
                     # Connection reset by peer and Broken pipe
                     # The server broke the connection early with an error like
@@ -1659,8 +1667,10 @@ class S3(object):
         except (IOError, Exception) as e:
             if self.config.progress_meter:
                 progress.done("failed")
-            if ((hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT))
-               or "[Errno 104]" in str(e) or "[Errno 32]" in str(e)) and not isinstance(e, SocketTimeoutException):
+            if ((hasattr(e, 'errno') and e.errno and
+                 e.errno not in (errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT))
+                or "[Errno 104]" in str(e) or "[Errno 32]" in str(e)
+               ) and not isinstance(e, SocketTimeoutException):
                 raise
             if conn:
                 # close the connection and re-establish
@@ -1753,8 +1763,10 @@ class S3(object):
         except (IOError, Exception) as e:
             if self.config.progress_meter:
                 progress.done("failed")
-            if ((hasattr(e, 'errno') and e.errno not in (errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT))
-               or "[Errno 104]" in str(e) or "[Errno 32]" in str(e)) and not isinstance(e, SocketTimeoutException):
+            if ((hasattr(e, 'errno') and e.errno
+                 and e.errno not in (errno.EPIPE, errno.ECONNRESET, errno.ETIMEDOUT))
+                or "[Errno 104]" in str(e) or "[Errno 32]" in str(e)
+               ) and not isinstance(e, SocketTimeoutException):
                 raise
             # close the connection and re-establish
             conn.counter = ConnMan.conn_max_counter
