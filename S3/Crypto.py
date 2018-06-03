@@ -84,7 +84,7 @@ def sign_request_v2(method='GET', canonical_uri='/', params=None, cur_headers=No
                                'uploads', 'versionId', 'versioning',
                                'versions', 'website',
                                # Missing of aws s3 doc but needed
-                               'delete', 'cors']
+                               'delete', 'cors', 'restore']
 
     if cur_headers is None:
         cur_headers = SortedDict(ignore_case = True)
