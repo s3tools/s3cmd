@@ -340,7 +340,7 @@ def bucket(tail):
         '''Test bucket name'''
         label = 'autotest'
         if str(tail) == '3':
-                label = 'Autotest'
+                label = 'autotest'
         return '%ss3cmd-%s-%s' % (bucket_prefix, label, tail)
 
 def pbucket(tail):
