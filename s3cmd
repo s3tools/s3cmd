@@ -1349,7 +1349,7 @@ def cmd_sync_remote2local(args):
                     error(u"Download of '%s' failed (Reason: No space left)" % file)
                     allow_partial = False
                 else:
-                    error(u"Download of '%s' failed (Reason: Unknown OsError %d)" % (file, exc.errno))
+                    error(u"Download of '%s' failed (Reason: Unknown OsError %d)" % (file, exc.errno or 0))
                     allow_partial = False
 
                 try:
