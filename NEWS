@@ -1,3 +1,24 @@
+s3cmd-2.0.2      - 2018-07-15
+===============
+* Fixed unexpected timeouts encountered during requests or transfers due to AWS strange connection short timeouts (#941)
+* Fixed a throttle issue slowing down too much transfers in some cases (#913)
+* Added support for $AWS_PROFILE (#966) (Taras Postument)
+* Added clarification comment for the socket_timeout configuration value OS limit
+* Avoid distutils usage at runtime (Matthias Klose)
+* Python 2 compatibility: Fixed import error of which with fallback code (Gianfranco Costamagna)
+* Fixed Python 3 bytes string encoding when getting IAM credentials (Alexander Allakhverdiyev)
+* Fixed handling of config tri-state bool values (like acl_public) (Brian C. Lane)
+* Fixed V2 signature when restore command is used (Jan Kasiak)
+* Fixed setting full_control on objects with public read access (Matthew Vernon)
+* Fixed a bug when only one path is supplied with Cloudfront. (Mikael Svensson)
+* Fixed signature errors with 'modify' requests (Radek Simko)
+* Fixes #936 - Fix setacl command exception (Robert Moucha)
+* Fixes error reporting if deleting a source object failed after a move (#929)
+* Many other bug fixes (#525, #933, #940, #947, #957, #958, #960, #967)
+
+Important info: AWS S3 doesn't allow anymore uppercases and underscores in bucket names since march 1, 2018
+
+
 s3cmd-2.0.1      - 2017-10-21
 ===============
 * Support for Python 3 is now stable
