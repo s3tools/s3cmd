@@ -192,16 +192,16 @@ def dateRFC822toUnix(date):
 __all__.append("dateRFC822toUnix")
 
 def formatSize(size, human_readable = False, floating_point = False):
-    size = floating_point and float(size) or int(size)
+    size = int(size)
     if human_readable:
         coeffs = ['k', 'M', 'G', 'T']
         coeff = ""
         while size > 2048:
             size /= 1024
             coeff = coeffs.pop(0)
-        return (size, coeff)
+        return (float(size) if floating_point else int(size), coeff)
     else:
-        return (size, "")
+        return (float(size) if floating_point else int(size), "")
 __all__.append("formatSize")
 
 def formatDateTime(s3timestamp):
