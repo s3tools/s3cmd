@@ -263,10 +263,10 @@ class Config(object):
                 conn.request('GET', "/latest/meta-data/iam/security-credentials/%s"%files.decode('UTF-8'))
                 resp=conn.getresponse()
                 if resp.status == 200:
-                    creds=json.load(resp)
-                    Config().update_option('access_key', creds['AccessKeyId'].encode('ascii'))
-                    Config().update_option('secret_key', creds['SecretAccessKey'].encode('ascii'))
-                    Config().update_option('access_token', creds['Token'].encode('ascii'))
+                    creds=json.load(resp, encoding="utf-8")
+                    Config().update_option('access_key', config_unicodise(creds['AccessKeyId']))
+                    Config().update_option('secret_key', config_unicodise(creds['SecretAccessKey']))
+                    Config().update_option('access_token', config_unicodise(creds['Token']))
                 else:
                     raise IOError
             else:
