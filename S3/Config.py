@@ -260,10 +260,11 @@ class Config(object):
             resp = conn.getresponse()
             files = resp.read()
             if resp.status == 200 and len(files)>1:
-                conn.request('GET', "/latest/meta-data/iam/security-credentials/%s"%files.decode('UTF-8'))
+                conn.request('GET', "/latest/meta-data/iam/security-credentials/%s" % files.decode('utf-8'))
                 resp=conn.getresponse()
                 if resp.status == 200:
-                    creds=json.load(resp, encoding="utf-8")
+                    resp_content = config_unicodise(resp.read())
+                    creds=json.loads(resp_content)
                     Config().update_option('access_key', config_unicodise(creds['AccessKeyId']))
                     Config().update_option('secret_key', config_unicodise(creds['SecretAccessKey']))
                     Config().update_option('access_token', config_unicodise(creds['Token']))
