@@ -194,7 +194,7 @@ __all__.append("dateRFC822toUnix")
 def formatSize(size, human_readable = False, floating_point = False):
     size = floating_point and float(size) or int(size)
     if human_readable:
-        coeffs = ['k', 'M', 'G', 'T']
+        coeffs = ['K', 'M', 'G', 'T']
         coeff = ""
         while size > 2048:
             size /= 1024
