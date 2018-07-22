@@ -102,8 +102,8 @@ def subcmd_bucket_usage_all(s3):
             buckets_size += size
     total_size, size_coeff = formatSize(buckets_size, cfg.human_readable_sizes)
     total_size_str = str(total_size) + size_coeff
-    output(u"".rjust(8, "-"))
-    output(u"%s Total" % (total_size_str.ljust(8)))
+    output(u"".rjust(12, "-"))
+    output(u"%s Total" % (total_size_str.ljust(12)))
     return size
 
 def subcmd_bucket_usage(s3, uri):
@@ -131,9 +131,14 @@ def subcmd_bucket_usage(s3, uri):
     except KeyboardInterrupt as e:
         extra_info = u' [interrupted]'
 
-    total_size, size_coeff = formatSize(bucket_size, Config().human_readable_sizes)
-    total_size_str = str(total_size) + size_coeff
-    output(u"%s %s objects %s%s" % (total_size_str.ljust(8), object_count, uri, extra_info))
+    total_size_str = u"%d%s" % formatSize(bucket_size,
+                                          Config().human_readable_sizes)
+    if Config().human_readable_sizes:
+        total_size_str = total_size_str.rjust(5)
+    else:
+        total_size_str = total_size_str.rjust(12)
+    output(u"%s %7s objects %s%s" % (total_size_str, object_count, uri,
+                                     extra_info))
     return bucket_size
 
 def cmd_ls(args):
@@ -184,18 +189,25 @@ def subcmd_bucket_list(s3, uri, limit):
             error(S3.codes[e.info["Code"]] % bucket)
         raise
 
-    if cfg.long_listing:
-        format_string = u"%(timestamp)16s %(size)9s%(coeff)1s  %(md5)32s  %(storageclass)s  %(uri)s"
-    elif cfg.list_md5:
-        format_string = u"%(timestamp)16s %(size)9s%(coeff)1s  %(md5)32s  %(uri)s"
+    # md5 are 32 char long, but for multipart there could be a suffix
+    if Config().human_readable_sizes:
+        # %(size)5s%(coeff)1s
+        format_size = u"%5d%1s"
+        dir_str = u"DIR".rjust(6)
     else:
-        format_string = u"%(timestamp)16s %(size)9s%(coeff)1s  %(uri)s"
+        format_size = u"%12d%s"
+        dir_str = u"DIR".rjust(12)
+    if cfg.long_listing:
+        format_string = u"%(timestamp)16s %(size)s  %(md5)-35s  %(storageclass)-11s  %(uri)s"
+    elif cfg.list_md5:
+        format_string = u"%(timestamp)16s %(size)s  %(md5)-35s  %(uri)s"
+    else:
+        format_string = u"%(timestamp)16s %(size)s  %(uri)s"
 
     for prefix in response['common_prefixes']:
         output(format_string % {
             "timestamp": "",
-            "size": "DIR",
-            "coeff": "",
+            "size": dir_str,
             "md5": "",
             "storageclass": "",
             "uri": uri.compose_uri(bucket, prefix["Prefix"])})
@@ -213,11 +225,11 @@ def subcmd_bucket_list(s3, uri, limit):
                 except KeyError:
                     pass
 
-        size, size_coeff = formatSize(object["Size"], Config().human_readable_sizes)
+        size_and_coeff = formatSize(object["Size"],
+                                    Config().human_readable_sizes)
         output(format_string % {
             "timestamp": formatDateTime(object["LastModified"]),
-            "size" : str(size),
-            "coeff": size_coeff,
+            "size" : format_size % size_and_coeff,
             "md5" : md5,
             "storageclass" : storageclass,
             "uri": uri.compose_uri(bucket, object["Key"]),
