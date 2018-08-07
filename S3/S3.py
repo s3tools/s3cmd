@@ -382,8 +382,6 @@ class S3(object):
             bucket_location = bucket_location.strip()
             if bucket_location.upper() == "EU":
                 bucket_location = bucket_location.upper()
-            else:
-                bucket_location = bucket_location.lower()
             body  = "<CreateBucketConfiguration><LocationConstraint>"
             body += bucket_location
             body += "</LocationConstraint></CreateBucketConfiguration>"
