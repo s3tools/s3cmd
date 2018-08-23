@@ -14,6 +14,7 @@ import re
 import os
 import io
 import sys
+import socket
 import json
 from . import Progress
 from .SortedDict import SortedDict
@@ -24,7 +25,7 @@ except ImportError:
     import http.client as httplib
 import locale
 
-try: 
+try:
  from configparser import NoOptionError, NoSectionError, MissingSectionHeaderError, ConfigParser as PyConfigParser
 except ImportError:
   # Python2 fallback code
@@ -272,6 +273,8 @@ class Config(object):
                     raise IOError
             else:
                 raise IOError
+        except socket.timeout:
+            raise socket.timeout
         except:
             raise
 
@@ -284,7 +287,7 @@ class Config(object):
 
     def aws_credential_file(self):
         try:
-            aws_credential_file = os.path.expanduser('~/.aws/credentials') 
+            aws_credential_file = os.path.expanduser('~/.aws/credentials')
             if 'AWS_CREDENTIAL_FILE' in os.environ and os.path.isfile(os.environ['AWS_CREDENTIAL_FILE']):
                 aws_credential_file = config_unicodise(os.environ['AWS_CREDENTIAL_FILE'])
 
@@ -297,7 +300,7 @@ class Config(object):
                 # if header is missing, this could be deprecated credentials file format
                 # as described here: https://blog.csanchez.org/2011/05/
                 # then do the hacky-hack and add default header
-                # to be able to read the file with PyConfigParser() 
+                # to be able to read the file with PyConfigParser()
                 config_string = None
                 with open(aws_credential_file, 'r') as f:
                     config_string = '[default]\n' + f.read()
@@ -308,7 +311,7 @@ class Config(object):
             debug("Using AWS profile '%s'" % (profile))
 
             # get_key - helper function to read the aws profile credentials
-            # including the legacy ones as described here: https://blog.csanchez.org/2011/05/ 
+            # including the legacy ones as described here: https://blog.csanchez.org/2011/05/
             def get_key(profile, key, legacy_key, print_warning=True):
                 result = None
 
@@ -323,7 +326,7 @@ class Config(object):
                             profile = "default"
                             result = config.get(profile, key)
                             warning(
-                                    "Legacy configuratin key '%s' used, " % (key) + 
+                                    "Legacy configuratin key '%s' used, " % (key) +
                                     "please use the standardized config format as described here: " +
                                     "https://aws.amazon.com/blogs/security/a-new-and-standardized-way-to-manage-credentials-in-the-aws-sdks/"
                                      )
@@ -331,18 +334,18 @@ class Config(object):
                             pass
 
                 if result:
-                    debug("Found the configuration option '%s' for the AWS Profile '%s' in the credentials file %s" % (key, profile, aws_credential_file)) 
+                    debug("Found the configuration option '%s' for the AWS Profile '%s' in the credentials file %s" % (key, profile, aws_credential_file))
                 return result
 
-            profile_access_key = get_key(profile, "aws_access_key_id", "AWSAccessKeyId") 
+            profile_access_key = get_key(profile, "aws_access_key_id", "AWSAccessKeyId")
             if profile_access_key:
                 Config().update_option('access_key', config_unicodise(profile_access_key))
 
-            profile_secret_key = get_key(profile, "aws_secret_access_key", "AWSSecretKey") 
+            profile_secret_key = get_key(profile, "aws_secret_access_key", "AWSSecretKey")
             if profile_secret_key:
                 Config().update_option('secret_key', config_unicodise(profile_secret_key))
 
-            profile_access_token = get_key(profile, "aws_session_token", None, False) 
+            profile_access_token = get_key(profile, "aws_session_token", None, False)
             if profile_access_token:
                 Config().update_option('access_token', config_unicodise(profile_access_token))
 
