@@ -20,6 +20,7 @@ from xml.sax import saxutils
 from socket import timeout as SocketTimeoutException
 from logging import debug, info, warning, error
 from stat import ST_SIZE
+import codecs
 try:
     # python 3 support
     from urlparse import urlparse
@@ -1580,10 +1581,14 @@ class S3(object):
             ## Non-recoverable error
             raise S3Error(response)
 
-        debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"].get('etag', '').strip('"\'')))
         ## when using KMS encryption, MD5 etag value will not match
         md5_from_s3 = response["headers"].get("etag", "").strip('"\'')
-        if ('-' not in md5_from_s3) and (md5_from_s3 != md5_hash.hexdigest()) and response["headers"].get("x-amz-server-side-encryption") != 'aws:kms':
+        debug("MD5 sums: computed=%s, received=%s" % (md5_computed, md5_from_s3))
+        try:
+            md5_from_s3_digest = codecs.decode(md5_from_s3, 'hex')
+        except TypeError:
+            md5_from_s3_digest = None
+        if md5_from_s3_digest and (md5_from_s3_digest != md5_hash.digest()) and response["headers"].get("x-amz-server-side-encryption") != 'aws:kms':
             warning("MD5 Sums don't match!")
             if retries:
                 warning("Retrying upload of %s" % (filename))
