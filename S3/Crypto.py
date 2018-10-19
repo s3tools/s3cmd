@@ -14,7 +14,7 @@ import base64
 
 from . import Config
 from logging import debug
-from .Utils import encode_to_s3, time_to_epoch, deunicodise, decode_from_s3
+from .Utils import encode_to_s3, time_to_epoch, deunicodise, decode_from_s3, check_bucket_name_dns_support
 from .SortedDict import SortedDict
 
 import datetime
@@ -158,7 +158,12 @@ def sign_url_base_v2(**parms):
     debug("Signing plaintext: %r", signtext)
     parms['sig'] = s3_quote(sign_string_v2(encode_to_s3(signtext)), unicode_output=True)
     debug("Urlencoded signature: %s", parms['sig'])
-    url = "%(proto)s://%(bucket)s.%(host_base)s/%(object)s?AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s" % parms
+    if check_bucket_name_dns_support(Config.Config().host_bucket, parms['bucket']):
+        url = "%(proto)s://%(bucket)s.%(host_base)s/%(object)s"
+    else:
+        url = "%(proto)s://%(host_base)s/%(bucket)s/%(object)s"
+    url += "?AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s"
+    url = url % parms
     if content_disposition:
         url += "&response-content-disposition=" + s3_quote(content_disposition, unicode_output=True)
     if content_type:
