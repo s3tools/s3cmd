@@ -293,7 +293,7 @@ class InvalidationBatch(object):
                 path = "/" + path
             appendXmlTextNode("Path", urlencode_string(path), tree)
         appendXmlTextNode("CallerReference", self.reference, tree)
-        return ET.tostring(tree)
+        return ET.tostring(tree).decode('utf-8')
 
 class CloudFront(object):
     operations = {
@@ -603,7 +603,7 @@ class CloudFront(object):
                     continue
 
                 if CloudFront.dist_list.get(distListIndex, None) is None:
-                    CloudFront.dist_list[distListIndex] = set() 
+                    CloudFront.dist_list[distListIndex] = set()
 
                 CloudFront.dist_list[distListIndex].add(d.uri())
 

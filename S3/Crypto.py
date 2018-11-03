@@ -65,8 +65,11 @@ def sign_string_v2(string_to_sign):
     string_to_sign should be utf-8 "bytes".
     """
     secret_key = Config.Config().secret_key
-    signature = base64.encodestring(hmac.new(encode_to_s3(secret_key), string_to_sign, sha1).digest()).strip()
-    return signature
+    encoded_secret = encode_to_s3(secret_key)
+    encoded_str = encode_to_s3(string_to_sign)
+    signature = base64.encodestring(hmac.new(encoded_secret, encoded_str, sha1).digest()).strip()
+    decoded_signature = decode_from_s3(signature)
+    return decoded_signature
 __all__.append("sign_string_v2")
 
 def sign_request_v2(method='GET', canonical_uri='/', params=None, cur_headers=None):
