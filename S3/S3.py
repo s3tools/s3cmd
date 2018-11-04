@@ -1660,8 +1660,6 @@ class S3(object):
             debug("Response:\n" + pprint.pformat(response))
         except ParameterError as e:
             raise
-        except OSError as e:
-            raise
         except (IOError, Exception) as e:
             if self.config.progress_meter:
                 progress.done("failed")
