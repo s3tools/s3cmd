@@ -141,7 +141,6 @@ def sign_url_base_v2(**parms):
     content_type=Config.Config().content_type
     parms['expiry']=time_to_epoch(parms['expiry'])
     parms['access_key']=Config.Config().access_key
-    parms['host_base']=Config.Config().host_base
     parms['object'] = s3_quote(parms['object'], quote_backslashes=False, unicode_output=True)
     parms['proto'] = 'http'
     if Config.Config().signurl_use_https:
@@ -158,7 +157,15 @@ def sign_url_base_v2(**parms):
     debug("Signing plaintext: %r", signtext)
     parms['sig'] = s3_quote(sign_string_v2(encode_to_s3(signtext)), unicode_output=True)
     debug("Urlencoded signature: %s", parms['sig'])
-    url = "%(proto)s://%(bucket)s.%(host_base)s/%(object)s?AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s" % parms
+    host_bucket = Config.Config().host_bucket
+    url_format = ''.join([ "%(proto)s://",
+                           host_bucket,
+                           "/",
+                           '%(bucket)s/' if '%(bucket)s' not in host_bucket else '',
+                           "%(object)s",
+                           "?",
+                           "AWSAccessKeyId=%(access_key)s&Expires=%(expiry)d&Signature=%(sig)s" ])
+    url = url_format % parms
     if content_disposition:
         url += "&response-content-disposition=" + s3_quote(content_disposition, unicode_output=True)
     if content_type:
