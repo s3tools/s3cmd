@@ -1279,10 +1279,9 @@ class S3(object):
             # When the connection is broken, BadStatusLine is raised with py2
             # and RemoteDisconnected is raised by py3 with a trap:
             # RemoteDisconnected has an errno field with a None value.
-            if conn:
-                # close the connection and re-establish
-                conn.counter = ConnMan.conn_max_counter
-                ConnMan.put(conn)
+
+            # close the connection and re-establish
+            ConnMan.close(conn)
             if retries:
                 warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
@@ -1670,10 +1669,9 @@ class S3(object):
                 or "[Errno 104]" in str(e) or "[Errno 32]" in str(e)
                ) and not isinstance(e, SocketTimeoutException):
                 raise
-            if conn:
-                # close the connection and re-establish
-                conn.counter = ConnMan.conn_max_counter
-                ConnMan.put(conn)
+
+            # close the connection and re-establish
+            ConnMan.close(conn)
 
             if retries:
                 warning("Retrying failed request: %s (%s)" % (resource['uri'], e))
@@ -1767,8 +1765,7 @@ class S3(object):
                ) and not isinstance(e, SocketTimeoutException):
                 raise
             # close the connection and re-establish
-            conn.counter = ConnMan.conn_max_counter
-            ConnMan.put(conn)
+            ConnMan.close(conn)
 
             if retries:
                 warning("Retrying failed request: %s (%s)" % (resource['uri'], e))

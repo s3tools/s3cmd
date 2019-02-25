@@ -259,12 +259,12 @@ class ConnMan(object):
     @staticmethod
     def put(conn):
         if conn.id.startswith("proxy://"):
-            conn.c.close()
+            ConnMan.close(conn)
             debug("ConnMan.put(): closing proxy connection (keep-alive not yet supported)")
             return
 
         if conn.counter >= ConnMan.conn_max_counter:
-            conn.c.close()
+            ConnMan.close(conn)
             debug("ConnMan.put(): closing over-used connection")
             return
 
@@ -272,3 +272,8 @@ class ConnMan(object):
         ConnMan.conn_pool[conn.id].append(conn)
         ConnMan.conn_pool_sem.release()
         debug("ConnMan.put(): connection put back to pool (%s#%d)" % (conn.id, conn.counter))
+
+    @staticmethod
+    def close(conn):
+        if conn:
+            conn.c.close()
