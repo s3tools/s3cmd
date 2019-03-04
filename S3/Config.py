@@ -205,6 +205,7 @@ class Config(object):
     # Maximum sleep duration for throtte / limitrate.
     # s3 will timeout if a request/transfer is stuck for more than a short time
     throttle_max = 100
+    public_url_use_https = False
 
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None, access_token=None):
