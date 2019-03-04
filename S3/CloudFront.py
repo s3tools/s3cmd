@@ -22,11 +22,16 @@ except ImportError:
 from .S3 import S3
 from .Config import Config
 from .Exceptions import *
-from .Utils import getTreeFromXml, appendXmlTextNode, getDictFromTree, dateS3toPython, getBucketFromHostname, getHostnameFromBucket, deunicodise, urlencode_string, convertHeaderTupleListToDict
+from .Utils import (getTreeFromXml, appendXmlTextNode, getDictFromTree,
+                    dateS3toPython, getBucketFromHostname,
+                    getHostnameFromBucket, deunicodise, urlencode_string,
+                    convertHeaderTupleListToDict, encode_to_s3, decode_from_s3)
 from .Crypto import sign_string_v2
 from .S3Uri import S3Uri, S3UriS3
 from .ConnMan import ConnMan
 from .SortedDict import SortedDict
+
+PY3 = (sys.version_info >= (3, 0))
 
 cloudfront_api_version = "2010-11-01"
 cloudfront_resource = "/%(api_ver)s/distribution" % { 'api_ver' : cloudfront_api_version }
@@ -176,7 +181,7 @@ class DistributionConfig(object):
         else:
             self.info['Logging'] = None
 
-    def __str__(self):
+    def get_printable_tree(self):
         tree = ET.Element("DistributionConfig")
         tree.attrib['xmlns'] = DistributionConfig.xmlns
 
@@ -197,7 +202,18 @@ class DistributionConfig(object):
             appendXmlTextNode("Bucket", getHostnameFromBucket(self.info['Logging'].bucket()), logging_el)
             appendXmlTextNode("Prefix", self.info['Logging'].object(), logging_el)
             tree.append(logging_el)
-        return ET.tostring(tree)
+        return tree
+
+    def __unicode__(self):
+        return decode_from_s3(ET.tostring(self.get_printable_tree()))
+
+    def __str__(self):
+        if PY3:
+            # Return unicode
+            return ET.tostring(self.get_printable_tree(), encoding="unicode")
+        else:
+            # Return bytes
+            return ET.tostring(self.get_printable_tree())
 
 class Invalidation(object):
     ## Example:
@@ -285,15 +301,24 @@ class InvalidationBatch(object):
     def get_reference(self):
         return self.reference
 
-    def __str__(self):
+    def get_printable_tree(self):
         tree = ET.Element("InvalidationBatch")
-
         for path in self.paths:
             if len(path) < 1 or path[0] != "/":
                 path = "/" + path
             appendXmlTextNode("Path", urlencode_string(path), tree)
         appendXmlTextNode("CallerReference", self.reference, tree)
-        return ET.tostring(tree)
+
+    def __unicode__(self):
+        return decode_from_s3(ET.tostring(self.get_printable_tree()))
+
+    def __str__(self):
+        if PY3:
+            # Return unicode
+            return ET.tostring(self.get_printable_tree(), encoding="unicode")
+        else:
+            # Return bytes
+            return ET.tostring(self.get_printable_tree())
 
 class CloudFront(object):
     operations = {
@@ -564,7 +589,7 @@ class CloudFront(object):
 
     def sign_request(self, headers):
         string_to_sign = headers['x-amz-date']
-        signature = sign_string_v2(string_to_sign)
+        signature = decode_from_s3(sign_string_v2(encode_to_s3(string_to_sign)))
         debug(u"CloudFront.sign_request('%s') = %s" % (string_to_sign, signature))
         return signature
 
@@ -603,7 +628,7 @@ class CloudFront(object):
                     continue
 
                 if CloudFront.dist_list.get(distListIndex, None) is None:
-                    CloudFront.dist_list[distListIndex] = set() 
+                    CloudFront.dist_list[distListIndex] = set()
 
                 CloudFront.dist_list[distListIndex].add(d.uri())
 

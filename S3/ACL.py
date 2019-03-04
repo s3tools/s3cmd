@@ -16,7 +16,7 @@ try:
 except ImportError:
     import elementtree.ElementTree as ET
 
-PY3 = (sys.version_info >= (3,0))
+PY3 = (sys.version_info >= (3, 0))
 
 class Grantee(object):
     ALL_USERS_URI = "http://acs.amazonaws.com/groups/global/AllUsers"

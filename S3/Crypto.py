@@ -63,6 +63,7 @@ def sign_string_v2(string_to_sign):
 
     Useful for REST authentication. See http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html
     string_to_sign should be utf-8 "bytes".
+    and returned signature will be utf-8 encoded "bytes".
     """
     secret_key = Config.Config().secret_key
     signature = base64.encodestring(hmac.new(encode_to_s3(secret_key), string_to_sign, sha1).digest()).strip()
