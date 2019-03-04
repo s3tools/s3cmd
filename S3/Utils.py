@@ -101,7 +101,7 @@ def stripNameSpace(xml):
 __all__.append("stripNameSpace")
 
 def getTreeFromXml(xml):
-    xml, xmlns = stripNameSpace(xml)
+    xml, xmlns = stripNameSpace(encode_to_s3(xml))
     try:
         tree = ET.fromstring(xml)
         if xmlns:
