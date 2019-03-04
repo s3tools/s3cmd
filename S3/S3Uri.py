@@ -91,7 +91,7 @@ class S3UriS3(S3Uri):
 
     def public_url(self):
         public_url_protocol = "http"
-        if Config.Config().use_https:
+        if Config.Config().public_url_use_https:
             public_url_protocol = "https"
         if self.is_dns_compatible():
             return "%s://%s.%s/%s" % (public_url_protocol, self._bucket, Config.Config().host_base, self._object)
