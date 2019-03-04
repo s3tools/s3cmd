@@ -966,7 +966,7 @@ class S3(object):
         request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
                                       uri_params = {'policy': None})
         response = self.send_request(request)
-        return response['data']
+        return decode_from_s3(response['data'])
 
     def set_policy(self, uri, policy):
         headers = SortedDict(ignore_case = True)
@@ -989,7 +989,7 @@ class S3(object):
         request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
                                       uri_params = {'cors': None})
         response = self.send_request(request)
-        return response['data']
+        return decode_from_s3(response['data'])
 
     def set_cors(self, uri, cors):
         headers = SortedDict(ignore_case = True)
