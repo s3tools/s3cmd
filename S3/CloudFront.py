@@ -308,6 +308,7 @@ class InvalidationBatch(object):
                 path = "/" + path
             appendXmlTextNode("Path", urlencode_string(path), tree)
         appendXmlTextNode("CallerReference", self.reference, tree)
+        return tree
 
     def __unicode__(self):
         return decode_from_s3(ET.tostring(self.get_printable_tree()))
