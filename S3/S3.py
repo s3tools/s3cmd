@@ -717,7 +717,7 @@ class S3(object):
     def object_batch_delete(self, remote_list):
         """ Batch delete given a remote_list """
         uris = [remote_list[item]['object_uri_str'] for item in remote_list]
-        self.object_batch_delete_uri_strs(uris)
+        return self.object_batch_delete_uri_strs(uris)
 
     def object_batch_delete_uri_strs(self, uris):
         """ Batch delete given a list of object uris """
