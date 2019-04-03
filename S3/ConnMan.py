@@ -268,6 +268,12 @@ class ConnMan(object):
             debug("ConnMan.put(): closing over-used connection")
             return
 
+        cfg = Config()
+        if not cfg.connection_pooling:
+            ConnMan.close(conn)
+            debug("ConnMan.put(): closing connection (connection pooling disabled)")
+            return
+
         ConnMan.conn_pool_sem.acquire()
         ConnMan.conn_pool[conn.id].append(conn)
         ConnMan.conn_pool_sem.release()
