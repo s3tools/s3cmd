@@ -1,11 +1,9 @@
 from __future__ import absolute_import, print_function
 
 import os
-import httplib
 
-from httplib import (_CS_REQ_SENT, _CS_REQ_STARTED, CONTINUE, UnknownProtocol,
-                     CannotSendHeader, NO_CONTENT, NOT_MODIFIED, EXPECTATION_FAILED,
-                     HTTPMessage, HTTPException)
+import six
+from six.moves import http_client
 
 try:
     from cStringIO import StringIO
@@ -17,13 +15,13 @@ from .Utils import encode_to_s3
 
 _METHODS_EXPECTING_BODY = ['PATCH', 'POST', 'PUT']
 
-# Fixed python 2.X httplib to be able to support
+# Fixed python 2.X http_client to be able to support
 # Expect: 100-Continue http feature
 # Inspired by:
 # http://bugs.python.org/file26357/issue1346874-273.patch
 
 def httpresponse_patched_begin(self):
-    """ Re-implemented httplib begin function
+    """ Re-implemented http_client begin function
     to not loop over "100 CONTINUE" status replies
     but to report it to higher level so it can be processed.
     """
@@ -101,7 +99,7 @@ def httpresponse_patched_begin(self):
 
 
 def httpconnection_patched_set_content_length(self, body, method):
-    ## REIMPLEMENTED because new in last httplib but needed by send_request
+    ## REIMPLEMENTED because new in last http_client but needed by send_request
     # Set the content-length based on the body. If the body is "empty", we
     # set Content-Length: 0 for methods that expect a body (RFC 7230,
     # Section 3.3.2). If the body is set for other methods, we set the
@@ -134,7 +132,7 @@ def httpconnection_patched_send_request(self, method, url, body, headers):
         skips['skip_accept_encoding'] = 1
 
     expect_continue = False
-    for hdr, value in headers.iteritems():
+    for hdr, value in six.iteritems(headers):
         if 'expect' == hdr.lower() and '100-continue' in value.lower():
             expect_continue = True
 
@@ -143,7 +141,7 @@ def httpconnection_patched_send_request(self, method, url, body, headers):
 
     if 'content-length' not in header_names:
         self._set_content_length(body, method)
-    for hdr, value in headers.iteritems():
+    for hdr, value in six.iteritems(headers):
         self.putheader(encode_to_s3(hdr), encode_to_s3(value))
 
     # If an Expect: 100-continue was sent, we need to check for a 417
@@ -221,11 +219,11 @@ def httpconnection_patched_wrapper_send_body(self, message_body):
     self.send(message_body)
 
 
-httplib.HTTPResponse.begin = httpresponse_patched_begin
-httplib.HTTPConnection.endheaders = httpconnection_patched_endheaders
-httplib.HTTPConnection._send_output = httpconnection_patched_send_output
-httplib.HTTPConnection._set_content_length = httpconnection_patched_set_content_length
-httplib.HTTPConnection._send_request = httpconnection_patched_send_request
+http_client.HTTPResponse.begin = httpresponse_patched_begin
+http_client.HTTPConnection.endheaders = httpconnection_patched_endheaders
+http_client.HTTPConnection._send_output = httpconnection_patched_send_output
+http_client.HTTPConnection._set_content_length = httpconnection_patched_set_content_length
+http_client.HTTPConnection._send_request = httpconnection_patched_send_request
 
-# Interfaces added to httplib.HTTPConnection:
-httplib.HTTPConnection.wrapper_send_body = httpconnection_patched_wrapper_send_body
+# Interfaces added to http_client.HTTPConnection:
+http_client.HTTPConnection.wrapper_send_body = httpconnection_patched_wrapper_send_body

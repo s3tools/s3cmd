@@ -26,6 +26,9 @@ except ImportError:
 
 from hashlib import sha1, sha256
 
+import six
+
+
 __all__ = []
 
 def format_param_str(params, always_have_equal=False, limited_keys=None):
@@ -171,7 +174,7 @@ def sign(key, msg):
 
 def getSignatureKey(key, dateStamp, regionName, serviceName):
     """
-    Input: unicode params
+    Input: six.text_type params
     Output: bytes
     """
     kDate = sign(encode_to_s3('AWS4' + key), dateStamp)

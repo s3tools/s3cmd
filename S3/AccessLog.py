@@ -15,6 +15,9 @@ from .Exceptions import ParameterError
 from .Utils import getTreeFromXml, decode_from_s3
 from .ACL import GranteeAnonRead
 
+import six
+
+
 try:
     import xml.etree.ElementTree as ET
 except ImportError:
@@ -86,7 +89,7 @@ class AccessLog(object):
     def __str__(self):
         if PY3:
             # Return unicode
-            return ET.tostring(self.tree, encoding="unicode")
+            return ET.tostring(self.tree, encoding="six.text_type")
         else:
             # Return bytes
             return ET.tostring(self.tree)

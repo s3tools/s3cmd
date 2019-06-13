@@ -12,12 +12,14 @@ import os
 import sys
 import time
 import re
+import six
 import string
 import random
 import errno
 from calendar import timegm
 from logging import debug, warning, error
 from .ExitCodes import EX_OSFILE
+
 try:
     import dateutil.parser
 except ImportError:
@@ -42,11 +44,11 @@ except ImportError:
     from urllib.parse import quote
 
 try:
-    unicode
+    six.text_type
 except NameError:
     # python 3 support
     # In python 3, unicode -> str, and str -> bytes
-    unicode = str
+    six.text_type = str
 
 import S3.Config
 import S3.Exceptions
@@ -55,6 +57,9 @@ import xml.dom.minidom
 from hashlib import md5
 
 import xml.etree.ElementTree as ET
+
+import six
+
 
 __all__ = []
 def parseNodes(nodes):
@@ -89,7 +94,7 @@ RE_XML_NAMESPACE = re.compile(b'^(<?[^>]+?>\s*|\s*)(<\w+) xmlns=[\'"](http://[^\
 def stripNameSpace(xml):
     """
     removeNameSpace(xml) -- remove top-level AWS namespace
-    Operate on raw byte(utf-8) xml string. (Not unicode)
+    Operate on raw byte(utf-8) xml string. (Not six.text_type)
     """
     xmlns_match = RE_XML_NAMESPACE.match(xml)
     if xmlns_match:
@@ -303,15 +308,15 @@ def unicodise(string, encoding = None, errors = "replace", silent=False):
     if not encoding:
         encoding = S3.Config.Config().encoding
 
-    if type(string) == unicode:
+    if type(string) == six.text_type:
         return string
 
     if not silent:
         debug("Unicodising %r using %s" % (string, encoding))
     try:
-        return unicode(string, encoding, errors)
+        return six.text_type(string, encoding, errors)
     except UnicodeDecodeError:
-        raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
+        raise UnicodeDecodeError("Conversion to six.text_type failed: %r" % string)
 __all__.append("unicodise")
 
 def unicodise_s(string, encoding = None, errors = "replace"):
@@ -323,14 +328,14 @@ __all__.append("unicodise_s")
 
 def deunicodise(string, encoding = None, errors = "replace", silent=False):
     """
-    Convert unicode 'string' to <type str>, by default replacing
+    Convert six.text_type 'string' to <type str>, by default replacing
     all invalid characters with '?' or raise an exception.
     """
 
     if not encoding:
         encoding = S3.Config.Config().encoding
 
-    if type(string) != unicode:
+    if type(string) != six.text_type:
         return string
 
     if not silent:
@@ -338,7 +343,7 @@ def deunicodise(string, encoding = None, errors = "replace", silent=False):
     try:
         return string.encode(encoding, errors)
     except UnicodeEncodeError:
-        raise UnicodeEncodeError("Conversion from unicode failed: %r" % string)
+        raise UnicodeEncodeError("Conversion from six.text_type failed: %r" % string)
 __all__.append("deunicodise")
 
 def deunicodise_s(string, encoding = None, errors = "replace"):
@@ -361,14 +366,14 @@ def decode_from_s3(string, errors = "replace"):
     """
     Convert S3 UTF-8 'string' to Unicode or raise an exception.
     """
-    if type(string) == unicode:
+    if type(string) == six.text_type:
         return string
     # Be quiet by default
     #debug("Decoding string from S3: %r" % string)
     try:
-        return unicode(string, "UTF-8", errors)
+        return six.text_type(string, "UTF-8", errors)
     except UnicodeDecodeError:
-        raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
+        raise UnicodeDecodeError("Conversion to six.text_type failed: %r" % string)
 __all__.append("decode_from_s3")
 
 def encode_to_s3(string, errors = "replace"):
@@ -376,14 +381,14 @@ def encode_to_s3(string, errors = "replace"):
     Convert Unicode to S3 UTF-8 'string', by default replacing
     all invalid characters with '?' or raise an exception.
     """
-    if type(string) != unicode:
+    if type(string) != six.text_type:
         return string
     # Be quiet by default
     #debug("Encoding string to S3: %r" % string)
     try:
         return string.encode("UTF-8", errors)
     except UnicodeEncodeError:
-        raise UnicodeEncodeError("Conversion from unicode failed: %r" % string)
+        raise UnicodeEncodeError("Conversion from six.text_type failed: %r" % string)
 __all__.append("encode_to_s3")
 
 ## Low level methods
@@ -445,7 +450,7 @@ def time_to_epoch(t):
     elif hasattr(t, 'strftime'):
         # Looks like the object supports standard srftime()
         return int(t.strftime('%s'))
-    elif isinstance(t, str) or isinstance(t, unicode) or isinstance(t, bytes):
+    elif isinstance(t, str) or isinstance(t, six.text_type) or isinstance(t, bytes):
         # See if it's a string representation of an epoch
         try:
             # Support relative times (eg. "+60")

@@ -33,6 +33,9 @@ from .SortedDict import SortedDict
 
 PY3 = (sys.version_info >= (3, 0))
 
+import six
+
+
 cloudfront_api_version = "2010-11-01"
 cloudfront_resource = "/%(api_ver)s/distribution" % { 'api_ver' : cloudfront_api_version }
 
@@ -547,7 +550,7 @@ class CloudFront(object):
             e = CloudFrontError(response)
             if retries:
                 warning(u"Retrying failed request: %s" % op_name)
-                warning(unicode(e))
+                warning(six.text_type(e))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 return self.send_request(op_name, dist_id, body, retries = retries - 1)

@@ -96,7 +96,7 @@ class Progress(object):
 class ProgressANSI(Progress):
     ## http://en.wikipedia.org/wiki/ANSI_escape_code
     SCI = '\x1b['
-    ANSI_hide_cursor = SCI + "?25l"
+    ANSI_hide_cursor = SCI + "?25"
     ANSI_show_cursor = SCI + "?25h"
     ANSI_save_cursor_pos = SCI + "s"
     ANSI_restore_cursor_pos = SCI + "u"

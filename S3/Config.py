@@ -24,6 +24,9 @@ except ImportError:
     import http.client as httplib
 import locale
 
+import six
+
+
 try: 
  from configparser import NoOptionError, NoSectionError, MissingSectionHeaderError, ConfigParser as PyConfigParser
 except ImportError:
@@ -31,33 +34,33 @@ except ImportError:
   from ConfigParser import NoOptionError, NoSectionError, MissingSectionHeaderError, ConfigParser as PyConfigParser
 
 try:
-    unicode
+    six.text_type
 except NameError:
     # python 3 support
     # In python 3, unicode -> str, and str -> bytes
-    unicode = str
+    six.text_type = str
 
 def config_unicodise(string, encoding = "utf-8", errors = "replace"):
     """
     Convert 'string' to Unicode or raise an exception.
     Config can't use toolbox from Utils that is itself using Config
     """
-    if type(string) == unicode:
+    if type(string) == six.text_type:
         return string
 
     try:
-        return unicode(string, encoding, errors)
+        return six.text_type(string, encoding, errors)
     except UnicodeDecodeError:
-        raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
+        raise UnicodeDecodeError("Conversion to six.text_type failed: %r" % string)
 
 def is_bool_true(value):
     """Check to see if a string is true, yes, on, or 1
 
-    value may be a str, or unicode.
+    value may be a str, or six.text_type.
 
     Return True if it is
     """
-    if type(value) == unicode:
+    if type(value) == six.text_type:
         return value.lower() in ["true", "yes", "on", "1"]
     elif type(value) == bool and value == True:
         return True
@@ -67,11 +70,11 @@ def is_bool_true(value):
 def is_bool_false(value):
     """Check to see if a string is false, no, off, or 0
 
-    value may be a str, or unicode.
+    value may be a str, or six.text_type.
 
     Return True if it is
     """
-    if type(value) == unicode:
+    if type(value) == six.text_type:
         return value.lower() in ["false", "no", "off", "0"]
     elif type(value) == bool and value == False:
         return True
@@ -394,7 +397,7 @@ class Config(object):
             return
 
         #### Handle environment reference
-        if unicode(value).startswith("$"):
+        if six.text_type(value).startswith("$"):
             return self.update_option(option, os.getenv(value[1:]))
 
         #### Special treatment of some options

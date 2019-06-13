@@ -11,6 +11,9 @@ from __future__ import absolute_import, print_function
 import sys
 from .Utils import getTreeFromXml, deunicodise, encode_to_s3, decode_from_s3
 
+import six
+
+
 try:
     import xml.etree.ElementTree as ET
 except ImportError:
@@ -207,7 +210,7 @@ class ACL(object):
     def __str__(self):
         if PY3:
             # Return unicode
-            return ET.tostring(self.get_printable_tree(), encoding="unicode")
+            return ET.tostring(self.get_printable_tree(), encoding="six.text_type")
         else:
             # Return bytes
             return ET.tostring(self.get_printable_tree())

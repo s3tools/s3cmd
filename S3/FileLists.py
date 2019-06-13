@@ -17,6 +17,7 @@ from .Exceptions import ParameterError
 from .HashCache import HashCache
 
 from logging import debug, info, warning
+import six
 
 import os
 import sys
@@ -29,7 +30,7 @@ __all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists"]
 
 def _os_walk_unicode(top):
     '''
-    Reimplementation of python's os.walk to nicely support unicode in input as in output.
+    Reimplementation of python's os.walk to nicely support six.text_type in input as in output.
     '''
     try:
         names = os.listdir(deunicodise(top))

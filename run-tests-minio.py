@@ -20,14 +20,17 @@ import S3.Exceptions
 import S3.Config
 from S3.ExitCodes import *
 
+import six
+
+
 PY3 = (sys.version_info >= (3,0))
 
 try:
-    unicode
+    six.text_type
 except NameError:
     # python 3 support
     # In python 3, unicode -> str, and str -> bytes
-    unicode = str
+    six.text_type = str
 
 count_pass = 0
 count_fail = 0
@@ -47,24 +50,24 @@ else:
     print("System encoding: " + encoding)
 
 try:
-    unicode
+    six.text_type
 except NameError:
     # python 3 support
     # In python 3, unicode -> str, and str -> bytes
-    unicode = str
+    six.text_type = str
 
 def unicodise(string, encoding = "utf-8", errors = "replace"):
     """
     Convert 'string' to Unicode or raise an exception.
     Config can't use toolbox from Utils that is itself using Config
     """
-    if type(string) == unicode:
+    if type(string) == six.text_type:
         return string
 
     try:
-        return unicode(string, encoding, errors)
+        return six.text_type(string, encoding, errors)
     except UnicodeDecodeError:
-        raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
+        raise UnicodeDecodeError("Conversion to six.text_type failed: %r" % string)
 
 # https://stackoverflow.com/questions/377017/test-if-executable-exists-in-python/377028#377028
 def which(program):
@@ -117,7 +120,7 @@ os.chmod("testsuite/permission-tests/permission-denied.txt", 0o000)
 
 ## Patterns for Unicode tests
 patterns = {}
-patterns['UTF-8'] = u"ŪņЇЌœđЗ/☺ unicode € rocks ™"
+patterns['UTF-8'] = u"ŪņЇЌœđЗ/☺ six.text_type € rocks ™"
 patterns['GBK'] = u"12月31日/1-特色條目"
 
 have_encoding = os.path.isdir('testsuite/encodings/' + encoding)
@@ -132,13 +135,13 @@ else:
     print(encoding + " specific files not found.")
 
 def unicodise(string):
-    if type(string) == unicode:
+    if type(string) == six.text_type:
         return string
 
-    return unicode(string, "UTF-8", "replace")
+    return six.text_type(string, "UTF-8", "replace")
 
 def deunicodise(string):
-    if type(string) != unicode:
+    if type(string) != six.text_type:
         return string
 
     return string.encode("UTF-8", "replace")
@@ -588,7 +591,7 @@ test_s3cmd("Get multiple files", ['get', '%s/xyz/etc2/Logo.PNG' % pbucket(1), '%
     must_find = [ 'Destination must be a directory or stdout when downloading multiple sources.' ])
 
 ## ====== put/get non-ASCII filenames
-test_s3cmd("Put unicode filenames", ['put', u'testsuite/encodings/UTF-8/ŪņЇЌœđЗ/Žůžo',  u'%s/xyz/encodings/UTF-8/ŪņЇЌœđЗ/Žůžo' % pbucket(1)],
+test_s3cmd("Put six.text_type filenames", ['put', u'testsuite/encodings/UTF-8/ŪņЇЌœđЗ/Žůžo',  u'%s/xyz/encodings/UTF-8/ŪņЇЌœđЗ/Žůžo' % pbucket(1)],
            retcode = 0,
            must_find = [ '->' ])
 
@@ -598,7 +601,7 @@ test_mkdir("Make dst dir for get", "testsuite-out")
 
 
 ## ====== put/get non-ASCII filenames
-test_s3cmd("Get unicode filenames", ['get', u'%s/xyz/encodings/UTF-8/ŪņЇЌœđЗ/Žůžo' % pbucket(1), 'testsuite-out'],
+test_s3cmd("Get six.text_type filenames", ['get', u'%s/xyz/encodings/UTF-8/ŪņЇЌœđЗ/Žůžo' % pbucket(1), 'testsuite-out'],
            retcode = 0,
            must_find = [ '->' ])
 
