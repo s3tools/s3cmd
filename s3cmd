@@ -2532,7 +2532,7 @@ def get_commands_list():
     {"cmd":"cfcreate", "label":"Create CloudFront distribution point", "param":"s3://BUCKET", "func":CfCmd.create, "argc":1},
     {"cmd":"cfdelete", "label":"Delete CloudFront distribution point", "param":"cf://DIST_ID", "func":CfCmd.delete, "argc":1},
     {"cmd":"cfmodify", "label":"Change CloudFront distribution point parameters", "param":"cf://DIST_ID", "func":CfCmd.modify, "argc":1},
-    #{"cmd":"cfinval", "label":"Invalidate CloudFront objects", "param":"s3://BUCKET/OBJECT [s3://BUCKET/OBJECT ...]", "func":CfCmd.invalidate, "argc":1},
+    {"cmd":"cfinval", "label":"Invalidate CloudFront objects", "param":"s3://BUCKET/OBJECT [s3://BUCKET/OBJECT ...]", "func":CfCmd.invalidate, "argc":1},
     {"cmd":"cfinvalinfo", "label":"Display CloudFront invalidation request(s) status", "param":"cf://DIST_ID[/INVAL_ID]", "func":CfCmd.invalinfo, "argc":1},
     ]
 
