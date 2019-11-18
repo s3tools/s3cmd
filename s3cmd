@@ -317,9 +317,9 @@ def cmd_expiration_set(args):
             raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % arg)
         try:
             response = s3.expiration_set(uri, cfg.bucket_location)
-            if response["status"] is 200:
+            if response["status"] == 200:
                 output(u"Bucket '%s': expiration configuration is set." % (uri.uri()))
-            elif response["status"] is 204:
+            elif response["status"] == 204:
                 output(u"Bucket '%s': expiration configuration is deleted." % (uri.uri()))
         except S3Error as e:
             if e.info["Code"] in S3.codes:
