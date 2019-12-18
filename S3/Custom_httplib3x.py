@@ -193,7 +193,7 @@ def httpconnection_patched_send_request(self, method, url, body, headers,
         body = _encode(body, 'body')
 
     # If an Expect: 100-continue was sent, we need to check for a 417
-    # Expectation Failed to avoid unecessarily sending the body
+    # Expectation Failed to avoid unnecessarily sending the body
     # See RFC 2616 8.2.3
     if not expect_continue:
         self.endheaders(body, encode_chunked=encode_chunked)
