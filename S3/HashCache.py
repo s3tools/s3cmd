@@ -31,9 +31,9 @@ class HashCache(object):
         return d['md5']
 
     def mark_all_for_purge(self):
-        for d in self.inodes.keys():
-            for i in self.inodes[d].keys():
-                for c in self.inodes[d][i].keys():
+        for d in tuple(self.inodes):
+            for i in tuple(self.inodes[d]):
+                for c in tuple(self.inodes[d][i]):
                     self.inodes[d][i][c]['purge'] = True
 
     def unmark_for_purge(self, dev, inode, mtime, size):
@@ -45,9 +45,9 @@ class HashCache(object):
             del self.inodes[dev][inode][mtime]['purge']
 
     def purge(self):
-        for d in self.inodes.keys():
-            for i in self.inodes[d].keys():
-                for m in self.inodes[d][i].keys():
+        for d in tuple(self.inodes):
+            for i in tuple(self.inodes[d]):
+                for m in tuple(self.inodes[d][i]):
                     if 'purge' in self.inodes[d][i][m]:
                         del self.inodes[d][i]
                         break
