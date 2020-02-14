@@ -20,6 +20,10 @@ S3cmd is distributed in two formats:
 
 2) Source .tar.gz package
 
+Installation of Brew package
+---------------------------
+
+	brew install s3cmd
 
 Installation of RPM package
 ---------------------------
