@@ -615,7 +615,7 @@ test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % p
 test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "MIME type:.*image/png",
                      "ACL:.*\*anon\*: READ",
-                     "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+                     "URL:.*https?://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
 
 ## ====== modify MIME type
 test_s3cmd("Modify MIME type", ['modify', '--mime-type=binary/octet-stream', '%s/copy/etc2/Logo.PNG' % pbucket(2) ])
@@ -623,14 +623,14 @@ test_s3cmd("Modify MIME type", ['modify', '--mime-type=binary/octet-stream', '%s
 test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "MIME type:.*binary/octet-stream",
                      "ACL:.*\*anon\*: READ",
-                     "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+                     "URL:.*https?://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
 
 test_s3cmd("Modify MIME type back", ['modify', '--mime-type=image/png', '%s/copy/etc2/Logo.PNG' % pbucket(2) ])
 
 test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "MIME type:.*image/png",
                      "ACL:.*\*anon\*: READ",
-                     "URL:.*http://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+                     "URL:.*https?://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
 
 test_s3cmd("Add cache-control header", ['modify', '--add-header=cache-control: max-age=3600, public', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "modify: .*" ])

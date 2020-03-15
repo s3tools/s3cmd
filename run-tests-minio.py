@@ -363,6 +363,7 @@ test_s3cmd("Create one bucket", ['mb', pbucket(1)],
     must_find = "Bucket '%s/' created" % pbucket(1))
 
 
+
 ## ====== Create multiple buckets
 test_s3cmd("Create multiple buckets", ['mb', pbucket(2), pbucket(3)],
     must_find = [ "Bucket '%s/' created" % pbucket(2), "Bucket '%s/' created" % pbucket(3)])
@@ -376,9 +377,8 @@ test_s3cmd("Invalid bucket name", ["mb", "--bucket-location=EU", pbucket('EU')],
 
 
 ## ====== Buckets list
-# Modified for Minio
 test_s3cmd("Buckets list", ["ls"],
-    must_find = [ "autotest-1", "autotest-2", "autotest-3" ], must_not_find_re = "autotest-EU")
+    must_find = [ pbucket(1), pbucket(2), pbucket(3) ], must_not_find_re = pbucket('EU'))
 
 
 ## ====== Sync to S3
@@ -473,7 +473,6 @@ if have_encoding:
     must_find.append(u"'%(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s' -> 'testsuite-out/xyz/encodings/%(encoding)s/%(pattern)s' " % { 'encoding' : encoding, 'pattern' : enc_pattern, 'pbucket' : pbucket(1) })
 test_s3cmd("Sync from S3", ['sync', '%s/xyz' % pbucket(1), 'testsuite-out'],
     must_find = must_find)
-
 
 ## ====== Remove 'demo' directory
 test_rmdir("Remove 'dir-test/'", "testsuite-out/xyz/dir-test/")
