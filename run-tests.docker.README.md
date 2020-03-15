@@ -3,7 +3,9 @@
 
 ### tl;dr
 
-* `docker build -t s3cmd-tests --build-arg pyVersion=3.6 -f run-tests.dockerfile .`  Note the trailing period and substitute your desired Python version as needed.
+* Place a valid .s3cfg file in the root project directory.
+* `docker build -t s3cmd-tests --build-arg pyVersion=3.6 -f run-tests.dockerfile .`  
+Note the trailing period and substitute your desired Python version as needed.
 * `docker run --rm s3cmd-tests`
 
 ### More Details
