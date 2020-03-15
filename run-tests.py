@@ -375,7 +375,7 @@ test_s3cmd("Invalid bucket name", ["mb", "--bucket-location=EU", pbucket('EU')],
 
 ## ====== Buckets list
 test_s3cmd("Buckets list", ["ls"],
-    must_find = [ "autotest-1", "autotest-2", "Autotest-3" ], must_not_find_re = "autotest-EU")
+    must_find = [ pbucket(1), pbucket(2), pbucket(3) ], must_not_find_re = pbucket('EU'))
 
 
 ## ====== Sync to S3
