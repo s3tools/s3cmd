@@ -3,7 +3,7 @@
 
 ### tl;dr
 
-* `docker build -t s3cmd-tests --build-arg pyVersion=3.6 -f run-tests.dockerfile .` - Note the trailing period and substitute your desired Python version as needed.
+* `docker build -t s3cmd-tests --build-arg pyVersion=3.6 -f run-tests.dockerfile .`  Note the trailing period and substitute your desired Python version as needed.
 * `docker run --rm s3cmd-tests`
 
 ### More Details
@@ -26,9 +26,9 @@ To begin, build the Dockerfile into an image for the Python version you wish to 
   * Copy the entire project folder into /home/testuser/src/s3cmd
   * Install s3cmd dependencies (as root)
 
-The main purpose of this Dockerfile is to allow you to run with multiple Python versions.  To see the Docker Python images available, visit [Docker Hub](https://hub.docker.com/_/python).  Most of the Linux variants should be usable, but the "alpine" variants will result in the smallest downloads and images.  For example:  
+The main purpose of this Dockerfile is to allow you to run with multiple Python versions.  To see the Docker Python images available, visit [Docker Hub](https://hub.docker.com/_/python).  Most of the Linux variants should be usable, but the "alpine" variants will result in the smallest downloads and images.  For example:
 
-`docker build -t s3cmd-tests --build-arg pyVersion=3.8.1-alpine3.11 -f run-tests.dockerfile .` 
+`docker build -t s3cmd-tests --build-arg pyVersion=3.8.1-alpine3.11 -f run-tests.dockerfile .`
 
 After successfully building the image, you can run it with `docker run --rm s3cmd-tests`.  This will execute the run-tests.py script in the Docker container with your .s3cfg credentials.
 
