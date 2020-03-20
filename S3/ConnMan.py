@@ -23,16 +23,12 @@ except ImportError:
     from urllib.parse import urlparse
 
 from .Config import Config
-from .Exceptions import ParameterError
+from .Exceptions import ParameterError, S3SSLCertificateError
 from .Utils import getBucketFromHostname
 
-if not 'CertificateError' in ssl.__dict__:
-    class CertificateError(Exception):
-        pass
-else:
-    CertificateError = ssl.CertificateError
 
-__all__ = [ "ConnMan" ]
+
+__all__ = ["ConnMan"]
 
 
 class http_connection(object):
@@ -128,11 +124,13 @@ class http_connection(object):
         cert = self.c.sock.getpeercert()
         try:
             ssl.match_hostname(cert, self.hostname)
-        except AttributeError: # old ssl module doesn't have this function
+        except AttributeError:
+            # old ssl module doesn't have this function
             return
-        except ValueError: # empty SSL cert means underlying SSL library didn't validate it, we don't either.
+        except ValueError:
+            # empty SSL cert means underlying SSL library didn't validate it, we don't either.
             return
-        except CertificateError as e:
+        except S3CertificateError as e:
             if not self.forgive_wildcard_cert(cert, self.hostname):
                 raise e
 

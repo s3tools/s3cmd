@@ -44,7 +44,7 @@ from .MultiPart import MultiPartUpload
 from .S3Uri import S3Uri
 from .ConnMan import ConnMan
 from .Crypto import (sign_request_v2, sign_request_v4, checksum_sha256_file,
-                    checksum_sha256_buffer, s3_quote, format_param_str)
+                     checksum_sha256_buffer, s3_quote, format_param_str)
 
 try:
     from ctypes import ArgumentError
@@ -1225,12 +1225,20 @@ class S3(object):
 
         raise S3Error(response)
 
-    def send_request(self, request, retries = _max_retries):
-        if request.resource.get('bucket') \
-           and not request.use_signature_v2() \
-           and S3Request.region_map.get(request.resource['bucket'],
-                                        Config().bucket_location) == "US":
-            debug("===== Send_request inner request to determine the bucket region =====")
+    def update_region_inner_request(self, request):
+        """Get and update region for the request if needed.
+
+        Signature v4 needs the region of the bucket or the request will fail
+        with the indication of the correct region.
+        We are trying to avoid this failure by pre-emptively getting the
+        correct region to use, if not provided by the user.
+        """
+        if request.resource.get('bucket') and not request.use_signature_v2() \
+           and S3Request.region_map.get(
+                request.resource['bucket'], Config().bucket_location
+               ) == "US":
+            debug("===== SEND Inner request to determine the bucket region "
+                  "=====")
             try:
                 s3_uri = S3Uri(u's3://' + request.resource['bucket'])
                 # "force_us_default" should prevent infinite recursivity because
@@ -1238,11 +1246,16 @@ class S3(object):
                 region = self.get_bucket_location(s3_uri, force_us_default=True)
                 if region is not None:
                     S3Request.region_map[request.resource['bucket']] = region
-                debug("===== END send_request inner request to determine the bucket region (%r) =====",
-                      region)
+                debug("===== SUCCESS Inner request to determine the bucket "
+                      "region (%r) =====", region)
             except Exception as exc:
                 # Ignore errors, it is just an optimisation, so nothing critical
-                debug("Error getlocation inner request: %s", exc)
+                debug("getlocation inner request failure reason: %s", exc)
+                debug("===== FAILED Inner request to determine the bucket "
+                      "region =====")
+
+    def send_request(self, request, retries = _max_retries):
+        self.update_region_inner_request(request)
 
         request.body = encode_to_s3(request.body)
         headers = request.headers
@@ -1268,6 +1281,10 @@ class S3(object):
                 attrs = parse_attrs_header(response["headers"]["x-amz-meta-s3cmd-attrs"])
                 response["s3cmd-attrs"] = attrs
             ConnMan.put(conn)
+        except (S3SSLError, S3SSLCertificateError):
+            # In case of failure to validate the certificate for a ssl
+            # connection,no need to retry, abort immediately
+            raise
         except (IOError, Exception) as e:
             debug("Response:\n" + pprint.pformat(response))
             if ((hasattr(e, 'errno') and e.errno
@@ -1343,23 +1360,7 @@ class S3(object):
     def send_file(self, request, stream, labels, buffer = '', throttle = 0,
                   retries = _max_retries, offset = 0, chunk_size = -1,
                   use_expect_continue = None):
-        if request.resource.get('bucket') \
-           and not request.use_signature_v2() \
-           and S3Request.region_map.get(request.resource['bucket'],
-                                        Config().bucket_location) == "US":
-            debug("===== Send_file inner request to determine the bucket region =====")
-            try:
-                s3_uri = S3Uri(u's3://' + request.resource['bucket'])
-                # "force_us_default" should prevent infinite recursivity because
-                # it will set the region_map dict.
-                region = self.get_bucket_location(s3_uri, force_us_default=True)
-                if region is not None:
-                    S3Request.region_map[request.resource['bucket']] = region
-                debug("===== END Send_file inner request to determine the bucket region (%r) =====",
-                      region)
-            except Exception as exc:
-                # Ignore errors, it is just an optimisation, so nothing critical
-                debug("Error getlocation inner request: %s", exc)
+        self.update_region_inner_request(request)
 
         if use_expect_continue is None:
             use_expect_continue = self.config.use_http_expect
@@ -1612,23 +1613,7 @@ class S3(object):
         return response
 
     def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
-        if request.resource.get('bucket') \
-           and not request.use_signature_v2() \
-           and S3Request.region_map.get(request.resource['bucket'],
-                                        Config().bucket_location) == "US":
-            debug("===== Recv_file inner request to determine the bucket region =====")
-            try:
-                s3_uri = S3Uri(u's3://' + request.resource['bucket'])
-                # "force_us_default" should prevent infinite recursivity because
-                # it will set the region_map dict.
-                region = self.get_bucket_location(s3_uri, force_us_default=True)
-                if region is not None:
-                    S3Request.region_map[request.resource['bucket']] = region
-                debug("===== END recv_file Inner request to determine the bucket region (%r) =====",
-                      region)
-            except Exception as exc:
-                # Ignore errors, it is just an optimisation, so nothing critical
-                debug("Error getlocation inner request: %s", exc)
+        self.update_region_inner_request(request)
 
         method_string, resource, headers = request.get_triplet()
         filename = stream.stream_name

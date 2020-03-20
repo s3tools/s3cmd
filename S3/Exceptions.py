@@ -20,12 +20,25 @@ if sys.version_info >= (3,0):
 else:
     PY3 = False
 
+## External exceptions
+
+from ssl import SSLError as S3SSLError
+
+try:
+    from ssl import CertificateError as S3SSLCertificateError
+except ImportError:
+    class S3SSLCertificateError(Exception):
+        pass
+
 
 try:
     from xml.etree.ElementTree import ParseError as XmlParseError
 except ImportError:
     # ParseError was only added in python2.7, before ET was raising ExpatError
     from xml.parsers.expat import ExpatError as XmlParseError
+
+
+## s3cmd exceptions
 
 class S3Exception(Exception):
     def __init__(self, message = ""):

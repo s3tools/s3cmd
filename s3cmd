@@ -64,7 +64,6 @@ except ImportError:
     # python2 fallback code
     from distutils.spawn import find_executable as which
 
-from ssl import SSLError
 import io
 
 def output(message):
@@ -3131,7 +3130,7 @@ if __name__ == '__main__':
         sys.stderr.write("See ya!\n")
         sys.exit(EX_BREAK)
 
-    except SSLError as e:
+    except (S3SSLError, S3SSLCertificateError) as e:
         # SSLError is a subtype of IOError
         error("SSL certificate verification failure: %s" % e)
         sys.exit(EX_ACCESSDENIED)
