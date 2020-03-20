@@ -272,6 +272,17 @@ class S3(object):
             host = getHostnameFromBucket(bucket)
         else:
             host = self.config.host_base.lower()
+        # The following hack is needed because it looks like that some servers
+        # are not respecting the HTTP spec and so will fail the signature check
+        # if the port is specified in the "Host" header for default ports.
+        # STUPIDIEST THING EVER FOR A SERVER...
+        # See: https://github.com/minio/minio/issues/9169
+        if self.config.use_https:
+            if host.endswith(':443'):
+                host = host[:-4]
+        elif host.endswith(':80'):
+            host = host[:-3]
+
         debug('get_hostname(%s): %s' % (bucket, host))
         return host
 
