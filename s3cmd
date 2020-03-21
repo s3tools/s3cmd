@@ -2760,6 +2760,7 @@ def main():
     optparser.add_option(      "--no-check-hostname", dest="check_ssl_hostname", action="store_false", help="Do not check SSL certificate hostname validity")
     optparser.add_option(      "--signature-v2", dest="signature_v2", action="store_true", help="Use AWS Signature version 2 instead of newer signature methods. Helpful for S3-like systems that don't have AWS Signature v4 yet.")
     optparser.add_option(      "--limit-rate", dest="limitrate", action="store", type="string", help="Limit the upload or download speed to amount bytes per second.  Amount may be expressed in bytes, kilobytes with the k suffix, or megabytes with the m suffix")
+    optparser.add_option(      "--no-connection-pooling", dest="connection_pooling", action="store_false", help="Disable connection re-use")
     optparser.add_option(      "--requester-pays", dest="requester_pays", action="store_true", help="Set the REQUESTER PAYS flag for operations")
     optparser.add_option("-l", "--long-listing", dest="long_listing", action="store_true", help="Produce long listing [ls]")
     optparser.add_option(      "--stop-on-error", dest="stop_on_error", action="store_true", help="stop if error in transfer")
