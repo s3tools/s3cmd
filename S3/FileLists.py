@@ -25,6 +25,8 @@ import re
 import errno
 import io
 
+PY3 = (sys.version_info >= (3, 0))
+
 __all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists"]
 
 def _os_walk_unicode(top):
@@ -202,7 +204,8 @@ def fetch_local_list(args, is_src = False, recursive = None):
             if counter % 1000 == 0:
                 info(u"[%d/%d]" % (counter, len_loc_list))
 
-            if relative_file == '-': continue
+            if relative_file == '-':
+                continue
 
             full_name = loc_list[relative_file]['full_name']
             try:
@@ -306,8 +309,16 @@ def fetch_local_list(args, is_src = False, recursive = None):
         # not.  Leave it to a non-files_from run to purge.
         if cfg.cache_file and len(cfg.files_from) == 0:
             cache.mark_all_for_purge()
-            for i in local_list.keys():
-                cache.unmark_for_purge(local_list[i]['dev'], local_list[i]['inode'], local_list[i]['mtime'], local_list[i]['size'])
+            if PY3:
+                local_list_val_iter = local_list.values()
+            else:
+                local_list_val_iter = local_list.itervalues()
+            for f_info in local_list_val_iter:
+                inode = f_info.get('inode', 0)
+                if not inode:
+                    continue
+                cache.unmark_for_purge(f_info['dev'], inode, f_info['mtime'],
+                                       f_info['size'])
             cache.purge()
             cache.save(cfg.cache_file)
 
