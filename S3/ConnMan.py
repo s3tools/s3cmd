@@ -9,7 +9,7 @@
 from __future__ import absolute_import
 
 import sys
-if sys.version_info >= (3,0):
+if sys.version_info >= (3, 0):
     from .Custom_httplib3x import httplib
 else:
     from .Custom_httplib27 import httplib

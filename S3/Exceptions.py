@@ -13,7 +13,7 @@ import sys
 import S3.Utils
 from . import ExitCodes
 
-if sys.version_info >= (3,0):
+if sys.version_info >= (3, 0):
     PY3 = True
     # In python 3, unicode -> str, and str -> bytes
     unicode = str

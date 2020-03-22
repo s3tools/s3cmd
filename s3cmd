@@ -23,20 +23,32 @@ from __future__ import absolute_import, print_function, division
 
 import sys
 
-if float("%d.%d" %(sys.version_info[0], sys.version_info[1])) < 2.6:
+if sys.version_info < (2, 6):
     sys.stderr.write(u"ERROR: Python 2.6 or higher required, sorry.\n")
     sys.exit(EX_OSFILE)
 
-import logging
-import time
-import os
-import re
+PY3 = (sys.version_info >= (3, 0))
+
+import codecs
 import errno
 import glob
-import traceback
-import codecs
+import io
 import locale
+import logging
+import os
+import re
+import shutil
+import socket
 import subprocess
+import tempfile
+import time
+import traceback
+
+from copy import copy
+from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
+from logging import debug, info, warning, error
+
+
 try:
     import htmlentitydefs
 except:
@@ -50,21 +62,12 @@ except NameError:
     # In python 3, unicode -> str, and str -> bytes
     unicode = str
 
-import socket
-import shutil
-import tempfile
-
-from copy import copy
-from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
-from logging import debug, info, warning, error
-
 try:
     from shutil import which
 except ImportError:
     # python2 fallback code
     from distutils.spawn import find_executable as which
 
-import io
 
 def output(message):
     sys.stdout.write(message + "\n")
@@ -1004,11 +1007,10 @@ def cmd_info(args):
 
             if uri.has_object():
                 # Temporary hack for performance + python3 compatibility
-                try:
-                    # Check python 2 first
-                    info_headers_iter = info['headers'].iteritems()
-                except:
+                if PY3:
                     info_headers_iter = info['headers'].items()
+                else:
+                    info_headers_iter = info['headers'].iteritems()
                 for header, value in info_headers_iter:
                     if header.startswith('x-amz-meta-'):
                         output(u"   %s: %s" % (header, value))

@@ -14,10 +14,9 @@ import sys
 from .Utils import unicodise, deunicodise, check_bucket_name_dns_support
 from . import Config
 
-if sys.version_info >= (3,0):
-    PY3 = True
-else:
-    PY3 = False
+
+PY3 = (sys.version_info >= (3, 0))
+
 
 class S3Uri(object):
     type = None

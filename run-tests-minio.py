@@ -20,8 +20,6 @@ import S3.Exceptions
 import S3.Config
 from S3.ExitCodes import *
 
-PY3 = (sys.version_info >= (3,0))
-
 try:
     unicode
 except NameError:
