@@ -1656,6 +1656,9 @@ class S3(object):
         except ParameterError as e:
             raise
         except (IOError, Exception) as e:
+            if isinstance(e, OSError) and not isinstance(e, ConnectionResetError):
+                raise
+
             if self.config.progress_meter:
                 progress.done("failed")
             if ((hasattr(e, 'errno') and e.errno and

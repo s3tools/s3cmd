@@ -24,7 +24,7 @@ except ImportError:
     import http.client as httplib
 import locale
 
-try: 
+try:
  from configparser import NoOptionError, NoSectionError, MissingSectionHeaderError, ConfigParser as PyConfigParser
 except ImportError:
   # Python2 fallback code
@@ -219,8 +219,7 @@ class Config(object):
             try:
                 self.read_config_file(configfile)
             except IOError:
-                if 'AWS_CREDENTIAL_FILE' in os.environ or 'AWS_PROFILE' in os.environ:
-                    self.aws_credential_file()
+                pass
 
             # override these if passed on the command-line
             if access_key and secret_key:
@@ -231,7 +230,10 @@ class Config(object):
                 # Do not refresh the IAM role when an access token is provided.
                 self._access_token_refresh = False
 
-            if len(self.access_key)==0:
+            # The next few clauses are in descending order of priority.
+            # That is, we will prefer key envvars, then AWS cred file, then IAM auth.
+
+            if not self.is_option_nonempty('access_key'):
                 env_access_key = os.getenv('AWS_ACCESS_KEY') or os.getenv('AWS_ACCESS_KEY_ID')
                 env_secret_key = os.getenv('AWS_SECRET_KEY') or os.getenv('AWS_SECRET_ACCESS_KEY')
                 env_access_token = os.getenv('AWS_SESSION_TOKEN') or os.getenv('AWS_SECURITY_TOKEN')
@@ -243,14 +245,24 @@ class Config(object):
                         # Do not refresh the IAM role when an access token is provided.
                         self._access_token_refresh = False
                         self.access_token = config_unicodise(env_access_token)
-                else:
-                    self.role_config()
+
+            if not self.is_option_nonempty('access_key'):
+                self.aws_credential_file()
+
+            if not self.is_option_nonempty('access_key'):
+                self.role_config()
+
+            if not self.is_option_nonempty('access_key'):
+                raise Exception('There is no access key available!')
 
             #TODO check KMS key is valid
             if self.kms_key and self.server_side_encryption == True:
                 warning('Cannot have server_side_encryption (S3 SSE) and KMS_key set (S3 KMS). KMS encryption will be used. Please set server_side_encryption to False')
             if self.kms_key and self.signature_v2 == True:
                 raise Exception('KMS encryption requires signature v4. Please set signature_v2 to False')
+
+    def is_option_nonempty(self, option_name):
+        return hasattr(self, option_name) and bool(str(getattr(self, option_name)))
 
     def role_config(self):
         """
@@ -275,6 +287,7 @@ class Config(object):
             else:
                 raise IOError
         except:
+            warning('IAM role config failed')
             raise
 
     def role_refresh(self):
@@ -286,9 +299,11 @@ class Config(object):
 
     def aws_credential_file(self):
         try:
-            aws_credential_file = os.path.expanduser('~/.aws/credentials') 
+            aws_credential_file = os.path.expanduser('~/.aws/credentials')
             if 'AWS_CREDENTIAL_FILE' in os.environ and os.path.isfile(os.environ['AWS_CREDENTIAL_FILE']):
                 aws_credential_file = config_unicodise(os.environ['AWS_CREDENTIAL_FILE'])
+            elif not os.path.isfile(aws_credential_file):
+                return
 
             config = PyConfigParser()
 
