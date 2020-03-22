@@ -380,14 +380,37 @@ test_s3cmd("Invalid bucket name", ["mb", "--bucket-location=EU", pbucket('EU')],
 test_s3cmd("Buckets list", ["ls"],
     must_find = [ pbucket(1), pbucket(2), pbucket(3) ], must_not_find_re = pbucket('EU'))
 
+## ====== Directory for cache
+test_flushdir("Create cache dir", "testsuite/cachetest")
 
 ## ====== Sync to S3
 # Modified for Minio (exclude crappy dir)
-test_s3cmd("Sync to S3", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude', 'demo/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings', '--exclude', 'crappy-file-name/*' ],
-           must_find = [ "ERROR: Upload of 'testsuite/permission-tests/permission-denied.txt' is not possible (Reason: Permission denied)",
+test_s3cmd("Sync to S3", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude', 'demo/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings', '--exclude', 'crappy-file-name/*', '--exclude', 'testsuite/cachetest/.s3cmdcache', '--cache-file', 'testsuite/cachetest/.s3cmdcache'],
+           must_find = ["ERROR: Upload of 'testsuite/permission-tests/permission-denied.txt' is not possible (Reason: Permission denied)",
            ],
-           must_not_find_re = [ "demo/", "^(?!WARNING: Skipping).*\.png$", "permission-denied-dir" ],
+           must_not_find_re = ["demo/", "^(?!WARNING: Skipping).*\.png$", "permission-denied-dir"],
            retcode = EX_PARTIAL)
+
+## ====== Create new file and sync with caching enabled
+test_mkdir("Create cache dir", "testsuite/cachetest/content")
+with open("testsuite/cachetest/content/testfile", "w"):
+    pass
+
+test_s3cmd("Sync to S3 with caching", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude', 'demo/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings', '--exclude', 'crappy-file-name/*', '--exclude', 'cachetest/.s3cmdcache', '--cache-file', 'testsuite/cachetest/.s3cmdcache'],
+          must_find = "upload: 'testsuite/cachetest/content/testfile' -> '%s/xyz/cachetest/content/testfile'" % pbucket(1),
+          must_not_find = "upload 'testsuite/cachetest/.s3cmdcache'",
+          retcode = EX_PARTIAL)
+
+## ====== Remove content and retry cached sync with --delete-removed
+test_rmdir("Remove local file", "testsuite/cachetest/content")
+
+test_s3cmd("Sync to S3 and delete removed with caching", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude', 'demo/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings', '--exclude', 'crappy-file-name/*', '--exclude', 'testsuite/cachetest/.s3cmdcache', '--cache-file', 'testsuite/cachetest/.s3cmdcache', '--delete-removed'],
+          must_find = "delete: '%s/xyz/cachetest/content/testfile'" % pbucket(1),
+          must_not_find = "dictionary changed size during iteration",
+          retcode = EX_PARTIAL)
+
+## ====== Remove cache directory and file
+test_rmdir("Remove cache dir", "testsuite/cachetest")
 
 if have_encoding:
     ## ====== Sync UTF-8 / GBK / ... to S3
