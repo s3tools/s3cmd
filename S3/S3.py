@@ -297,7 +297,9 @@ class S3(object):
              or (bucket_name not in S3Request.redir_map
                 and not check_bucket_name_dns_support(self.config.host_bucket, bucket_name))
             ):
-                uri = "/%s%s" % (bucket_name, resource['uri'])
+                uri = "/%s%s" % (s3_quote(bucket_name, quote_backslashes=False,
+                                          unicode_output=True),
+                                 resource['uri'])
         else:
             uri = resource['uri']
         if base_path:
