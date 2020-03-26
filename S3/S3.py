@@ -159,8 +159,10 @@ class S3Request(object):
         # in case of bad DNS name due to bucket name v2 will be used
         # this way we can still use capital letters in bucket names for the older regions
 
-        if self.resource['bucket'] is None or not check_bucket_name_dns_conformity(self.resource['bucket']) or self.s3.config.signature_v2 or self.s3.fallback_to_signature_v2:
+        if self.resource['bucket'] is None \
+           or self.s3.config.signature_v2 or self.s3.fallback_to_signature_v2:
             return True
+
         return False
 
     def sign(self):
