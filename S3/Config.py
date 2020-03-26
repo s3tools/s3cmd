@@ -383,7 +383,7 @@ class Config(object):
         if cp.get('add_headers'):
             for option in cp.get('add_headers').split(","):
                 (key, value) = option.split(':')
-                self.extra_headers[key.replace('_', '-').strip()] = value.strip()
+                self.extra_headers[key.strip()] = value.strip()
 
         self._parsed_files.append(configfile)
 

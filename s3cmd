@@ -2835,13 +2835,16 @@ def main():
                 key, val = unicodise_s(hdr).split(":", 1)
             except ValueError:
                 raise ParameterError("Invalid header format: %s" % unicodise_s(hdr))
-            key_inval = re.sub("[a-zA-Z0-9-.]", "", key)
+            # key char restrictions of the http headers name specification
+            key_inval = re.sub(r"[a-zA-Z0-9\-.!#$%&*+^_|]", "", key)
             if key_inval:
                 key_inval = key_inval.replace(" ", "<space>")
                 key_inval = key_inval.replace("\t", "<tab>")
-                raise ParameterError("Invalid character(s) in header name '%s': \"%s\"" % (key, key_inval))
-            debug(u"Updating Config.Config extra_headers[%s] -> %s" % (key.replace('_', '-').strip().lower(), val.strip()))
-            cfg.extra_headers[key.replace('_', '-').strip().lower()] = val.strip()
+                raise ParameterError("Invalid character(s) in header name '%s'"
+                                     ": \"%s\"" % (key, key_inval))
+            debug(u"Updating Config.Config extra_headers[%s] -> %s" %
+                  (key.strip().lower(), val.strip()))
+            cfg.extra_headers[key.strip().lower()] = val.strip()
 
     # Process --remove-header
     if options.remove_headers:
