@@ -1951,9 +1951,12 @@ def cmd_setpolicy(args):
     s3 = S3(cfg)
     uri = S3Uri(args[1])
     policy_file = args[0]
-    policy = open(deunicodise(policy_file), 'r').read()
 
-    if cfg.dry_run: return EX_OK
+    with open(deunicodise(policy_file), 'r') as fp:
+        policy = fp.read()
+
+    if cfg.dry_run:
+        return EX_OK
 
     response = s3.set_policy(uri, policy)
 
@@ -1981,9 +1984,12 @@ def cmd_setcors(args):
     s3 = S3(cfg)
     uri = S3Uri(args[1])
     cors_file = args[0]
-    cors = open(deunicodise(cors_file), 'r').read()
 
-    if cfg.dry_run: return EX_OK
+    with open(deunicodise(cors_file), 'r') as fp:
+        cors = fp.read()
+
+    if cfg.dry_run:
+        return EX_OK
 
     response = s3.set_cors(uri, cors)
 
@@ -2026,9 +2032,12 @@ def cmd_setlifecycle(args):
     s3 = S3(cfg)
     uri = S3Uri(args[1])
     lifecycle_policy_file = args[0]
-    lifecycle_policy = open(deunicodise(lifecycle_policy_file), 'r').read()
 
-    if cfg.dry_run: return EX_OK
+    with open(deunicodise(lifecycle_policy_file), 'r') as fp:
+        lifecycle_policy = fp.read()
+
+    if cfg.dry_run:
+        return EX_OK
 
     response = s3.set_lifecycle_policy(uri, lifecycle_policy)
 
@@ -2437,16 +2446,16 @@ def run_configure(config_file, args):
 
 def process_patterns_from_file(fname, patterns_list):
     try:
-        fn = open(deunicodise(fname), "rt")
+        with open(deunicodise(fname), "rt") as fn:
+            for pattern in fn:
+                pattern = unicodise(pattern).strip()
+                if re.match("^#", pattern) or re.match("^\s*$", pattern):
+                    continue
+                debug(u"%s: adding rule: %s" % (fname, pattern))
+                patterns_list.append(pattern)
     except IOError as e:
         error(e)
         sys.exit(EX_IOERR)
-    for pattern in fn:
-        pattern = unicodise(pattern).strip()
-        if re.match("^#", pattern) or re.match("^\s*$", pattern):
-            continue
-        debug(u"%s: adding rule: %s" % (fname, pattern))
-        patterns_list.append(pattern)
 
     return patterns_list
 
