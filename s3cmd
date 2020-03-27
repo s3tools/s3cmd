@@ -2702,7 +2702,7 @@ def main():
     optparser.add_option(      "--host-bucket", dest="host_bucket", help="DNS-style bucket+hostname:port template for accessing a bucket (default: %s)" % (cfg.host_bucket))
     optparser.add_option(      "--reduced-redundancy", "--rr", dest="reduced_redundancy", action="store_true", help="Store object with 'Reduced redundancy'. Lower per-GB price. [put, cp, mv]")
     optparser.add_option(      "--no-reduced-redundancy", "--no-rr", dest="reduced_redundancy", action="store_false", help="Store object without 'Reduced redundancy'. Higher per-GB price. [put, cp, mv]")
-    optparser.add_option(      "--storage-class", dest="storage_class", action="store", metavar="CLASS", help="Store object with specified CLASS (STANDARD, STANDARD_IA, or REDUCED_REDUNDANCY). Lower per-GB price. [put, cp, mv]")
+    optparser.add_option(      "--storage-class", dest="storage_class", action="store", metavar="CLASS", help="Store object with specified CLASS (STANDARD, STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER or DEEP_ARCHIVE). [put, cp, mv]")
     optparser.add_option(      "--access-logging-target-prefix", dest="log_target_prefix", help="Target prefix for access logs (S3 URI) (for [cfmodify] and [accesslog] commands)")
     optparser.add_option(      "--no-access-logging", dest="log_target_prefix", action="store_false", help="Disable access logging (for [cfmodify] and [accesslog] commands)")
 
