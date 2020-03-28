@@ -167,7 +167,8 @@ class MultiPartUpload(object):
                 warning("MultiPart: size (%d vs %d) does not match for %s part %d, reuploading."
                         % (int(remote_status['size']), chunk_size, self.uri, seq))
 
-        headers = { "content-length": str(chunk_size) }
+        headers = self.headers_baseline
+        headers["content-length"] = str(chunk_size)
         query_string_params = {'partNumber':'%s' % seq,
                                'uploadId': self.upload_id}
         request = self.s3.create_request("OBJECT_PUT", uri = self.uri,
@@ -190,7 +191,8 @@ class MultiPartUpload(object):
             parts_xml.append(part_xml % (seq, etag))
         body = "<CompleteMultipartUpload>%s</CompleteMultipartUpload>" % ("".join(parts_xml))
 
-        headers = { "content-length": str(len(body)) }
+        headers = self.headers_baseline
+        headers["content-length"] = str(len(body))
         request = self.s3.create_request("OBJECT_POST", uri = self.uri,
                                          headers = headers, body = body,
                                          uri_params = {'uploadId': self.upload_id})
