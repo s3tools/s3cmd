@@ -2815,6 +2815,9 @@ def main():
         cfg = Config(options.config, options.access_key, options.secret_key, options.access_token)
     except ValueError as exc:
         raise ParameterError(unicode(exc))
+    except socket.timeout:
+        error("AWS access keys not available.")
+        sys.exit(EX_CONFIG)
     except IOError as e:
         if options.run_configure:
             cfg = Config()
