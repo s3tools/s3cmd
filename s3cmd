@@ -685,7 +685,7 @@ def subcmd_batch_del_iterative(uri_str = None, bucket = None):
             response = s3.object_batch_delete_uri_strs([uri.compose_uri(bucket, item['Key']) for item in to_delete])
         deleted_bytes += sum(int(item["Size"]) for item in to_delete)
         deleted_count += len(to_delete)
-        output('\n'.join(u"delete: '%s'" % uri.compose_uri(bucket, p['Key']) for p in to_delete))
+        output(u'\n'.join(u"delete: '%s'" % uri.compose_uri(bucket, p['Key']) for p in to_delete))
 
     if deleted_count:
         # display summary data of deleted files
@@ -717,7 +717,7 @@ def subcmd_batch_del(uri_str = None, bucket = None, remote_list = None):
             debug(u"Batch delete %d, remaining %d" % (len(to_delete), len(remote_list)))
             if not cfg.dry_run:
                 response = s3.object_batch_delete(to_delete)
-            output('\n'.join((u"delete: '%s'" % to_delete[p]['object_uri_str']) for p in to_delete))
+            output(u'\n'.join((u"delete: '%s'" % to_delete[p]['object_uri_str']) for p in to_delete))
             to_delete = remote_list[:1000]
             remote_list = remote_list[1000:]
 
@@ -1113,12 +1113,12 @@ def cmd_sync_remote2remote(args):
             extra_headers = copy(cfg.extra_headers)
             try:
                 response = s3.object_copy(src_uri, dst_uri, extra_headers)
-                output("remote copy: '%(src)s' -> '%(dst)s'" % { "src" : src_uri, "dst" : dst_uri })
+                output(u"remote copy: '%s' -> '%s'" % (src_uri, dst_uri))
                 total_nb_files += 1
                 total_size += item.get(u'size', 0)
-            except S3Error as e:
+            except S3Error as exc:
                 ret = EX_PARTIAL
-                error("File '%(src)s' could not be copied: %(e)s" % { "src" : src_uri, "e" : e })
+                error(u"File '%s' could not be copied: %s", src_uri, exc)
                 if cfg.stop_on_error:
                     raise
         return ret, seq, total_nb_files, total_size
@@ -2084,7 +2084,7 @@ def cmd_multipart(args):
     output(u"Initiated\tPath\tId")
     for mpupload in parseNodes(tree):
         try:
-            output("%s\t%s\t%s" % (mpupload['Initiated'], "s3://" + uri.bucket() + "/" + mpupload['Key'], mpupload['UploadId']))
+            output(u"%s\t%s\t%s" % (mpupload['Initiated'], "s3://" + uri.bucket() + "/" + mpupload['Key'], mpupload['UploadId']))
         except KeyError:
             pass
     return EX_OK
@@ -2113,7 +2113,7 @@ def cmd_list_multipart(args):
     output(u"LastModified\t\t\tPartNumber\tETag\tSize")
     for mpupload in parseNodes(tree):
         try:
-            output("%s\t%s\t%s\t%s" % (mpupload['LastModified'], mpupload['PartNumber'], mpupload['ETag'], mpupload['Size']))
+            output(u"%s\t%s\t%s\t%s" % (mpupload['LastModified'], mpupload['PartNumber'], mpupload['ETag'], mpupload['Size']))
         except:
             pass
     return EX_OK
@@ -2143,9 +2143,9 @@ def cmd_accesslog(args):
 
 def cmd_sign(args):
     string_to_sign = args.pop()
-    debug("string-to-sign: %r" % string_to_sign)
+    debug(u"string-to-sign: %r" % string_to_sign)
     signature = Crypto.sign_string_v2(encode_to_s3(string_to_sign))
-    output("Signature: %s" % decode_from_s3(signature))
+    output(u"Signature: %s" % decode_from_s3(signature))
     return EX_OK
 
 def cmd_signurl(args):
@@ -2214,24 +2214,24 @@ def cmd_fixbucket(args):
                 src = S3Uri("s3://%s/%s" % (culprit.bucket(), key_bin))
                 dst = S3Uri("s3://%s/%s" % (culprit.bucket(), key_new))
                 if cfg.dry_run:
-                    output("[--dry-run] File %r would be renamed to %s" % (key_bin, key_new))
+                    output(u"[--dry-run] File %r would be renamed to %s" % (key_bin, key_new))
                     continue
                 try:
                     resp_move = s3.object_move(src, dst)
                     if resp_move['status'] == 200:
-                        output("File '%r' renamed to '%s'" % (key_bin, key_new))
+                        output(u"File '%r' renamed to '%s'" % (key_bin, key_new))
                         count += 1
                     else:
-                        error("Something went wrong for: %r" % key)
-                        error("Please report the problem to s3tools-bugs@lists.sourceforge.net")
+                        error(u"Something went wrong for: %r" % key)
+                        error(u"Please report the problem to s3tools-bugs@lists.sourceforge.net")
                 except S3Error:
-                    error("Something went wrong for: %r" % key)
-                    error("Please report the problem to s3tools-bugs@lists.sourceforge.net")
+                    error(u"Something went wrong for: %r" % key)
+                    error(u"Please report the problem to s3tools-bugs@lists.sourceforge.net")
 
     if count > 0:
-        warning("Fixed %d files' names. Their ACL were reset to Private." % count)
-        warning("Use 's3cmd setacl --acl-public s3://...' to make")
-        warning("them publicly readable if required.")
+        warning(u"Fixed %d files' names. Their ACL were reset to Private." % count)
+        warning(u"Use 's3cmd setacl --acl-public s3://...' to make")
+        warning(u"them publicly readable if required.")
     return EX_OK
 
 def resolve_list(lst, args):
@@ -2241,14 +2241,14 @@ def resolve_list(lst, args):
     return retval
 
 def gpg_command(command, passphrase = ""):
-    debug("GPG command: " + " ".join(command))
+    debug(u"GPG command: " + " ".join(command))
     command = [deunicodise(cmd_entry) for cmd_entry in command]
     p = subprocess.Popen(command, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.STDOUT,
                          close_fds = True)
     p_stdout, p_stderr = p.communicate(deunicodise(passphrase + "\n"))
-    debug("GPG output:")
+    debug(u"GPG output:")
     for line in unicodise(p_stdout).split("\n"):
-        debug("GPG: " + line)
+        debug(u"GPG: " + line)
     p_exitcode = p.wait()
     return p_exitcode
 
@@ -2397,7 +2397,7 @@ def run_configure(config_file, args):
                         os.unlink(deunicodise(ret_enc[1]))
                         os.unlink(deunicodise(ret_dec[1]))
                         if hash[0] == hash[2] and hash[0] != hash[1]:
-                            output ("Success. Encryption and decryption worked fine :-)")
+                            output(u"Success. Encryption and decryption worked fine :-)")
                         else:
                             raise Exception("Encryption verification error.")
 
