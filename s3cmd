@@ -2465,6 +2465,9 @@ def process_patterns(patterns_list, patterns_from, is_glob, option_txt = ""):
     Process --exclude / --include GLOB and REGEXP patterns.
     'option_txt' is 'exclude' / 'include' / 'rexclude' / 'rinclude'
     Returns: patterns_compiled, patterns_text
+    Note: process_patterns_from_file will ignore lines starting with # as these
+    are comments. To target escape the initial #, to use it in a file name, one
+    can use: "[#]" (for exclude) or "\#" (for rexclude).
     """
 
     patterns_compiled = []
