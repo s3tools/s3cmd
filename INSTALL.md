@@ -22,15 +22,16 @@ S3cmd is distributed in two formats:
 
 Installation of Brew package
 ---------------------------
-
-	brew install s3cmd
+```
+brew install s3cmd
+```
 
 Installation of RPM package
 ---------------------------
 As user "root" run:
-   
-	rpm -ivh s3cmd-X.Y.Z.noarch.rpm
-
+```
+rpm -ivh s3cmd-X.Y.Z.noarch.rpm
+```
 where X.Y.Z is the most recent s3cmd release version.
 
 You may be informed about missing dependencies
@@ -41,11 +42,14 @@ Installation from PyPA (Python Package Authority)
 ---------------------
 S3cmd can be installed from the PyPA using PIP (the recommended tool for PyPA).
 
-1) Confirm you have PIP installed. PIP home page is here: https://pypi.python.org/pypi/pip 
-   Example install on a RHEL yum based machine
-	sudo yum install python-pip
+1) Confirm you have PIP installed. PIP home page is here: https://pypi.python.org/pypi/pip. Example install on a RHEL yum based machine
+```
+sudo yum install python-pip
+```
 2) Install with pip
-	sudo pip install s3cmd
+```
+sudo pip install s3cmd
+```
 
 Installation from zip file 
 --------------------------
@@ -65,23 +69,23 @@ There are three options to run s3cmd from source tarball:
 
 3) The cleanest and most recommended approach is to unzip the 
    package and then just run:
-
-	python setup.py install
+   
+   `python setup.py install`
 
    You will however need Python "distutils" module for this to 
    work. It is often part of the core python package (e.g. in 
    OpenSuse Python 2.5 package) or it can be installed using your
    package manager, e.g. in Debian use 
-
-	apt-get install python-setuptools
+   
+   `apt-get install python-setuptools`
 
    Again, consult your distribution documentation on how to 
    find out the actual package name and how to install it then.
 
    Note that on Linux, if you are not "root" already, you may 
    need to run:
-       
-        sudo python setup.py install
+   
+   `sudo python setup.py install`
 
    instead.
 
@@ -103,9 +107,8 @@ Where to get help
 -----------------
 If in doubt, or if something doesn't work as expected, 
 get back to us via mailing list:
+```
+s3tools-general@lists.sourceforge.net
+```
 
-	s3tools-general@lists.sourceforge.net
-
-or visit the S3cmd / S3tools homepage at: 
-
-        http://s3tools.org
+or visit the S3cmd / S3tools homepage at: [http://s3tools.org](http://s3tools.org)
