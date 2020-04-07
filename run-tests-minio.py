@@ -1,5 +1,5 @@
-#!/usr/bin/env python2
-# -*- coding=utf-8 -*-
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 ## Amazon S3cmd - testsuite
 ## Author: Michal Ludvig <michal@logix.cz>

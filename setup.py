@@ -1,5 +1,5 @@
-#!/usr/bin/env python2
-# -*- coding=utf-8 -*-
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 from __future__ import print_function
 
