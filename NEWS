@@ -1,3 +1,41 @@
+s3cmd-2.1.0      - 2020-04-07
+===============
+* Changed size reporting using k instead of K as it a multiple of 1024 (#956)
+* Added "public_url_use_https" config to generate public url using https (#551, #666) (Jukka Nousiainen)
+* Added option to make connection pooling configurable and improvements (Arto Jantunen)
+* Added support for path-style bucket access to signurl (Zac Medico)
+* Added docker configuration and help to run test cases with multiple Python versions (Doug Crozier)
+* Relaxed limitation on special chars for --add-header key names (#1054)
+* Fixed all regions that were automatically converted to lower case (Harshavardhana)
+* Fixed size and alignment of DU and LS output reporting (#956)
+* Fixes for SignatureDoesNotMatch error when host port 80 or 443 is specified, due to stupid servers (#1059)
+* Fixed the useless retries of requests that fail because of ssl cert checks
+* Fixed a possible crash when a file disappears during cache generation (#377)
+* Fixed unicode issues with IAM (#987)
+* Fixed unicode errors with bucked Policy/CORS requests (#847) (Alex Offshore)
+* Fixed unicode issues when loading aws_credential_file (#989)
+* Fixed an issue with the tenant feature of CephRGW. Url encode bucket_name for path-style requests (#1080)
+* Fixed signature v2 always used when bucket_name had special chars (#1081)
+* Allow to use signature v4 only, even for commands without buckets specified (#1082)
+* Fixed small open file descriptor leaks.
+* Py3: Fixed hash-bang in headers to not force using python2 when setup/s3cmd/run-test scripts are executed directly.
+* Py3: Fixed unicode issues with Cloudfront (#1006)
+* Py3: Fixed http.client.RemoteDisconnected errors (#1014) (Ryan Huddleston)
+* Py3: Fixed 'dictionary changed size during iteration' error when using a cache-file (#945) (Doug Crozier)
+* Py3: Fixed the display of file sizes (Vlad Presnyak)
+* Py3: Python 3.8 compatibility fixes (Konstantin Shalygin)
+* Py2: Fixed unicode errors sometimes crashing remote2remote sync (#847)
+* Added s3cmd.egg-info to .gitignore (Philip Dubé)
+* Improved run-test script to not use hard-coded bucket names(#1066) (Doug Crozier)
+* Renamed INSTALL to INSTALL.md and improvements (Nitro, Prabhakar Gupta)
+* Improved the restore command help (Hrchu)
+* Updated the storage-class command help with the recent aws s3 classes (#1020)
+* Fixed typo in the --continue-put help message (Pengyu Chen)
+* Fixed typo (#1062) (Tim Gates)
+* Improvements for setup and build configurations
+* Many other bug fixes
+
+
 s3cmd-2.0.2      - 2018-07-15
 ===============
 * Fixed unexpected timeouts encountered during requests or transfers due to AWS strange connection short timeouts (#941)
@@ -12,8 +50,8 @@ s3cmd-2.0.2      - 2018-07-15
 * Fixed setting full_control on objects with public read access (Matthew Vernon)
 * Fixed a bug when only one path is supplied with Cloudfront. (Mikael Svensson)
 * Fixed signature errors with 'modify' requests (Radek Simko)
-* Fixes #936 - Fix setacl command exception (Robert Moucha)
-* Fixes error reporting if deleting a source object failed after a move (#929)
+* Fixed #936 - Fix setacl command exception (Robert Moucha)
+* Fixed error reporting if deleting a source object failed after a move (#929)
 * Many other bug fixes (#525, #933, #940, #947, #957, #958, #960, #967)
 
 Important info: AWS S3 doesn't allow anymore uppercases and underscores in bucket names since march 1, 2018

@@ -216,7 +216,7 @@ Continue getting a partially downloaded file (only for
 .TP
 \fB\-\-continue\-put\fR
 Continue uploading partially uploaded files or
-multipart upload parts.  Restarts/parts files that
+multipart upload parts.  Restarts parts/files that
 don't have matching size and md5.  Skips files/parts
 that do.  Note: md5sum checks are not always
 sufficient to check (part) file equality.  Enable this
@@ -264,7 +264,7 @@ write_acp, full_control, all
 .TP
 \fB\-D\fR NUM, \fB\-\-restore\-days\fR=NUM
 Number of days to keep restored file available (only
-for 'restore' command).
+for 'restore' command). Default is 1 day.
 .TP
 \fB\-\-restore\-priority\fR=RESTORE_PRIORITY
 Priority for restoring files from S3 Glacier (only for
@@ -367,8 +367,8 @@ GB price. [put, cp, mv]
 .TP
 \fB\-\-storage\-class\fR=CLASS
 Store object with specified CLASS (STANDARD,
-STANDARD_IA, or REDUCED_REDUNDANCY). Lower per\-GB
-price. [put, cp, mv]
+STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER
+or DEEP_ARCHIVE). [put, cp, mv]
 .TP
 \fB\-\-access\-logging\-target\-prefix\fR=LOG_TARGET_PREFIX
 Target prefix for access logs (S3 URI) (for [cfmodify]
@@ -524,7 +524,7 @@ Enable verbose output.
 Enable debug output.
 .TP
 \fB\-\-version\fR
-Show s3cmd version (2.0.2) and exit.
+Show s3cmd version (2.1.0) and exit.
 .TP
 \fB\-F\fR, \fB\-\-follow\-symlinks\fR
 Follow symbolic links as if they are regular files
@@ -560,6 +560,9 @@ AWS Signature v4 yet.
 Limit the upload or download speed to amount bytes per
 second.  Amount may be expressed in bytes, kilobytes
 with the k suffix, or megabytes with the m suffix
+.TP
+\fB\-\-no\-connection\-pooling\fR
+Disable connection re\-use
 .TP
 \fB\-\-requester\-pays\fR
 Set the REQUESTER PAYS flag for operations
