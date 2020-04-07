@@ -42,7 +42,8 @@ if len(sys.argv) > 1 and sys.argv[1] == "sdist":
 ## Re-create the manpage
 ## (Beware! Perl script on the loose!!)
 if len(sys.argv) > 1 and sys.argv[1] == "sdist":
-    if os.stat_result(os.stat("s3cmd.1")).st_mtime < os.stat_result(os.stat("s3cmd")).st_mtime:
+    if os.stat_result(os.stat("s3cmd.1")).st_mtime \
+       < os.stat_result(os.stat("s3cmd")).st_mtime:
         sys.stderr.write("Re-create man page first!\n")
         sys.stderr.write("Run: ./s3cmd --help | ./format-manpage.pl > s3cmd.1\n")
         sys.exit(1)
@@ -53,8 +54,8 @@ if not os.getenv("S3CMD_PACKAGING"):
     man_path = os.getenv("S3CMD_INSTPATH_MAN") or "share/man"
     doc_path = os.getenv("S3CMD_INSTPATH_DOC") or "share/doc/packages"
     data_files = [
-        (doc_path+"/s3cmd", [ "README.md", "INSTALL.md", "LICENSE", "NEWS" ]),
-        (man_path+"/man1", [ "s3cmd.1" ] ),
+        (doc_path+"/s3cmd", ["README.md", "INSTALL.md", "LICENSE", "NEWS"]),
+        (man_path+"/man1", ["s3cmd.1"]),
     ]
 else:
     data_files = None
@@ -62,29 +63,31 @@ else:
 ## Main distutils info
 setup(
     ## Content description
-    name = S3.PkgInfo.package,
-    version = S3.PkgInfo.version,
-    packages = [ 'S3' ],
-    scripts = ['s3cmd'],
-    data_files = data_files,
+    name=S3.PkgInfo.package,
+    version=S3.PkgInfo.version,
+    packages=['S3'],
+    scripts=['s3cmd'],
+    data_files=data_files,
 
     ## Packaging details
-    author = "Michal Ludvig",
-    author_email = "michal@logix.cz",
-    maintainer = "github.com/mdomsch, github.com/matteobar, github.com/fviard",
-    maintainer_email = "s3tools-bugs@lists.sourceforge.net",
-    url = S3.PkgInfo.url,
-    license = S3.PkgInfo.license,
-    description = S3.PkgInfo.short_description,
-    long_description = """
+    author="Michal Ludvig",
+    author_email="michal@logix.cz",
+    maintainer="github.com/fviard, github.com/matteobar",
+    maintainer_email="s3tools-bugs@lists.sourceforge.net",
+    url=S3.PkgInfo.url,
+    license=S3.PkgInfo.license,
+    description=S3.PkgInfo.short_description,
+    long_description="""
 %s
 
 Authors:
 --------
+    Florent Viard <florent@sodria.com>
     Michal Ludvig  <michal@logix.cz>
+    Matt Domsch (github.com/mdomsch)
 """ % (S3.PkgInfo.long_description),
 
-    classifiers = [
+    classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
         'Environment :: MacOS X',
@@ -111,7 +114,7 @@ Authors:
         'Topic :: Utilities',
     ],
 
-    install_requires = ["python-dateutil", "python-magic"]
+    install_requires=["python-dateutil", "python-magic"]
 )
 
 # vim:et:ts=4:sts=4:ai
