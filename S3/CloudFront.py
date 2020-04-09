@@ -483,7 +483,7 @@ class CloudFront(object):
                     fp.write(deunicodise("\n".join(paths)+"\n"))
                 warning("Request to invalidate %d paths (max 999 supported)" % len(paths))
                 warning("All the paths are now saved in: %s" % tmp_filename)
-            except:
+            except Exception:
                 pass
             raise ParameterError("Too many paths to invalidate")
 
@@ -803,7 +803,7 @@ class Cmd(object):
                 try:
                     for i in inval_list['inval_list'].info['InvalidationSummary']:
                         requests.append("/".join(["cf:/", cfuri.dist_id(), i["Id"]]))
-                except:
+                except Exception:
                     continue
         for req in requests:
             cfuri = S3Uri(req)

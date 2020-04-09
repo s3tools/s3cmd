@@ -51,7 +51,7 @@ from logging import debug, info, warning, error
 
 try:
     import htmlentitydefs
-except:
+except Exception:
     # python 3 support
     import html.entities as htmlentitydefs
 
@@ -1369,7 +1369,7 @@ def cmd_sync_remote2local(args):
                     # Try to remove the temp file if it exists
                     if chkptfname_b:
                         os.unlink(chkptfname_b)
-                except:
+                except Exception:
                     pass
 
                 if allow_partial and not cfg.stop_on_error:
@@ -1466,7 +1466,7 @@ def cmd_sync_remote2local(args):
             finally:
                 try:
                     os.remove(chkptfname_b)
-                except:
+                except Exception:
                     pass
 
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
@@ -1560,7 +1560,7 @@ def remote_copy(s3, copy_pairs, destination_base, uploaded_objects_list=None):
             output(u"remote copy: '%s' -> '%s'" % (dst1, dst2))
             if uploaded_objects_list is not None:
                 uploaded_objects_list.append(dst2)
-        except:
+        except Exception:
             warning(u"Unable to remote copy files '%s' -> '%s'" % (dst1_uri, dst2_uri))
             failed_copy_list[dst2] = src_obj
     return (len(copy_pairs), saved_bytes, failed_copy_list)
@@ -1589,7 +1589,7 @@ def _build_attr_header(local_list, src):
             elif attr != "md5":
                 try:
                     val = getattr(local_list[src]['sr'], 'st_' + attr)
-                except:
+                except Exception:
                     val = None
             if val is not None:
                 attrs[attr] = val
@@ -2114,7 +2114,7 @@ def cmd_list_multipart(args):
     for mpupload in parseNodes(tree):
         try:
             output(u"%s\t%s\t%s\t%s" % (mpupload['LastModified'], mpupload['PartNumber'], mpupload['ETag'], mpupload['Size']))
-        except:
+        except Exception:
             pass
     return EX_OK
 
@@ -2615,7 +2615,7 @@ class OptionS3ACL(Option):
             else:
                 raise OptionValueError("option %s: invalid S3 ACL permission: %s (valid values: %s)" %
                     (opt, permission, ", ".join(permissions)))
-        except:
+        except Exception:
             raise OptionValueError("option %s: invalid S3 ACL format: %r" % (opt, value))
 
 class OptionAll(OptionMimeType, OptionS3ACL):

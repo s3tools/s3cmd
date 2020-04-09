@@ -276,7 +276,7 @@ __all__.append("s3_quote")
 def checksum_sha256_file(filename, offset=0, size=None):
     try:
         hash = sha256()
-    except:
+    except Exception:
         # fallback to Crypto SHA256 module
         hash = sha256.new()
     with open(deunicodise(filename),'rb') as f:
@@ -296,7 +296,7 @@ def checksum_sha256_file(filename, offset=0, size=None):
 def checksum_sha256_buffer(buffer, offset=0, size=None):
     try:
         hash = sha256()
-    except:
+    except Exception:
         # fallback to Crypto SHA256 module
         hash = sha256.new()
     if size is None:

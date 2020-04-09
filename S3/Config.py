@@ -285,7 +285,7 @@ class Config(object):
         if self._access_token_refresh:
             try:
                 self.role_config()
-            except:
+            except Exception:
                 warning("Could not refresh role")
 
     def aws_credential_file(self):
@@ -442,7 +442,7 @@ class Config(object):
                 shift = 0
             try:
                 value = shift and int(value[:-1]) << shift or int(value)
-            except:
+            except Exception:
                 raise ValueError("Config: value of option %s must have suffix m, k, or nothing, not '%s'" % (option, value))
 
         ## allow yes/no, true/false, on/off and 1/0 for boolean options

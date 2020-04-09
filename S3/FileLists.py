@@ -35,7 +35,7 @@ def _os_walk_unicode(top):
     '''
     try:
         names = os.listdir(deunicodise(top))
-    except:
+    except Exception:
         return
 
     dirs, nondirs = [], []
@@ -246,7 +246,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
             try:
                 uid = os.geteuid()
                 gid = os.getegid()
-            except:
+            except Exception:
                 uid = 0
                 gid = 0
             loc_list["-"] = {

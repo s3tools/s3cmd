@@ -694,7 +694,7 @@ class S3(object):
             # an md5.
             try:
                 info = self.object_info(uri)
-            except:
+            except Exception:
                 info = None
 
             if info is not None:
@@ -1507,7 +1507,7 @@ class S3(object):
                         response["data"] = http_response.read()
                         response["size"] = size_total
                         known_error = True
-                    except:
+                    except Exception:
                         error("Cannot retrieve any response status before encountering an EPIPE or ECONNRESET exception")
                 if not known_error:
                     warning("Upload failed: %s (%s)" % (resource['uri'], e))
