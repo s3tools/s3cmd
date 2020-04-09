@@ -1,19 +1,21 @@
 Instructions for s3cmd maintainers for doing a tagged release and publishing on sourceforge.net.
-In the below, 1.5.0-rc1 is the example version being released.  Salt to taste.
+In the below, 2.1.0 is the example version being released.  Salt to taste.
+
+Dependency that could be needed for the release:
+    pip install --user twine
 
 1.  Make a fresh clone of the repo:
-   git clone ssh+git://git@github.com/s3tools/s3cmd s3cmd-release
+    git clone ssh+git://git@github.com/s3tools/s3cmd s3cmd-release
 
 2.  Run ./run-tests.py to verify it all works OK.
 
-3.  Update version to 1.5.0-rc1 in S3/PkgInfo.py
+3.  Update version to 2.1.0 in S3/PkgInfo.py
 
 4.  Update manpage with ./s3cmd --help | ./format-manpage.pl > s3cmd.1
 
-5.  Update NEWS with info about new features. Best to extract from git
-    with:  git log --no-merges v1.5.0-beta1..
+5.  Update NEWS with info about new features. Best to extract from git with:
+    git log --abbrev-commit --no-merges v2.0.2..
     (list all tags with: "git tag")
-
 
 6.  Verify the above changes:
     git diff --check && git diff
@@ -25,21 +27,28 @@ In the below, 1.5.0-rc1 is the example version being released.  Salt to taste.
     chmod -R +rwx testsuite/permission-tests/permission-denied-dir && rm -rf testsuite
 
 8.  If everything worked fine commit the above changes:
-    git commit -a -m "Update version to 1.5.0-rc1"
+    git commit -a -m "Update version to 2.1.0"
 
-9. Tag it:
-    git tag --sign -a v1.5.0-rc1 -m "Tag v1.5.0-rc1"
+9.  Tag it:
+    git tag --sign -a v2.1.0 -m "Tag v2.1.0"
 
 10. Push back to github:
     git push --tags
 
-11.  Build the "Source Distribution":
-    python setup.py sdist upload --sign
-    -> Creates dist/s3cmd-1.5.0-rc1.tar.gz* and dist/s3cmd-1.5.0-rc1.zip*
+11. Build the "Source Distribution" and the universal "Wheel" package:
+    python setup.py sdist bdist_wheel --universal
+    -> Creates dist/s3cmd-2.1.0.tar.gz , dist/s3cmd-2.1.0.zip and dist/s3cmd-2.1.0-py2.py3-none-any.whl
 
-The upload step publishes it to PyPi, so 'pip install s3cmd' downloads
-the new version.  It also generated the GPG signatures, so you don't
-have to do that manually, and have them available for the next steps.
+12. Generate the GPG signatures for the previously generated artefacts
+    gpg2 --default-key XXXX --detach-sign -a dist/s3cmd-2.1.0.tar.gz
+    gpg2 --default-key XXXX --detach-sign -a dist/s3cmd-2.1.0.zip
+    gpg2 --default-key XXXX --detach-sign -a dist/s3cmd-2.1.0-py2.py3-none-any.whl
+
+13. Publish to PyPi, so 'pip install s3cmd' downloads the new version.
+    twine upload dist/s3cmd-2.1.0.tar.gz* dist/s3cmd-2.1.0-py2.py3-none-any.whl*
+
+Note: we only publish the .tar.gz and the .whl (+.asc signatures) to Pypi, and
+not the .zip as Pypi only accepts a single "sdist" source file for a given version.
 
 
 GitHub releases
@@ -51,7 +60,7 @@ GitHub releases
 
 3.  In the 'Tag version' drop-down, select your new tag.
 
-4.  In the 'Release title' field, name it v1.5.0-rc1.
+4.  In the 'Release title' field, name it v2.1.0.
 
 5.  In the 'Describe this release' text box, add in this release's
     notes from the NEWS file.
@@ -68,16 +77,16 @@ SourceForge releases
 
 2.  Go to https://sourceforge.net/p/s3tools/admin/
 
-3.  Files -> s3cmd -> Add Folder -> Enter "1.5.0-rc1" -> Create
+3.  Files -> s3cmd -> Add Folder -> Enter "2.1.0" -> Create
 
-4.  Go into 1.5.0-rc1 -> Add File -> upload dist/s3cmd-1.5.0-rc1.tar.gz
+4.  Go into 2.1.0 -> Add File -> upload dist/s3cmd-2.1.0.tar.gz
 
 5.  Once uploaded click the little "i" icon on the right and click
     "Select all" under "Default Download For:" to update the default
     download button to this new version.
 
 6.  Give it a few minutes and verify on the Summary page that the
-    download button has been updated to s3cmd-1.5.0-rc1.tar.gz
+    download button has been updated to s3cmd-2.1.0.tar.gz
 
 Now it's time to send out an announcement email to
 s3tools-announce@lists.sourceforge.net and
