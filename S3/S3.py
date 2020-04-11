@@ -664,6 +664,12 @@ class S3(object):
             headers['x-amz-server-side-encryption'] = 'aws:kms'
             headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
 
+        ## Set server side encryption customer
+        if not self.config.kms_key and not self.config.server_side_encryption and self.config.customer_key:
+            headers["x-amz-server-side-encryption-customer-algorithm"] = "AES256"
+            headers["x-amz-server-side-encryption-customer-key"] = base64.b64encode(self.config.customer_key)
+            headers["x-amz-server-side-encryption-customer-key-MD5"] = compute_content_md5(self.config.customer_key)
+
         ## MIME-type handling
         headers["content-type"] = self.content_type(filename=filename)
 
@@ -721,7 +727,14 @@ class S3(object):
     def object_get(self, uri, stream, dest_name, start_position = 0, extra_label = ""):
         if uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
-        request = self.create_request("OBJECT_GET", uri = uri)
+
+        headers = SortedDict(ignore_case = True)
+        if not self.config.kms_key and not self.config.server_side_encryption and self.config.customer_key:
+            headers["x-amz-server-side-encryption-customer-algorithm"] = "AES256"
+            headers["x-amz-server-side-encryption-customer-key"] = base64.b64encode(self.config.customer_key)
+            headers["x-amz-server-side-encryption-customer-key-MD5"] = compute_content_md5(self.config.customer_key)
+
+        request = self.create_request("OBJECT_GET", uri = uri, headers = headers)
         labels = { 'source' : uri.uri(), 'destination' : dest_name, 'extra' : extra_label }
         response = self.recv_file(request, stream, labels, start_position)
         return response
@@ -843,6 +856,12 @@ class S3(object):
             headers['x-amz-server-side-encryption'] = 'aws:kms'
             headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
 
+        ## Set server side encryption customer
+        if not self.config.kms_key and not self.config.server_side_encryption and self.config.customer_key:
+            headers["x-amz-server-side-encryption-customer-algorithm"] = "AES256"
+            headers["x-amz-server-side-encryption-customer-key"] = base64.b64encode(self.config.customer_key)
+            headers["x-amz-server-side-encryption-customer-key-MD5"] = compute_content_md5(self.config.customer_key)
+
         if extra_headers:
             headers.update(extra_headers)
 
@@ -899,6 +918,12 @@ class S3(object):
         if self.config.kms_key:
             headers['x-amz-server-side-encryption'] = 'aws:kms'
             headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
+
+        ## Set server side encryption customer
+        if not self.config.kms_key and not self.config.server_side_encryption and self.config.customer_key:
+            headers["x-amz-server-side-encryption-customer-algorithm"] = "AES256"
+            headers["x-amz-server-side-encryption-customer-key"] = base64.b64encode(self.config.customer_key)
+            headers["x-amz-server-side-encryption-customer-key-MD5"] = compute_content_md5(self.config.customer_key)
 
         if extra_headers:
             headers.update(extra_headers)

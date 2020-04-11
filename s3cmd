@@ -2729,6 +2729,7 @@ def main():
 
     optparser.add_option(      "--server-side-encryption", dest="server_side_encryption", action="store_true", help="Specifies that server-side encryption will be used when putting objects. [put, sync, cp, modify]")
     optparser.add_option(      "--server-side-encryption-kms-id", dest="kms_key", action="store", help="Specifies the key id used for server-side encryption with AWS KMS-Managed Keys (SSE-KMS) when putting objects. [put, sync, cp, modify]")
+    optparser.add_option(      "--server-side-encryption-customer-key", dest="customer_key", action="store", help="Specifies the key used for server-side encryption with customer-provided encryption keys (SSE-C) when putting objects or get SSE-C object. [put, sync, cp, modify, get]")
 
     optparser.add_option(      "--encoding", dest="encoding", metavar="ENCODING", help="Override autodetected terminal and filesystem encoding (character set). Autodetected: %s" % autodetected_encoding)
     optparser.add_option(      "--add-encoding-exts", dest="add_encoding_exts", metavar="EXTENSIONs", help="Add encoding to these comma delimited extensions i.e. (css,js,html) when uploading to S3 )")

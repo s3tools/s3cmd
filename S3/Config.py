@@ -97,6 +97,7 @@ class Config(object):
     host_base = u"s3.amazonaws.com"
     host_bucket = u"%(bucket)s.s3.amazonaws.com"
     kms_key = u""    #can't set this and Server Side Encryption at the same time
+    customer_key = u""
     # simpledb_host looks useless, legacy? to remove?
     simpledb_host = u"sdb.amazonaws.com"
     cloudfront_host = u"cloudfront.amazonaws.com"
@@ -253,6 +254,10 @@ class Config(object):
             #TODO check KMS key is valid
             if self.kms_key and self.server_side_encryption == True:
                 warning('Cannot have server_side_encryption (S3 SSE) and KMS_key set (S3 KMS). KMS encryption will be used. Please set server_side_encryption to False')
+            if self.kms_key and self.customer_key:
+                warning('Cannot have server_side_encryption (S3 SSE) and server_side_encryption_customer (S3 SSE-C). KMS encryption will be used. Please do not set server_side_encryption_customer')
+            if self.customer_key and self.server_side_encryption == True:
+                warning('Cannot have KMS_key set (S3 KMS) and server_side_encryption_customer (S3 SSE-C). S3 SSE encryption will be used. Please do not set server_side_encryption_customer')
             if self.kms_key and self.signature_v2 == True:
                 raise Exception('KMS encryption requires signature v4. Please set signature_v2 to False')
 
