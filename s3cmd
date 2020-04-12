@@ -550,6 +550,8 @@ def cmd_object_get(args):
         warning(u"Exiting now because of --dry-run")
         return EX_OK
 
+    extra_headers = copy(cfg.extra_headers)
+
     seq = 0
     ret = EX_OK
     for key in remote_list:
@@ -601,7 +603,10 @@ def cmd_object_get(args):
                 continue
         try:
             try:
-                response = s3.object_get(uri, dst_stream, destination, start_position = start_position, extra_label = seq_label)
+                response = s3.object_get(uri, dst_stream, destination,
+                                         start_position=start_position,
+                                         extra_headers=extra_headers,
+                                         extra_label=seq_label)
             finally:
                 dst_stream.close()
         except S3DownloadError as e:
@@ -918,6 +923,7 @@ def cmd_mv(args):
 def cmd_info(args):
     cfg = Config()
     s3 = S3(cfg)
+    extra_headers = copy(cfg.extra_headers)
 
     while (len(args)):
         uri_arg = args.pop(0)
@@ -927,7 +933,7 @@ def cmd_info(args):
 
         try:
             if uri.has_object():
-                info = s3.object_info(uri)
+                info = s3.object_info(uri, extra_headers=extra_headers)
                 output(u"%s (object):" % uri.uri())
                 output(u"   File size: %s" % info['headers']['content-length'])
                 output(u"   Last mod:  %s" % info['headers']['last-modified'])

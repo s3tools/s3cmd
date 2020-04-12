@@ -718,10 +718,13 @@ class S3(object):
         response = self.send_file(request, src_stream, labels)
         return response
 
-    def object_get(self, uri, stream, dest_name, start_position = 0, extra_label = ""):
+    def object_get(self, uri, stream, dest_name, start_position = 0, extra_headers = None, extra_label = ""):
+        headers = SortedDict(ignore_case = True)
+        if extra_headers:
+            headers.update(extra_headers)
         if uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
-        request = self.create_request("OBJECT_GET", uri = uri)
+        request = self.create_request("OBJECT_GET", uri = uri, headers = headers)
         labels = { 'source' : uri.uri(), 'destination' : dest_name, 'extra' : extra_label }
         response = self.recv_file(request, stream, labels, start_position)
         return response
@@ -936,8 +939,12 @@ class S3(object):
             debug("Object '%s' NOT deleted because of an unexepected response data content.", src_uri)
         return response_copy
 
-    def object_info(self, uri):
-        request = self.create_request("OBJECT_HEAD", uri = uri)
+    def object_info(self, uri, extra_headers = None):
+        headers = SortedDict(ignore_case = True)
+        if extra_headers:
+            headers.update(extra_headers)
+
+        request = self.create_request("OBJECT_HEAD", uri = uri, headers=headers)
         response = self.send_request(request)
         return response
 
@@ -1595,7 +1602,10 @@ class S3(object):
         debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"].get('etag', '').strip('"\'')))
         ## when using KMS encryption, MD5 etag value will not match
         md5_from_s3 = response["headers"].get("etag", "").strip('"\'')
-        if ('-' not in md5_from_s3) and (md5_from_s3 != md5_hash.hexdigest()) and response["headers"].get("x-amz-server-side-encryption") != 'aws:kms':
+        if (('-' not in md5_from_s3) and
+                (md5_from_s3 != md5_hash.hexdigest()) and
+                response["headers"].get("x-amz-server-side-encryption") != 'aws:kms' and
+                response["headers"].get("x-amz-server-side​-encryption​-customer-key-md5") == ""):
             warning("MD5 Sums don't match!")
             if retries:
                 warning("Retrying upload of %s" % (filename))
@@ -1813,7 +1823,9 @@ class S3(object):
                 start_position + int(response["headers"]["content-length"]), response["size"]))
         debug("ReceiveFile: Computed MD5 = %s" % response.get("md5"))
         # avoid ETags from multipart uploads that aren't the real md5
-        if ('-' not in md5_from_s3 and not response["md5match"]) and (response["headers"].get("x-amz-server-side-encryption") != 'aws:kms'):
+        if (('-' not in md5_from_s3 and not response["md5match"]) and
+                response["headers"].get("x-amz-server-side-encryption") != 'aws:kms' and
+                response["headers"].get("x-amz-server-side​-encryption​-customer-key-md5") == ""):
             warning("MD5 signatures do not match: computed=%s, received=%s" % (
                 response.get("md5"), md5_from_s3))
         return response
