@@ -844,7 +844,8 @@ class S3(object):
         ## Set kms headers
         if self.config.kms_key:
             headers['x-amz-server-side-encryption'] = 'aws:kms'
-            headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
+            headers['x-amz-server-side-encryption-aws-kms-key-id'] = \
+                self.config.kms_key
 
         if extra_headers:
             headers.update(extra_headers)
@@ -874,7 +875,8 @@ class S3(object):
             #http://doc.s3.amazonaws.com/proposals/copy.html
             # Error during copy, status will be 200, so force error code 500
             response["status"] = 500
-            error("Server error during the COPY operation. Overwrite response status to 500")
+            error("Server error during the COPY operation. Overwrite response "
+                  "status to 500")
             raise S3Error(response)
 
         if self.config.acl_public is None and acl:
@@ -923,7 +925,8 @@ class S3(object):
         ## Set kms headers
         if self.config.kms_key:
             headers['x-amz-server-side-encryption'] = 'aws:kms'
-            headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
+            headers['x-amz-server-side-encryption-aws-kms-key-id'] = \
+                self.config.kms_key
 
         if extra_headers:
             headers.update(extra_headers)
@@ -931,13 +934,15 @@ class S3(object):
         if self.config.mime_type:
             headers["content-type"] = self.config.mime_type
 
-        request = self.create_request("OBJECT_PUT", uri = src_uri, headers = headers)
+        request = self.create_request("OBJECT_PUT", uri=src_uri,
+                                      headers=headers)
         response = self.send_request(request)
         if response["data"] and getRootTagName(response["data"]) == "Error":
             #http://doc.s3.amazonaws.com/proposals/copy.html
             # Error during modify, status will be 200, so force error code 500
             response["status"] = 500
-            error("Server error during the MODIFY operation. Overwrite response status to 500")
+            error("Server error during the MODIFY operation. Overwrite "
+                  "response status to 500")
             raise S3Error(response)
 
         if acl is not None:
@@ -966,17 +971,17 @@ class S3(object):
         return response_copy
 
     def object_info(self, uri):
-        request = self.create_request("OBJECT_HEAD", uri = uri)
+        request = self.create_request("OBJECT_HEAD", uri=uri)
         response = self.send_request(request)
         return response
 
     def get_acl(self, uri):
         if uri.has_object():
-            request = self.create_request("OBJECT_GET", uri = uri,
-                                          uri_params = {'acl': None})
+            request = self.create_request("OBJECT_GET", uri=uri,
+                                          uri_params={'acl': None})
         else:
-            request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
-                                          uri_params = {'acl': None})
+            request = self.create_request("BUCKET_LIST", bucket=uri.bucket(),
+                                          uri_params={'acl': None})
 
         response = self.send_request(request)
         acl = ACL(response['data'])
