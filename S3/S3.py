@@ -861,10 +861,10 @@ class S3(object):
                                                 headers, extra_label)
 
         ## Not multipart...
-        headers['x-amz-copy-source'] = "/%s/%s" % (
-            src_uri.bucket(),
-            urlencode_string(src_uri.object(), unicode_output=True)
-        )
+        headers['x-amz-copy-source'] = s3_quote("/%s/%s" % (src_uri.bucket(),
+                                                            src_uri.object()),
+                                                quote_backslashes=False,
+                                                unicode_output=True)
         headers['x-amz-metadata-directive'] = "COPY"
 
         request = self.create_request("OBJECT_PUT", uri=dst_uri,
@@ -908,8 +908,10 @@ class S3(object):
                 raise exc
             acl = None
 
-        headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(),
-                                                   urlencode_string(src_uri.object(), unicode_output=True))
+        headers['x-amz-copy-source'] = s3_quote("/%s/%s" % (src_uri.bucket(),
+                                                            src_uri.object()),
+                                                quote_backslashes=False,
+                                                unicode_output=True)
         headers['x-amz-metadata-directive'] = "REPLACE"
 
         # cannot change between standard and reduced redundancy with a REPLACE.

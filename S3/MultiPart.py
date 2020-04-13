@@ -11,7 +11,7 @@ from logging import debug, info, warning, error
 from .Exceptions import ParameterError
 from .S3Uri import S3UriS3
 from .Utils import (getTextFromXml, getTreeFromXml, formatSize,
-                    calculateChecksum, parseNodes)
+                    calculateChecksum, parseNodes, s3_quote)
 
 
 class MultiPartUpload(object):
@@ -262,6 +262,10 @@ class MultiPartUpload(object):
         headers = {
             "x-amz-copy-source": "/%s/%s" % (self.src_uri.bucket(),
                                              self.src_uri.object()),
+            "x-amz-copy-source": s3_quote("/%s/%s" % (self.src_uri.bucket(),
+                                                      self.src_uri.object()),
+                                          quote_backslashes=False,
+                                          unicode_output=True)
         }
 
         # byte range, with end byte included. A 10 byte file has bytes=0-9
