@@ -811,7 +811,8 @@ class S3(object):
                 del headers[h.lower()]
         return headers
 
-    def object_copy(self, src_uri, dst_uri, extra_headers = None):
+    def object_copy(self, src_uri, dst_uri, extra_headers=None,
+                    extra_label=""):
         if src_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
         if dst_uri.type != "s3":
@@ -853,7 +854,7 @@ class S3(object):
             if size > self.config.multipart_copy_chunk_size_mb * 1024 * 1024:
                 # Multipart requests are quite different... drop here
                 return self.copy_file_multipart(src_uri, dst_uri, size,
-                                                headers)
+                                                headers, extra_label)
 
         ## Not multipart...
         headers['x-amz-copy-source'] = "/%s/%s" % (
@@ -882,7 +883,8 @@ class S3(object):
                     raise exc
         return response
 
-    def object_modify(self, src_uri, dst_uri, extra_headers = None):
+    def object_modify(self, src_uri, dst_uri, extra_headers=None,
+                      extra_label=""):
 
         if src_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
@@ -932,7 +934,7 @@ class S3(object):
             error("Server error during the MODIFY operation. Overwrite response status to 500")
             raise S3Error(response)
 
-        if acl != None:
+        if acl is not None:
             try:
                 self.set_acl(src_uri, acl)
             except S3Error as exc:
@@ -943,7 +945,8 @@ class S3(object):
 
         return response
 
-    def object_move(self, src_uri, dst_uri, extra_headers = None):
+    def object_move(self, src_uri, dst_uri, extra_headers=None,
+                    extra_label=""):
         response_copy = self.object_copy(src_uri, dst_uri, extra_headers)
         debug("Object %s copied to %s" % (src_uri, dst_uri))
         if not response_copy["data"] or getRootTagName(response_copy["data"]) == "CopyObjectResult":
@@ -1382,6 +1385,30 @@ class S3(object):
 
         if response["status"] < 200 or response["status"] > 299:
             raise S3Error(response)
+
+        return response
+
+    def send_request_with_progress(self, request, labels, operation_size=0):
+        """Wrapper around send_request for slow requests.
+
+        To be able to show progression for small requests
+        """
+        if not self.config.progress_meter:
+            info("Sending slow request '%s', please wait..." % filename)
+            return self.send_request(request)
+
+        if 'action' not in labels:
+            labels[u'action'] = u'request'
+        progress = self.config.progress_class(labels, operation_size)
+
+        try:
+            response = self.send_request(request)
+        except Exception as exc:
+            progress.done("failed")
+            raise
+
+        progress.update(current_position=operation_size)
+        progress.done("done")
 
         return response
 

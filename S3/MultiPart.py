@@ -130,12 +130,11 @@ class MultiPartUpload(object):
         if extra_label:
             extra_label = u' ' + extra_label
         labels = {
-            'source' : filename,
-            'destination' : self.dst_uri.uri(),
+            'source': filename,
+            'destination': self.dst_uri.uri(),
         }
 
         seq = 1
-
         if self.src_size:
             size_left = self.src_size
             nr_parts = self.src_size // self.chunk_size \
@@ -274,7 +273,10 @@ class MultiPartUpload(object):
         request = self.s3.create_request("OBJECT_PUT", uri=self.dst_uri,
                                          headers=headers,
                                          uri_params=query_string_params)
-        response = self.s3.send_request(request)
+
+        labels[u'action'] = u'remote copy'
+        response = self.s3.send_request_with_progress(request, labels,
+                                                      chunk_size)
 
         # NOTE: Amazon sends whitespace while upload progresses, which
         # accumulates in response body and seems to confuse XML parser.

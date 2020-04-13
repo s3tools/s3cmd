@@ -889,8 +889,10 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
 
         extra_headers = copy(cfg.extra_headers)
         try:
-            response = process_fce(src_uri, dst_uri, extra_headers)
-            output(message % { "src" : src_uri, "dst" : dst_uri })
+            response = process_fce(src_uri, dst_uri, extra_headers,
+                                   extra_label=seq_label)
+            output(message % {"src": src_uri, "dst": dst_uri,
+                              "extra": seq_label})
             if Config().acl_public:
                 info(u"Public URL is: %s" % dst_uri.public_url())
             scoreboard.success()
@@ -905,15 +907,16 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
 
 def cmd_cp(args):
     s3 = S3(Config())
-    return subcmd_cp_mv(args, s3.object_copy, "copy", u"remote copy: '%(src)s' -> '%(dst)s'")
+    return subcmd_cp_mv(args, s3.object_copy, "copy", u"remote copy: '%(src)s' -> '%(dst)s'  %(extra)s")
 
 def cmd_modify(args):
     s3 = S3(Config())
-    return subcmd_cp_mv(args, s3.object_modify, "modify", u"modify: '%(src)s'")
+    return subcmd_cp_mv(args, s3.object_modify, "modify",
+                        u"modify: '%(src)s'  %(extra)s")
 
 def cmd_mv(args):
     s3 = S3(Config())
-    return subcmd_cp_mv(args, s3.object_move, "move", u"move: '%(src)s' -> '%(dst)s'")
+    return subcmd_cp_mv(args, s3.object_move, "move", u"move: '%(src)s' -> '%(dst)s'  %(extra)s")
 
 def cmd_info(args):
     cfg = Config()
@@ -1112,8 +1115,10 @@ def cmd_sync_remote2remote(args):
             seq_label = "[%d of %d]" % (seq, src_count)
             extra_headers = copy(cfg.extra_headers)
             try:
-                response = s3.object_copy(src_uri, dst_uri, extra_headers)
-                output(u"remote copy: '%s' -> '%s'" % (src_uri, dst_uri))
+                response = s3.object_copy(src_uri, dst_uri, extra_headers,
+                                          extra_label=seq_label)
+                output(u"remote copy: '%s' -> '%s'  %s" %
+                       (src_uri, dst_uri, seq_label))
                 total_nb_files += 1
                 total_size += item.get(u'size', 0)
             except S3Error as exc:
@@ -1549,15 +1554,20 @@ def remote_copy(s3, copy_pairs, destination_base, uploaded_objects_list=None):
     cfg = Config()
     saved_bytes = 0
     failed_copy_list = FileDict()
+    seq = 0
+    src_count = len(copy_pairs)
     for (src_obj, dst1, dst2) in copy_pairs:
+        seq += 1
         debug(u"Remote Copying from %s to %s" % (dst1, dst2))
         dst1_uri = S3Uri(destination_base + dst1)
         dst2_uri = S3Uri(destination_base + dst2)
+        seq_label = "[%d of %d]" % (seq, src_count)
         extra_headers = copy(cfg.extra_headers)
         try:
-            s3.object_copy(dst1_uri, dst2_uri, extra_headers)
+            s3.object_copy(dst1_uri, dst2_uri, extra_headers,
+                           extra_label=seq_label)
+            output(u"remote copy: '%s' -> '%s'  %s" % (dst1, dst2, seq_label))
             saved_bytes += src_obj.get(u'size', 0)
-            output(u"remote copy: '%s' -> '%s'" % (dst1, dst2))
             if uploaded_objects_list is not None:
                 uploaded_objects_list.append(dst2)
         except Exception:
