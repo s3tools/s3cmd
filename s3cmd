@@ -906,12 +906,15 @@ def subcmd_cp_mv(args, process_fce, action_str, message):
             if Config().acl_public:
                 info(u"Public URL is: %s" % dst_uri.public_url())
             scoreboard.success()
-        except S3Error as e:
-            if e.code == "NoSuchKey":
+        except (S3Error, S3UploadError) as exc:
+            if isinstance(exc, S3Error) and exc.code == "NoSuchKey":
                 scoreboard.notfound()
                 warning(u"Key not found %s" % item['object_uri_str'])
             else:
                 scoreboard.failed()
+                error(u"Copy failed for: '%s' (%s)", item['object_uri_str'],
+                      exc)
+
             if cfg.stop_on_error:
                 break
     return scoreboard.rc()
@@ -1136,7 +1139,7 @@ def cmd_sync_remote2remote(args):
                        (src_uri, dst_uri, seq_label))
                 total_nb_files += 1
                 total_size += item.get(u'size', 0)
-            except S3Error as exc:
+            except (S3Error, S3UploadError) as exc:
                 ret = EX_PARTIAL
                 error(u"File '%s' could not be copied: %s", src_uri, exc)
                 if cfg.stop_on_error:
