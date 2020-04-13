@@ -953,11 +953,14 @@ class S3(object):
                     extra_label=""):
         response_copy = self.object_copy(src_uri, dst_uri, extra_headers)
         debug("Object %s copied to %s" % (src_uri, dst_uri))
-        if not response_copy["data"] or getRootTagName(response_copy["data"]) == "CopyObjectResult":
+        if not response_copy["data"] \
+           or getRootTagName(response_copy["data"]) \
+              in ["CopyObjectResult", "CompleteMultipartUploadResult"]:
             self.object_delete(src_uri)
             debug("Object '%s' deleted", src_uri)
         else:
-            debug("Object '%s' NOT deleted because of an unexepected response data content.", src_uri)
+            warning("Object '%s' NOT deleted because of an unexpected "
+                    "response data content.", src_uri)
         return response_copy
 
     def object_info(self, uri):
