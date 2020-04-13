@@ -137,6 +137,7 @@ class MultiPartUpload(object):
         }
 
         seq = 1
+
         if self.src_size:
             size_left = self.src_size
             nr_parts = self.src_size // self.chunk_size \
@@ -180,10 +181,9 @@ class MultiPartUpload(object):
             buffer = self.file_stream.read(self.chunk_size)
             offset = 0 # send from start of the buffer
             current_chunk_size = len(buffer)
-            labels['extra'] = "[part %d of %d, %s]%s" % (
-                seq, nr_parts,
-                "%d%sB" % formatSize(current_chunk_size,
-                                     human_readable=True),
+            labels['extra'] = "[part %d of -, %s]%s" % (
+                seq, "%d%sB" % formatSize(current_chunk_size,
+                                          human_readable=True),
                 extra_label)
             if not buffer:
                 # EOF
