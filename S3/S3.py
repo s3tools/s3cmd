@@ -1649,8 +1649,9 @@ class S3(object):
                     return self.send_file(request, stream, labels, buffer, throttle,
                                           retries - 1, offset, chunk_size, use_expect_continue)
                 else:
-                    warning("Too many failures. Giving up on '%s'" % (filename))
-                    raise S3UploadError
+                    warning("Too many failures. Giving up on '%s'" % filename)
+                    raise S3UploadError("Too many failures. Giving up on '%s'"
+                                        % filename)
 
             ## Non-recoverable error
             raise S3Error(response)
@@ -1666,7 +1667,8 @@ class S3(object):
                                       retries - 1, offset, chunk_size, use_expect_continue)
             else:
                 warning("Too many failures. Giving up on '%s'" % (filename))
-                raise S3UploadError
+                raise S3UploadError("Too many failures. Giving up on '%s'"
+                                    % filename)
 
         return response
 
