@@ -164,8 +164,8 @@ class Config(object):
     # Chunk size is at the same time the chunk size and the threshold
     multipart_chunk_size_mb = 15    # MiB
     # Maximum chunk size for s3-to-s3 copy is 5 GiB.
-    # But, use a lot lower value by default
-    multipart_copy_chunk_size_mb = 2 * 1024
+    # But, use a lot lower value by default (1GiB)
+    multipart_copy_chunk_size_mb = 1 * 1024
     # Maximum chunks on AWS S3, could be different on other S3-compatible APIs
     multipart_max_chunks = 10000
     # List of checks to be performed for 'sync'
