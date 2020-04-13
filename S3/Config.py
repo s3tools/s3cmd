@@ -161,11 +161,13 @@ class Config(object):
     use_mime_magic = True
     mime_type = u""
     enable_multipart = True
-    multipart_chunk_size_mb = 15    # MB
-    multipart_max_chunks = 10000    # Maximum chunks on AWS S3, could be different on other S3-compatible APIs
-    #- minimum size to use multipart remote s3-to-s3 copy with byte range is 5gb
-    #multipart_copy_size = (5 * 1024 * 1024 * 1024) - 1
-    multipart_copy_size = 5 * 1024 * 1024 * 1024
+    # Chunk size is at the same time the chunk size and the threshold
+    multipart_chunk_size_mb = 15    # MiB
+    # Maximum chunk size for s3-to-s3 copy is 5 GiB.
+    # But, use a lot lower value by default
+    multipart_copy_chunk_size_mb = 2 * 1024
+    # Maximum chunks on AWS S3, could be different on other S3-compatible APIs
+    multipart_max_chunks = 10000
     # List of checks to be performed for 'sync'
     sync_checks = ['size', 'md5']   # 'weak-timestamp'
     # List of compiled REGEXPs

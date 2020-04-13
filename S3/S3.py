@@ -40,7 +40,7 @@ from .ACL import ACL, GranteeLogDelivery
 from .BidirMap import BidirMap
 from .Config import Config
 from .Exceptions import *
-from .MultiPart import MultiPartUpload, MultiPartCopy
+from .MultiPart import MultiPartUpload
 from .S3Uri import S3Uri
 from .ConnMan import ConnMan
 from .Crypto import (sign_request_v2, sign_request_v4, checksum_sha256_file,
@@ -845,19 +845,15 @@ class S3(object):
             headers.update(extra_headers)
 
         ## Multipart decision - only do multipart copy for remote s3 files > 5gb
-        multipart = False
-        # TODO: does it need new config option for: enable_multipart_copy ?
         if self.config.enable_multipart:
             # get size of remote src only if multipart is enabled
             src_info = self.object_info(src_uri)
             size = int(src_info["headers"]["content-length"])
 
-            if size > self.config.multipart_copy_size:
-                multipart = True
-
-        if multipart:
-            # Multipart requests are quite different... drop here
-            return self.copy_file_multipart(src_uri, dst_uri, size, headers)
+            if size > self.config.multipart_copy_chunk_size_mb * 1024 * 1024:
+                # Multipart requests are quite different... drop here
+                return self.copy_file_multipart(src_uri, dst_uri, size,
+                                                headers)
 
         ## Not multipart...
         headers['x-amz-copy-source'] = "/%s/%s" % (
@@ -866,7 +862,8 @@ class S3(object):
         )
         headers['x-amz-metadata-directive'] = "COPY"
 
-        request = self.create_request("OBJECT_PUT", uri = dst_uri, headers = headers)
+        request = self.create_request("OBJECT_PUT", uri=dst_uri,
+                                      headers=headers)
         response = self.send_request(request)
         if response["data"] and getRootTagName(response["data"]) == "Error":
             #http://doc.s3.amazonaws.com/proposals/copy.html
@@ -1627,9 +1624,9 @@ class S3(object):
 
         return response
 
-    def send_file_multipart(self, stream, headers, uri, size, extra_label = ""):
+    def send_file_multipart(self, stream, headers, uri, size, extra_label=""):
         timestamp_start = time.time()
-        upload = MultiPartUpload(self, stream, uri, headers)
+        upload = MultiPartUpload(self, stream, uri, headers, size)
         upload.upload_all_parts(extra_label)
         response = upload.complete_multipart_upload()
         timestamp_end = time.time()
@@ -1643,17 +1640,10 @@ class S3(object):
             raise S3UploadError(getTextFromXml(response["data"], 'Message'))
         return response
 
-    def copy_file_multipart(self, src_uri, dst_uri, size, headers):
-        debug("copying multi-part ..." )
-        timestamp_start = time.time()
-        multicopy = MultiPartCopy(self, src_uri, dst_uri, size, headers)
-        multicopy.copy_all_parts()
-        response = multicopy.complete_multipart_copy()
-        timestamp_end = time.time()
-        response["elapsed"] = timestamp_end - timestamp_start
-        response["size"] = size
-        response["speed"] = response["elapsed"] and float(response["size"]) / response["elapsed"] or float(-1)
-        return response
+    def copy_file_multipart(self, src_uri, dst_uri, size, headers,
+                            extra_label=""):
+        return self.send_file_multipart(src_uri, headers, dst_uri, size,
+                                        extra_label)
 
     def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
         self.update_region_inner_request(request)
