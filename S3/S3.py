@@ -33,7 +33,11 @@ try:
 except ImportError:
     from md5 import md5
 
-from .Utils import *
+from .Utils import (getListFromXml, getTextFromXml, getRootTagName,
+                    convertHeaderTupleListToDict, hash_file_md5, unicodise,
+                    deunicodise, decode_from_s3, encode_to_s3, s3_quote,
+                    check_bucket_name, check_bucket_name_dns_support,
+                    getHostnameFromBucket, calculateChecksum)
 from .SortedDict import SortedDict
 from .AccessLog import AccessLog
 from .ACL import ACL, GranteeLogDelivery
@@ -44,7 +48,7 @@ from .MultiPart import MultiPartUpload
 from .S3Uri import S3Uri
 from .ConnMan import ConnMan
 from .Crypto import (sign_request_v2, sign_request_v4, checksum_sha256_file,
-                     checksum_sha256_buffer, s3_quote, format_param_str)
+                     checksum_sha256_buffer, format_param_str)
 
 try:
     from ctypes import ArgumentError

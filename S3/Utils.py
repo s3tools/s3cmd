@@ -386,6 +386,29 @@ def encode_to_s3(string, errors = "replace"):
         raise UnicodeEncodeError("Conversion from unicode failed: %r" % string)
 __all__.append("encode_to_s3")
 
+def s3_quote(param, quote_backslashes=True, unicode_output=False):
+    """
+    URI encode every byte. UriEncode() must enforce the following rules:
+    - URI encode every byte except the unreserved characters: 'A'-'Z', 'a'-'z', '0'-'9', '-', '.', '_', and '~'.
+    - The space character is a reserved character and must be encoded as "%20" (and not as "+").
+    - Each URI encoded byte is formed by a '%' and the two-digit hexadecimal value of the byte.
+    - Letters in the hexadecimal value must be uppercase, for example "%1A".
+    - Encode the forward slash character, '/', everywhere except in the object key name.
+    For example, if the object key name is photos/Jan/sample.jpg, the forward slash in the key name is not encoded.
+    """
+    if quote_backslashes:
+        safe_chars = "~"
+    else:
+        safe_chars = "~/"
+    param = encode_to_s3(param)
+    param = quote(param, safe=safe_chars)
+    if unicode_output:
+        param = decode_from_s3(param)
+    else:
+        param = encode_to_s3(param)
+    return param
+__all__.append("s3_quote")
+
 ## Low level methods
 def urlencode_string(string, urlencoding_mode = None, unicode_output=False):
     string = encode_to_s3(string)
