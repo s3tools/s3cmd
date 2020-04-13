@@ -127,8 +127,9 @@ def mime_magic(file):
         result = (None, None)
     return result
 
-EXPECT_CONTINUE_TIMEOUT = 2
 
+EXPECT_CONTINUE_TIMEOUT = 2
+SIZE_1MB = 1024 * 1024
 
 __all__ = []
 class S3Request(object):
@@ -681,9 +682,9 @@ class S3(object):
         if not self.config.enable_multipart and filename == "-":
             raise ParameterError("Multi-part upload is required to upload from stdin")
         if self.config.enable_multipart:
-            if size > self.config.multipart_chunk_size_mb * 1024 * 1024 or filename == "-":
+            if size > self.config.multipart_chunk_size_mb * SIZE_1MB or filename == "-":
                 multipart = True
-                if size > self.config.multipart_max_chunks * self.config.multipart_chunk_size_mb * 1024 * 1024:
+                if size > self.config.multipart_max_chunks * self.config.multipart_chunk_size_mb * SIZE_1MB:
                     raise ParameterError("Chunk size %d MB results in more than %d chunks. Please increase --multipart-chunk-size-mb" % \
                           (self.config.multipart_chunk_size_mb, self.config.multipart_max_chunks))
         if multipart:
@@ -816,7 +817,7 @@ class S3(object):
         return headers
 
     def object_copy(self, src_uri, dst_uri, extra_headers=None,
-                    extra_label=""):
+                    src_size=None, extra_label=""):
         if src_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
         if dst_uri.type != "s3":
@@ -830,7 +831,7 @@ class S3(object):
                 if exc.status != 501:
                     raise exc
                 acl = None
-        headers = SortedDict(ignore_case = True)
+        headers = SortedDict(ignore_case=True)
 
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
@@ -850,15 +851,18 @@ class S3(object):
         if extra_headers:
             headers.update(extra_headers)
 
-        ## Multipart decision - only do multipart copy for remote s3 files > 5gb
+        # Multipart decision. Only do multipart copy for remote s3 files
+        # bigger than the multipart copy threshlod.
         if self.config.enable_multipart:
-            # get size of remote src only if multipart is enabled
-            src_info = self.object_info(src_uri)
-            size = int(src_info["headers"]["content-length"])
+            # get size of remote src only if multipart is enabled and no size
+            # info was provided
+            if src_size is None:
+                src_info = self.object_info(src_uri)
+                src_size = int(src_info["headers"]["content-length"])
 
-            if size > self.config.multipart_copy_chunk_size_mb * 1024 * 1024:
+            if src_size > self.config.multipart_copy_chunk_size_mb * SIZE_1MB:
                 # Multipart requests are quite different... drop here
-                return self.copy_file_multipart(src_uri, dst_uri, size,
+                return self.copy_file_multipart(src_uri, dst_uri, src_size,
                                                 headers, extra_label)
 
         ## Not multipart...
@@ -872,7 +876,7 @@ class S3(object):
                                       headers=headers)
         response = self.send_request(request)
         if response["data"] and getRootTagName(response["data"]) == "Error":
-            #http://doc.s3.amazonaws.com/proposals/copy.html
+            # http://doc.s3.amazonaws.com/proposals/copy.html
             # Error during copy, status will be 200, so force error code 500
             response["status"] = 500
             error("Server error during the COPY operation. Overwrite response "
@@ -890,7 +894,7 @@ class S3(object):
         return response
 
     def object_modify(self, src_uri, dst_uri, extra_headers=None,
-                      extra_label=""):
+                      src_size=None, extra_label=""):
 
         if src_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
@@ -957,12 +961,13 @@ class S3(object):
         return response
 
     def object_move(self, src_uri, dst_uri, extra_headers=None,
-                    extra_label=""):
-        response_copy = self.object_copy(src_uri, dst_uri, extra_headers)
+                    src_size=None, extra_label=""):
+        response_copy = self.object_copy(src_uri, dst_uri, extra_headers,
+                                         src_size, extra_label)
         debug("Object %s copied to %s" % (src_uri, dst_uri))
         if not response_copy["data"] \
            or getRootTagName(response_copy["data"]) \
-              in ["CopyObjectResult", "CompleteMultipartUploadResult"]:
+           in ["CopyObjectResult", "CompleteMultipartUploadResult"]:
             self.object_delete(src_uri)
             debug("Object '%s' deleted", src_uri)
         else:

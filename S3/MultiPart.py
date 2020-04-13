@@ -13,12 +13,14 @@ from .S3Uri import S3UriS3
 from .Utils import (getTextFromXml, getTreeFromXml, formatSize,
                     calculateChecksum, parseNodes, s3_quote)
 
+SIZE_1MB = 1024 * 1024
+
 
 class MultiPartUpload(object):
     """Supports MultiPartUpload and MultiPartUpload(Copy) operation"""
     MIN_CHUNK_SIZE_MB = 5        # 5MB
-    MAX_CHUNK_SIZE_MB = 5120     # 5GB
-    MAX_FILE_SIZE = 42949672960  # 5TB
+    MAX_CHUNK_SIZE_MB = 5 * 1024     # 5GB
+    MAX_FILE_SIZE = 5 * 1024 * 1024  # 5TB
 
     def __init__(self, s3, src, dst_uri, headers_baseline=None,
                  src_size=None):
@@ -36,11 +38,11 @@ class MultiPartUpload(object):
             if not src_size:
                 raise ParameterError("Source size is missing for "
                                      "MultipartUploadCopy operation")
-            c_size = self.s3.config.multipart_copy_chunk_size_mb * 1024 * 1024
+            c_size = self.s3.config.multipart_copy_chunk_size_mb * SIZE_1MB
         else:
             # Source is a file_stream to upload
             self.file_stream = src
-            c_size = self.s3.config.multipart_chunk_size_mb * 1024 * 1024
+            c_size = self.s3.config.multipart_chunk_size_mb * SIZE_1MB
 
         self.chunk_size = c_size
         self.upload_id = self.initiate_multipart_upload()
