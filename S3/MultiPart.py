@@ -262,8 +262,6 @@ class MultiPartUpload(object):
         #    x-amz-copy-source-if-unmodified-since: time_stamp
         #    x-amz-copy-source-if-modified-since: time_stamp
         headers = {
-            "x-amz-copy-source": "/%s/%s" % (self.src_uri.bucket(),
-                                             self.src_uri.object()),
             "x-amz-copy-source": s3_quote("/%s/%s" % (self.src_uri.bucket(),
                                                       self.src_uri.object()),
                                           quote_backslashes=False,
@@ -303,8 +301,8 @@ class MultiPartUpload(object):
         part_xml = "<Part><PartNumber>%i</PartNumber><ETag>%s</ETag></Part>"
         for seq, etag in self.parts.items():
             parts_xml.append(part_xml % (seq, etag))
-        body = "<CompleteMultipartUpload>%s</CompleteMultipartUpload>" % (
-            "".join(parts_xml))
+        body = "<CompleteMultipartUpload>%s</CompleteMultipartUpload>" \
+               % "".join(parts_xml)
 
         headers = {"content-length": str(len(body))}
         request = self.s3.create_request(

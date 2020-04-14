@@ -851,30 +851,32 @@ class S3(object):
         if extra_headers:
             headers.update(extra_headers)
 
-        # Multipart decision. Only do multipart copy for remote s3 files
-        # bigger than the multipart copy threshlod.
-        if self.config.enable_multipart:
-            # get size of remote src only if multipart is enabled and no size
-            # info was provided
-            if src_size is None:
-                src_info = self.object_info(src_uri)
-                src_size = int(src_info["headers"]["content-length"])
-
-            if src_size > self.config.multipart_copy_chunk_size_mb * SIZE_1MB:
-                # Multipart requests are quite different... drop here
-                return self.copy_file_multipart(src_uri, dst_uri, src_size,
-                                                headers, extra_label)
-
-        ## Not multipart...
-        headers['x-amz-copy-source'] = s3_quote("/%s/%s" % (src_uri.bucket(),
-                                                            src_uri.object()),
-                                                quote_backslashes=False,
-                                                unicode_output=True)
         headers['x-amz-metadata-directive'] = "COPY"
 
-        request = self.create_request("OBJECT_PUT", uri=dst_uri,
-                                      headers=headers)
-        response = self.send_request(request)
+        # Get size of remote source only if multipart is enabled and that no
+        # size info was provided
+        if src_size is None and self.config.enable_multipart:
+            src_info = self.object_info(src_uri)
+            src_size = int(src_info["headers"]["content-length"])
+
+        # Multipart decision. Only do multipart copy for remote s3 files
+        # bigger than the multipart copy threshlod.
+
+        if self.config.enable_multipart and \
+           src_size > self.config.multipart_copy_chunk_size_mb * SIZE_1MB:
+            # Multipart requests are quite different... delegate
+            response = self.copy_file_multipart(src_uri, dst_uri, src_size,
+                                                headers, extra_label)
+        else:
+            # Not multipart... direct request
+            headers['x-amz-copy-source'] = s3_quote(
+                "/%s/%s" % (src_uri.bucket(), src_uri.object()),
+                quote_backslashes=False, unicode_output=True)
+
+            request = self.create_request("OBJECT_PUT", uri=dst_uri,
+                                          headers=headers)
+            response = self.send_request(request)
+
         if response["data"] and getRootTagName(response["data"]) == "Error":
             # http://doc.s3.amazonaws.com/proposals/copy.html
             # Error during copy, status will be 200, so force error code 500
