@@ -945,14 +945,15 @@ class S3(object):
             return self.object_copy(src_uri, src_uri, extra_headers, src_size,
                                     extra_label)
 
-        try:
-            acl = self.get_acl(src_uri)
-        except S3Error as exc:
-            # Ignore the exception and don't fail the modify
-            # if the server doesn't support setting ACLs
-            if exc.status != 501:
-                raise exc
-            acl = None
+        if self.config.acl_public is None:
+            try:
+                acl = self.get_acl(src_uri)
+            except S3Error as exc:
+                # Ignore the exception and don't fail the modify
+                # if the server doesn't support setting ACLs
+                if exc.status != 501:
+                    raise exc
+                acl = None
 
         headers['x-amz-copy-source'] = s3_quote("/%s/%s" % (src_uri.bucket(),
                                                             src_uri.object()),
@@ -961,6 +962,9 @@ class S3(object):
         headers['x-amz-metadata-directive'] = "REPLACE"
 
         # cannot change between standard and reduced redundancy with a REPLACE.
+
+        if self.config.acl_public:
+            headers["x-amz-acl"] = "public-read"
 
         ## Set server side encryption
         if self.config.server_side_encryption:
@@ -989,7 +993,7 @@ class S3(object):
                   "response status to 500")
             raise S3Error(response)
 
-        if acl is not None:
+        if self.config.acl_public is None and acl:
             try:
                 self.set_acl(src_uri, acl)
             except S3Error as exc:
@@ -997,7 +1001,6 @@ class S3(object):
                 # if the server doesn't support setting ACLs
                 if exc.status != 501:
                     raise exc
-
         return response
 
     def object_move(self, src_uri, dst_uri, extra_headers=None,
