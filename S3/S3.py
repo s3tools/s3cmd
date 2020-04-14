@@ -809,6 +809,9 @@ class S3(object):
             'server',
             'x-amz-id-2',
             'x-amz-request-id',
+            # Other headers that are not copying by a direct copy
+            'x-amz-storage-class',
+            ## We should probably also add server-side encryption headers
         ]
 
         for h in to_remove + self.config.remove_headers:
@@ -831,7 +834,33 @@ class S3(object):
                 if exc.status != 501:
                     raise exc
                 acl = None
-        headers = SortedDict(ignore_case=True)
+
+        multipart = False
+        if self.config.enable_multipart:
+            # Get size of remote source only if multipart is enabled and that no
+            # size info was provided
+            src_headers = None
+            if src_size is None:
+                src_info = self.object_info(src_uri)
+                src_headers = src_info['headers']
+                src_size = int(src_headers["content-length"])
+
+            if src_size > self.config.multipart_copy_chunk_size_mb * SIZE_1MB:
+                # Sadly, s3 is badly done as metadata will not be copied in
+                # multipart copy unlike what is done in the case of direct
+                # copy.
+                # TODO: Optimize by re-using the object_info request done
+                # earlier earlier at fetch remote stage, and preserve headers.
+                if src_headers is None:
+                    src_info = self.object_info(src_uri)
+                    src_headers = src_info['headers']
+                    src_size = int(src_headers["content-length"])
+                self._sanitize_headers(src_headers)
+                headers = SortedDict(src_headers, ignore_case=True)
+                multipart = True
+
+        if not multipart:
+            headers = SortedDict(ignore_case=True)
 
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
@@ -853,17 +882,10 @@ class S3(object):
 
         headers['x-amz-metadata-directive'] = "COPY"
 
-        # Get size of remote source only if multipart is enabled and that no
-        # size info was provided
-        if src_size is None and self.config.enable_multipart:
-            src_info = self.object_info(src_uri)
-            src_size = int(src_info["headers"]["content-length"])
+        if multipart:
+            # Multipart decision. Only do multipart copy for remote s3 files
+            # bigger than the multipart copy threshlod.
 
-        # Multipart decision. Only do multipart copy for remote s3 files
-        # bigger than the multipart copy threshlod.
-
-        if self.config.enable_multipart and \
-           src_size > self.config.multipart_copy_chunk_size_mb * SIZE_1MB:
             # Multipart requests are quite different... delegate
             response = self.copy_file_multipart(src_uri, dst_uri, src_size,
                                                 headers, extra_label)
