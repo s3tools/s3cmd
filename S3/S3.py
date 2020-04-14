@@ -880,6 +880,9 @@ class S3(object):
         if extra_headers:
             headers.update(extra_headers)
 
+        if self.config.mime_type:
+            headers["content-type"] = self.config.mime_type
+
         headers['x-amz-metadata-directive'] = "COPY"
 
         if multipart:
