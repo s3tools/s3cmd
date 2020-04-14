@@ -927,7 +927,20 @@ class S3(object):
 
         info_response = self.object_info(src_uri)
         headers = info_response['headers']
+        src_size = int(headers["content-length"])
         headers = self._sanitize_headers(headers)
+
+        # If we are over the grand maximum size for a normal copy/modify
+        # (> 5GB) go nuclear, and use multipart copy as the only option to
+        # modify an object.
+        # We are sure that copy will run multipart has we are bigger than
+        # the maximum size for non multipart.
+        # Reason is aws s3 design bug. See:
+        # https://github.com/aws/aws-sdk-java/issues/367
+        if src_size > MultiPartUpload.MAX_CHUNK_SIZE_MB * SIZE_1MB \
+           and self.config.enable_multipart:
+            return self.object_copy(src_uri, src_uri, extra_headers, src_size,
+                                    extra_label)
 
         try:
             acl = self.get_acl(src_uri)
