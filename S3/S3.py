@@ -1452,7 +1452,7 @@ class S3(object):
         To be able to show progression for small requests
         """
         if not self.config.progress_meter:
-            info("Sending slow request '%s', please wait..." % filename)
+            info("Sending slow request, please wait...")
             return self.send_request(request)
 
         if 'action' not in labels:
