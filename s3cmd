@@ -1633,13 +1633,14 @@ def _build_attr_header(local_list, src):
             pass
 
     if attrs:
-        result = ""
+        attr_str_list = []
         for k in sorted(attrs.keys()):
-            result += "%s:%s/" % (k, attrs[k])
-        return {'x-amz-meta-s3cmd-attrs' : result[:-1]}
+            attr_str_list.append(u"%s:%s" % (k, attrs[k]))
+        attr_header = {'x-amz-meta-s3cmd-attrs': u'/'.join(attr_str_list)}
     else:
-        return {}
+        attr_header = {}
 
+    return attr_header
 
 def cmd_sync_local2remote(args):
     cfg = Config()
