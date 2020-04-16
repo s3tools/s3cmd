@@ -132,6 +132,7 @@ EXPECT_CONTINUE_TIMEOUT = 2
 SIZE_1MB = 1024 * 1024
 
 __all__ = []
+
 class S3Request(object):
     region_map = {}
     ## S3 sometimes sends HTTP-301, HTTP-307 response
@@ -820,7 +821,7 @@ class S3(object):
         return headers
 
     def object_copy(self, src_uri, dst_uri, extra_headers=None,
-                    src_size=None, extra_label=""):
+                    src_size=None, extra_label="", replace_meta=False):
         if src_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
         if dst_uri.type != "s3":
@@ -836,16 +837,34 @@ class S3(object):
                 acl = None
 
         multipart = False
+
+        headers = None
+        if replace_meta:
+            src_info = self.object_info(src_uri)
+            headers = src_info['headers']
+            src_size = int(headers["content-length"])
+
         if self.config.enable_multipart:
             # Get size of remote source only if multipart is enabled and that no
             # size info was provided
-            src_headers = None
+            src_headers = headers
             if src_size is None:
                 src_info = self.object_info(src_uri)
                 src_headers = src_info['headers']
                 src_size = int(src_headers["content-length"])
 
-            if src_size > self.config.multipart_copy_chunk_size_mb * SIZE_1MB:
+            # If we are over the grand maximum size for a normal copy/modify
+            # (> 5GB) go nuclear and use multipart copy as the only option to
+            # modify an object.
+            # Reason is an aws s3 design bug. See:
+            # https://github.com/aws/aws-sdk-java/issues/367
+            if src_uri is dst_uri:
+                # optimisation in the case of modify
+                threshold = MultiPartUpload.MAX_CHUNK_SIZE_MB * SIZE_1MB
+            else:
+                threshold = self.config.multipart_copy_chunk_size_mb * SIZE_1MB
+
+            if src_size > threshold:
                 # Sadly, s3 is badly done as metadata will not be copied in
                 # multipart copy unlike what is done in the case of direct
                 # copy.
@@ -855,11 +874,13 @@ class S3(object):
                     src_info = self.object_info(src_uri)
                     src_headers = src_info['headers']
                     src_size = int(src_headers["content-length"])
-                self._sanitize_headers(src_headers)
-                headers = SortedDict(src_headers, ignore_case=True)
+                headers = src_headers
                 multipart = True
 
-        if not multipart:
+        if headers:
+            self._sanitize_headers(headers)
+            headers = SortedDict(headers, ignore_case=True)
+        else:
             headers = SortedDict(ignore_case=True)
 
         if self.config.acl_public:
@@ -883,11 +904,15 @@ class S3(object):
         if self.config.mime_type:
             headers["content-type"] = self.config.mime_type
 
-        headers['x-amz-metadata-directive'] = "COPY"
+        # "COPY" or "REPLACE"
+        if not replace_meta:
+            headers['x-amz-metadata-directive'] = "COPY"
+        else:
+            headers['x-amz-metadata-directive'] = "REPLACE"
 
         if multipart:
             # Multipart decision. Only do multipart copy for remote s3 files
-            # bigger than the multipart copy threshlod.
+            # bigger than the multipart copy threshold.
 
             # Multipart requests are quite different... delegate
             response = self.copy_file_multipart(src_uri, dst_uri, src_size,
@@ -922,86 +947,9 @@ class S3(object):
 
     def object_modify(self, src_uri, dst_uri, extra_headers=None,
                       src_size=None, extra_label=""):
-
-        if src_uri.type != "s3":
-            raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
-        if dst_uri.type != "s3":
-            raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
-
-        info_response = self.object_info(src_uri)
-        headers = info_response['headers']
-        src_size = int(headers["content-length"])
-        headers = self._sanitize_headers(headers)
-
-        # If we are over the grand maximum size for a normal copy/modify
-        # (> 5GB) go nuclear, and use multipart copy as the only option to
-        # modify an object.
-        # We are sure that copy will run multipart has we are bigger than
-        # the maximum size for non multipart.
-        # Reason is aws s3 design bug. See:
-        # https://github.com/aws/aws-sdk-java/issues/367
-        if src_size > MultiPartUpload.MAX_CHUNK_SIZE_MB * SIZE_1MB \
-           and self.config.enable_multipart:
-            return self.object_copy(src_uri, src_uri, extra_headers, src_size,
-                                    extra_label)
-
-        if self.config.acl_public is None:
-            try:
-                acl = self.get_acl(src_uri)
-            except S3Error as exc:
-                # Ignore the exception and don't fail the modify
-                # if the server doesn't support setting ACLs
-                if exc.status != 501:
-                    raise exc
-                acl = None
-
-        headers['x-amz-copy-source'] = s3_quote("/%s/%s" % (src_uri.bucket(),
-                                                            src_uri.object()),
-                                                quote_backslashes=False,
-                                                unicode_output=True)
-        headers['x-amz-metadata-directive'] = "REPLACE"
-
-        # cannot change between standard and reduced redundancy with a REPLACE.
-
-        if self.config.acl_public:
-            headers["x-amz-acl"] = "public-read"
-
-        ## Set server side encryption
-        if self.config.server_side_encryption:
-            headers["x-amz-server-side-encryption"] = "AES256"
-
-        ## Set kms headers
-        if self.config.kms_key:
-            headers['x-amz-server-side-encryption'] = 'aws:kms'
-            headers['x-amz-server-side-encryption-aws-kms-key-id'] = \
-                self.config.kms_key
-
-        if extra_headers:
-            headers.update(extra_headers)
-
-        if self.config.mime_type:
-            headers["content-type"] = self.config.mime_type
-
-        request = self.create_request("OBJECT_PUT", uri=src_uri,
-                                      headers=headers)
-        response = self.send_request(request)
-        if response["data"] and getRootTagName(response["data"]) == "Error":
-            #http://doc.s3.amazonaws.com/proposals/copy.html
-            # Error during modify, status will be 200, so force error code 500
-            response["status"] = 500
-            error("Server error during the MODIFY operation. Overwrite "
-                  "response status to 500")
-            raise S3Error(response)
-
-        if self.config.acl_public is None and acl:
-            try:
-                self.set_acl(src_uri, acl)
-            except S3Error as exc:
-                # Ignore the exception and don't fail the modify
-                # if the server doesn't support setting ACLs
-                if exc.status != 501:
-                    raise exc
-        return response
+        # dst_uri = src_uri Will optimize by using multipart just in worst case
+        return self.object_copy(src_uri, src_uri, extra_headers, src_size,
+                                extra_label, replace_meta=True)
 
     def object_move(self, src_uri, dst_uri, extra_headers=None,
                     src_size=None, extra_label=""):
