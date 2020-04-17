@@ -1165,8 +1165,8 @@ def cmd_sync_remote2remote(args):
     total_size_copied += bytes_saved
 
     #process files not copied
-    debug("Process files that were not remote copied")
-    failed_copy_count = len (failed_copy_files)
+    debug("Process files that were not remotely copied")
+    failed_copy_count = len(failed_copy_files)
     for key in failed_copy_files:
         failed_copy_files[key]['target_uri'] = destination_base + key
     status, seq, nb_files, size = _upload(failed_copy_files, seq, src_count + update_count + failed_copy_count)
@@ -1829,7 +1829,7 @@ def cmd_sync_local2remote(args):
                                                                 uploaded_objects_list)
 
         #upload file that could not be copied
-        debug("Process files that were not remote copied")
+        debug("Process files that were not remotely copied")
         failed_copy_count = len(failed_copy_files)
         _set_remote_uri(failed_copy_files, destination_base, single_file_local)
         status, n, size_transferred = _upload(failed_copy_files, n, upload_count + failed_copy_count, size_transferred)
