@@ -822,6 +822,27 @@ class S3(object):
 
     def object_copy(self, src_uri, dst_uri, extra_headers=None,
                     src_size=None, extra_label="", replace_meta=False):
+        """Remote copy an object and eventually set metadata
+
+        Note: A little memo description of the nightmare for performance here:
+        ** FOR AWS, 2 cases:
+        - COPY will copy the metadata of the source to dest, but you can't
+        modify them. Any additional header will be ignored anyway.
+        - REPLACE will set the additional metadata headers that are provided
+        but will not copy any of the source headers.
+        So, to add to existing meta during copy, you have to do an object_info
+        to get original source headers, then modify, then use REPLACE for the
+        copy operation.
+
+        ** For Minio and maybe other implementations:
+        - if additional headers are sent, they will be set to the destination
+        on top of source original meta in all cases COPY and REPLACE.
+        It is a nice behavior except that it is different of the aws one.
+
+        As it was still too easy, there is another catch:
+        In all cases, for multipart copies, metadata data are never copied
+        from the source.
+        """
         if src_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
         if dst_uri.type != "s3":
@@ -837,8 +858,12 @@ class S3(object):
                 acl = None
 
         multipart = False
-
         headers = None
+
+        if extra_headers or self.config.mime_type:
+            # Force replace, that will force getting meta with object_info()
+            replace_meta = True
+
         if replace_meta:
             src_info = self.object_info(src_uri)
             headers = src_info['headers']
@@ -865,9 +890,8 @@ class S3(object):
                 threshold = self.config.multipart_copy_chunk_size_mb * SIZE_1MB
 
             if src_size > threshold:
-                # Sadly, s3 is badly done as metadata will not be copied in
-                # multipart copy unlike what is done in the case of direct
-                # copy.
+                # Sadly, s3 has a bad logic as metadata will not be copied for
+                # multipart copy unlike what is done for direct copies.
                 # TODO: Optimize by re-using the object_info request done
                 # earlier earlier at fetch remote stage, and preserve headers.
                 if src_headers is None:
@@ -883,6 +907,7 @@ class S3(object):
         else:
             headers = SortedDict(ignore_case=True)
 
+        # Following meta data are updated even in COPY by aws
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
 
@@ -898,6 +923,7 @@ class S3(object):
             headers['x-amz-server-side-encryption-aws-kms-key-id'] = \
                 self.config.kms_key
 
+        # Following meta data are not updated in simple COPY by aws.
         if extra_headers:
             headers.update(extra_headers)
 
