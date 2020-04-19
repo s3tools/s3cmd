@@ -1611,6 +1611,7 @@ def _build_attr_header(src_obj, src_relative_name,
     attrs = {}
     if cfg.preserve_attrs:
         for attr in cfg.preserve_attrs_list:
+            val = None
             if attr == 'uname':
                 try:
                     val = Utils.urlencode_string(Utils.getpwuid_username(src_obj['uid']), unicode_output=True)
