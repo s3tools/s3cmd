@@ -542,7 +542,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
             try:
                 src_md5 = src_list.get_md5(file)
                 dst_md5 = dst_list.get_md5(file)
-            except (IOError,OSError):
+            except (IOError, OSError):
                 # md5 sum verification failed - ignore that file altogether
                 debug(u"IGNR: %s (disappeared)" % (file))
                 warning(u"%s: file disappeared, ignoring." % (file))
@@ -604,7 +604,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
                     # Found one, we want to copy
                     dst1 = dst_list.find_md5_one(md5)
                     debug(u"DST COPY src: %s -> %s" % (dst1, relative_file))
-                    copy_pairs.append((src_list[relative_file], dst1, relative_file))
+                    copy_pairs.append((src_list[relative_file], dst1, relative_file, md5))
                     del(src_list[relative_file])
                     del(dst_list[relative_file])
                 else:
@@ -626,7 +626,8 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
             if dst1 is not None:
                 # Found one, we want to copy
                 debug(u"DST COPY dst: %s -> %s" % (dst1, relative_file))
-                copy_pairs.append((src_list[relative_file], dst1, relative_file))
+                copy_pairs.append((src_list[relative_file], dst1,
+                                   relative_file, md5))
                 del(src_list[relative_file])
             else:
                 # we don't have this file, and we don't have a copy of this file elsewhere.  Get it.

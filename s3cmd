@@ -417,11 +417,14 @@ def cmd_object_put(args):
 
     seq = 0
     ret = EX_OK
-    local_list_get_md5_func = local_list.get_md5
     for key in local_list:
         seq += 1
 
         uri_final = S3Uri(local_list[key]['remote_uri'])
+        try:
+            src_md5 = local_list.get_md5(key)
+        except IOError:
+            src_md5 = None
 
         extra_headers = copy(cfg.extra_headers)
         full_name_orig = local_list[key]['full_name']
@@ -429,9 +432,7 @@ def cmd_object_put(args):
         seq_label = "[%d of %d]" % (seq, local_count)
         if Config().encrypt:
             gpg_exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
-        attr_header = _build_attr_header(local_list[key],
-                                         key,
-                                         local_list_get_md5_func)
+        attr_header = _build_attr_header(local_list[key], key, src_md5)
         debug(u"attr_header: %s" % attr_header)
         extra_headers.update(attr_header)
         try:
@@ -1162,9 +1163,8 @@ def cmd_sync_remote2remote(args):
     total_files_copied += nb_files
     total_size_copied += size
 
-    src_list_get_md5_func = src_list.get_md5
     n_copied, bytes_saved, failed_copy_files = remote_copy(
-        s3, copy_pairs, destination_base, None, src_list_get_md5_func)
+        s3, copy_pairs, destination_base, None, False)
     total_files_copied += n_copied
     total_size_copied += bytes_saved
 
@@ -1556,7 +1556,7 @@ def local_copy(copy_pairs, destination_base):
     # For instance all empty files would become hardlinked together!
     saved_bytes = 0
     failed_copy_list = FileDict()
-    for (src_obj, dst1, relative_file) in copy_pairs:
+    for (src_obj, dst1, relative_file, md5) in copy_pairs:
         src_file = os.path.join(destination_base, dst1)
         dst_file = os.path.join(destination_base, relative_file)
         dst_dir = os.path.dirname(deunicodise(dst_file))
@@ -1573,13 +1573,13 @@ def local_copy(copy_pairs, destination_base):
     return len(copy_pairs), saved_bytes, failed_copy_list
 
 def remote_copy(s3, copy_pairs, destination_base, uploaded_objects_list=None,
-                metadata_update=False, local_list_get_md5_func=None):
+                metadata_update=False):
     cfg = Config()
     saved_bytes = 0
     failed_copy_list = FileDict()
     seq = 0
     src_count = len(copy_pairs)
-    for (src_obj, dst1, dst2) in copy_pairs:
+    for (src_obj, dst1, dst2, src_md5) in copy_pairs:
         seq += 1
         debug(u"Remote Copying from %s to %s" % (dst1, dst2))
         dst1_uri = S3Uri(destination_base + dst1)
@@ -1589,9 +1589,11 @@ def remote_copy(s3, copy_pairs, destination_base, uploaded_objects_list=None,
         extra_headers = copy(cfg.extra_headers)
         if metadata_update:
             # source is a real local file with its own personal metadata
-            attr_header = _build_attr_header(src_obj, dst2, local_list_get_md5_func)
+            attr_header = _build_attr_header(src_obj, dst2, src_md5)
             debug(u"attr_header: %s" % attr_header)
             extra_headers.update(attr_header)
+            extra_headers['content-type'] = \
+                s3.content_type(filename=src_obj['full_name'])
         try:
             s3.object_copy(dst1_uri, dst2_uri, extra_headers,
                            src_size=src_obj_size,
@@ -1605,8 +1607,7 @@ def remote_copy(s3, copy_pairs, destination_base, uploaded_objects_list=None,
             failed_copy_list[dst2] = src_obj
     return (len(copy_pairs), saved_bytes, failed_copy_list)
 
-def _build_attr_header(src_obj, src_relative_name,
-                       local_list_get_md5_func=None):
+def _build_attr_header(src_obj, src_relative_name, md5=None):
     cfg = Config()
     attrs = {}
     if cfg.preserve_attrs:
@@ -1636,13 +1637,8 @@ def _build_attr_header(src_obj, src_relative_name,
             if val is not None:
                 attrs[attr] = val
 
-    if 'md5' in cfg.preserve_attrs_list and local_list_get_md5_func:
-        try:
-            val = local_list_get_md5_func(src_relative_name)
-            if val is not None:
-                attrs['md5'] = val
-        except IOError:
-            pass
+    if 'md5' in cfg.preserve_attrs_list and md5:
+        attrs['md5'] = md5
 
     if attrs:
         attr_str_list = []
@@ -1709,19 +1705,21 @@ def cmd_sync_local2remote(args):
         def _upload(local_list, seq, total, total_size):
             file_list = local_list.keys()
             file_list.sort()
-            local_list_get_md5_func = local_list.get_md5
             ret = EX_OK
             for file in file_list:
                 seq += 1
                 item = local_list[file]
                 src = item['full_name']
+                try:
+                    src_md5 = local_list.get_md5(file)
+                except IOError:
+                    src_md5 = None
                 uri = S3Uri(item['remote_uri'])
                 seq_label = "[%d of %d]" % (seq, total)
                 extra_headers = copy(cfg.extra_headers)
                 try:
                     attr_header = _build_attr_header(local_list[file],
-                                                     file,
-                                                     local_list_get_md5_func)
+                                                     file, src_md5)
                     debug(u"attr_header: %s" % attr_header)
                     extra_headers.update(attr_header)
                     response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
@@ -1808,7 +1806,7 @@ def cmd_sync_local2remote(args):
                 output(u"upload: '%s' -> '%s'" % (local_list[key]['full_name'], local_list[key]['remote_uri']))
             for key in update_list:
                 output(u"upload: '%s' -> '%s'" % (update_list[key]['full_name'], update_list[key]['remote_uri']))
-            for (src_obj, dst1, dst2) in copy_pairs:
+            for (src_obj, dst1, dst2, md5) in copy_pairs:
                 output(u"remote copy: '%s' -> '%s'" % (dst1, dst2))
             if cfg.delete_removed:
                 for key in remote_list:
@@ -1839,10 +1837,8 @@ def cmd_sync_local2remote(args):
         # uploaded_objects_list reference is passed so it can be filled with
         # destination object of succcessful copies so that they can be
         # invalidated by cf
-        local_list_get_md5_func = local_list.get_md5
         n_copies, saved_bytes, failed_copy_files  = remote_copy(
-            s3, copy_pairs, destination_base, uploaded_objects_list,
-            local_list_get_md5_func)
+            s3, copy_pairs, destination_base, uploaded_objects_list, True)
 
         #upload file that could not be copied
         debug("Process files that were not remotely copied")
