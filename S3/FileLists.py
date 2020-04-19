@@ -621,7 +621,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
             try:
                 md5 = src_list.get_md5(relative_file)
             except IOError:
-               md5 = None
+                md5 = None
             dst1 = dst_list.find_md5_one(md5)
             if dst1 is not None:
                 # Found one, we want to copy

@@ -417,6 +417,7 @@ def cmd_object_put(args):
 
     seq = 0
     ret = EX_OK
+    local_list_get_md5_func = local_list.get_md5
     for key in local_list:
         seq += 1
 
@@ -428,7 +429,9 @@ def cmd_object_put(args):
         seq_label = "[%d of %d]" % (seq, local_count)
         if Config().encrypt:
             gpg_exitcode, full_name, extra_headers["x-amz-meta-s3tools-gpgenc"] = gpg_encrypt(full_name_orig)
-        attr_header = _build_attr_header(local_list, key)
+        attr_header = _build_attr_header(local_list[key],
+                                         key,
+                                         local_list_get_md5_func)
         debug(u"attr_header: %s" % attr_header)
         extra_headers.update(attr_header)
         try:
@@ -1159,8 +1162,9 @@ def cmd_sync_remote2remote(args):
     total_files_copied += nb_files
     total_size_copied += size
 
-
-    n_copied, bytes_saved, failed_copy_files = remote_copy(s3, copy_pairs, destination_base, None)
+    src_list_get_md5_func = src_list.get_md5
+    n_copied, bytes_saved, failed_copy_files = remote_copy(
+        s3, copy_pairs, destination_base, None, src_list_get_md5_func)
     total_files_copied += n_copied
     total_size_copied += bytes_saved
 
@@ -1568,7 +1572,8 @@ def local_copy(copy_pairs, destination_base):
             failed_copy_list[relative_file] = src_obj
     return len(copy_pairs), saved_bytes, failed_copy_list
 
-def remote_copy(s3, copy_pairs, destination_base, uploaded_objects_list=None):
+def remote_copy(s3, copy_pairs, destination_base, uploaded_objects_list=None,
+                metadata_update=False, local_list_get_md5_func=None):
     cfg = Config()
     saved_bytes = 0
     failed_copy_list = FileDict()
@@ -1582,6 +1587,11 @@ def remote_copy(s3, copy_pairs, destination_base, uploaded_objects_list=None):
         src_obj_size = src_obj.get(u'size', 0)
         seq_label = "[%d of %d]" % (seq, src_count)
         extra_headers = copy(cfg.extra_headers)
+        if metadata_update:
+            # source is a real local file with its own personal metadata
+            attr_header = _build_attr_header(src_obj, dst2, local_list_get_md5_func)
+            debug(u"attr_header: %s" % attr_header)
+            extra_headers.update(attr_header)
         try:
             s3.object_copy(dst1_uri, dst2_uri, extra_headers,
                            src_size=src_obj_size,
@@ -1595,38 +1605,39 @@ def remote_copy(s3, copy_pairs, destination_base, uploaded_objects_list=None):
             failed_copy_list[dst2] = src_obj
     return (len(copy_pairs), saved_bytes, failed_copy_list)
 
-def _build_attr_header(local_list, src):
+def _build_attr_header(src_obj, src_relative_name,
+                       local_list_get_md5_func=None):
     cfg = Config()
     attrs = {}
     if cfg.preserve_attrs:
         for attr in cfg.preserve_attrs_list:
             if attr == 'uname':
                 try:
-                    val = Utils.urlencode_string(Utils.getpwuid_username(local_list[src]['uid']), unicode_output=True)
+                    val = Utils.urlencode_string(Utils.getpwuid_username(src_obj['uid']), unicode_output=True)
                 except (KeyError, TypeError):
                     attr = "uid"
-                    val = local_list[src].get('uid')
+                    val = src_obj.get('uid')
                     if val:
-                        warning(u"%s: Owner username not known. Storing UID=%d instead." % (src, val))
+                        warning(u"%s: Owner username not known. Storing UID=%d instead." % (src_relative_name, val))
             elif attr == 'gname':
                 try:
-                    val = Utils.urlencode_string(Utils.getgrgid_grpname(local_list[src].get('gid')), unicode_output=True)
+                    val = Utils.urlencode_string(Utils.getgrgid_grpname(src_obj.get('gid')), unicode_output=True)
                 except (KeyError, TypeError):
                     attr = "gid"
-                    val = local_list[src].get('gid')
+                    val = src_obj.get('gid')
                     if val:
-                        warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (src, val))
+                        warning(u"%s: Owner groupname not known. Storing GID=%d instead." % (src_relative_name, val))
             elif attr != "md5":
                 try:
-                    val = getattr(local_list[src]['sr'], 'st_' + attr)
+                    val = getattr(src_obj['sr'], 'st_' + attr)
                 except Exception:
                     val = None
             if val is not None:
                 attrs[attr] = val
 
-    if 'md5' in cfg.preserve_attrs_list:
+    if 'md5' in cfg.preserve_attrs_list and local_list_get_md5_func:
         try:
-            val = local_list.get_md5(src)
+            val = local_list_get_md5_func(src_relative_name)
             if val is not None:
                 attrs['md5'] = val
         except IOError:
@@ -1697,6 +1708,7 @@ def cmd_sync_local2remote(args):
         def _upload(local_list, seq, total, total_size):
             file_list = local_list.keys()
             file_list.sort()
+            local_list_get_md5_func = local_list.get_md5
             ret = EX_OK
             for file in file_list:
                 seq += 1
@@ -1706,7 +1718,9 @@ def cmd_sync_local2remote(args):
                 seq_label = "[%d of %d]" % (seq, total)
                 extra_headers = copy(cfg.extra_headers)
                 try:
-                    attr_header = _build_attr_header(local_list, file)
+                    attr_header = _build_attr_header(local_list[file],
+                                                     file,
+                                                     local_list_get_md5_func)
                     debug(u"attr_header: %s" % attr_header)
                     extra_headers.update(attr_header)
                     response = s3.object_put(src, uri, extra_headers, extra_label = seq_label)
@@ -1824,9 +1838,10 @@ def cmd_sync_local2remote(args):
         # uploaded_objects_list reference is passed so it can be filled with
         # destination object of succcessful copies so that they can be
         # invalidated by cf
-        n_copies, saved_bytes, failed_copy_files  = remote_copy(s3, copy_pairs,
-                                                                destination_base,
-                                                                uploaded_objects_list)
+        local_list_get_md5_func = local_list.get_md5
+        n_copies, saved_bytes, failed_copy_files  = remote_copy(
+            s3, copy_pairs, destination_base, uploaded_objects_list,
+            local_list_get_md5_func)
 
         #upload file that could not be copied
         debug("Process files that were not remotely copied")
