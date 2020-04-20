@@ -460,10 +460,14 @@ class S3(object):
         return location
 
     def get_bucket_requester_pays(self, uri):
-        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
-                                      uri_params = {'requestPayment': None})
+        request = self.create_request("BUCKET_LIST", bucket=uri.bucket(),
+                                      uri_params={'requestPayment': None})
         response = self.send_request(request)
-        payer = getTextFromXml(response['data'], "Payer")
+        resp_data = response.get('data', '')
+        if resp_data:
+            payer = getTextFromXml(response['data'], "Payer")
+        else:
+            payer = None
         return payer
 
     def bucket_info(self, uri):
@@ -472,7 +476,7 @@ class S3(object):
         try:
             response['requester-pays'] = self.get_bucket_requester_pays(uri)
         except S3Error as e:
-            response['requester-pays'] = 'none'
+            response['requester-pays'] = None
         return response
 
     def website_info(self, uri, bucket_location = None):
