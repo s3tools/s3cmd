@@ -358,7 +358,8 @@ class S3(object):
         num_prefixes = 0
         max_keys = limit
         while truncated:
-            response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params, max_keys)
+            response = self.bucket_list_noparse(bucket, prefix, recursive,
+                                                uri_params, max_keys)
             current_list = _get_contents(response["data"])
             current_prefixes = _get_common_prefixes(response["data"])
             num_objects += len(current_list)
@@ -369,9 +370,15 @@ class S3(object):
             if truncated:
                 if limit == -1 or num_objects + num_prefixes < limit:
                     if current_list:
-                        uri_params['marker'] = _get_next_marker(response["data"], current_list)
-                    else:
+                        uri_params['marker'] = \
+                            _get_next_marker(response["data"], current_list)
+                    elif current_prefixes:
                         uri_params['marker'] = current_prefixes[-1]["Prefix"]
+                    else:
+                        # Unexpectedly, the server lied, and so the previous
+                        # response was not truncated. So, no new key to get.
+                        yield False, current_prefixes, current_list
+                        break
                     debug("Listing continues after '%s'" % uri_params['marker'])
                 else:
                     yield truncated, current_prefixes, current_list
