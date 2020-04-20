@@ -82,18 +82,14 @@ class http_connection(object):
         cafile = cfg.ca_certs_file
         if cafile == "":
             cafile = None
-        certfile = cfg.ssl_client_cert_file
-        if certfile == "":
-            certfile = None
-        keyfile = cfg.ssl_client_key_file
-        if keyfile == "":
-            keyfile = None
+        certfile = cfg.ssl_client_cert_file or None
+        keyfile = cfg.ssl_client_key_file or None # the key may be embedded into cert file
 
         debug(u"Using ca_certs_file %s", cafile)
         debug(u"Using ssl_client_cert_file %s", certfile)
         debug(u"Using ssl_client_key_file %s", keyfile)
 
-        if keyfile is not None and certfile is not None:
+        if certfile is not None:
             context = http_connection._ssl_client_auth_context(certfile, keyfile, cfg.check_ssl_certificate, cafile)
         elif cfg.check_ssl_certificate:
             context = http_connection._ssl_verified_context(cafile)
