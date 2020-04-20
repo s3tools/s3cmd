@@ -529,22 +529,33 @@ class S3(object):
     def expiration_info(self, uri, bucket_location = None):
         bucket = uri.bucket()
 
-        request = self.create_request("BUCKET_LIST", bucket = bucket,
-                                      uri_params = {'lifecycle': None})
+        request = self.create_request("BUCKET_LIST", bucket=bucket,
+                                      uri_params={'lifecycle': None})
         try:
             response = self.send_request(request)
-            response['prefix'] = getTextFromXml(response['data'], ".//Rule//Prefix")
-            response['date'] = getTextFromXml(response['data'], ".//Rule//Expiration//Date")
-            response['days'] = getTextFromXml(response['data'], ".//Rule//Expiration//Days")
-            return response
         except S3Error as e:
             if e.status == 404:
-                debug("Could not get /?lifecycle - lifecycle probably not configured for this bucket")
+                debug("Could not get /?lifecycle - lifecycle probably not "
+                      "configured for this bucket")
                 return None
             elif e.status == 501:
-                debug("Could not get /?lifecycle - lifecycle support not implemented by the server")
+                debug("Could not get /?lifecycle - lifecycle support not "
+                      "implemented by the server")
                 return None
             raise
+
+        root_tag_name = getRootTagName(response['data'])
+        if root_tag_name != "LifecycleConfiguration":
+            debug("Could not get /?lifecycle - unexpected xml response: "
+                  "%s", root_tag_name)
+            return None
+        response['prefix'] = getTextFromXml(response['data'],
+                                            ".//Rule//Prefix")
+        response['date'] = getTextFromXml(response['data'],
+                                          ".//Rule//Expiration//Date")
+        response['days'] = getTextFromXml(response['data'],
+                                          ".//Rule//Expiration//Days")
+        return response
 
     def expiration_set(self, uri, bucket_location = None):
         if self.config.expiry_date and self.config.expiry_days:

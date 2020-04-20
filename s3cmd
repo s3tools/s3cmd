@@ -977,7 +977,7 @@ def cmd_info(args):
                     expiration_desc = "Expiration Rule: "
                     if expiration['prefix'] == "":
                         expiration_desc += "all objects in this bucket "
-                    else:
+                    elif expiration['prefix'] is not None:
                         expiration_desc += "objects with key prefix '" + expiration['prefix'] + "' "
                     expiration_desc += "will expire in '"
                     if expiration['days']:
