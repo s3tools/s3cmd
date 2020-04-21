@@ -153,6 +153,8 @@ class Config(object):
     gpg_decrypt = u"%(gpg_command)s -d --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
     use_https = True
     ca_certs_file = u""
+    ssl_client_key_file = u""
+    ssl_client_cert_file = u""
     check_ssl_certificate = True
     check_ssl_hostname = True
     bucket_location = u"US"

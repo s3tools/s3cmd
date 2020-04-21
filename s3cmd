@@ -2813,6 +2813,8 @@ def main():
     optparser.add_option(      "--cache-file", dest="cache_file", action="store", default="",  metavar="FILE", help="Cache FILE containing local source MD5 values")
     optparser.add_option("-q", "--quiet", dest="quiet", action="store_true", default=False, help="Silence output on stdout")
     optparser.add_option(      "--ca-certs", dest="ca_certs_file", action="store", default=None, help="Path to SSL CA certificate FILE (instead of system default)")
+    optparser.add_option(      "--ssl-cert", dest="ssl_client_cert_file", action="store", default=None, help="Path to client own SSL certificate CRT_FILE")
+    optparser.add_option(      "--ssl-key", dest="ssl_client_key_file", action="store", default=None, help="Path to client own SSL certificate private key KEY_FILE")
     optparser.add_option(      "--check-certificate", dest="check_ssl_certificate", action="store_true", help="Check SSL certificate validity")
     optparser.add_option(      "--no-check-certificate", dest="check_ssl_certificate", action="store_false", help="Do not check SSL certificate validity")
     optparser.add_option(      "--check-hostname", dest="check_ssl_hostname", action="store_true", help="Check SSL certificate hostname validity")

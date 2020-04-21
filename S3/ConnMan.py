@@ -61,6 +61,19 @@ class http_connection(object):
         return context
 
     @staticmethod
+    def _ssl_client_auth_context(certfile, keyfile, check_server_cert, cafile):
+        context = None
+        try:
+            cert_reqs = ssl.CERT_REQUIRED if check_server_cert else ssl.CERT_NONE
+            context = ssl._create_unverified_context(cafile=cafile,
+                                                     keyfile=keyfile,
+                                                     certfile=certfile,
+                                                     cert_reqs=cert_reqs)
+        except AttributeError: # no ssl._create_unverified_context
+            pass
+        return context
+
+    @staticmethod
     def _ssl_context():
         if http_connection.context_set:
             return http_connection.context
@@ -69,9 +82,16 @@ class http_connection(object):
         cafile = cfg.ca_certs_file
         if cafile == "":
             cafile = None
-        debug(u"Using ca_certs_file %s", cafile)
+        certfile = cfg.ssl_client_cert_file or None
+        keyfile = cfg.ssl_client_key_file or None # the key may be embedded into cert file
 
-        if cfg.check_ssl_certificate:
+        debug(u"Using ca_certs_file %s", cafile)
+        debug(u"Using ssl_client_cert_file %s", certfile)
+        debug(u"Using ssl_client_key_file %s", keyfile)
+
+        if certfile is not None:
+            context = http_connection._ssl_client_auth_context(certfile, keyfile, cfg.check_ssl_certificate, cafile)
+        elif cfg.check_ssl_certificate:
             context = http_connection._ssl_verified_context(cafile)
         else:
             context = http_connection._ssl_unverified_context(cafile)
