@@ -18,7 +18,7 @@ SIZE_1MB = 1024 * 1024
 
 class MultiPartUpload(object):
     """Supports MultiPartUpload and MultiPartUpload(Copy) operation"""
-    MIN_CHUNK_SIZE_MB = 5        # 5MB
+    MIN_CHUNK_SIZE_MB = 5            # 5MB
     MAX_CHUNK_SIZE_MB = 5 * 1024     # 5GB
     MAX_FILE_SIZE = 5 * 1024 * 1024  # 5TB
 
@@ -32,7 +32,9 @@ class MultiPartUpload(object):
         self.parts = {}
         self.headers_baseline = headers_baseline or {}
 
-        self.headers_baseline['content-length'] = str(self.src_size)
+        # if the src_size is specified, set the multipart-object-size extended attribute
+        if src_size != None:
+            self.headers_baseline['x-multipart-object-size'] = str(self.src_size)
 
         if isinstance(src, S3UriS3):
             # Source is the uri of an object to s3-to-s3 copy with multipart.
