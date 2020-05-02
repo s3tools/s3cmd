@@ -1422,7 +1422,7 @@ class S3(object):
         if response["status"] == 405: # Method Not Allowed.  Don't retry.
             raise S3Error(response)
 
-        if response["status"] >= 500:
+        if response["status"] >= 500 or response["status"] == 429:
             e = S3Error(response)
 
             if response["status"] == 501:
@@ -1663,11 +1663,16 @@ class S3(object):
         if response["status"] < 200 or response["status"] > 299:
             try_retry = False
             if response["status"] >= 500:
-                ## AWS internal error - retry
+                # AWS internal error - retry
                 try_retry = True
                 if response["status"] == 503:
                     ## SlowDown error
                     throttle = throttle and throttle * 5 or 0.01
+            elif response["status"] == 429:
+                # Not an AWS error, but s3 compatible server possible error:
+                # TooManyRequests/Busy/slowdown
+                try_retry = True
+                throttle = throttle and throttle * 5 or 0.01
             elif response["status"] >= 400:
                 err = S3Error(response)
                 ## Retriable client error?

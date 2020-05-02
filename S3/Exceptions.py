@@ -41,7 +41,7 @@ except ImportError:
 ## s3cmd exceptions
 
 class S3Exception(Exception):
-    def __init__(self, message = ""):
+    def __init__(self, message=""):
         self.message = S3.Utils.unicodise(message)
 
     def __str__(self):
@@ -58,6 +58,7 @@ class S3Exception(Exception):
     ## (Base)Exception.message has been deprecated in Python 2.6
     def _get_message(self):
         return self._message
+
     def _set_message(self, message):
         self._message = message
     message = property(_get_message, _set_message)
@@ -68,9 +69,9 @@ class S3Error (S3Exception):
         self.status = response["status"]
         self.reason = response["reason"]
         self.info = {
-            "Code" : "",
-            "Message" : "",
-            "Resource" : ""
+            "Code": "",
+            "Message": "",
+            "Resource": ""
         }
         debug("S3Error: %s (%s)" % (self.status, self.reason))
         if "headers" in response:
@@ -114,7 +115,7 @@ class S3Error (S3Exception):
             return ExitCodes.EX_PRECONDITION
         elif self.status == 500:
             return ExitCodes.EX_SOFTWARE
-        elif self.status == 503:
+        elif self.status in [429, 503]:
             return ExitCodes.EX_SERVICE
         else:
             return ExitCodes.EX_SOFTWARE
