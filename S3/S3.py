@@ -1748,13 +1748,15 @@ class S3(object):
         conn = None
         try:
             conn = ConnMan.get(self.get_hostname(resource['bucket']))
+            uriformatted = self.format_uri(resource, conn.path)
+            
             conn.c.putrequest(method_string, self.format_uri(resource, conn.path))
             for header in headers.keys():
                 conn.c.putheader(encode_to_s3(header), encode_to_s3(headers[header]))
             if start_position > 0:
                 debug("Requesting Range: %d .. end" % start_position)
                 conn.c.putheader("Range", "bytes=%d-" % start_position)
-            conn.c.endheaders()
+            conn.c.endheaders(encode_chunked=True)
             response = {}
             http_response = conn.c.getresponse()
             response["status"] = http_response.status
@@ -1819,6 +1821,7 @@ class S3(object):
             # Only compute MD5 on the fly if we're downloading from beginning
             # Otherwise we'd get a nonsense.
             md5_hash = md5()
+        
         size_left = int(response["headers"]["content-length"])
         size_total = start_position + size_left
         current_position = start_position

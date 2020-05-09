@@ -31,7 +31,8 @@ class MultiPartUpload(object):
         self.dst_uri = dst_uri
         self.parts = {}
         self.headers_baseline = headers_baseline or {}
-
+        if src_size != None:
+           self.headers_baseline['x-multipart-object-size'] = str(self.src_size)
         if isinstance(src, S3UriS3):
             # Source is the uri of an object to s3-to-s3 copy with multipart.
             self.src_uri = src

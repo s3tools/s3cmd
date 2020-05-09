@@ -99,7 +99,6 @@ class S3Error (S3Exception):
         if error_msg:
             retval += (u": %s" % error_msg)
         return retval
-
     def get_error_code(self):
         if self.status in [301, 307]:
             return ExitCodes.EX_SERVERMOVED
@@ -115,7 +114,7 @@ class S3Error (S3Exception):
             return ExitCodes.EX_PRECONDITION
         elif self.status == 500:
             return ExitCodes.EX_SOFTWARE
-        elif self.status in [429, 503]:
+        elif self.status == 503:
             return ExitCodes.EX_SERVICE
         else:
             return ExitCodes.EX_SOFTWARE
