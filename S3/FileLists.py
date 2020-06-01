@@ -184,9 +184,7 @@ def _get_filelist_from_file(cfg, local_path):
 
     # reformat to match os.walk()
     result = []
-    keys = filelist.keys()
-    keys.sort()
-    for key in keys:
+    for key in sorted(filelist):
         values = filelist[key]
         values.sort()
         result.append((key, [], values))

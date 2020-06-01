@@ -37,7 +37,7 @@ class SortedDict(dict):
     def keys(self):
         # TODO fix
         # Probably not anymore memory efficient on python2
-        # as now 2 copies ok keys to sort them.
+        # as now 2 copies of keys to sort them.
         keys = dict.keys(self)
         if self.ignore_case:
             # Translation map
