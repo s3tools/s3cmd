@@ -1324,8 +1324,8 @@ def cmd_sync_remote2local(args):
         deleted_count, deleted_size = (0, 0)
 
     def _download(remote_list, seq, total, total_size, dir_cache):
-        original_umask = os.umask(0);
-        os.umask(original_umask);
+        original_umask = os.umask(0)
+        os.umask(original_umask)
         file_list = remote_list.keys()
         file_list.sort()
         ret = EX_OK
@@ -1441,11 +1441,12 @@ def cmd_sync_remote2local(args):
             try:
                 # set permissions on destination file
                 if not is_empty_directory: # a normal file
-                    mode = 0o777 - original_umask;
-                else: # an empty directory, make them readable/executable
+                    mode = 0o777 - original_umask
+                else:
+                    # an empty directory, make them readable/executable
                     mode = 0o775
                 debug(u"mode=%s" % oct(mode))
-                os.chmod(deunicodise(dst_file), mode);
+                os.chmod(deunicodise(dst_file), mode)
             except:
                 raise
 

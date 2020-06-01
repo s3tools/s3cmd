@@ -148,7 +148,7 @@ class ACL(object):
                 elif grantee.permission.upper() == permission:
                     return True
 
-        return False;
+        return False
 
     def grant(self, name, permission):
         if self.hasGrant(name, permission):

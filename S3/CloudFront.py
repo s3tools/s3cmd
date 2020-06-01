@@ -622,7 +622,7 @@ class CloudFront(object):
                     #       do this since S3 buckets that are set up as websites use custom origins.
                     #       Thankfully, the custom origin URLs they use start with the URL of the
                     #       S3 bucket. Here, we make use this naming convention to support this use case.
-                    distListIndex = getBucketFromHostname(d.info['CustomOrigin']['DNSName'])[0];
+                    distListIndex = getBucketFromHostname(d.info['CustomOrigin']['DNSName'])[0]
                     distListIndex = distListIndex[:len(uri.bucket())]
                 else:
                     # Aral: I'm not sure when this condition will be reached, but keeping it in there.
