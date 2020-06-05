@@ -15,6 +15,9 @@ import os
 import io
 import sys
 import json
+import time
+import urllib.parse
+import xml.etree.cElementTree
 from . import Progress
 from .SortedDict import SortedDict
 import datetime
@@ -77,7 +80,7 @@ def config_unicodise(string, encoding = "utf-8", errors = "replace"):
 
 def config_date_to_python(date):
     """
-    Convert a string formated like '2020-06-27T15:56:34Z' into a python datetime 
+    Convert a string formated like '2020-06-27T15:56:34Z' into a python datetime
     """
     return dateutil.parser.parse(date, fuzzy=True)
 
@@ -302,28 +305,53 @@ class Config(object):
         Get credentials from IAM authentication
         """
         try:
-            conn = httplib.HTTPConnection(host='169.254.169.254', timeout=2)
-            conn.request('GET', "/latest/meta-data/iam/security-credentials/")
-            resp = conn.getresponse()
-            files = resp.read()
-            if resp.status == 200 and len(files)>1:
-                conn.request('GET', "/latest/meta-data/iam/security-credentials/%s" % files.decode('utf-8'))
-                resp=conn.getresponse()
-                if resp.status == 200:
-                    resp_content = config_unicodise(resp.read())
-                    creds=json.loads(resp_content)
-                    Config().update_option('access_key', config_unicodise(creds['AccessKeyId']))
-                    Config().update_option('secret_key', config_unicodise(creds['SecretAccessKey']))
-                    Config().update_option('access_token', config_unicodise(creds['Token']))
-                    expiration = config_date_to_python(config_unicodise(creds['Expiration']))
-                    # Add a timedelta to prevent any expiration if the EC2 machine is not at the right date
-                    self._access_token_expiration = expiration - datetime.timedelta(minutes=15)
-                    self._access_token_last_update = config_date_to_python(config_unicodise(creds['LastUpdated']))
-                    # Others variables : Code / Type
+            role_arn = os.environ.get('AWS_ROLE_ARN')
+            web_identity_token_file = os.environ.get('AWS_WEB_IDENTITY_TOKEN_FILE')
+            role_session_name = 'role-session-%s' % (int(time.time()))
+            if web_identity_token_file:
+                with open(web_identity_token_file) as f:
+                    web_identity_token = f.read()
+                params = {
+                  "Action": "AssumeRoleWithWebIdentity",
+                  "Version": "2011-06-15",
+                  "RoleArn": role_arn,
+                  "RoleSessionName": role_session_name,
+                  "WebIdentityToken": web_identity_token
+                }
+                conn = httplib.HTTPSConnection(host='sts.amazonaws.com', timeout = 2)
+                conn.request('POST', '/?' + urllib.parse.urlencode(params))
+                resp = conn.getresponse()
+                files = resp.read()
+                if resp.status == 200 and len(files)>1:
+                    creds = parse_xml_to_dict(files)
+                    Config().update_option('access_key', creds['AssumeRoleWithWebIdentityResult']['Credentials']['AccessKeyId'])
+                    Config().update_option('secret_key', creds['AssumeRoleWithWebIdentityResult']['Credentials']['SecretAccessKey'])
+                    Config().update_option('access_token', creds['AssumeRoleWithWebIdentityResult']['Credentials']['SessionToken'])
                 else:
                     raise IOError
             else:
-                raise IOError
+                conn = httplib.HTTPConnection(host='169.254.169.254', timeout = 2)
+                conn.request('GET', "/latest/meta-data/iam/security-credentials/")
+                resp = conn.getresponse()
+                files = resp.read()
+                if resp.status == 200 and len(files)>1:
+                    conn.request('GET', "/latest/meta-data/iam/security-credentials/%s" % files.decode('utf-8'))
+                    resp=conn.getresponse()
+                    if resp.status == 200:
+                        resp_content = config_unicodise(resp.read())
+                        creds=json.loads(resp_content)
+                        Config().update_option('access_key', config_unicodise(creds['AccessKeyId']))
+                        Config().update_option('secret_key', config_unicodise(creds['SecretAccessKey']))
+                        Config().update_option('access_token', config_unicodise(creds['Token']))
+                        expiration = config_date_to_python(config_unicodise(creds['Expiration']))
+                        # Add a timedelta to prevent any expiration if the EC2 machine is not at the right date
+                        self._access_token_expiration = expiration - datetime.timedelta(minutes=15)
+                        self._access_token_last_update = config_date_to_python(config_unicodise(creds['LastUpdated']))
+                        # Others variables : Code / Type
+                    else:
+                        raise IOError
+                else:
+                    raise IOError
         except:
             raise
 
