@@ -89,12 +89,14 @@ else:
 
 config_file = None
 if os.getenv("HOME"):
-    config_file = os.path.join(unicodise(os.getenv("HOME"), encoding), ".s3cfg")
+    config_file = os.path.join(unicodise(os.getenv("HOME"), encoding),
+                               ".s3cfg")
 elif os.name == "nt" and os.getenv("USERPROFILE"):
-    config_file = os.path.join(unicodise(os.getenv("USERPROFILE"), encoding),
-                               os.getenv("APPDATA") and unicodise(os.getenv("APPDATA"), encoding)
-                               or 'Application Data',
-                               "s3cmd.ini")
+    config_file = os.path.join(
+        unicodise(os.getenv("USERPROFILE"), encoding),
+        os.getenv("APPDATA") and unicodise(os.getenv("APPDATA"), encoding)
+        or 'Application Data',
+        "s3cmd.ini")
 
 
 ## Unpack testsuite/ directory

@@ -2692,12 +2692,15 @@ def main():
 
     config_file = None
     if os.getenv("S3CMD_CONFIG"):
-        config_file = unicodise_s(os.getenv("S3CMD_CONFIG"), autodetected_encoding)
+        config_file = unicodise_s(os.getenv("S3CMD_CONFIG"),
+                                  autodetected_encoding)
     elif os.name == "nt" and os.getenv("USERPROFILE"):
-        config_file = os.path.join(unicodise_s(os.getenv("USERPROFILE"), autodetected_encoding),
-                                   os.getenv("APPDATA") and unicodise_s(os.getenv("APPDATA"), autodetected_encoding)
-                                   or 'Application Data',
-                                   "s3cmd.ini")
+        config_file = os.path.join(
+            unicodise_s(os.getenv("USERPROFILE"), autodetected_encoding),
+            os.getenv("APPDATA")
+               and unicodise_s(os.getenv("APPDATA"), autodetected_encoding)
+               or 'Application Data',
+            "s3cmd.ini")
     else:
         from os.path import expanduser
         config_file = os.path.join(expanduser("~"), ".s3cfg")
@@ -3100,7 +3103,8 @@ def report_exception(e, msg=u''):
         try:
             s = u' '.join([unicodise(a) for a in sys.argv])
         except NameError:
-            # Error happened before Utils module was yet imported to provide unicodise
+            # Error happened before Utils module was yet imported to provide
+            # unicodise
             try:
                 s = u' '.join([(a) for a in sys.argv])
             except UnicodeDecodeError:
@@ -3112,16 +3116,23 @@ def report_exception(e, msg=u''):
         try:
             sys.stderr.write(u"Problem: %s: %s\n" % (e_class, e))
         except UnicodeDecodeError:
-            sys.stderr.write(u"Problem: [encoding safe] %r: %r\n" % (e_class, e))
+            sys.stderr.write(u"Problem: [encoding safe] %r: %r\n"
+                             % (e_class, e))
         try:
             sys.stderr.write(u"S3cmd:   %s\n" % PkgInfo.version)
         except NameError:
-            sys.stderr.write(u"S3cmd:   unknown version. Module import problem?\n")
+            sys.stderr.write(u"S3cmd:   unknown version."
+                             "Module import problem?\n")
         sys.stderr.write(u"python:   %s\n" % sys.version)
         try:
-            sys.stderr.write(u"environment LANG=%s\n" % unicodise_s(os.getenv("LANG"), 'ascii'))
+            sys.stderr.write(u"environment LANG=%s\n"
+                             % unicodise_s(os.getenv("LANG", "NOTSET"),
+                                           'ascii'))
         except NameError:
-            sys.stderr.write(u"environment LANG=%s\n" % os.getenv("LANG"))
+            # Error happened before Utils module was yet imported to provide
+            # unicodise
+            sys.stderr.write(u"environment LANG=%s\n"
+                             % os.getenv("LANG", "NOTSET"))
         sys.stderr.write(u"\n")
         if type(tb) == unicode:
             sys.stderr.write(tb)
@@ -3133,7 +3144,8 @@ def report_exception(e, msg=u''):
             sys.stderr.write("Your sys.path contains these entries:\n")
             for path in sys.path:
                 sys.stderr.write(u"\t%s\n" % path)
-            sys.stderr.write("Now the question is where have the s3cmd modules been installed?\n")
+            sys.stderr.write("Now the question is where have the s3cmd modules"
+                             " been installed?\n")
 
         sys.stderr.write(alert_header % (u"above lines", u""))
 
@@ -3233,7 +3245,7 @@ The solutions to this are:
         sys.exit(EX_OSERR)
 
     except UnicodeEncodeError as e:
-        lang = unicodise_s(os.getenv("LANG"), 'ascii')
+        lang = unicodise_s(os.getenv("LANG", "NOTSET"), 'ascii')
         msg = """
 You have encountered a UnicodeEncodeError.  Your environment
 variable LANG=%s may not specify a Unicode encoding (e.g. UTF-8).
