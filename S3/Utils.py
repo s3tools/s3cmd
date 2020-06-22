@@ -61,6 +61,7 @@ def parseNodes(nodes):
     ## WARNING: Ignores text nodes from mixed xml/text.
     ## For instance <tag1>some text<tag2>other text</tag2></tag1>
     ## will be ignore "some text" node
+    ## WARNING 2: Any node at first level without children will also be ignored
     retval = []
     for node in nodes:
         retval_item = {}
@@ -74,7 +75,8 @@ def parseNodes(nodes):
                     retval_item[name] = decode_from_s3(found_text)
                 else:
                     retval_item[name] = None
-        retval.append(retval_item)
+        if retval_item:
+            retval.append(retval_item)
     return retval
 __all__.append("parseNodes")
 
