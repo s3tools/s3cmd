@@ -2120,15 +2120,16 @@ def cmd_multipart(args):
     #id = ''
     #if(len(args) > 1): id = args[1]
 
-    response = s3.get_multipart(uri)
-    debug(u"response - %s" % response['status'])
+    upload_list = s3.get_multipart(uri)
     output(u"%s" % uri)
-    tree = getTreeFromXml(response['data'])
-    debug(parseNodes(tree))
+    debug(upload_list)
     output(u"Initiated\tPath\tId")
-    for mpupload in parseNodes(tree):
+    for mpupload in upload_list:
         try:
-            output(u"%s\t%s\t%s" % (mpupload['Initiated'], "s3://" + uri.bucket() + "/" + mpupload['Key'], mpupload['UploadId']))
+            output(u"%s\t%s\t%s" % (
+                mpupload['Initiated'],
+                "s3://" + uri.bucket() + "/" + mpupload['Key'],
+                mpupload['UploadId']))
         except KeyError:
             pass
     return EX_OK
@@ -2151,14 +2152,15 @@ def cmd_list_multipart(args):
     uri = S3Uri(args[0])
     id = args[1]
 
-    response = s3.list_multipart(uri, id)
-    debug(u"response - %s" % response['status'])
-    tree = getTreeFromXml(response['data'])
+    part_list = s3.list_multipart(uri, id)
     output(u"LastModified\t\t\tPartNumber\tETag\tSize")
-    for mpupload in parseNodes(tree):
+    for mpupload in part_list:
         try:
-            output(u"%s\t%s\t%s\t%s" % (mpupload['LastModified'], mpupload['PartNumber'], mpupload['ETag'], mpupload['Size']))
-        except Exception:
+            output(u"%s\t%s\t%s\t%s" % (mpupload['LastModified'],
+                                        mpupload['PartNumber'],
+                                        mpupload['ETag'],
+                                        mpupload['Size']))
+        except KeyError:
             pass
     return EX_OK
 

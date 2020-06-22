@@ -48,11 +48,10 @@ class MultiPartUpload(object):
         self.upload_id = self.initiate_multipart_upload()
 
     def get_parts_information(self, uri, upload_id):
-        multipart_response = self.s3.list_multipart(uri, upload_id)
-        tree = getTreeFromXml(multipart_response['data'])
+        part_list = self.s3.list_multipart(uri, upload_id)
 
         parts = dict()
-        for elem in parseNodes(tree):
+        for elem in part_list:
             try:
                 parts[int(elem['PartNumber'])] = {
                     'checksum': elem['ETag'],
@@ -65,9 +64,8 @@ class MultiPartUpload(object):
 
     def get_unique_upload_id(self, uri):
         upload_id = ""
-        multipart_response = self.s3.get_multipart(uri)
-        tree = getTreeFromXml(multipart_response['data'])
-        for mpupload in parseNodes(tree):
+        multipart_list = self.s3.get_multipart(uri)
+        for mpupload in multipart_list:
             try:
                 mp_upload_id = mpupload['UploadId']
                 mp_path = mpupload['Key']

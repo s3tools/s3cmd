@@ -1135,20 +1135,136 @@ class S3(object):
         response = self.send_request(request)
         return response
 
-    def get_multipart(self, uri):
-        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
-                                      uri_params = {'uploads': None})
+    def get_multipart(self, uri, uri_params=None, limit=-1):
+        upload_list = []
+        for truncated, uploads in self.get_multipart_streaming(uri,
+                                                               uri_params,
+                                                               limit):
+            upload_list.extend(uploads)
+
+        return upload_list
+
+    def get_multipart_streaming(self, uri, uri_params=None, limit=-1):
+        uri_params = uri_params and uri_params.copy() or {}
+        bucket = uri.bucket()
+
+        truncated = True
+        num_objects = 0
+        max_keys = limit
+
+        # It is the "uploads: None" in uri_params that will change the
+        # behavior of bucket_list to return multiparts instead of keys
+        uri_params['uploads'] = None
+        while truncated:
+            response = self.bucket_list_noparse(bucket, recursive=True,
+                                                uri_params=uri_params,
+                                                max_keys=max_keys)
+
+            xml_data = response["data"]
+            # extract list of info of uploads
+            upload_list = getListFromXml(xml_data, "Upload")
+            num_objects += len(upload_list)
+            if limit > num_objects:
+                max_keys = limit - num_objects
+
+            xml_truncated = getTextFromXml(xml_data, ".//IsTruncated")
+            if not xml_truncated or xml_truncated.lower() == "false":
+                truncated = False
+
+            if truncated:
+                if limit == -1 or num_objects < limit:
+                    if upload_list:
+                        next_key = getTextFromXml(xml_data, "NextKeyMarker")
+                        if not next_key:
+                            next_key = upload_list[-1]["Key"]
+                        uri_params['KeyMarker'] = next_key
+
+                        upload_id_marker = getTextFromXml(
+                            xml_data, "NextUploadIdMarker")
+                        if upload_id_marker:
+                            uri_params['UploadIdMarker'] = upload_id_marker
+                        elif 'UploadIdMarker' in uri_params:
+                            # Clear any pre-existing value
+                            del uri_params['UploadIdMarker']
+                    else:
+                        # Unexpectedly, the server lied, and so the previous
+                        # response was not truncated. So, no new key to get.
+                        yield False, upload_list
+                        break
+                    debug("Listing continues after '%s'" %
+                          uri_params['KeyMarker'])
+                else:
+                    yield truncated, upload_list
+                    break
+            yield truncated, upload_list
+
+    def list_multipart(self, uri, upload_id, uri_params=None, limit=-1):
+        part_list = []
+        for truncated, parts in self.list_multipart_streaming(uri,
+                                                              upload_id,
+                                                              uri_params,
+                                                              limit):
+            part_list.extend(parts)
+
+        return part_list
+
+    def list_multipart_streaming(self, uri, upload_id, uri_params=None,
+                                 limit=-1):
+        uri_params = uri_params and uri_params.copy() or {}
+
+        truncated = True
+        num_objects = 0
+        max_parts = limit
+
+        while truncated:
+            response = self.list_multipart_noparse(uri, upload_id,
+                                                   uri_params, max_parts)
+
+            xml_data = response["data"]
+            # extract list of multipart upload parts
+            part_list = getListFromXml(xml_data, "Part")
+            num_objects += len(part_list)
+            if limit > num_objects:
+                max_parts = limit - num_objects
+
+            xml_truncated = getTextFromXml(xml_data, ".//IsTruncated")
+            if not xml_truncated or xml_truncated.lower() == "false":
+                truncated = False
+
+            if truncated:
+                if limit == -1 or num_objects < limit:
+                    if part_list:
+                        next_part_number = getTextFromXml(
+                            xml_data, "NextPartNumberMarker")
+                        if not next_part_number:
+                            next_part_number = part_list[-1]["PartNumber"]
+                        uri_params['part-number-marker'] = next_part_number
+                    else:
+                        # Unexpectedly, the server lied, and so the previous
+                        # response was not truncated. So, no new part to get.
+                        yield False, part_list
+                        break
+                    debug("Listing continues after Part '%s'" %
+                          uri_params['part-number-marker'])
+                else:
+                    yield truncated, part_list
+                    break
+            yield truncated, part_list
+
+    def list_multipart_noparse(self, uri, upload_id, uri_params=None,
+                               max_parts=-1):
+        if uri_params is None:
+            uri_params = {}
+        if max_parts != -1:
+            uri_params['max-parts'] = str(max_parts)
+        uri_params['uploadId'] = upload_id
+        request = self.create_request("OBJECT_GET", uri=uri,
+                                      uri_params=uri_params)
         response = self.send_request(request)
         return response
 
     def abort_multipart(self, uri, id):
         request = self.create_request("OBJECT_DELETE", uri = uri,
-                                      uri_params = {'uploadId': id})
-        response = self.send_request(request)
-        return response
-
-    def list_multipart(self, uri, id):
-        request = self.create_request("OBJECT_GET", uri = uri,
                                       uri_params = {'uploadId': id})
         response = self.send_request(request)
         return response
