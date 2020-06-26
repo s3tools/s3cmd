@@ -218,10 +218,11 @@ class Config(object):
     throttle_max = 100
     public_url_use_https = False
     connection_pooling = True
-    # How long a connection can be kept idle in the pool and still be alive
-    # Currently, aws s3 closes connections that are idle for 20 seconds or
-    # longer, but 16s is used here by default to be safe.
-    connection_max_age = 16
+    # How long in seconds a connection can be kept idle in the pool and still
+    # be alive. AWS s3 is supposed to close connections that are idle for 20
+    # seconds or more, but in real life, undocumented, it closes https conns
+    # after around 6s of inactivity.
+    connection_max_age = 5
 
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None, access_token=None):
