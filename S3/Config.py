@@ -22,10 +22,11 @@ from .ExitCodes import EX_OSFILE
 
 try:
     import dateutil.parser
+    import dateutil.tz
 except ImportError:
     sys.stderr.write(u"""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-ImportError trying to import dateutil.parser.
+ImportError trying to import dateutil.parser and dateutil.tz.
 Please install the python dateutil module:
 $ sudo apt-get install python-dateutil
   or
@@ -328,7 +329,7 @@ class Config(object):
 
     def role_refresh(self):
         if self._access_token_refresh:
-            now = datetime.datetime.now(datetime.timezone.utc)
+            now = datetime.datetime.now(dateutil.tz.tzutc())
             if self._access_token_expiration \
                and now < self._access_token_expiration \
                and self._access_token_last_update \
