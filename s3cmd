@@ -3092,7 +3092,7 @@ def report_exception(e, msg=u''):
   branch found at:
     https://github.com/s3tools/s3cmd
   and have a look at the known issues list:
-    https://github.com/s3tools/s3cmd/wiki/Common-known-issues-and-their-solutions
+    https://github.com/s3tools/s3cmd/wiki/Common-known-issues-and-their-solutions-(FAQ)
   If the error persists, please report the
   %s (removing any private
   info as necessary) to:
