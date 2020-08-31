@@ -2234,7 +2234,7 @@ def cmd_fixbucket(args):
                     pass
             return text # leave as is
             text = text.encode('ascii', 'xmlcharrefreplace')
-        return re.sub("&#?\w+;", _unescape_fixup, text)
+        return re.sub(r"&#?\w+;", _unescape_fixup, text)
 
     cfg = Config()
     cfg.urlencoding_mode = "fixbucket"
@@ -2246,7 +2246,7 @@ def cmd_fixbucket(args):
         if culprit.type != "s3":
             raise ParameterError("Expecting S3Uri instead of: %s" % arg)
         response = s3.bucket_list_noparse(culprit.bucket(), culprit.object(), recursive = True)
-        r_xent = re.compile("&#x[\da-fA-F]+;")
+        r_xent = re.compile(r"&#x[\da-fA-F]+;")
         keys = re.findall("<Key>(.*?)</Key>", response['data'], re.MULTILINE | re.UNICODE)
         debug("Keys: %r" % keys)
         for key in keys:
@@ -2351,7 +2351,7 @@ def run_configure(config_file, args):
 
     if getattr(cfg, "proxy_host") == "" and os.getenv("http_proxy"):
         autodetected_encoding = locale.getpreferredencoding() or "UTF-8"
-        re_match=re.match("(http://)?([^:]+):(\d+)",
+        re_match=re.match(r"(http://)?([^:]+):(\d+)",
                           unicodise_s(os.getenv("http_proxy"), autodetected_encoding))
         if re_match:
             setattr(cfg, "proxy_host", re_match.groups()[1])
@@ -2495,7 +2495,7 @@ def process_patterns_from_file(fname, patterns_list):
         with open(deunicodise(fname), "rt") as fn:
             for pattern in fn:
                 pattern = unicodise(pattern).strip()
-                if re.match("^#", pattern) or re.match("^\s*$", pattern):
+                if re.match("^#", pattern) or re.match(r"^\s*$", pattern):
                     continue
                 debug(u"%s: adding rule: %s" % (fname, pattern))
                 patterns_list.append(pattern)
@@ -2506,7 +2506,7 @@ def process_patterns_from_file(fname, patterns_list):
     return patterns_list
 
 def process_patterns(patterns_list, patterns_from, is_glob, option_txt = ""):
-    """
+    r"""
     process_patterns(patterns, patterns_from, is_glob, option_txt = "")
     Process --exclude / --include GLOB and REGEXP patterns.
     'option_txt' is 'exclude' / 'include' / 'rexclude' / 'rinclude'
@@ -2645,7 +2645,7 @@ def update_acl(s3, uri, seq_label=""):
 
 class OptionMimeType(Option):
     def check_mimetype(option, opt, value):
-        if re.compile("^[a-z0-9]+/[a-z0-9+\.-]+(;.*)?$", re.IGNORECASE).match(value):
+        if re.compile(r"^[a-z0-9]+/[a-z0-9+\.-]+(;.*)?$", re.IGNORECASE).match(value):
             return value
         raise OptionValueError("option %s: invalid MIME-Type format: %r" % (opt, value))
 
@@ -2653,7 +2653,7 @@ class OptionS3ACL(Option):
     def check_s3acl(option, opt, value):
         permissions = ('read', 'write', 'read_acp', 'write_acp', 'full_control', 'all')
         try:
-            permission, grantee = re.compile("^(\w+):(.+)$", re.IGNORECASE).match(value).groups()
+            permission, grantee = re.compile(r"^(\w+):(.+)$", re.IGNORECASE).match(value).groups()
             if not permission or not grantee:
                 raise
             if permission in permissions:
