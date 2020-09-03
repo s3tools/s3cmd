@@ -15,6 +15,7 @@ else:
     from .Custom_httplib27 import httplib
 import ssl
 
+from base64 import b64encode
 from logging import debug
 from threading import Semaphore
 from time import time
@@ -229,11 +230,15 @@ class http_connection(object):
                 self.c = httplib.HTTPConnection(self.hostname, self.port)
                 debug(u'non-proxied HTTPConnection(%s, %s)', self.hostname, self.port)
         else:
+            headers = {}
+            if cfg.proxy_username and cfg.proxy_password:
+                headers['Proxy-Authorization'] = 'Basic ' + \
+                    b64encode(('%s:%s' % (cfg.proxy_username, cfg.proxy_password)).encode('utf-8')).decode('ascii')
             if ssl:
                 self.c = http_connection._https_connection(cfg.proxy_host, cfg.proxy_port)
                 debug(u'proxied HTTPSConnection(%s, %s)', cfg.proxy_host, cfg.proxy_port)
                 port = self.port and self.port or 443
-                self.c.set_tunnel(self.hostname, port)
+                self.c.set_tunnel(self.hostname, port, headers)
                 debug(u'tunnel to %s, %s', self.hostname, port)
             else:
                 self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
