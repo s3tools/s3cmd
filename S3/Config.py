@@ -153,8 +153,6 @@ class Config(object):
     acl_revokes = []
     proxy_host = u""
     proxy_port = 3128
-    proxy_username = u""
-    proxy_password = u""
     encrypt = False
     dry_run = False
     add_encoding_exts = u""
