@@ -65,9 +65,9 @@ def parseNodes(nodes):
     retval = []
     for node in nodes:
         retval_item = {}
-        for child in node.getchildren():
+        for child in node:
             name = decode_from_s3(child.tag)
-            if child.getchildren():
+            if len(child):
                 retval_item[name] = parseNodes([child])
             else:
                 found_text = node.findtext(".//%s" % child.tag)
@@ -124,8 +124,8 @@ __all__.append("getListFromXml")
 
 def getDictFromTree(tree):
     ret_dict = {}
-    for child in tree.getchildren():
-        if child.getchildren():
+    for child in tree:
+        if len(child):
             ## Complex-type child. Recurse
             content = getDictFromTree(child)
         else:
