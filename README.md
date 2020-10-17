@@ -197,7 +197,7 @@ File 'dir2/file2-2.txt' stored as 's3://public.s3tools.org/somewhere/dir2/file2-
 
 As you can see we didn't have to create the `/somewhere` 'directory'. In fact it's only a filename prefix, not a real directory and it doesn't have to be created in any way beforehand.
 
-In stead of using `put` with the `--recursive` option, you could also use the `sync` command:
+Instead of using `put` with the `--recursive` option, you could also use the `sync` command:
 
 ```
 $ s3cmd sync dir1 dir2 s3://public.s3tools.org/somewhere/
