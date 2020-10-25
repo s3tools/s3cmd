@@ -2924,15 +2924,14 @@ def main():
 
     ## Process --(no-)check-md5
     if options.check_md5 == False:
-        try:
+        if "md5" in cfg.sync_checks:
             cfg.sync_checks.remove("md5")
+        if "md5" in cfg.preserve_attrs_list:
             cfg.preserve_attrs_list.remove("md5")
-        except Exception:
-            pass
-    if options.check_md5 == True:
-        if cfg.sync_checks.count("md5") == 0:
+    elif options.check_md5 == True:
+        if "md5" not in cfg.sync_checks:
             cfg.sync_checks.append("md5")
-        if cfg.preserve_attrs_list.count("md5") == 0:
+        if "md5" not in cfg.preserve_attrs_list:
             cfg.preserve_attrs_list.append("md5")
 
     ## Update Config with other parameters
