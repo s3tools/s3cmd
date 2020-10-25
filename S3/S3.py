@@ -2054,7 +2054,7 @@ def parse_attrs_header(attrs_header):
 
 def compute_content_md5(body):
     m = md5(encode_to_s3(body))
-    base64md5 = base64.encodestring(m.digest())
+    base64md5 = base64.encodebytes(m.digest())
     base64md5 = decode_from_s3(base64md5)
     if base64md5[-1] == '\n':
         base64md5 = base64md5[0:-1]

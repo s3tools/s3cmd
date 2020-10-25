@@ -63,7 +63,7 @@ def sign_string_v2(string_to_sign):
     and returned signature will be utf-8 encoded "bytes".
     """
     secret_key = Config.Config().secret_key
-    signature = base64.encodestring(hmac.new(encode_to_s3(secret_key), string_to_sign, sha1).digest()).strip()
+    signature = base64.encodebytes(hmac.new(encode_to_s3(secret_key), string_to_sign, sha1).digest()).strip()
     return signature
 __all__.append("sign_string_v2")
 
