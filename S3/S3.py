@@ -12,7 +12,6 @@ import sys
 import os
 import time
 import errno
-import base64
 import mimetypes
 import io
 import pprint
@@ -25,6 +24,12 @@ try:
     from urlparse import urlparse
 except ImportError:
     from urllib.parse import urlparse
+try:
+    # Python 2 support
+    from base64 import encodestring
+except ImportError:
+    # Python 3.9.0+ support
+    from base64 import encodebytes as encodestring
 
 import select
 
@@ -2054,7 +2059,7 @@ def parse_attrs_header(attrs_header):
 
 def compute_content_md5(body):
     m = md5(encode_to_s3(body))
-    base64md5 = base64.encodebytes(m.digest())
+    base64md5 = encodestring(m.digest())
     base64md5 = decode_from_s3(base64md5)
     if base64md5[-1] == '\n':
         base64md5 = base64md5[0:-1]
