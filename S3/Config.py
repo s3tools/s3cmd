@@ -273,7 +273,8 @@ class Config(object):
                 self.secret_key = secret_key
             if access_token:
                 self.access_token = access_token
-                # Do not refresh the IAM role when an access token is provided.
+            # Do not refresh the IAM role when an access token is provided.
+            if self.access_token:
                 self._access_token_refresh = False
 
             if len(self.access_key)==0:
