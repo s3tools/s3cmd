@@ -11,11 +11,10 @@ from __future__ import absolute_import
 import sys
 import hmac
 try:
+    from base64 import encodebytes as encodestring
+except ImportError:
     # Python 2 support
     from base64 import encodestring
-except ImportError:
-    # Python 3.9.0+ support
-    from base64 import encodebytes as encodestring
 
 from . import Config
 from logging import debug
