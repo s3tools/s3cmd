@@ -42,6 +42,9 @@ class Grantee(object):
     def isAnonRead(self):
         return self.isAllUsers() and (self.permission == "READ" or self.permission == "FULL_CONTROL")
 
+    def isAnonWrite(self):
+        return self.isAllUsers() and (self.permission == "WRITE" or self.permission == "FULL_CONTROL")
+
     def getElement(self):
         el = ET.Element("Grant")
         grantee = ET.SubElement(el, "Grantee", {
@@ -127,12 +130,21 @@ class ACL(object):
                 return True
         return False
 
+    def isAnonWrite(self):
+        for grantee in self.grantees:
+            if grantee.isAnonWrite():
+                return True
+        return False
+
     def grantAnonRead(self):
         if not self.isAnonRead():
             self.appendGrantee(GranteeAnonRead())
 
     def revokeAnonRead(self):
         self.grantees = [g for g in self.grantees if not g.isAnonRead()]
+
+    def revokeAnonWrite(self):
+        self.grantees = [g for g in self.grantees if not g.isAnonWrite()]
 
     def appendGrantee(self, grantee):
         self.grantees.append(grantee)
