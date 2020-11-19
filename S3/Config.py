@@ -273,8 +273,6 @@ class Config(object):
                 self.secret_key = secret_key
             if access_token:
                 self.access_token = access_token
-                # Do not refresh the IAM role when an access token is provided.
-                self._access_token_refresh = False
 
             if len(self.access_key)==0:
                 env_access_key = os.getenv('AWS_ACCESS_KEY') or os.getenv('AWS_ACCESS_KEY_ID')
@@ -285,12 +283,14 @@ class Config(object):
                     self.access_key = config_unicodise(env_access_key)
                     self.secret_key = config_unicodise(env_secret_key)
                     if env_access_token:
-                        # Do not refresh the IAM role when an access token is provided.
-                        self._access_token_refresh = False
                         self.access_token = config_unicodise(env_access_token)
                 else:
                     self.role_config()
 
+            if self.access_token:
+                # Do not refresh the IAM role when an access token is provided.
+                self._access_token_refresh = False
+                
             #TODO check KMS key is valid
             if self.kms_key and self.server_side_encryption == True:
                 warning('Cannot have server_side_encryption (S3 SSE) and KMS_key set (S3 KMS). KMS encryption will be used. Please set server_side_encryption to False')
