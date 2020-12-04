@@ -16,6 +16,8 @@ S3tools / S3cmd mailing lists:
 S3cmd requires Python 2.6 or newer.
 Python 3+ is also supported starting with S3cmd version 2.
 
+See [installation instructions](https://github.com/s3tools/s3cmd/blob/master/INSTALL.md).
+
 
 ### What is S3cmd
 
