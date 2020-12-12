@@ -49,7 +49,7 @@ Delete file from bucket (alias for del)
 s3cmd \fBrestore\fR \fIs3://BUCKET/OBJECT\fR
 Restore file from Glacier storage
 .TP
-s3cmd \fBsync\fR \fILOCAL_DIR s3://BUCKET[/PREFIX] or s3://BUCKET[/PREFIX] LOCAL_DIR\fR
+s3cmd \fBsync\fR \fILOCAL_DIR s3://BUCKET[/PREFIX] or s3://BUCKET[/PREFIX] LOCAL_DIR or s3://BUCKET[/PREFIX] s3://BUCKET[/PREFIX]\fR
 Synchronize a directory tree to S3 (checks files freshness using size and md5 checksum, unless overridden by options, see below)
 .TP
 s3cmd \fBdu\fR \fI[s3://BUCKET[/PREFIX]]\fR
@@ -276,7 +276,7 @@ Delete destination objects with no corresponding
 source file [sync]
 .TP
 \fB\-\-no\-delete\-removed\fR
-Don't delete destination objects.
+Don't delete destination objects [sync]
 .TP
 \fB\-\-delete\-after\fR
 Perform deletes AFTER new uploads when delete-removed
@@ -524,7 +524,7 @@ Enable verbose output.
 Enable debug output.
 .TP
 \fB\-\-version\fR
-Show s3cmd version (2.1.0) and exit.
+Show s3cmd version (2.1.0+) and exit.
 .TP
 \fB\-F\fR, \fB\-\-follow\-symlinks\fR
 Follow symbolic links as if they are regular files
@@ -539,11 +539,12 @@ Silence output on stdout
 Path to SSL CA certificate FILE (instead of system
 default)
 .TP
-\fB\-\-ssl\-cert\fR=CRT_FILE
+\fB\-\-ssl\-cert\fR=SSL_CLIENT_CERT_FILE
 Path to client own SSL certificate CRT_FILE
 .TP
-\fB\-\-ssl\-key\fR=KEY_FILE
-Path to client own SSL certificate private key KEY_FILE
+\fB\-\-ssl\-key\fR=SSL_CLIENT_KEY_FILE
+Path to client own SSL certificate private key
+KEY_FILE
 .TP
 \fB\-\-check\-certificate\fR
 Check SSL certificate validity
