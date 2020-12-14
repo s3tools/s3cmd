@@ -2614,10 +2614,11 @@ def update_acl(s3, uri, seq_label=""):
             acl.grantAnonRead()
             something_changed = True
     elif cfg.acl_public == False:  # we explicitely check for False, because it could be None
-        if not acl.isAnonRead():
+        if not acl.isAnonRead() and not acl.isAnonWrite():
             info(u"%s: already Private, skipping %s" % (uri, seq_label))
         else:
             acl.revokeAnonRead()
+            acl.revokeAnonWrite()
             something_changed = True
 
     # update acl with arguments
