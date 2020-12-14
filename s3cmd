@@ -973,7 +973,7 @@ def cmd_info(args):
                 output(u"   Payer:     %s" % (info['requester-pays']
                                               or 'none'))
                 expiration = s3.expiration_info(uri, cfg.bucket_location)
-                if expiration:
+                if expiration and expiration['prefix'] is not None:
                     expiration_desc = "Expiration Rule: "
                     if expiration['prefix'] == "":
                         expiration_desc += "all objects in this bucket "
