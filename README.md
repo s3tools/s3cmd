@@ -13,7 +13,7 @@ S3tools / S3cmd mailing lists:
 * General questions and discussion: s3tools-general@lists.sourceforge.net
 * Bug reports: s3tools-bugs@lists.sourceforge.net
 
-S3cmd requires Python 2.6 or newer.
+S3cmd requires Python 2.7 or newer.
 Python 3+ is also supported starting with S3cmd version 2.
 
 See [installation instructions](https://github.com/s3tools/s3cmd/blob/master/INSTALL.md).

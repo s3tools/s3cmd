@@ -24,9 +24,9 @@ from setuptools import setup
 
 import S3.PkgInfo
 
-if float("%d.%d" % sys.version_info[:2]) < 2.6:
+if float("%d.%d" % sys.version_info[:2]) < 2.7:
     sys.stderr.write("Your Python version %d.%d.%d is not supported.\n" % sys.version_info[:3])
-    sys.stderr.write("S3cmd requires Python 2.6 or newer.\n")
+    sys.stderr.write("S3cmd requires Python 2.7 or newer.\n")
     sys.exit(1)
 
 ## Remove 'MANIFEST' file to force
@@ -103,7 +103,6 @@ Authors:
         'Operating System :: POSIX',
         'Operating System :: Unix',
         'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
