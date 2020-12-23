@@ -252,6 +252,7 @@ class Config(object):
     # seconds or more, but in real life, undocumented, it closes https conns
     # after around 6s of inactivity.
     connection_max_age = 5
+    use_md5_xattr = False
 
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None, access_token=None):

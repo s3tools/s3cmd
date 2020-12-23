@@ -43,6 +43,7 @@ import subprocess
 import tempfile
 import time
 import traceback
+import xattr
 
 from copy import copy
 from optparse import OptionParser, Option, OptionValueError, IndentedHelpFormatter
@@ -1359,7 +1360,13 @@ def cmd_sync_remote2local(args):
                         dst_stream.stream_name = unicodise(chkptfname_b)
                         debug(u"created chkptfname=%s" % dst_stream.stream_name)
                         response = s3.object_get(uri, dst_stream, dst_file, extra_label = seq_label)
-
+                        if cfg.use_md5_xattr and 'md5' in response:
+                            md5 = response['md5']
+                            try:
+                                logging.debug("Save md5 into %s's xattr: %s" % (dst_file, md5))
+                                xattr.setxattr(dst_stream.stream_name, b'user.s3cmd.md5', md5.encode('utf-8'))
+                            except (IOError, OSError):
+                                pass
                     # download completed, rename the file to destination
                     if os.name == "nt":
                         # Windows is really a bad OS. Rename can't overwrite an existing file
@@ -2832,6 +2839,8 @@ def main():
     optparser.add_option(      "--stop-on-error", dest="stop_on_error", action="store_true", help="stop if error in transfer")
     optparser.add_option(      "--content-disposition", dest="content_disposition", action="store", help="Provide a Content-Disposition for signed URLs, e.g., \"inline; filename=myvideo.mp4\"")
     optparser.add_option(      "--content-type", dest="content_type", action="store", help="Provide a Content-Type for signed URLs, e.g., \"video/mp4\"")
+    optparser.add_option(      "--use-md5-xattr", dest="use_md5_xattr", action="store_true", help="Try to save md5 into 'user.s3cmd.md5 xattr' when sync objects to local. And try to read md5 information from 'user.s3cmd.md5' xattr when md5 is needed. If 'user.s3cmd.md5' is not exist, calculate it and save it to 'user.s3cmd.md5' xattr")
+    optparser.add_option(      "--no-use-md5-xattr", dest="use_md5_xattr", action="store_false", help="Do not use 'user.s3cmd.md5 xattr to accelerate get md5 process")
 
     optparser.set_usage(optparser.usage + " COMMAND [parameters]")
     optparser.set_description('S3cmd is a tool for managing objects in '+

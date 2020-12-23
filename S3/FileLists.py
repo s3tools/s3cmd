@@ -229,7 +229,8 @@ def fetch_local_list(args, is_src = False, recursive = None):
                 md5 = cache.md5(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size)
                 if md5 is None:
                         try:
-                            md5 = loc_list.get_md5(relative_file) # this does the file I/O
+                            md5 = loc_list.get_md5(relative_file,
+                                      allow_update_md5=True) # this does the file I/O
                         except IOError:
                             continue
                         cache.add(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size, md5)

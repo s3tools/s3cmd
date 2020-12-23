@@ -9,6 +9,7 @@
 from __future__ import absolute_import
 
 import logging
+import xattr
 from .SortedDict import SortedDict
 from . import Utils
 from . import Config
@@ -37,15 +38,34 @@ class FileDict(SortedDict):
             return None
         return self.by_md5.get(md5, None)
 
-    def get_md5(self, relative_file):
+    def get_md5(self, relative_file, allow_update_md5=False):
         """returns md5 if it can, or raises IOError if file is unreadable"""
         md5 = None
         if 'md5' in self[relative_file]:
             return self[relative_file]['md5']
         md5 = self.get_hardlink_md5(relative_file)
         if md5 is None and 'md5' in cfg.sync_checks:
-            logging.debug(u"doing file I/O to read md5 of %s" % relative_file)
-            md5 = Utils.hash_file_md5(self[relative_file]['full_name'])
+            fullname = self[relative_file]['full_name']
+            if cfg.use_md5_xattr:
+                logging.debug("Read md5 from %s's xattr" % fullname)
+                try:
+                    md5 = xattr.getxattr(fullname,
+                                      b'user.s3cmd.md5').decode("utf-8")
+                except (IOError, OSError):
+                    pass
+            if md5 is None:
+                logging.debug(u"doing file I/O to read md5 of %s" % 
+                              relative_file)
+                md5 = Utils.hash_file_md5(fullname)
+                if cfg.use_md5_xattr and allow_update_md5:
+                    try:
+                        xattr.setxattr(fullname,
+                                       b'user.s3cmd.md5', md5.encode("utf-8"))
+                        logging.debug("Save md5 into %s's xattr: %s" % (
+                                      fullname, md5))
+                    except (IOError, OSError):
+                        pass
+
         self.record_md5(relative_file, md5)
         self[relative_file]['md5'] = md5
         return md5
