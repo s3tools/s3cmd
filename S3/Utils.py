@@ -566,6 +566,8 @@ def calculateChecksum(buffer, mfile, offset, chunk_size, send_chunk):
         mfile.seek(offset)
         while size_left > 0:
             data = mfile.read(min(send_chunk, size_left))
+            if not data:
+                break
             md5_hash.update(data)
             size_left -= len(data)
     else:
@@ -601,4 +603,3 @@ __all__.append("getgrgid_grpname")
 
 
 # vim:et:ts=4:sts=4:ai
-

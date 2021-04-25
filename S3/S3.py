@@ -1664,13 +1664,16 @@ class S3(object):
                     http_response.read()
                     conn.c._HTTPConnection__state = ConnMan._CS_REQ_SENT
 
-                while (size_left > 0):
+                while size_left > 0:
                     #debug("SendFile: Reading up to %d bytes from '%s' - remaining bytes: %s" % (self.config.send_chunk, filename, size_left))
                     l = min(self.config.send_chunk, size_left)
                     if buffer == '':
                         data = stream.read(l)
                     else:
                         data = buffer
+
+                    if not data:
+                        raise InvalidFileError("File smaller than expected. Was the file truncated?")
 
                     if self.config.limitrate > 0:
                         start_time = time.time()
@@ -1703,6 +1706,10 @@ class S3(object):
             ConnMan.put(conn)
             debug(u"Response:\n" + pprint.pformat(response))
         except ParameterError as e:
+            raise
+        except InvalidFileError as e:
+            if self.config.progress_meter:
+                progress.done("failed")
             raise
         except Exception as e:
             if self.config.progress_meter:
