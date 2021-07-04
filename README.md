@@ -1,6 +1,6 @@
 ## S3cmd tool for Amazon Simple Storage Service (S3)
 
-[![Build Status](https://travis-ci.org/s3tools/s3cmd.svg?branch=master)](https://travis-ci.org/s3tools/s3cmd)
+[![Build Status](https://github.com/s3tools/s3cmd/actions/workflows/test.yml/badge.svg)](https://github.com/s3tools/s3cmd/actions/workflows/test.yml)
 
 * Author: Michal Ludvig, michal@logix.cz
 * [Project homepage](http://s3tools.org)
