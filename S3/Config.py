@@ -18,7 +18,7 @@ import sys
 import json
 import time
 
-from logging import debug, warning, error
+from logging import debug, warning
 
 from .ExitCodes import EX_OSFILE
 
@@ -601,11 +601,11 @@ class ConfigParser(object):
         if type(sections) != type([]):
             sections = [sections]
         in_our_section = True
-        r_comment = re.compile("^\s*#.*")
-        r_empty = re.compile("^\s*$")
-        r_section = re.compile("^\[([^\]]+)\]")
-        r_data = re.compile("^\s*(?P<key>\w+)\s*=\s*(?P<value>.*)")
-        r_quotes = re.compile("^\"(.*)\"\s*$")
+        r_comment = re.compile(r'^\s*#.*')
+        r_empty = re.compile(r'^\s*$')
+        r_section = re.compile(r'^\[([^\]]+)\]')
+        r_data = re.compile(r'^\s*(?P<key>\w+)\s*=\s*(?P<value>.*)')
+        r_quotes = re.compile(r'^"(.*)"\s*$')
         with io.open(file, "r", encoding=self.get('encoding', 'UTF-8')) as fp:
             for line in fp:
                 if r_comment.match(line) or r_empty.match(line):
