@@ -3182,7 +3182,10 @@ if __name__ == '__main__':
         from S3.S3Uri import S3Uri
         from S3 import Utils
         from S3 import Crypto
-        from S3.Utils import *
+        from S3.BaseUtils import (formatDateTime, getPrettyFromXml,
+                                  encode_to_s3, decode_from_s3)
+        from S3.Utils import (formatSize, unicodise_safe, unicodise_s,
+                              unicodise, deunicodise, replace_nonprintables)
         from S3.Progress import Progress, StatsInfo
         from S3.CloudFront import Cmd as CfCmd
         from S3.CloudFront import CloudFront

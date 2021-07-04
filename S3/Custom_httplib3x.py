@@ -11,7 +11,7 @@ from http.client import (_CS_REQ_SENT, _CS_REQ_STARTED, CONTINUE, UnknownProtoco
 
 from io import StringIO
 
-from .Utils import encode_to_s3
+from .BaseUtils import encode_to_s3
 
 
 _METHODS_EXPECTING_BODY = ['PATCH', 'POST', 'PUT']

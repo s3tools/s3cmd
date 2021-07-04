@@ -38,11 +38,12 @@ try:
 except ImportError:
     from md5 import md5
 
-from .Utils import (getListFromXml, getTextFromXml, getRootTagName,
-                    convertHeaderTupleListToDict, hash_file_md5, unicodise,
-                    deunicodise, decode_from_s3, encode_to_s3, s3_quote,
-                    check_bucket_name, check_bucket_name_dns_support,
-                    getHostnameFromBucket, calculateChecksum)
+from .BaseUtils import (getListFromXml, getTextFromXml, getRootTagName,
+                        decode_from_s3, encode_to_s3, s3_quote)
+from .Utils import (convertHeaderTupleListToDict, hash_file_md5, unicodise,
+                    deunicodise, check_bucket_name,
+                    check_bucket_name_dns_support, getHostnameFromBucket,
+                    calculateChecksum)
 from .SortedDict import SortedDict
 from .AccessLog import AccessLog
 from .ACL import ACL, GranteeLogDelivery

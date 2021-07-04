@@ -18,8 +18,8 @@ except ImportError:
 
 from . import Config
 from logging import debug
-from .Utils import (encode_to_s3, time_to_epoch, deunicodise, decode_from_s3,
-                    check_bucket_name_dns_support, s3_quote)
+from .BaseUtils import encode_to_s3, decode_from_s3, s3_quote
+from .Utils import time_to_epoch, deunicodise, check_bucket_name_dns_support
 from .SortedDict import SortedDict
 
 import datetime

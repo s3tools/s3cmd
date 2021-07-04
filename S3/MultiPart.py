@@ -10,8 +10,8 @@ import sys
 from logging import debug, info, warning, error
 from .Exceptions import ParameterError
 from .S3Uri import S3UriS3
-from .Utils import (getTextFromXml, getTreeFromXml, formatSize,
-                    calculateChecksum, parseNodes, s3_quote)
+from .BaseUtils import getTextFromXml, getTreeFromXml, s3_quote, parseNodes
+from .Utils import formatSize, calculateChecksum
 
 SIZE_1MB = 1024 * 1024
 

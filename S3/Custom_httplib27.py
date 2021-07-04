@@ -12,7 +12,7 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-from .Utils import encode_to_s3
+from .BaseUtils import encode_to_s3
 
 
 _METHODS_EXPECTING_BODY = ['PATCH', 'POST', 'PUT']

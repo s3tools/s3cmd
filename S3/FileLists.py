@@ -12,7 +12,8 @@ from .S3 import S3
 from .Config import Config
 from .S3Uri import S3Uri
 from .FileDict import FileDict
-from .Utils import *
+from .BaseUtils import dateS3toUnix, dateRFC822toUnix
+from .Utils import unicodise, deunicodise, deunicodise_s, replace_nonprintables
 from .Exceptions import ParameterError
 from .HashCache import HashCache
 

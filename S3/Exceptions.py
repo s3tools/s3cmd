@@ -10,6 +10,7 @@ from __future__ import absolute_import
 
 from logging import debug, error
 import sys
+import S3.BaseUtils
 import S3.Utils
 from . import ExitCodes
 
@@ -79,7 +80,7 @@ class S3Error (S3Exception):
                 debug("HttpHeader: %s: %s" % (header, response["headers"][header]))
         if "data" in response and response["data"]:
             try:
-                tree = S3.Utils.getTreeFromXml(response["data"])
+                tree = S3.BaseUtils.getTreeFromXml(response["data"])
             except XmlParseError:
                 debug("Not an XML response")
             else:

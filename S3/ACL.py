@@ -9,7 +9,8 @@
 from __future__ import absolute_import, print_function
 
 import sys
-from .Utils import getTreeFromXml, deunicodise, encode_to_s3, decode_from_s3
+from .BaseUtils import getTreeFromXml, encode_to_s3, decode_from_s3
+from .Utils import deunicodise
 
 try:
     import xml.etree.ElementTree as ET

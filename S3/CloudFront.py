@@ -22,10 +22,10 @@ except ImportError:
 from .S3 import S3
 from .Config import Config
 from .Exceptions import *
-from .Utils import (getTreeFromXml, appendXmlTextNode, getDictFromTree,
-                    dateS3toPython, getBucketFromHostname,
-                    getHostnameFromBucket, deunicodise, urlencode_string,
-                    convertHeaderTupleListToDict, encode_to_s3, decode_from_s3)
+from .BaseUtils import (getTreeFromXml, appendXmlTextNode, getDictFromTree,
+                        dateS3toPython, encode_to_s3, decode_from_s3)
+from .Utils import (getBucketFromHostname, getHostnameFromBucket, deunicodise,
+                    urlencode_string, convertHeaderTupleListToDict)
 from .Crypto import sign_string_v2
 from .S3Uri import S3Uri, S3UriS3
 from .ConnMan import ConnMan
