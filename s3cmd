@@ -25,7 +25,8 @@ import sys
 
 if sys.version_info < (2, 6):
     sys.stderr.write(u"ERROR: Python 2.6 or higher required, sorry.\n")
-    sys.exit(EX_OSFILE)
+    # 72 == EX_OSFILE
+    sys.exit(72)
 
 PY3 = (sys.version_info >= (3, 0))
 
@@ -61,6 +62,13 @@ except NameError:
     # python 3 support
     # In python 3, unicode -> str, and str -> bytes
     unicode = str
+
+try:
+    unichr
+except NameError:
+    # python 3 support
+    # In python 3, unichr was removed as chr can now do the job
+    unichr = chr
 
 try:
     from shutil import which
@@ -1930,7 +1938,13 @@ def cmd_sync_local2remote(args):
 def cmd_sync(args):
     cfg = Config()
     if (len(args) < 2):
-        raise ParameterError("Too few parameters! Expected: %s" % commands['sync']['param'])
+        syntax_msg = ''
+        commands_list = get_commands_list()
+        for cmd in commands_list:
+            if cmd.get('cmd') == 'sync':
+                syntax_msg = cmd.get('param', '')
+                break
+        raise ParameterError("Too few parameters! Expected: %s" % syntax_msg)
     if cfg.delay_updates:
         warning(u"`delay-updates` is obsolete.")
 
@@ -2645,23 +2659,25 @@ def update_acl(s3, uri, seq_label=""):
             output(u"%s: ACL updated" % uri)
 
 class OptionMimeType(Option):
-    def check_mimetype(option, opt, value):
+    def check_mimetype(self, opt, value):
         if re.compile(r"^[a-z0-9]+/[a-z0-9+\.-]+(;.*)?$", re.IGNORECASE).match(value):
             return value
         raise OptionValueError("option %s: invalid MIME-Type format: %r" % (opt, value))
 
 class OptionS3ACL(Option):
-    def check_s3acl(option, opt, value):
+    def check_s3acl(self, opt, value):
         permissions = ('read', 'write', 'read_acp', 'write_acp', 'full_control', 'all')
         try:
             permission, grantee = re.compile(r"^(\w+):(.+)$", re.IGNORECASE).match(value).groups()
             if not permission or not grantee:
-                raise
+                raise OptionValueError("option %s: invalid S3 ACL format: %r" % (opt, value))
             if permission in permissions:
                 return { 'name' : grantee, 'permission' : permission.upper() }
             else:
                 raise OptionValueError("option %s: invalid S3 ACL permission: %s (valid values: %s)" %
                     (opt, permission, ", ".join(permissions)))
+        except OptionValueError:
+            raise
         except Exception:
             raise OptionValueError("option %s: invalid S3 ACL format: %r" % (opt, value))
 
