@@ -327,6 +327,12 @@ class Config(object):
                     Config().update_option('access_key', creds['AssumeRoleWithWebIdentityResult']['Credentials']['AccessKeyId'])
                     Config().update_option('secret_key', creds['AssumeRoleWithWebIdentityResult']['Credentials']['SecretAccessKey'])
                     Config().update_option('access_token', creds['AssumeRoleWithWebIdentityResult']['Credentials']['SessionToken'])
+                    expiration = config_date_to_python(config_unicodise(creds['AssumeRoleWithWebIdentityResult']['Credentials']['Expiration']))
+                    # Add a timedelta to prevent any expiration if the EC2 machine is not at the right date
+                    self._access_token_expiration = expiration - datetime.timedelta(minutes=15)
+                    # last update date is not provided in STS responses
+                    self._access_token_last_update = datetime.datetime.now(dateutil.tz.tzutc())
+                    # Others variables : Code / Type
                 else:
                     raise IOError
             else:
