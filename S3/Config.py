@@ -9,18 +9,17 @@
 from __future__ import absolute_import
 
 import logging
-from logging import debug, warning, error
+import datetime
+import locale
 import re
 import os
 import io
 import sys
 import json
 import time
-import urllib.parse
-import xml.etree.cElementTree
-from . import Progress
-from .SortedDict import SortedDict
-import datetime
+
+from logging import debug, warning, error
+
 from .ExitCodes import EX_OSFILE
 
 try:
@@ -46,17 +45,21 @@ try:
     import httplib
 except ImportError:
     import http.client as httplib
-import locale
 
 try:
- from configparser import (NoOptionError, NoSectionError,
-                           MissingSectionHeaderError, ParsingError,
-                           ConfigParser as PyConfigParser)
+    from configparser import (NoOptionError, NoSectionError,
+                              MissingSectionHeaderError, ParsingError,
+                              ConfigParser as PyConfigParser)
 except ImportError:
-  # Python2 fallback code
-  from ConfigParser import (NoOptionError, NoSectionError,
-                            MissingSectionHeaderError, ParsingError,
-                            ConfigParser as PyConfigParser)
+    # Python2 fallback code
+    from ConfigParser import (NoOptionError, NoSectionError,
+                              MissingSectionHeaderError, ParsingError,
+                              ConfigParser as PyConfigParser)
+
+from . import Progress
+from .SortedDict import SortedDict
+from .BaseUtils import s3_quote, getTreeFromXml, getDictFromTree
+
 
 try:
     unicode
@@ -279,7 +282,7 @@ class Config(object):
                 # Do not refresh the IAM role when an access token is provided.
                 self._access_token_refresh = False
 
-            if len(self.access_key)==0:
+            if len(self.access_key) == 0:
                 env_access_key = os.getenv('AWS_ACCESS_KEY') or os.getenv('AWS_ACCESS_KEY_ID')
                 env_secret_key = os.getenv('AWS_SECRET_KEY') or os.getenv('AWS_SECRET_ACCESS_KEY')
                 env_access_token = os.getenv('AWS_SESSION_TOKEN') or os.getenv('AWS_SECURITY_TOKEN')
@@ -302,32 +305,46 @@ class Config(object):
 
     def role_config(self):
         """
-        Get credentials from IAM authentication
+        Get credentials from IAM authentication and STS AssumeRole
         """
         try:
             role_arn = os.environ.get('AWS_ROLE_ARN')
-            web_identity_token_file = os.environ.get('AWS_WEB_IDENTITY_TOKEN_FILE')
-            role_session_name = 'role-session-%s' % (int(time.time()))
-            if web_identity_token_file:
-                with open(web_identity_token_file) as f:
-                    web_identity_token = f.read()
+            if role_arn:
+                role_session_name = 'role-session-%s' % (int(time.time()))
                 params = {
-                  "Action": "AssumeRoleWithWebIdentity",
-                  "Version": "2011-06-15",
-                  "RoleArn": role_arn,
-                  "RoleSessionName": role_session_name,
-                  "WebIdentityToken": web_identity_token
+                    'Action': 'AssumeRole',
+                    'Version': '2011-06-15',
+                    'RoleArn': role_arn,
+                    'RoleSessionName': role_session_name,
                 }
-                conn = httplib.HTTPSConnection(host='sts.amazonaws.com', timeout = 2)
-                conn.request('POST', '/?' + urllib.parse.urlencode(params))
+                web_identity_token_file = os.environ.get('AWS_WEB_IDENTITY_TOKEN_FILE')
+                if web_identity_token_file:
+                    with open(web_identity_token_file) as f:
+                        web_identity_token = f.read()
+                    params['Action'] = 'AssumeRoleWithWebIdentity'
+                    params['WebIdentityToken'] = web_identity_token
+                encoded_params = '&'.join([
+                    '%s=%s' % (k, s3_quote(v, unicode_output=True))
+                    for k, v in params.items()
+                ])
+                conn = httplib.HTTPSConnection(host='sts.amazonaws.com',
+                                               timeout=2)
+                conn.request('POST', '/?' + encoded_params)
                 resp = conn.getresponse()
-                files = resp.read()
-                if resp.status == 200 and len(files)>1:
-                    creds = parse_xml_to_dict(files)
-                    Config().update_option('access_key', creds['AssumeRoleWithWebIdentityResult']['Credentials']['AccessKeyId'])
-                    Config().update_option('secret_key', creds['AssumeRoleWithWebIdentityResult']['Credentials']['SecretAccessKey'])
-                    Config().update_option('access_token', creds['AssumeRoleWithWebIdentityResult']['Credentials']['SessionToken'])
-                    expiration = config_date_to_python(config_unicodise(creds['AssumeRoleWithWebIdentityResult']['Credentials']['Expiration']))
+                resp_content = resp.read()
+                if resp.status == 200 and len(resp_content) > 1:
+                    tree = getTreeFromXml(resp_content)
+                    result_dict = getDictFromTree(tree)
+                    if tree.tag == "AssumeRoleResponse":
+                        creds = result_dict['AssumeRoleResult']['Credentials']
+                    elif tree.tag == "AssumeRoleWithWebIdentityResponse":
+                        creds = result_dict['AssumeRoleWithWebIdentityResult']['Credentials']
+                    else:
+                        raise IOError("Unexpected XML message from STS server: <%s />" % tree.tag)
+                    Config().update_option('access_key', creds['AccessKeyId'])
+                    Config().update_option('secret_key', creds['SecretAccessKey'])
+                    Config().update_option('access_token', creds['SessionToken'])
+                    expiration = config_date_to_python(config_unicodise(creds['Expiration']))
                     # Add a timedelta to prevent any expiration if the EC2 machine is not at the right date
                     self._access_token_expiration = expiration - datetime.timedelta(minutes=15)
                     # last update date is not provided in STS responses
@@ -336,11 +353,12 @@ class Config(object):
                 else:
                     raise IOError
             else:
-                conn = httplib.HTTPConnection(host='169.254.169.254', timeout = 2)
+                conn = httplib.HTTPConnection(host='169.254.169.254',
+                                              timeout=2)
                 conn.request('GET', "/latest/meta-data/iam/security-credentials/")
                 resp = conn.getresponse()
                 files = resp.read()
-                if resp.status == 200 and len(files)>1:
+                if resp.status == 200 and len(files) > 1:
                     conn.request('GET', "/latest/meta-data/iam/security-credentials/%s" % files.decode('utf-8'))
                     resp=conn.getresponse()
                     if resp.status == 200:
@@ -550,7 +568,7 @@ class Config(object):
         ## allow yes/no, true/false, on/off and 1/0 for boolean options
         ## Some options default to None, if that's the case check the value to see if it is bool
         elif (type(getattr(Config, option)) is type(True) or              # Config is bool
-             (getattr(Config, option) is None and is_bool(value))):  # Config is None and value is bool
+              (getattr(Config, option) is None and is_bool(value))):  # Config is None and value is bool
             if is_bool_true(value):
                 value = True
             elif is_bool_false(value):
