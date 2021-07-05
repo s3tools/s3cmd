@@ -607,24 +607,32 @@ def cmd_object_get(args):
                         dst_stream.close()
                         raise ParameterError(u"File %s already exists. Use either of --force / --continue / --skip-existing or give it a new name." % destination)
             except IOError as e:
-                error(u"Skipping %s: %s" % (destination, e.strerror))
+                error(u"Creation of file '%s' failed (Reason: %s)"
+                      % (destination, e.strerror))
+                if cfg.stop_on_error:
+                    error(u"Exiting now because of --stop-on-error")
+                    raise
+                ret = EX_PARTIAL
                 continue
+
         try:
             try:
                 response = s3.object_get(uri, dst_stream, destination, start_position = start_position, extra_label = seq_label)
             finally:
                 dst_stream.close()
         except S3DownloadError as e:
-            error(u"%s: Skipping that file.  This is usually a transient error, please try again later." % e)
-            if not file_exists: # Delete, only if file didn't exist before!
+            error(u"Download of '%s' failed (Reason: %s)" % (destination, e))
+            # Delete, only if file didn't exist before!
+            if not file_exists:
                 debug(u"object_get failed for '%s', deleting..." % (destination,))
                 os.unlink(deunicodise(destination))
-                ret = EX_PARTIAL
-                if cfg.stop_on_error:
-                    ret = EX_DATAERR
-                    break
+            if cfg.stop_on_error:
+                error(u"Exiting now because of --stop-on-error")
+                raise
+            ret = EX_PARTIAL
             continue
         except S3Error as e:
+            error(u"Download of '%s' failed (Reason: %s)" % (destination, e))
             if not file_exists: # Delete, only if file didn't exist before!
                 debug(u"object_get failed for '%s', deleting..." % (destination,))
                 os.unlink(deunicodise(destination))
@@ -644,7 +652,7 @@ def cmd_object_get(args):
         if Config().delete_after_fetch:
             s3.object_delete(uri)
             output(u"File '%s' removed after fetch" % (uri))
-    return EX_OK
+    return ret
 
 def cmd_object_del(args):
     cfg = Config()
@@ -1742,11 +1750,11 @@ def cmd_sync_local2remote(args):
                     continue
                 except InvalidFileError as exc:
                     error(u"Upload of '%s' is not possible (Reason: %s)" % (item['full_name'], exc))
-                    ret = EX_PARTIAL
                     if cfg.stop_on_error:
                         ret = EX_OSFILE
                         error(u"Exiting now because of --stop-on-error")
                         raise
+                    ret = EX_PARTIAL
                     continue
                 speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
                 if not cfg.progress_meter:
