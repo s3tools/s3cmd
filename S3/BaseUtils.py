@@ -74,6 +74,9 @@ __all__.append("dateS3toUnix")
 
 
 def dateRFC822toPython(date):
+    """
+    Convert a string formated like '2020-06-27T15:56:34Z' into a python datetime
+    """
     return dateutil.parser.parse(date, fuzzy=True)
 __all__.append("dateRFC822toPython")
 
@@ -91,34 +94,54 @@ __all__.append("formatDateTime")
 
 # Encoding / Decoding
 
-def decode_from_s3(string, errors = "replace"):
+
+def base_unicodise(string, encoding='UTF-8', errors='replace', silent=False):
     """
-    Convert S3 UTF-8 'string' to Unicode or raise an exception.
+    Convert 'string' to Unicode or raise an exception.
     """
     if type(string) == unicode:
         return string
-    # Be quiet by default
-    #debug("Decoding string from S3: %r" % string)
+
+    if not silent:
+        debug("Unicodising %r using %s" % (string, encoding))
     try:
-        return unicode(string, "UTF-8", errors)
+        return unicode(string, encoding, errors)
     except UnicodeDecodeError:
         raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
-__all__.append("decode_from_s3")
+__all__.append("base_unicodise")
 
 
-def encode_to_s3(string, errors = "replace"):
+def base_deunicodise(string, encoding='UTF-8', errors='replace', silent=False):
     """
-    Convert Unicode to S3 UTF-8 'string', by default replacing
+    Convert unicode 'string' to <type str>, by default replacing
     all invalid characters with '?' or raise an exception.
     """
     if type(string) != unicode:
         return string
-    # Be quiet by default
-    #debug("Encoding string to S3: %r" % string)
+
+    if not silent:
+        debug("DeUnicodising %r using %s" % (string, encoding))
     try:
-        return string.encode("UTF-8", errors)
+        return string.encode(encoding, errors)
     except UnicodeEncodeError:
         raise UnicodeEncodeError("Conversion from unicode failed: %r" % string)
+__all__.append("base_deunicodise")
+
+
+def decode_from_s3(string, errors = "replace"):
+    """
+    Convert S3 UTF-8 'string' to Unicode or raise an exception.
+    """
+    return base_unicodise(string, "UTF-8", errors, True)
+__all__.append("decode_from_s3")
+
+
+def encode_to_s3(string, errors='replace'):
+    """
+    Convert Unicode to S3 UTF-8 'string', by default replacing
+    all invalid characters with '?' or raise an exception.
+    """
+    return base_deunicodise(string, "UTF-8", errors, True)
 __all__.append("encode_to_s3")
 
 

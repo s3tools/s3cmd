@@ -29,13 +29,14 @@ except NameError:
 import S3.Config
 import S3.Exceptions
 
-from S3.BaseUtils import base_urlencode_string, base_replace_nonprintables
+from S3.BaseUtils import (base_urlencode_string, base_replace_nonprintables,
+                          base_unicodise, base_deunicodise)
 
 
 __all__ = []
 
 
-def formatSize(size, human_readable = False, floating_point = False):
+def formatSize(size, human_readable=False, floating_point=False):
     size = floating_point and float(size) or int(size)
     if human_readable:
         coeffs = ['K', 'M', 'G', 'T']
@@ -140,28 +141,14 @@ def mkdir_with_parents(dir_name):
     return True
 __all__.append("mkdir_with_parents")
 
-
-def unicodise(string, encoding = None, errors = "replace", silent=False):
-    """
-    Convert 'string' to Unicode or raise an exception.
-    """
-
+def unicodise(string, encoding=None, errors='replace', silent=False):
     if not encoding:
         encoding = S3.Config.Config().encoding
-
-    if type(string) == unicode:
-        return string
-
-    if not silent:
-        debug("Unicodising %r using %s" % (string, encoding))
-    try:
-        return unicode(string, encoding, errors)
-    except UnicodeDecodeError:
-        raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
+    return base_unicodise(string, encoding, errors, silent)
 __all__.append("unicodise")
 
 
-def unicodise_s(string, encoding = None, errors = "replace"):
+def unicodise_s(string, encoding=None, errors='replace'):
     """
     Alias to silent version of unicodise
     """
@@ -169,28 +156,14 @@ def unicodise_s(string, encoding = None, errors = "replace"):
 __all__.append("unicodise_s")
 
 
-def deunicodise(string, encoding = None, errors = "replace", silent=False):
-    """
-    Convert unicode 'string' to <type str>, by default replacing
-    all invalid characters with '?' or raise an exception.
-    """
-
+def deunicodise(string, encoding=None, errors='replace', silent=False):
     if not encoding:
         encoding = S3.Config.Config().encoding
-
-    if type(string) != unicode:
-        return string
-
-    if not silent:
-        debug("DeUnicodising %r using %s" % (string, encoding))
-    try:
-        return string.encode(encoding, errors)
-    except UnicodeEncodeError:
-        raise UnicodeEncodeError("Conversion from unicode failed: %r" % string)
+    return base_deunicodise(string, encoding, errors, silent)
 __all__.append("deunicodise")
 
 
-def deunicodise_s(string, encoding = None, errors = "replace"):
+def deunicodise_s(string, encoding=None, errors='replace'):
     """
     Alias to silent version of deunicodise
     """
@@ -198,7 +171,7 @@ def deunicodise_s(string, encoding = None, errors = "replace"):
 __all__.append("deunicodise_s")
 
 
-def unicodise_safe(string, encoding = None):
+def unicodise_safe(string, encoding=None):
     """
     Convert 'string' to Unicode according to current encoding
     and replace all invalid characters with '?'
@@ -209,7 +182,7 @@ __all__.append("unicodise_safe")
 
 
 ## Low level methods
-def urlencode_string(string, urlencoding_mode = None, unicode_output=False):
+def urlencode_string(string, urlencoding_mode=None, unicode_output=False):
     if urlencoding_mode is None:
         urlencoding_mode = S3.Config.Config().urlencoding_mode
     return base_urlencode_string(string, urlencoding_mode, unicode_output)
@@ -262,7 +235,7 @@ def time_to_epoch(t):
     raise S3.Exceptions.ParameterError('Unable to convert %r to an epoch time. Pass an epoch time. Try `date -d \'now + 1 year\' +%%s` (shell) or time.mktime (Python).' % t)
 
 
-def check_bucket_name(bucket, dns_strict = True):
+def check_bucket_name(bucket, dns_strict=True):
     if dns_strict:
         invalid = re.search("([^a-z0-9\.-])", bucket, re.UNICODE)
         if invalid:

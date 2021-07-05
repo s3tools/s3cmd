@@ -58,7 +58,8 @@ except ImportError:
 
 from . import Progress
 from .SortedDict import SortedDict
-from .BaseUtils import s3_quote, getTreeFromXml, getDictFromTree
+from .BaseUtils import (s3_quote, getTreeFromXml, getDictFromTree,
+                        base_unicodise, dateRFC822toPython)
 
 
 try:
@@ -68,24 +69,6 @@ except NameError:
     # In python 3, unicode -> str, and str -> bytes
     unicode = str
 
-def config_unicodise(string, encoding = "utf-8", errors = "replace"):
-    """
-    Convert 'string' to Unicode or raise an exception.
-    Config can't use toolbox from Utils that is itself using Config
-    """
-    if type(string) == unicode:
-        return string
-
-    try:
-        return unicode(string, encoding, errors)
-    except UnicodeDecodeError:
-        raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
-
-def config_date_to_python(date):
-    """
-    Convert a string formated like '2020-06-27T15:56:34Z' into a python datetime
-    """
-    return dateutil.parser.parse(date, fuzzy=True)
 
 def is_bool_true(value):
     """Check to see if a string is true, yes, on, or 1
@@ -101,6 +84,7 @@ def is_bool_true(value):
     else:
         return False
 
+
 def is_bool_false(value):
     """Check to see if a string is false, no, off, or 0
 
@@ -115,9 +99,11 @@ def is_bool_false(value):
     else:
         return False
 
+
 def is_bool(value):
     """Check a string value to see if it is bool"""
     return is_bool_true(value) or is_bool_false(value)
+
 
 class Config(object):
     _instance = None
@@ -288,12 +274,12 @@ class Config(object):
                 env_access_token = os.getenv('AWS_SESSION_TOKEN') or os.getenv('AWS_SECURITY_TOKEN')
                 if env_access_key:
                     # py3 getenv returns unicode and py2 returns bytes.
-                    self.access_key = config_unicodise(env_access_key)
-                    self.secret_key = config_unicodise(env_secret_key)
+                    self.access_key = base_unicodise(env_access_key)
+                    self.secret_key = base_unicodise(env_secret_key)
                     if env_access_token:
                         # Do not refresh the IAM role when an access token is provided.
                         self._access_token_refresh = False
-                        self.access_token = config_unicodise(env_access_token)
+                        self.access_token = base_unicodise(env_access_token)
                 else:
                     self.role_config()
 
@@ -344,7 +330,7 @@ class Config(object):
                     Config().update_option('access_key', creds['AccessKeyId'])
                     Config().update_option('secret_key', creds['SecretAccessKey'])
                     Config().update_option('access_token', creds['SessionToken'])
-                    expiration = config_date_to_python(config_unicodise(creds['Expiration']))
+                    expiration = dateRFC822toPython(base_unicodise(creds['Expiration']))
                     # Add a timedelta to prevent any expiration if the EC2 machine is not at the right date
                     self._access_token_expiration = expiration - datetime.timedelta(minutes=15)
                     # last update date is not provided in STS responses
@@ -362,15 +348,15 @@ class Config(object):
                     conn.request('GET', "/latest/meta-data/iam/security-credentials/%s" % files.decode('utf-8'))
                     resp=conn.getresponse()
                     if resp.status == 200:
-                        resp_content = config_unicodise(resp.read())
+                        resp_content = base_unicodise(resp.read())
                         creds=json.loads(resp_content)
-                        Config().update_option('access_key', config_unicodise(creds['AccessKeyId']))
-                        Config().update_option('secret_key', config_unicodise(creds['SecretAccessKey']))
-                        Config().update_option('access_token', config_unicodise(creds['Token']))
-                        expiration = config_date_to_python(config_unicodise(creds['Expiration']))
+                        Config().update_option('access_key', base_unicodise(creds['AccessKeyId']))
+                        Config().update_option('secret_key', base_unicodise(creds['SecretAccessKey']))
+                        Config().update_option('access_token', base_unicodise(creds['Token']))
+                        expiration = dateRFC822toPython(base_unicodise(creds['Expiration']))
                         # Add a timedelta to prevent any expiration if the EC2 machine is not at the right date
                         self._access_token_expiration = expiration - datetime.timedelta(minutes=15)
-                        self._access_token_last_update = config_date_to_python(config_unicodise(creds['LastUpdated']))
+                        self._access_token_last_update = dateRFC822toPython(base_unicodise(creds['LastUpdated']))
                         # Others variables : Code / Type
                     else:
                         raise IOError
@@ -399,7 +385,7 @@ class Config(object):
             credential_file_from_env = os.environ.get('AWS_CREDENTIAL_FILE')
             if credential_file_from_env and \
                os.path.isfile(credential_file_from_env):
-                aws_credential_file = config_unicodise(credential_file_from_env)
+                aws_credential_file = base_unicodise(credential_file_from_env)
             elif not os.path.isfile(aws_credential_file):
                 return
 
@@ -427,7 +413,7 @@ class Config(object):
                     "Error reading aws_credential_file "
                     "(%s): %s" % (aws_credential_file, str(exc)))
 
-            profile = config_unicodise(os.environ.get('AWS_PROFILE', "default"))
+            profile = base_unicodise(os.environ.get('AWS_PROFILE', "default"))
             debug("Using AWS profile '%s'" % (profile))
 
             # get_key - helper function to read the aws profile credentials
@@ -469,19 +455,19 @@ class Config(object):
                                          "AWSAccessKeyId")
             if profile_access_key:
                 Config().update_option('access_key',
-                                       config_unicodise(profile_access_key))
+                                       base_unicodise(profile_access_key))
 
             profile_secret_key = get_key(profile, "aws_secret_access_key",
                                          "AWSSecretKey")
             if profile_secret_key:
                 Config().update_option('secret_key',
-                                       config_unicodise(profile_secret_key))
+                                       base_unicodise(profile_secret_key))
 
             profile_access_token = get_key(profile, "aws_session_token", None,
                                            False)
             if profile_access_token:
                 Config().update_option('access_token',
-                                       config_unicodise(profile_access_token))
+                                       base_unicodise(profile_access_token))
 
         except IOError as e:
             warning("Errno %d accessing credentials file %s", e.errno,
