@@ -15,6 +15,7 @@ else:
     from .Custom_httplib27 import httplib
 import ssl
 
+from base64 import b64encode
 from logging import debug
 from threading import Semaphore
 from time import time
@@ -26,7 +27,7 @@ except ImportError:
 
 from .Config import Config
 from .Exceptions import ParameterError, S3SSLCertificateError
-from .Utils import getBucketFromHostname
+from .Utils import getBucketFromHostname, deunicodise_s, unicodise_s
 
 
 
@@ -229,14 +230,22 @@ class http_connection(object):
                 self.c = httplib.HTTPConnection(self.hostname, self.port)
                 debug(u'non-proxied HTTPConnection(%s, %s)', self.hostname, self.port)
         else:
+            headers = {}
+            proxy_hostname = cfg.proxy_host
+            if '@' in cfg.proxy_host:
+                credential, proxy_hostname = cfg.proxy_host.split('@')
+                # FIXME: Following line can't handle username or password including colon
+                proxy_username, proxy_password = credential.split(':')
+                headers['Proxy-Authorization'] = 'Basic ' + \
+                    unicodise_s(b64encode(deunicodise_s(('%s:%s' % (proxy_username, proxy_password)))))
             if ssl:
-                self.c = http_connection._https_connection(cfg.proxy_host, cfg.proxy_port)
+                self.c = http_connection._https_connection(proxy_hostname, cfg.proxy_port)
                 debug(u'proxied HTTPSConnection(%s, %s)', cfg.proxy_host, cfg.proxy_port)
                 port = self.port and self.port or 443
-                self.c.set_tunnel(self.hostname, port)
+                self.c.set_tunnel(self.hostname, port, headers)
                 debug(u'tunnel to %s, %s', self.hostname, port)
             else:
-                self.c = httplib.HTTPConnection(cfg.proxy_host, cfg.proxy_port)
+                self.c = httplib.HTTPConnection(proxy_hostname, cfg.proxy_port)
                 debug(u'proxied HTTPConnection(%s, %s)', cfg.proxy_host, cfg.proxy_port)
                 # No tunnel here for the moment
 
