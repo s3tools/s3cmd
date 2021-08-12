@@ -810,7 +810,7 @@ class S3(object):
             raise ParameterError("You must restore a file for 1 or more days")
         if self.config.restore_priority not in ['Standard', 'Expedited', 'Bulk']:
             raise ParameterError("Valid restoration priorities: bulk, standard, expedited")
-        body =   '<RestoreRequest xmlns="http://s3.amazonaws.com/doc/2006-3-01">'
+        body =   '<RestoreRequest xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
         body += ('  <Days>%s</Days>' % self.config.restore_days)
         body +=  '  <GlacierJobParameters>'
         body += ('    <Tier>%s</Tier>' % self.config.restore_priority)
