@@ -211,6 +211,7 @@ class Config(object):
     throttle_max = 100
     public_url_use_https = False
     connection_pooling = True
+    remote_copy = True
 
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None, access_token=None):

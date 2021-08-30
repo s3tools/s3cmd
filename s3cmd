@@ -2780,6 +2780,7 @@ def main():
     optparser.add_option(      "--stop-on-error", dest="stop_on_error", action="store_true", help="stop if error in transfer")
     optparser.add_option(      "--content-disposition", dest="content_disposition", action="store", help="Provide a Content-Disposition for signed URLs, e.g., \"inline; filename=myvideo.mp4\"")
     optparser.add_option(      "--content-type", dest="content_type", action="store", help="Provide a Content-Type for signed URLs, e.g., \"video/mp4\"")
+    optparser.add_option(      "--no-remote-copy", dest="remote_copy", action="store_false", default=True, help="Disable remote copy for duplicate files. Upload each file.")
 
     optparser.set_usage(optparser.usage + " COMMAND [parameters]")
     optparser.set_description('S3cmd is a tool for managing objects in '+
@@ -3004,6 +3005,8 @@ def main():
 
     if options.content_type:
         cfg.content_type = options.content_type
+
+    cfg.remote_copy = options.remote_copy
 
     if len(args) < 1:
         optparser.print_help()

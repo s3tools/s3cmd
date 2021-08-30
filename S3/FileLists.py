@@ -597,7 +597,10 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
             else:
                 # look for matching file in src
                 try:
-                    md5 = src_list.get_md5(relative_file)
+                    if cfg.remote_copy:
+                        md5 = src_list.get_md5(relative_file)
+                    else:
+                        md5 = None
                 except IOError:
                     md5 = None
                 if md5 is not None and md5 in dst_list.by_md5:
@@ -621,8 +624,11 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
             try:
                 md5 = src_list.get_md5(relative_file)
             except IOError:
-               md5 = None
-            dst1 = dst_list.find_md5_one(md5)
+                md5 = None
+            if cfg.remote_copy:
+                dst1 = dst_list.find_md5_one(md5)
+            else:
+                dst1 = None
             if dst1 is not None:
                 # Found one, we want to copy
                 debug(u"DST COPY dst: %s -> %s" % (dst1, relative_file))
