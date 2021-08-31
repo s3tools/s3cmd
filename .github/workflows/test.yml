@@ -1,0 +1,52 @@
+name: Test
+
+on: [push, workflow_dispatch]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.8, 3.9]
+    env:
+      cache-revision: 1
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+      - name: Cache minio
+        id: cache-minio
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-minio
+        with:
+          path: ~/cache
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.cache-revision }}
+      - name: Download minio on cache miss
+        if: steps.cache-minio.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/cache
+          test ! -e ~/cache/minio && wget -O ~/cache/minio https://dl.minio.io/server/minio/release/linux-amd64/minio || echo "Minio already in cache"
+      - name: Start a local instance of minio
+        run: |
+          export AWS_ACCESS_KEY_ID=Q3AM3UQ867SPQQA43P2F
+          export AWS_SECRET_ACCESS_KEY=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
+          export MINIO_ACCESS_KEY=Q3AM3UQ867SPQQA43P2F
+          export MINIO_SECRET_KEY=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
+          chmod +x ~/cache/minio
+          mkdir -p ~/minio_tmp
+          ~/cache/minio server ~/minio_tmp &
+          sleep 4 # give minio some time to start
+      - name: Run tests
+        ## Tests stopped at test 23 because minio doesn't support "quote_plus" used in signatures.
+        run: python ./run-tests-minio.py -c .ci.s3cfg -p baseauto
+      - name: Terminate
+        if: always()
+        continue-on-error: true
+        run: killall minio

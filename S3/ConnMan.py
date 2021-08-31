@@ -14,8 +14,10 @@ if sys.version_info >= (3, 0):
 else:
     from .Custom_httplib27 import httplib
 import ssl
-from threading import Semaphore
+
 from logging import debug
+from threading import Semaphore
+from time import time
 try:
     # python 3 support
     from urlparse import urlparse
@@ -61,6 +63,19 @@ class http_connection(object):
         return context
 
     @staticmethod
+    def _ssl_client_auth_context(certfile, keyfile, check_server_cert, cafile):
+        context = None
+        try:
+            cert_reqs = ssl.CERT_REQUIRED if check_server_cert else ssl.CERT_NONE
+            context = ssl._create_unverified_context(cafile=cafile,
+                                                     keyfile=keyfile,
+                                                     certfile=certfile,
+                                                     cert_reqs=cert_reqs)
+        except AttributeError: # no ssl._create_unverified_context
+            pass
+        return context
+
+    @staticmethod
     def _ssl_context():
         if http_connection.context_set:
             return http_connection.context
@@ -69,9 +84,16 @@ class http_connection(object):
         cafile = cfg.ca_certs_file
         if cafile == "":
             cafile = None
-        debug(u"Using ca_certs_file %s", cafile)
+        certfile = cfg.ssl_client_cert_file or None
+        keyfile = cfg.ssl_client_key_file or None # the key may be embedded into cert file
 
-        if cfg.check_ssl_certificate:
+        debug(u"Using ca_certs_file %s", cafile)
+        debug(u"Using ssl_client_cert_file %s", certfile)
+        debug(u"Using ssl_client_key_file %s", keyfile)
+
+        if certfile is not None:
+            context = http_connection._ssl_client_auth_context(certfile, keyfile, cfg.check_ssl_certificate, cafile)
+        elif cfg.check_ssl_certificate:
             context = http_connection._ssl_verified_context(cafile)
         else:
             context = http_connection._ssl_unverified_context(cafile)
@@ -218,18 +240,19 @@ class http_connection(object):
                 debug(u'proxied HTTPConnection(%s, %s)', cfg.proxy_host, cfg.proxy_port)
                 # No tunnel here for the moment
 
+        self.last_used_time = time()
 
 class ConnMan(object):
     _CS_REQ_SENT = httplib._CS_REQ_SENT
     CONTINUE = httplib.CONTINUE
     conn_pool_sem = Semaphore()
     conn_pool = {}
-    conn_max_counter = 800    ## AWS closes connection after some ~90 requests
+    conn_max_counter = 800  ## AWS closes connection after some ~90 requests
 
     @staticmethod
-    def get(hostname, ssl = None):
+    def get(hostname, ssl=None):
         cfg = Config()
-        if ssl == None:
+        if ssl is None:
             ssl = cfg.use_https
         conn = None
         if cfg.proxy_host != "":
@@ -241,9 +264,19 @@ class ConnMan(object):
         ConnMan.conn_pool_sem.acquire()
         if conn_id not in ConnMan.conn_pool:
             ConnMan.conn_pool[conn_id] = []
-        if len(ConnMan.conn_pool[conn_id]):
+        while ConnMan.conn_pool[conn_id]:
             conn = ConnMan.conn_pool[conn_id].pop()
-            debug("ConnMan.get(): re-using connection: %s#%d" % (conn.id, conn.counter))
+            cur_time = time()
+            if cur_time < conn.last_used_time + cfg.connection_max_age \
+               and cur_time >= conn.last_used_time:
+                debug("ConnMan.get(): re-using connection: %s#%d"
+                      % (conn.id, conn.counter))
+                break
+            # Conn is too old or wall clock went back in the past
+            debug("ConnMan.get(): closing expired connection")
+            ConnMan.close(conn)
+            conn = None
+
         ConnMan.conn_pool_sem.release()
         if not conn:
             debug("ConnMan.get(): creating new connection: %s" % conn_id)
@@ -258,7 +291,8 @@ class ConnMan(object):
     def put(conn):
         if conn.id.startswith("proxy://"):
             ConnMan.close(conn)
-            debug("ConnMan.put(): closing proxy connection (keep-alive not yet supported)")
+            debug("ConnMan.put(): closing proxy connection (keep-alive not yet"
+                  " supported)")
             return
 
         if conn.counter >= ConnMan.conn_max_counter:
@@ -272,10 +306,14 @@ class ConnMan(object):
             debug("ConnMan.put(): closing connection (connection pooling disabled)")
             return
 
+        # Update timestamp of conn to record when was its last use
+        conn.last_used_time = time()
+
         ConnMan.conn_pool_sem.acquire()
         ConnMan.conn_pool[conn.id].append(conn)
         ConnMan.conn_pool_sem.release()
-        debug("ConnMan.put(): connection put back to pool (%s#%d)" % (conn.id, conn.counter))
+        debug("ConnMan.put(): connection put back to pool (%s#%d)"
+              % (conn.id, conn.counter))
 
     @staticmethod
     def close(conn):

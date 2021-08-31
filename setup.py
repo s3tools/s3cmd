@@ -83,7 +83,9 @@ setup(
 Authors:
 --------
     Florent Viard <florent@sodria.com>
+
     Michal Ludvig  <michal@logix.cz>
+
     Matt Domsch (github.com/mdomsch)
 """ % (S3.PkgInfo.long_description),
 

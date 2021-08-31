@@ -12,7 +12,8 @@ from .S3 import S3
 from .Config import Config
 from .S3Uri import S3Uri
 from .FileDict import FileDict
-from .Utils import *
+from .BaseUtils import dateS3toUnix, dateRFC822toUnix
+from .Utils import unicodise, deunicodise, deunicodise_s, replace_nonprintables
 from .Exceptions import ParameterError
 from .HashCache import HashCache
 
@@ -35,7 +36,7 @@ def _os_walk_unicode(top):
     '''
     try:
         names = os.listdir(deunicodise(top))
-    except:
+    except Exception:
         return
 
     dirs, nondirs = [], []
@@ -184,9 +185,7 @@ def _get_filelist_from_file(cfg, local_path):
 
     # reformat to match os.walk()
     result = []
-    keys = filelist.keys()
-    keys.sort()
-    for key in keys:
+    for key in sorted(filelist):
         values = filelist[key]
         values.sort()
         result.append((key, [], values))
@@ -246,7 +245,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
             try:
                 uid = os.geteuid()
                 gid = os.getegid()
-            except:
+            except Exception:
                 uid = 0
                 gid = 0
             loc_list["-"] = {
@@ -373,7 +372,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
         remote_item.update({
         'size': int(response['headers']['content-length']),
         'md5': response['headers']['etag'].strip('"\''),
-        'timestamp' : dateRFC822toUnix(response['headers']['last-modified'])
+        'timestamp': dateRFC822toUnix(response['headers']['last-modified'])
         })
         try:
             md5 = response['s3cmd-attrs']['md5']
@@ -542,7 +541,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
             try:
                 src_md5 = src_list.get_md5(file)
                 dst_md5 = dst_list.get_md5(file)
-            except (IOError,OSError):
+            except (IOError, OSError):
                 # md5 sum verification failed - ignore that file altogether
                 debug(u"IGNR: %s (disappeared)" % (file))
                 warning(u"%s: file disappeared, ignoring." % (file))
@@ -607,7 +606,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
                     # Found one, we want to copy
                     dst1 = dst_list.find_md5_one(md5)
                     debug(u"DST COPY src: %s -> %s" % (dst1, relative_file))
-                    copy_pairs.append((src_list[relative_file], dst1, relative_file))
+                    copy_pairs.append((src_list[relative_file], dst1, relative_file, md5))
                     del(src_list[relative_file])
                     del(dst_list[relative_file])
                 else:
@@ -629,10 +628,12 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
                 dst1 = dst_list.find_md5_one(md5)
             else:
                 dst1 = None
+            dst1 = dst_list.find_md5_one(md5)
             if dst1 is not None:
                 # Found one, we want to copy
                 debug(u"DST COPY dst: %s -> %s" % (dst1, relative_file))
-                copy_pairs.append((src_list[relative_file], dst1, relative_file))
+                copy_pairs.append((src_list[relative_file], dst1,
+                                   relative_file, md5))
                 del(src_list[relative_file])
             else:
                 # we don't have this file, and we don't have a copy of this file elsewhere.  Get it.

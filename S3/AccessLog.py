@@ -12,7 +12,7 @@ import sys
 
 from . import S3Uri
 from .Exceptions import ParameterError
-from .Utils import getTreeFromXml, decode_from_s3
+from .BaseUtils import getTreeFromXml, decode_from_s3
 from .ACL import GranteeAnonRead
 
 try:

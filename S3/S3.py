@@ -12,7 +12,6 @@ import sys
 import os
 import time
 import errno
-import base64
 import mimetypes
 import io
 import pprint
@@ -25,6 +24,12 @@ try:
     from urlparse import urlparse
 except ImportError:
     from urllib.parse import urlparse
+try:
+    # Python 2 support
+    from base64 import encodestring
+except ImportError:
+    # Python 3.9.0+ support
+    from base64 import encodebytes as encodestring
 
 import select
 
@@ -33,7 +38,12 @@ try:
 except ImportError:
     from md5 import md5
 
-from .Utils import *
+from .BaseUtils import (getListFromXml, getTextFromXml, getRootTagName,
+                        decode_from_s3, encode_to_s3, s3_quote)
+from .Utils import (convertHeaderTupleListToDict, hash_file_md5, unicodise,
+                    deunicodise, check_bucket_name,
+                    check_bucket_name_dns_support, getHostnameFromBucket,
+                    calculateChecksum)
 from .SortedDict import SortedDict
 from .AccessLog import AccessLog
 from .ACL import ACL, GranteeLogDelivery
@@ -44,7 +54,7 @@ from .MultiPart import MultiPartUpload
 from .S3Uri import S3Uri
 from .ConnMan import ConnMan
 from .Crypto import (sign_request_v2, sign_request_v4, checksum_sha256_file,
-                     checksum_sha256_buffer, s3_quote, format_param_str)
+                     checksum_sha256_buffer, format_param_str)
 
 try:
     from ctypes import ArgumentError
@@ -123,10 +133,12 @@ def mime_magic(file):
         result = (None, None)
     return result
 
-EXPECT_CONTINUE_TIMEOUT = 2
 
+EXPECT_CONTINUE_TIMEOUT = 2
+SIZE_1MB = 1024 * 1024
 
 __all__ = []
+
 class S3Request(object):
     region_map = {}
     ## S3 sometimes sends HTTP-301, HTTP-307 response
@@ -352,7 +364,8 @@ class S3(object):
         num_prefixes = 0
         max_keys = limit
         while truncated:
-            response = self.bucket_list_noparse(bucket, prefix, recursive, uri_params, max_keys)
+            response = self.bucket_list_noparse(bucket, prefix, recursive,
+                                                uri_params, max_keys)
             current_list = _get_contents(response["data"])
             current_prefixes = _get_common_prefixes(response["data"])
             num_objects += len(current_list)
@@ -363,9 +376,15 @@ class S3(object):
             if truncated:
                 if limit == -1 or num_objects + num_prefixes < limit:
                     if current_list:
-                        uri_params['marker'] = _get_next_marker(response["data"], current_list)
-                    else:
+                        uri_params['marker'] = \
+                            _get_next_marker(response["data"], current_list)
+                    elif current_prefixes:
                         uri_params['marker'] = current_prefixes[-1]["Prefix"]
+                    else:
+                        # Unexpectedly, the server lied, and so the previous
+                        # response was not truncated. So, no new key to get.
+                        yield False, current_prefixes, current_list
+                        break
                     debug("Listing continues after '%s'" % uri_params['marker'])
                 else:
                     yield truncated, current_prefixes, current_list
@@ -447,10 +466,14 @@ class S3(object):
         return location
 
     def get_bucket_requester_pays(self, uri):
-        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
-                                      uri_params = {'requestPayment': None})
+        request = self.create_request("BUCKET_LIST", bucket=uri.bucket(),
+                                      uri_params={'requestPayment': None})
         response = self.send_request(request)
-        payer = getTextFromXml(response['data'], "Payer")
+        resp_data = response.get('data', '')
+        if resp_data:
+            payer = getTextFromXml(response['data'], "Payer")
+        else:
+            payer = None
         return payer
 
     def bucket_info(self, uri):
@@ -459,7 +482,7 @@ class S3(object):
         try:
             response['requester-pays'] = self.get_bucket_requester_pays(uri)
         except S3Error as e:
-            response['requester-pays'] = 'none'
+            response['requester-pays'] = None
         return response
 
     def website_info(self, uri, bucket_location = None):
@@ -516,22 +539,33 @@ class S3(object):
     def expiration_info(self, uri, bucket_location = None):
         bucket = uri.bucket()
 
-        request = self.create_request("BUCKET_LIST", bucket = bucket,
-                                      uri_params = {'lifecycle': None})
+        request = self.create_request("BUCKET_LIST", bucket=bucket,
+                                      uri_params={'lifecycle': None})
         try:
             response = self.send_request(request)
-            response['prefix'] = getTextFromXml(response['data'], ".//Rule//Prefix")
-            response['date'] = getTextFromXml(response['data'], ".//Rule//Expiration//Date")
-            response['days'] = getTextFromXml(response['data'], ".//Rule//Expiration//Days")
-            return response
         except S3Error as e:
             if e.status == 404:
-                debug("Could not get /?lifecycle - lifecycle probably not configured for this bucket")
+                debug("Could not get /?lifecycle - lifecycle probably not "
+                      "configured for this bucket")
                 return None
             elif e.status == 501:
-                debug("Could not get /?lifecycle - lifecycle support not implemented by the server")
+                debug("Could not get /?lifecycle - lifecycle support not "
+                      "implemented by the server")
                 return None
             raise
+
+        root_tag_name = getRootTagName(response['data'])
+        if root_tag_name != "LifecycleConfiguration":
+            debug("Could not get /?lifecycle - unexpected xml response: "
+                  "%s", root_tag_name)
+            return None
+        response['prefix'] = getTextFromXml(response['data'],
+                                            ".//Rule//Prefix")
+        response['date'] = getTextFromXml(response['data'],
+                                          ".//Rule//Expiration//Date")
+        response['days'] = getTextFromXml(response['data'],
+                                          ".//Rule//Expiration//Days")
+        return response
 
     def expiration_set(self, uri, bucket_location = None):
         if self.config.expiry_date and self.config.expiry_days:
@@ -677,9 +711,9 @@ class S3(object):
         if not self.config.enable_multipart and filename == "-":
             raise ParameterError("Multi-part upload is required to upload from stdin")
         if self.config.enable_multipart:
-            if size > self.config.multipart_chunk_size_mb * 1024 * 1024 or filename == "-":
+            if size > self.config.multipart_chunk_size_mb * SIZE_1MB or filename == "-":
                 multipart = True
-                if size > self.config.multipart_max_chunks * self.config.multipart_chunk_size_mb * 1024 * 1024:
+                if size > self.config.multipart_max_chunks * self.config.multipart_chunk_size_mb * SIZE_1MB:
                     raise ParameterError("Chunk size %d MB results in more than %d chunks. Please increase --multipart-chunk-size-mb" % \
                           (self.config.multipart_chunk_size_mb, self.config.multipart_max_chunks))
         if multipart:
@@ -694,7 +728,7 @@ class S3(object):
             # an md5.
             try:
                 info = self.object_info(uri)
-            except:
+            except Exception:
                 info = None
 
             if info is not None:
@@ -804,6 +838,9 @@ class S3(object):
             'server',
             'x-amz-id-2',
             'x-amz-request-id',
+            # Other headers that are not copying by a direct copy
+            'x-amz-storage-class',
+            ## We should probably also add server-side encryption headers
         ]
 
         for h in to_remove + self.config.remove_headers:
@@ -811,7 +848,29 @@ class S3(object):
                 del headers[h.lower()]
         return headers
 
-    def object_copy(self, src_uri, dst_uri, extra_headers = None):
+    def object_copy(self, src_uri, dst_uri, extra_headers=None,
+                    src_size=None, extra_label="", replace_meta=False):
+        """Remote copy an object and eventually set metadata
+
+        Note: A little memo description of the nightmare for performance here:
+        ** FOR AWS, 2 cases:
+        - COPY will copy the metadata of the source to dest, but you can't
+        modify them. Any additional header will be ignored anyway.
+        - REPLACE will set the additional metadata headers that are provided
+        but will not copy any of the source headers.
+        So, to add to existing meta during copy, you have to do an object_info
+        to get original source headers, then modify, then use REPLACE for the
+        copy operation.
+
+        ** For Minio and maybe other implementations:
+        - if additional headers are sent, they will be set to the destination
+        on top of source original meta in all cases COPY and REPLACE.
+        It is a nice behavior except that it is different of the aws one.
+
+        As it was still too easy, there is another catch:
+        In all cases, for multipart copies, metadata data are never copied
+        from the source.
+        """
         if src_uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
         if dst_uri.type != "s3":
@@ -825,10 +884,58 @@ class S3(object):
                 if exc.status != 501:
                     raise exc
                 acl = None
-        headers = SortedDict(ignore_case = True)
-        headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(),
-                                                   urlencode_string(src_uri.object(), unicode_output=True))
-        headers['x-amz-metadata-directive'] = "COPY"
+
+        multipart = False
+        headers = None
+
+        if extra_headers or self.config.mime_type:
+            # Force replace, that will force getting meta with object_info()
+            replace_meta = True
+
+        if replace_meta:
+            src_info = self.object_info(src_uri)
+            headers = src_info['headers']
+            src_size = int(headers["content-length"])
+
+        if self.config.enable_multipart:
+            # Get size of remote source only if multipart is enabled and that no
+            # size info was provided
+            src_headers = headers
+            if src_size is None:
+                src_info = self.object_info(src_uri)
+                src_headers = src_info['headers']
+                src_size = int(src_headers["content-length"])
+
+            # If we are over the grand maximum size for a normal copy/modify
+            # (> 5GB) go nuclear and use multipart copy as the only option to
+            # modify an object.
+            # Reason is an aws s3 design bug. See:
+            # https://github.com/aws/aws-sdk-java/issues/367
+            if src_uri is dst_uri:
+                # optimisation in the case of modify
+                threshold = MultiPartUpload.MAX_CHUNK_SIZE_MB * SIZE_1MB
+            else:
+                threshold = self.config.multipart_copy_chunk_size_mb * SIZE_1MB
+
+            if src_size > threshold:
+                # Sadly, s3 has a bad logic as metadata will not be copied for
+                # multipart copy unlike what is done for direct copies.
+                # TODO: Optimize by re-using the object_info request done
+                # earlier earlier at fetch remote stage, and preserve headers.
+                if src_headers is None:
+                    src_info = self.object_info(src_uri)
+                    src_headers = src_info['headers']
+                    src_size = int(src_headers["content-length"])
+                headers = src_headers
+                multipart = True
+
+        if headers:
+            self._sanitize_headers(headers)
+            headers = SortedDict(headers, ignore_case=True)
+        else:
+            headers = SortedDict(ignore_case=True)
+
+        # Following meta data are updated even in COPY by aws
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
 
@@ -841,18 +948,45 @@ class S3(object):
         ## Set kms headers
         if self.config.kms_key:
             headers['x-amz-server-side-encryption'] = 'aws:kms'
-            headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
+            headers['x-amz-server-side-encryption-aws-kms-key-id'] = \
+                self.config.kms_key
 
+        # Following meta data are not updated in simple COPY by aws.
         if extra_headers:
             headers.update(extra_headers)
 
-        request = self.create_request("OBJECT_PUT", uri = dst_uri, headers = headers)
-        response = self.send_request(request)
+        if self.config.mime_type:
+            headers["content-type"] = self.config.mime_type
+
+        # "COPY" or "REPLACE"
+        if not replace_meta:
+            headers['x-amz-metadata-directive'] = "COPY"
+        else:
+            headers['x-amz-metadata-directive'] = "REPLACE"
+
+        if multipart:
+            # Multipart decision. Only do multipart copy for remote s3 files
+            # bigger than the multipart copy threshold.
+
+            # Multipart requests are quite different... delegate
+            response = self.copy_file_multipart(src_uri, dst_uri, src_size,
+                                                headers, extra_label)
+        else:
+            # Not multipart... direct request
+            headers['x-amz-copy-source'] = s3_quote(
+                "/%s/%s" % (src_uri.bucket(), src_uri.object()),
+                quote_backslashes=False, unicode_output=True)
+
+            request = self.create_request("OBJECT_PUT", uri=dst_uri,
+                                          headers=headers)
+            response = self.send_request(request)
+
         if response["data"] and getRootTagName(response["data"]) == "Error":
-            #http://doc.s3.amazonaws.com/proposals/copy.html
+            # http://doc.s3.amazonaws.com/proposals/copy.html
             # Error during copy, status will be 200, so force error code 500
             response["status"] = 500
-            error("Server error during the COPY operation. Overwrite response status to 500")
+            error("Server error during the COPY operation. Overwrite response "
+                  "status to 500")
             raise S3Error(response)
 
         if self.config.acl_public is None and acl:
@@ -865,99 +999,45 @@ class S3(object):
                     raise exc
         return response
 
-    def object_modify(self, src_uri, dst_uri, extra_headers = None):
+    def object_modify(self, src_uri, dst_uri, extra_headers=None,
+                      src_size=None, extra_label=""):
+        # dst_uri = src_uri Will optimize by using multipart just in worst case
+        return self.object_copy(src_uri, src_uri, extra_headers, src_size,
+                                extra_label, replace_meta=True)
 
-        if src_uri.type != "s3":
-            raise ValueError("Expected URI type 's3', got '%s'" % src_uri.type)
-        if dst_uri.type != "s3":
-            raise ValueError("Expected URI type 's3', got '%s'" % dst_uri.type)
-
-        info_response = self.object_info(src_uri)
-        headers = info_response['headers']
-        headers = self._sanitize_headers(headers)
-
-        try:
-            acl = self.get_acl(src_uri)
-        except S3Error as exc:
-            # Ignore the exception and don't fail the modify
-            # if the server doesn't support setting ACLs
-            if exc.status != 501:
-                raise exc
-            acl = None
-
-        headers['x-amz-copy-source'] = "/%s/%s" % (src_uri.bucket(),
-                                                   urlencode_string(src_uri.object(), unicode_output=True))
-        headers['x-amz-metadata-directive'] = "REPLACE"
-
-        # cannot change between standard and reduced redundancy with a REPLACE.
-
-        ## Set server side encryption
-        if self.config.server_side_encryption:
-            headers["x-amz-server-side-encryption"] = "AES256"
-
-        ## Set kms headers
-        if self.config.kms_key:
-            headers['x-amz-server-side-encryption'] = 'aws:kms'
-            headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
-
-        if extra_headers:
-            headers.update(extra_headers)
-
-        if self.config.mime_type:
-            headers["content-type"] = self.config.mime_type
-
-        request = self.create_request("OBJECT_PUT", uri = src_uri, headers = headers)
-        response = self.send_request(request)
-        if response["data"] and getRootTagName(response["data"]) == "Error":
-            #http://doc.s3.amazonaws.com/proposals/copy.html
-            # Error during modify, status will be 200, so force error code 500
-            response["status"] = 500
-            error("Server error during the MODIFY operation. Overwrite response status to 500")
-            raise S3Error(response)
-
-        if acl != None:
-            try:
-                self.set_acl(src_uri, acl)
-            except S3Error as exc:
-                # Ignore the exception and don't fail the modify
-                # if the server doesn't support setting ACLs
-                if exc.status != 501:
-                    raise exc
-
-        return response
-
-    def object_move(self, src_uri, dst_uri, extra_headers = None):
-        response_copy = self.object_copy(src_uri, dst_uri, extra_headers)
+    def object_move(self, src_uri, dst_uri, extra_headers=None,
+                    src_size=None, extra_label=""):
+        response_copy = self.object_copy(src_uri, dst_uri, extra_headers,
+                                         src_size, extra_label)
         debug("Object %s copied to %s" % (src_uri, dst_uri))
-        if not response_copy["data"] or getRootTagName(response_copy["data"]) == "CopyObjectResult":
+        if not response_copy["data"] \
+           or getRootTagName(response_copy["data"]) \
+           in ["CopyObjectResult", "CompleteMultipartUploadResult"]:
             self.object_delete(src_uri)
             debug("Object '%s' deleted", src_uri)
         else:
-            debug("Object '%s' NOT deleted because of an unexepected response data content.", src_uri)
+            warning("Object '%s' NOT deleted because of an unexpected "
+                    "response data content.", src_uri)
         return response_copy
 
     def object_info(self, uri):
-        request = self.create_request("OBJECT_HEAD", uri = uri)
+        request = self.create_request("OBJECT_HEAD", uri=uri)
         response = self.send_request(request)
         return response
 
     def get_acl(self, uri):
         if uri.has_object():
-            request = self.create_request("OBJECT_GET", uri = uri,
-                                          uri_params = {'acl': None})
+            request = self.create_request("OBJECT_GET", uri=uri,
+                                          uri_params={'acl': None})
         else:
-            request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
-                                          uri_params = {'acl': None})
+            request = self.create_request("BUCKET_LIST", bucket=uri.bucket(),
+                                          uri_params={'acl': None})
 
         response = self.send_request(request)
         acl = ACL(response['data'])
         return acl
 
     def set_acl(self, uri, acl):
-        # dreamhost doesn't support set_acl properly
-        if 'objects.dreamhost.com' in self.config.host_base:
-            return { 'status' : 501 } # not implemented
-
         body = u"%s"% acl
         debug(u"set_acl(%s): acl-xml: %s" % (uri, body))
 
@@ -1061,20 +1141,136 @@ class S3(object):
         response = self.send_request(request)
         return response
 
-    def get_multipart(self, uri):
-        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
-                                      uri_params = {'uploads': None})
+    def get_multipart(self, uri, uri_params=None, limit=-1):
+        upload_list = []
+        for truncated, uploads in self.get_multipart_streaming(uri,
+                                                               uri_params,
+                                                               limit):
+            upload_list.extend(uploads)
+
+        return upload_list
+
+    def get_multipart_streaming(self, uri, uri_params=None, limit=-1):
+        uri_params = uri_params and uri_params.copy() or {}
+        bucket = uri.bucket()
+
+        truncated = True
+        num_objects = 0
+        max_keys = limit
+
+        # It is the "uploads: None" in uri_params that will change the
+        # behavior of bucket_list to return multiparts instead of keys
+        uri_params['uploads'] = None
+        while truncated:
+            response = self.bucket_list_noparse(bucket, recursive=True,
+                                                uri_params=uri_params,
+                                                max_keys=max_keys)
+
+            xml_data = response["data"]
+            # extract list of info of uploads
+            upload_list = getListFromXml(xml_data, "Upload")
+            num_objects += len(upload_list)
+            if limit > num_objects:
+                max_keys = limit - num_objects
+
+            xml_truncated = getTextFromXml(xml_data, ".//IsTruncated")
+            if not xml_truncated or xml_truncated.lower() == "false":
+                truncated = False
+
+            if truncated:
+                if limit == -1 or num_objects < limit:
+                    if upload_list:
+                        next_key = getTextFromXml(xml_data, "NextKeyMarker")
+                        if not next_key:
+                            next_key = upload_list[-1]["Key"]
+                        uri_params['KeyMarker'] = next_key
+
+                        upload_id_marker = getTextFromXml(
+                            xml_data, "NextUploadIdMarker")
+                        if upload_id_marker:
+                            uri_params['UploadIdMarker'] = upload_id_marker
+                        elif 'UploadIdMarker' in uri_params:
+                            # Clear any pre-existing value
+                            del uri_params['UploadIdMarker']
+                    else:
+                        # Unexpectedly, the server lied, and so the previous
+                        # response was not truncated. So, no new key to get.
+                        yield False, upload_list
+                        break
+                    debug("Listing continues after '%s'" %
+                          uri_params['KeyMarker'])
+                else:
+                    yield truncated, upload_list
+                    break
+            yield truncated, upload_list
+
+    def list_multipart(self, uri, upload_id, uri_params=None, limit=-1):
+        part_list = []
+        for truncated, parts in self.list_multipart_streaming(uri,
+                                                              upload_id,
+                                                              uri_params,
+                                                              limit):
+            part_list.extend(parts)
+
+        return part_list
+
+    def list_multipart_streaming(self, uri, upload_id, uri_params=None,
+                                 limit=-1):
+        uri_params = uri_params and uri_params.copy() or {}
+
+        truncated = True
+        num_objects = 0
+        max_parts = limit
+
+        while truncated:
+            response = self.list_multipart_noparse(uri, upload_id,
+                                                   uri_params, max_parts)
+
+            xml_data = response["data"]
+            # extract list of multipart upload parts
+            part_list = getListFromXml(xml_data, "Part")
+            num_objects += len(part_list)
+            if limit > num_objects:
+                max_parts = limit - num_objects
+
+            xml_truncated = getTextFromXml(xml_data, ".//IsTruncated")
+            if not xml_truncated or xml_truncated.lower() == "false":
+                truncated = False
+
+            if truncated:
+                if limit == -1 or num_objects < limit:
+                    if part_list:
+                        next_part_number = getTextFromXml(
+                            xml_data, "NextPartNumberMarker")
+                        if not next_part_number:
+                            next_part_number = part_list[-1]["PartNumber"]
+                        uri_params['part-number-marker'] = next_part_number
+                    else:
+                        # Unexpectedly, the server lied, and so the previous
+                        # response was not truncated. So, no new part to get.
+                        yield False, part_list
+                        break
+                    debug("Listing continues after Part '%s'" %
+                          uri_params['part-number-marker'])
+                else:
+                    yield truncated, part_list
+                    break
+            yield truncated, part_list
+
+    def list_multipart_noparse(self, uri, upload_id, uri_params=None,
+                               max_parts=-1):
+        if uri_params is None:
+            uri_params = {}
+        if max_parts != -1:
+            uri_params['max-parts'] = str(max_parts)
+        uri_params['uploadId'] = upload_id
+        request = self.create_request("OBJECT_GET", uri=uri,
+                                      uri_params=uri_params)
         response = self.send_request(request)
         return response
 
     def abort_multipart(self, uri, id):
         request = self.create_request("OBJECT_DELETE", uri = uri,
-                                      uri_params = {'uploadId': id})
-        response = self.send_request(request)
-        return response
-
-    def list_multipart(self, uri, id):
-        request = self.create_request("OBJECT_GET", uri = uri,
                                       uri_params = {'uploadId': id})
         response = self.send_request(request)
         return response
@@ -1348,7 +1544,7 @@ class S3(object):
         if response["status"] == 405: # Method Not Allowed.  Don't retry.
             raise S3Error(response)
 
-        if response["status"] >= 500:
+        if response["status"] >= 500 or response["status"] == 429:
             e = S3Error(response)
 
             if response["status"] == 501:
@@ -1365,6 +1561,30 @@ class S3(object):
 
         if response["status"] < 200 or response["status"] > 299:
             raise S3Error(response)
+
+        return response
+
+    def send_request_with_progress(self, request, labels, operation_size=0):
+        """Wrapper around send_request for slow requests.
+
+        To be able to show progression for small requests
+        """
+        if not self.config.progress_meter:
+            info("Sending slow request, please wait...")
+            return self.send_request(request)
+
+        if 'action' not in labels:
+            labels[u'action'] = u'request'
+        progress = self.config.progress_class(labels, operation_size)
+
+        try:
+            response = self.send_request(request)
+        except Exception as exc:
+            progress.done("failed")
+            raise
+
+        progress.update(current_position=operation_size)
+        progress.done("done")
 
         return response
 
@@ -1445,13 +1665,16 @@ class S3(object):
                     http_response.read()
                     conn.c._HTTPConnection__state = ConnMan._CS_REQ_SENT
 
-                while (size_left > 0):
+                while size_left > 0:
                     #debug("SendFile: Reading up to %d bytes from '%s' - remaining bytes: %s" % (self.config.send_chunk, filename, size_left))
                     l = min(self.config.send_chunk, size_left)
                     if buffer == '':
                         data = stream.read(l)
                     else:
                         data = buffer
+
+                    if not data:
+                        raise InvalidFileError("File smaller than expected. Was the file truncated?")
 
                     if self.config.limitrate > 0:
                         start_time = time.time()
@@ -1485,6 +1708,10 @@ class S3(object):
             debug(u"Response:\n" + pprint.pformat(response))
         except ParameterError as e:
             raise
+        except InvalidFileError as e:
+            if self.config.progress_meter:
+                progress.done("failed")
+            raise
         except Exception as e:
             if self.config.progress_meter:
                 progress.done("failed")
@@ -1507,7 +1734,7 @@ class S3(object):
                         response["data"] = http_response.read()
                         response["size"] = size_total
                         known_error = True
-                    except:
+                    except Exception:
                         error("Cannot retrieve any response status before encountering an EPIPE or ECONNRESET exception")
                 if not known_error:
                     warning("Upload failed: %s (%s)" % (resource['uri'], e))
@@ -1565,11 +1792,16 @@ class S3(object):
         if response["status"] < 200 or response["status"] > 299:
             try_retry = False
             if response["status"] >= 500:
-                ## AWS internal error - retry
+                # AWS internal error - retry
                 try_retry = True
                 if response["status"] == 503:
                     ## SlowDown error
                     throttle = throttle and throttle * 5 or 0.01
+            elif response["status"] == 429:
+                # Not an AWS error, but s3 compatible server possible error:
+                # TooManyRequests/Busy/slowdown
+                try_retry = True
+                throttle = throttle and throttle * 5 or 0.01
             elif response["status"] >= 400:
                 err = S3Error(response)
                 ## Retriable client error?
@@ -1586,8 +1818,9 @@ class S3(object):
                     return self.send_file(request, stream, labels, buffer, throttle,
                                           retries - 1, offset, chunk_size, use_expect_continue)
                 else:
-                    warning("Too many failures. Giving up on '%s'" % (filename))
-                    raise S3UploadError
+                    warning("Too many failures. Giving up on '%s'" % filename)
+                    raise S3UploadError("Too many failures. Giving up on '%s'"
+                                        % filename)
 
             ## Non-recoverable error
             raise S3Error(response)
@@ -1603,13 +1836,14 @@ class S3(object):
                                       retries - 1, offset, chunk_size, use_expect_continue)
             else:
                 warning("Too many failures. Giving up on '%s'" % (filename))
-                raise S3UploadError
+                raise S3UploadError("Too many failures. Giving up on '%s'"
+                                    % filename)
 
         return response
 
-    def send_file_multipart(self, stream, headers, uri, size, extra_label = ""):
+    def send_file_multipart(self, stream, headers, uri, size, extra_label=""):
         timestamp_start = time.time()
-        upload = MultiPartUpload(self, stream, uri, headers)
+        upload = MultiPartUpload(self, stream, uri, headers, size)
         upload.upload_all_parts(extra_label)
         response = upload.complete_multipart_upload()
         timestamp_end = time.time()
@@ -1622,6 +1856,11 @@ class S3(object):
             # raise S3UploadError
             raise S3UploadError(getTextFromXml(response["data"], 'Message'))
         return response
+
+    def copy_file_multipart(self, src_uri, dst_uri, size, headers,
+                            extra_label=""):
+        return self.send_file_multipart(src_uri, headers, dst_uri, size,
+                                        extra_label)
 
     def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
         self.update_region_inner_request(request)
@@ -1828,7 +2067,7 @@ def parse_attrs_header(attrs_header):
 
 def compute_content_md5(body):
     m = md5(encode_to_s3(body))
-    base64md5 = base64.encodestring(m.digest())
+    base64md5 = encodestring(m.digest())
     base64md5 = decode_from_s3(base64md5)
     if base64md5[-1] == '\n':
         base64md5 = base64md5[0:-1]

@@ -10,6 +10,7 @@ from __future__ import absolute_import
 
 from logging import debug, error
 import sys
+import S3.BaseUtils
 import S3.Utils
 from . import ExitCodes
 
@@ -41,7 +42,7 @@ except ImportError:
 ## s3cmd exceptions
 
 class S3Exception(Exception):
-    def __init__(self, message = ""):
+    def __init__(self, message=""):
         self.message = S3.Utils.unicodise(message)
 
     def __str__(self):
@@ -58,6 +59,7 @@ class S3Exception(Exception):
     ## (Base)Exception.message has been deprecated in Python 2.6
     def _get_message(self):
         return self._message
+
     def _set_message(self, message):
         self._message = message
     message = property(_get_message, _set_message)
@@ -68,9 +70,9 @@ class S3Error (S3Exception):
         self.status = response["status"]
         self.reason = response["reason"]
         self.info = {
-            "Code" : "",
-            "Message" : "",
-            "Resource" : ""
+            "Code": "",
+            "Message": "",
+            "Resource": ""
         }
         debug("S3Error: %s (%s)" % (self.status, self.reason))
         if "headers" in response:
@@ -78,7 +80,7 @@ class S3Error (S3Exception):
                 debug("HttpHeader: %s: %s" % (header, response["headers"][header]))
         if "data" in response and response["data"]:
             try:
-                tree = S3.Utils.getTreeFromXml(response["data"])
+                tree = S3.BaseUtils.getTreeFromXml(response["data"])
             except XmlParseError:
                 debug("Not an XML response")
             else:
@@ -114,7 +116,7 @@ class S3Error (S3Exception):
             return ExitCodes.EX_PRECONDITION
         elif self.status == 500:
             return ExitCodes.EX_SOFTWARE
-        elif self.status == 503:
+        elif self.status in [429, 503]:
             return ExitCodes.EX_SERVICE
         else:
             return ExitCodes.EX_SOFTWARE
@@ -126,7 +128,7 @@ class S3Error (S3Exception):
         if not error_node.tag == "Error":
             error_node = tree.find(".//Error")
         if error_node is not None:
-            for child in error_node.getchildren():
+            for child in error_node:
                 if child.text != "":
                     debug("ErrorXML: " + child.tag + ": " + repr(child.text))
                     info[child.tag] = child.text

@@ -1,6 +1,6 @@
 ## S3cmd tool for Amazon Simple Storage Service (S3)
 
-[![Build Status](https://travis-ci.org/s3tools/s3cmd.svg?branch=master)](https://travis-ci.org/s3tools/s3cmd)
+[![Build Status](https://github.com/s3tools/s3cmd/actions/workflows/test.yml/badge.svg)](https://github.com/s3tools/s3cmd/actions/workflows/test.yml)
 
 * Author: Michal Ludvig, michal@logix.cz
 * [Project homepage](http://s3tools.org)
@@ -15,6 +15,8 @@ S3tools / S3cmd mailing lists:
 
 S3cmd requires Python 2.6 or newer.
 Python 3+ is also supported starting with S3cmd version 2.
+
+See [installation instructions](https://github.com/s3tools/s3cmd/blob/master/INSTALL.md).
 
 
 ### What is S3cmd
@@ -197,7 +199,7 @@ File 'dir2/file2-2.txt' stored as 's3://public.s3tools.org/somewhere/dir2/file2-
 
 As you can see we didn't have to create the `/somewhere` 'directory'. In fact it's only a filename prefix, not a real directory and it doesn't have to be created in any way beforehand.
 
-In stead of using `put` with the `--recursive` option, you could also use the `sync` command:
+Instead of using `put` with the `--recursive` option, you could also use the `sync` command:
 
 ```
 $ s3cmd sync dir1 dir2 s3://public.s3tools.org/somewhere/

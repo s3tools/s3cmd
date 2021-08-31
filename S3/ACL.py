@@ -9,7 +9,8 @@
 from __future__ import absolute_import, print_function
 
 import sys
-from .Utils import getTreeFromXml, deunicodise, encode_to_s3, decode_from_s3
+from .BaseUtils import getTreeFromXml, encode_to_s3, decode_from_s3
+from .Utils import deunicodise
 
 try:
     import xml.etree.ElementTree as ET
@@ -41,6 +42,9 @@ class Grantee(object):
 
     def isAnonRead(self):
         return self.isAllUsers() and (self.permission == "READ" or self.permission == "FULL_CONTROL")
+
+    def isAnonWrite(self):
+        return self.isAllUsers() and (self.permission == "WRITE" or self.permission == "FULL_CONTROL")
 
     def getElement(self):
         el = ET.Element("Grant")
@@ -127,12 +131,21 @@ class ACL(object):
                 return True
         return False
 
+    def isAnonWrite(self):
+        for grantee in self.grantees:
+            if grantee.isAnonWrite():
+                return True
+        return False
+
     def grantAnonRead(self):
         if not self.isAnonRead():
             self.appendGrantee(GranteeAnonRead())
 
     def revokeAnonRead(self):
         self.grantees = [g for g in self.grantees if not g.isAnonRead()]
+
+    def revokeAnonWrite(self):
+        self.grantees = [g for g in self.grantees if not g.isAnonWrite()]
 
     def appendGrantee(self, grantee):
         self.grantees.append(grantee)
@@ -148,7 +161,7 @@ class ACL(object):
                 elif grantee.permission.upper() == permission:
                     return True
 
-        return False;
+        return False
 
     def grant(self, name, permission):
         if self.hasGrant(name, permission):

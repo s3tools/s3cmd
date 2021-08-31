@@ -9,30 +9,58 @@
 from __future__ import absolute_import
 
 import logging
-from logging import debug, warning, error
+import datetime
+import locale
 import re
 import os
 import io
 import sys
 import json
-from . import Progress
-from .SortedDict import SortedDict
+import time
+
+from logging import debug, warning
+
+from .ExitCodes import EX_OSFILE
+
+try:
+    import dateutil.parser
+    import dateutil.tz
+except ImportError:
+    sys.stderr.write(u"""
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ImportError trying to import dateutil.parser and dateutil.tz.
+Please install the python dateutil module:
+$ sudo apt-get install python-dateutil
+  or
+$ sudo yum install python-dateutil
+  or
+$ pip install python-dateutil
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+""")
+    sys.stderr.flush()
+    sys.exit(EX_OSFILE)
+
 try:
     # python 3 support
     import httplib
 except ImportError:
     import http.client as httplib
-import locale
 
 try:
- from configparser import (NoOptionError, NoSectionError,
-                           MissingSectionHeaderError, ParsingError,
-                           ConfigParser as PyConfigParser)
+    from configparser import (NoOptionError, NoSectionError,
+                              MissingSectionHeaderError, ParsingError,
+                              ConfigParser as PyConfigParser)
 except ImportError:
-  # Python2 fallback code
-  from ConfigParser import (NoOptionError, NoSectionError,
-                            MissingSectionHeaderError, ParsingError,
-                            ConfigParser as PyConfigParser)
+    # Python2 fallback code
+    from ConfigParser import (NoOptionError, NoSectionError,
+                              MissingSectionHeaderError, ParsingError,
+                              ConfigParser as PyConfigParser)
+
+from . import Progress
+from .SortedDict import SortedDict
+from .BaseUtils import (s3_quote, getTreeFromXml, getDictFromTree,
+                        base_unicodise, dateRFC822toPython)
+
 
 try:
     unicode
@@ -41,18 +69,6 @@ except NameError:
     # In python 3, unicode -> str, and str -> bytes
     unicode = str
 
-def config_unicodise(string, encoding = "utf-8", errors = "replace"):
-    """
-    Convert 'string' to Unicode or raise an exception.
-    Config can't use toolbox from Utils that is itself using Config
-    """
-    if type(string) == unicode:
-        return string
-
-    try:
-        return unicode(string, encoding, errors)
-    except UnicodeDecodeError:
-        raise UnicodeDecodeError("Conversion to unicode failed: %r" % string)
 
 def is_bool_true(value):
     """Check to see if a string is true, yes, on, or 1
@@ -68,6 +84,7 @@ def is_bool_true(value):
     else:
         return False
 
+
 def is_bool_false(value):
     """Check to see if a string is false, no, off, or 0
 
@@ -82,9 +99,11 @@ def is_bool_false(value):
     else:
         return False
 
+
 def is_bool(value):
     """Check a string value to see if it is bool"""
     return is_bool_true(value) or is_bool_false(value)
+
 
 class Config(object):
     _instance = None
@@ -94,6 +113,8 @@ class Config(object):
     secret_key = u""
     access_token = u""
     _access_token_refresh = True
+    _access_token_expiration = None
+    _access_token_last_update = None
     host_base = u"s3.amazonaws.com"
     host_bucket = u"%(bucket)s.s3.amazonaws.com"
     kms_key = u""    #can't set this and Server Side Encryption at the same time
@@ -153,6 +174,8 @@ class Config(object):
     gpg_decrypt = u"%(gpg_command)s -d --verbose --no-use-agent --batch --yes --passphrase-fd %(passphrase_fd)s -o %(output_file)s %(input_file)s"
     use_https = True
     ca_certs_file = u""
+    ssl_client_key_file = u""
+    ssl_client_cert_file = u""
     check_ssl_certificate = True
     check_ssl_hostname = True
     bucket_location = u"US"
@@ -161,8 +184,13 @@ class Config(object):
     use_mime_magic = True
     mime_type = u""
     enable_multipart = True
-    multipart_chunk_size_mb = 15    # MB
-    multipart_max_chunks = 10000    # Maximum chunks on AWS S3, could be different on other S3-compatible APIs
+    # Chunk size is at the same time the chunk size and the threshold
+    multipart_chunk_size_mb = 15    # MiB
+    # Maximum chunk size for s3-to-s3 copy is 5 GiB.
+    # But, use a lot lower value by default (1GiB)
+    multipart_copy_chunk_size_mb = 1 * 1024
+    # Maximum chunks on AWS S3, could be different on other S3-compatible APIs
+    multipart_max_chunks = 10000
     # List of checks to be performed for 'sync'
     sync_checks = ['size', 'md5']   # 'weak-timestamp'
     # List of compiled REGEXPs
@@ -211,6 +239,13 @@ class Config(object):
     throttle_max = 100
     public_url_use_https = False
     connection_pooling = True
+    # How long in seconds a connection can be kept idle in the pool and still
+    # be alive. AWS s3 is supposed to close connections that are idle for 20
+    # seconds or more, but in real life, undocumented, it closes https conns
+    # after around 6s of inactivity.
+    connection_max_age = 5
+    # Enable the remote copy optimization that uploads files with same md5 only
+    # once in a run.
     remote_copy = True
 
     ## Creating a singleton
@@ -236,18 +271,18 @@ class Config(object):
                 # Do not refresh the IAM role when an access token is provided.
                 self._access_token_refresh = False
 
-            if len(self.access_key)==0:
+            if len(self.access_key) == 0:
                 env_access_key = os.getenv('AWS_ACCESS_KEY') or os.getenv('AWS_ACCESS_KEY_ID')
                 env_secret_key = os.getenv('AWS_SECRET_KEY') or os.getenv('AWS_SECRET_ACCESS_KEY')
                 env_access_token = os.getenv('AWS_SESSION_TOKEN') or os.getenv('AWS_SECURITY_TOKEN')
                 if env_access_key:
                     # py3 getenv returns unicode and py2 returns bytes.
-                    self.access_key = config_unicodise(env_access_key)
-                    self.secret_key = config_unicodise(env_secret_key)
+                    self.access_key = base_unicodise(env_access_key)
+                    self.secret_key = base_unicodise(env_secret_key)
                     if env_access_token:
                         # Do not refresh the IAM role when an access token is provided.
                         self._access_token_refresh = False
-                        self.access_token = config_unicodise(env_access_token)
+                        self.access_token = base_unicodise(env_access_token)
                 else:
                     self.role_config()
 
@@ -259,34 +294,92 @@ class Config(object):
 
     def role_config(self):
         """
-        Get credentials from IAM authentication
+        Get credentials from IAM authentication and STS AssumeRole
         """
         try:
-            conn = httplib.HTTPConnection(host='169.254.169.254', timeout = 2)
-            conn.request('GET', "/latest/meta-data/iam/security-credentials/")
-            resp = conn.getresponse()
-            files = resp.read()
-            if resp.status == 200 and len(files)>1:
-                conn.request('GET', "/latest/meta-data/iam/security-credentials/%s" % files.decode('utf-8'))
-                resp=conn.getresponse()
-                if resp.status == 200:
-                    resp_content = config_unicodise(resp.read())
-                    creds=json.loads(resp_content)
-                    Config().update_option('access_key', config_unicodise(creds['AccessKeyId']))
-                    Config().update_option('secret_key', config_unicodise(creds['SecretAccessKey']))
-                    Config().update_option('access_token', config_unicodise(creds['Token']))
+            role_arn = os.environ.get('AWS_ROLE_ARN')
+            if role_arn:
+                role_session_name = 'role-session-%s' % (int(time.time()))
+                params = {
+                    'Action': 'AssumeRole',
+                    'Version': '2011-06-15',
+                    'RoleArn': role_arn,
+                    'RoleSessionName': role_session_name,
+                }
+                web_identity_token_file = os.environ.get('AWS_WEB_IDENTITY_TOKEN_FILE')
+                if web_identity_token_file:
+                    with open(web_identity_token_file) as f:
+                        web_identity_token = f.read()
+                    params['Action'] = 'AssumeRoleWithWebIdentity'
+                    params['WebIdentityToken'] = web_identity_token
+                encoded_params = '&'.join([
+                    '%s=%s' % (k, s3_quote(v, unicode_output=True))
+                    for k, v in params.items()
+                ])
+                conn = httplib.HTTPSConnection(host='sts.amazonaws.com',
+                                               timeout=2)
+                conn.request('POST', '/?' + encoded_params)
+                resp = conn.getresponse()
+                resp_content = resp.read()
+                if resp.status == 200 and len(resp_content) > 1:
+                    tree = getTreeFromXml(resp_content)
+                    result_dict = getDictFromTree(tree)
+                    if tree.tag == "AssumeRoleResponse":
+                        creds = result_dict['AssumeRoleResult']['Credentials']
+                    elif tree.tag == "AssumeRoleWithWebIdentityResponse":
+                        creds = result_dict['AssumeRoleWithWebIdentityResult']['Credentials']
+                    else:
+                        raise IOError("Unexpected XML message from STS server: <%s />" % tree.tag)
+                    Config().update_option('access_key', creds['AccessKeyId'])
+                    Config().update_option('secret_key', creds['SecretAccessKey'])
+                    Config().update_option('access_token', creds['SessionToken'])
+                    expiration = dateRFC822toPython(base_unicodise(creds['Expiration']))
+                    # Add a timedelta to prevent any expiration if the EC2 machine is not at the right date
+                    self._access_token_expiration = expiration - datetime.timedelta(minutes=15)
+                    # last update date is not provided in STS responses
+                    self._access_token_last_update = datetime.datetime.now(dateutil.tz.tzutc())
+                    # Others variables : Code / Type
                 else:
                     raise IOError
             else:
-                raise IOError
+                conn = httplib.HTTPConnection(host='169.254.169.254',
+                                              timeout=2)
+                conn.request('GET', "/latest/meta-data/iam/security-credentials/")
+                resp = conn.getresponse()
+                files = resp.read()
+                if resp.status == 200 and len(files) > 1:
+                    conn.request('GET', "/latest/meta-data/iam/security-credentials/%s" % files.decode('utf-8'))
+                    resp=conn.getresponse()
+                    if resp.status == 200:
+                        resp_content = base_unicodise(resp.read())
+                        creds=json.loads(resp_content)
+                        Config().update_option('access_key', base_unicodise(creds['AccessKeyId']))
+                        Config().update_option('secret_key', base_unicodise(creds['SecretAccessKey']))
+                        Config().update_option('access_token', base_unicodise(creds['Token']))
+                        expiration = dateRFC822toPython(base_unicodise(creds['Expiration']))
+                        # Add a timedelta to prevent any expiration if the EC2 machine is not at the right date
+                        self._access_token_expiration = expiration - datetime.timedelta(minutes=15)
+                        self._access_token_last_update = dateRFC822toPython(base_unicodise(creds['LastUpdated']))
+                        # Others variables : Code / Type
+                    else:
+                        raise IOError
+                else:
+                    raise IOError
         except:
             raise
 
     def role_refresh(self):
         if self._access_token_refresh:
+            now = datetime.datetime.now(dateutil.tz.tzutc())
+            if self._access_token_expiration \
+               and now < self._access_token_expiration \
+               and self._access_token_last_update \
+               and self._access_token_last_update <= now:
+                # current token is still valid. No need to refresh it
+                return
             try:
                 self.role_config()
-            except:
+            except Exception:
                 warning("Could not refresh role")
 
     def aws_credential_file(self):
@@ -295,11 +388,9 @@ class Config(object):
             credential_file_from_env = os.environ.get('AWS_CREDENTIAL_FILE')
             if credential_file_from_env and \
                os.path.isfile(credential_file_from_env):
-                aws_credential_file = config_unicodise(credential_file_from_env)
+                aws_credential_file = base_unicodise(credential_file_from_env)
             elif not os.path.isfile(aws_credential_file):
                 return
-
-            warning("Errno %d accessing credentials file %s" % (e.errno, aws_credential_file))
 
             config = PyConfigParser()
 
@@ -313,8 +404,9 @@ class Config(object):
                     # but so far readfp it is still available.
                     config.readfp(io.StringIO(config_string))
                 except MissingSectionHeaderError:
-                    # if header is missing, this could be deprecated credentials file format
-                    # as described here: https://blog.csanchez.org/2011/05/
+                    # if header is missing, this could be deprecated
+                    # credentials file format as described here:
+                    # https://blog.csanchez.org/2011/05/
                     # then do the hacky-hack and add default header
                     # to be able to read the file with PyConfigParser()
                     config_string = u'[default]\n' + config_string
@@ -324,52 +416,68 @@ class Config(object):
                     "Error reading aws_credential_file "
                     "(%s): %s" % (aws_credential_file, str(exc)))
 
-            profile = config_unicodise(os.environ.get('AWS_PROFILE', "default"))
+            profile = base_unicodise(os.environ.get('AWS_PROFILE', "default"))
             debug("Using AWS profile '%s'" % (profile))
 
             # get_key - helper function to read the aws profile credentials
-            # including the legacy ones as described here: https://blog.csanchez.org/2011/05/
+            # including the legacy ones as described here:
+            # https://blog.csanchez.org/2011/05/
             def get_key(profile, key, legacy_key, print_warning=True):
                 result = None
 
                 try:
                     result = config.get(profile, key)
                 except NoOptionError as e:
-                    if print_warning: # we may want to skip warning message for optional keys
-                        warning("Couldn't find key '%s' for the AWS Profile '%s' in the credentials file '%s'" % (e.option, e.section, aws_credential_file))
-                    if legacy_key: # if the legacy_key defined and original one wasn't found, try read the legacy_key
+                    # we may want to skip warning message for optional keys
+                    if print_warning:
+                        warning("Couldn't find key '%s' for the AWS Profile "
+                                "'%s' in the credentials file '%s'",
+                                e.option, e.section, aws_credential_file)
+                    # if the legacy_key defined and original one wasn't found,
+                    # try read the legacy_key
+                    if legacy_key:
                         try:
                             key = legacy_key
                             profile = "default"
                             result = config.get(profile, key)
                             warning(
-                                    "Legacy configuratin key '%s' used, " % (key) +
-                                    "please use the standardized config format as described here: " +
-                                    "https://aws.amazon.com/blogs/security/a-new-and-standardized-way-to-manage-credentials-in-the-aws-sdks/"
-                                     )
+                                "Legacy configuratin key '%s' used, please use"
+                                " the standardized config format as described "
+                                "here: https://aws.amazon.com/blogs/security/a-new-and-standardized-way-to-manage-credentials-in-the-aws-sdks/",
+                                key)
                         except NoOptionError as e:
                             pass
 
                 if result:
-                    debug("Found the configuration option '%s' for the AWS Profile '%s' in the credentials file %s" % (key, profile, aws_credential_file))
+                    debug("Found the configuration option '%s' for the AWS "
+                          "Profile '%s' in the credentials file %s",
+                          key, profile, aws_credential_file)
                 return result
 
-            profile_access_key = get_key(profile, "aws_access_key_id", "AWSAccessKeyId")
+            profile_access_key = get_key(profile, "aws_access_key_id",
+                                         "AWSAccessKeyId")
             if profile_access_key:
-                Config().update_option('access_key', config_unicodise(profile_access_key))
+                Config().update_option('access_key',
+                                       base_unicodise(profile_access_key))
 
-            profile_secret_key = get_key(profile, "aws_secret_access_key", "AWSSecretKey")
+            profile_secret_key = get_key(profile, "aws_secret_access_key",
+                                         "AWSSecretKey")
             if profile_secret_key:
-                Config().update_option('secret_key', config_unicodise(profile_secret_key))
+                Config().update_option('secret_key',
+                                       base_unicodise(profile_secret_key))
 
-            profile_access_token = get_key(profile, "aws_session_token", None, False)
+            profile_access_token = get_key(profile, "aws_session_token", None,
+                                           False)
             if profile_access_token:
-                Config().update_option('access_token', config_unicodise(profile_access_token))
+                Config().update_option('access_token',
+                                       base_unicodise(profile_access_token))
 
         except IOError as e:
-            warning("Errno %d accessing credentials file %s" % (e.errno, aws_credential_file))
+            warning("Errno %d accessing credentials file %s", e.errno,
+                    aws_credential_file)
         except NoSectionError as e:
-            warning("Couldn't find AWS Profile '%s' in the credentials file '%s'" % (profile, aws_credential_file))
+            warning("Couldn't find AWS Profile '%s' in the credentials file "
+                    "'%s'", profile, aws_credential_file)
 
     def option_list(self):
         retval = []
@@ -400,7 +508,7 @@ class Config(object):
 
         if cp.get('add_headers'):
             for option in cp.get('add_headers').split(","):
-                (key, value) = option.split(':')
+                (key, value) = option.split(':', 1)
                 self.extra_headers[key.strip()] = value.strip()
 
         self._parsed_files.append(configfile)
@@ -443,13 +551,13 @@ class Config(object):
                 shift = 0
             try:
                 value = shift and int(value[:-1]) << shift or int(value)
-            except:
+            except Exception:
                 raise ValueError("Config: value of option %s must have suffix m, k, or nothing, not '%s'" % (option, value))
 
         ## allow yes/no, true/false, on/off and 1/0 for boolean options
         ## Some options default to None, if that's the case check the value to see if it is bool
         elif (type(getattr(Config, option)) is type(True) or              # Config is bool
-             (getattr(Config, option) is None and is_bool(value))):  # Config is None and value is bool
+              (getattr(Config, option) is None and is_bool(value))):  # Config is None and value is bool
             if is_bool_true(value):
                 value = True
             elif is_bool_false(value):
@@ -482,11 +590,11 @@ class ConfigParser(object):
         if type(sections) != type([]):
             sections = [sections]
         in_our_section = True
-        r_comment = re.compile("^\s*#.*")
-        r_empty = re.compile("^\s*$")
-        r_section = re.compile("^\[([^\]]+)\]")
-        r_data = re.compile("^\s*(?P<key>\w+)\s*=\s*(?P<value>.*)")
-        r_quotes = re.compile("^\"(.*)\"\s*$")
+        r_comment = re.compile(r'^\s*#.*')
+        r_empty = re.compile(r'^\s*$')
+        r_section = re.compile(r'^\[([^\]]+)\]')
+        r_data = re.compile(r'^\s*(?P<key>\w+)\s*=\s*(?P<value>.*)')
+        r_quotes = re.compile(r'^"(.*)"\s*$')
         with io.open(file, "r", encoding=self.get('encoding', 'UTF-8')) as fp:
             for line in fp:
                 if r_comment.match(line) or r_empty.match(line):

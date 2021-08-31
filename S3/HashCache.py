@@ -26,7 +26,7 @@ class HashCache(object):
             d = self.inodes[dev][inode][mtime]
             if d['size'] != size:
                 return None
-        except:
+        except Exception:
             return None
         return d['md5']
 

@@ -10,19 +10,20 @@ from __future__ import absolute_import
 
 import sys
 import hmac
-import base64
+try:
+    from base64 import encodebytes as encodestring
+except ImportError:
+    # Python 2 support
+    from base64 import encodestring
 
 from . import Config
 from logging import debug
-from .Utils import encode_to_s3, time_to_epoch, deunicodise, decode_from_s3, check_bucket_name_dns_support
+from .BaseUtils import encode_to_s3, decode_from_s3, s3_quote
+from .Utils import time_to_epoch, deunicodise, check_bucket_name_dns_support
 from .SortedDict import SortedDict
 
 import datetime
-try:
-    # python 3 support
-    from urllib import quote
-except ImportError:
-    from urllib.parse import quote
+
 
 from hashlib import sha1, sha256
 
@@ -66,7 +67,7 @@ def sign_string_v2(string_to_sign):
     and returned signature will be utf-8 encoded "bytes".
     """
     secret_key = Config.Config().secret_key
-    signature = base64.encodestring(hmac.new(encode_to_s3(secret_key), string_to_sign, sha1).digest()).strip()
+    signature = encodestring(hmac.new(encode_to_s3(secret_key), string_to_sign, sha1).digest()).strip()
     return signature
 __all__.append("sign_string_v2")
 
@@ -250,33 +251,10 @@ def sign_request_v4(method='GET', host='', canonical_uri='/', params=None,
     return new_headers
 __all__.append("sign_request_v4")
 
-def s3_quote(param, quote_backslashes=True, unicode_output=False):
-    """
-    URI encode every byte. UriEncode() must enforce the following rules:
-    - URI encode every byte except the unreserved characters: 'A'-'Z', 'a'-'z', '0'-'9', '-', '.', '_', and '~'.
-    - The space character is a reserved character and must be encoded as "%20" (and not as "+").
-    - Each URI encoded byte is formed by a '%' and the two-digit hexadecimal value of the byte.
-    - Letters in the hexadecimal value must be uppercase, for example "%1A".
-    - Encode the forward slash character, '/', everywhere except in the object key name.
-    For example, if the object key name is photos/Jan/sample.jpg, the forward slash in the key name is not encoded.
-    """
-    if quote_backslashes:
-        safe_chars = "~"
-    else:
-        safe_chars = "~/"
-    param = encode_to_s3(param)
-    param = quote(param, safe=safe_chars)
-    if unicode_output:
-        param = decode_from_s3(param)
-    else:
-        param = encode_to_s3(param)
-    return param
-__all__.append("s3_quote")
-
 def checksum_sha256_file(filename, offset=0, size=None):
     try:
         hash = sha256()
-    except:
+    except Exception:
         # fallback to Crypto SHA256 module
         hash = sha256.new()
     with open(deunicodise(filename),'rb') as f:
@@ -288,6 +266,8 @@ def checksum_sha256_file(filename, offset=0, size=None):
             size_left = size
             while size_left > 0:
                 chunk = f.read(min(8192, size_left))
+                if not chunk:
+                    break
                 size_left -= len(chunk)
                 hash.update(chunk)
 
@@ -296,7 +276,7 @@ def checksum_sha256_file(filename, offset=0, size=None):
 def checksum_sha256_buffer(buffer, offset=0, size=None):
     try:
         hash = sha256()
-    except:
+    except Exception:
         # fallback to Crypto SHA256 module
         hash = sha256.new()
     if size is None:
