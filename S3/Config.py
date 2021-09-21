@@ -166,6 +166,7 @@ class Config(object):
     delete_after_fetch = False
     max_delete = -1
     limit = -1
+    marker = u''
     _doc['delete_removed'] = u"[sync] Remove remote S3 objects when local file has been deleted"
     delay_updates = False  # OBSOLETE
     gpg_passphrase = u""
