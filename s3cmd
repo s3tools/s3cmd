@@ -251,12 +251,13 @@ def subcmd_bucket_list(s3, uri, limit):
 def cmd_bucket_create(args):
     cfg = Config()
     s3 = S3(cfg)
+
     for arg in args:
         uri = S3Uri(arg)
         if not uri.type == "s3" or not uri.has_bucket() or uri.has_object():
             raise ParameterError("Expecting S3 URI with just the bucket name set instead of '%s'" % arg)
         try:
-            response = s3.bucket_create(uri.bucket(), cfg.bucket_location)
+            response = s3.bucket_create(uri.bucket(), cfg.bucket_location, cfg.extra_headers)
             output(u"Bucket '%s' created" % uri.uri())
         except S3Error as e:
             if e.info["Code"] in S3.codes:
