@@ -1,3 +1,48 @@
+s3cmd-2.2.0      - 2021-09-27
+===============
+* Added support for metadata modification of files bigger than 5 GiB
+* Added support for remote copy of files bigger than 5 GiB using MultiPart copy (Damian Martinez, Florent Viard)
+* Added progress info output for multipart copy and current-total info in output for cp, mv and modify
+* Added support for all special/foreign character names in object names to cp/mv/modify
+* Added support for SSL authentication (Aleksandr Chazov)
+* Added the http error 429 to the list of retryable errors (#1096)
+* Added support for listing and resuming of multipart uploads of more than 1000 parts (#346)
+* Added time based expiration for idle pool connections in order to avoid random broken pipe errors (#1114)
+* Added support for STS webidentity authentication (ie AssumeRole and AssumeRoleWithWebIdentity) (Samskeyti, Florent Viard)
+* Added support for custom headers to the mb command (#1197) (Sébastien Vajda)
+* Improved MultiPart copy to preserve acl and metadata of objects
+* Improved the server errors catching and reporting for cp/mv/modify commands
+* Improved resiliency against servers sending garbage responses (#1088, #1090, #1093)
+* Improved remote copy to have consistent copy of metadata in all cases: multipart or not, aws or not
+* Improved security by revoking public-write acl when private acl is set (#1151) (ruanzitao)
+* Improved speed when running on an EC2 instance (#1117) (Patrick Allain)
+* Reduced connection_max_age to 5s to avoid broken pipes as AWS closes https conns after around 6s (#1114)
+* Ensure that KeyboardInterrupt are always properly raised (#1089)
+* Changed sized of multipart copy chunks to 1 GiB
+* Fixed ValueError when using more than one ":" inside add_header in config file (#1087)
+* Fixed extra label issue when stdin used as source of a MultiPart upload
+* Fixed remote copy to allow changing the mime-type (ie content-type) of the new object
+* Fixed remote_copy to ensure that meta-s3cmd-attrs will be set based on the real source and not on the copy source
+* Fixed deprecation warnings due to invalid escape sequences (Karthikeyan Singaravelan)
+* Fixed getbucketinfo that was broken when the bucket lifecycle uses the filter element (Liu Lan)
+* Fixed RestoreRequest XML namespace URL (#1203) (Akete)
+* Fixed PARTIAL exit code that was not properly set when needed for object_get (#1190)
+* Fixed a possible inifinite loop when a file is truncated during hashsum or upload (#1125) (Matthew Krokosz, Florent Viard)
+* Fixed report_exception wrong error when LANG env var was not set (#1113)
+* Fixed wrong wiki url in error messages (Alec Barrett)
+* Py3: Fixed an AttributeError when using the "files-from" option
+* Py3: Fixed compatibility issues due to the removal of getchildren() from ElementTree in python 3.9 (#1146, #1157, #1162, # 1182, #1210) (Ondřej Budai)
+* Py3: Fixed compatibility issues due to the removal of encodestring() in python 3.9 (#1161, #1174) (Kentaro Kaneki)
+* Fixed a crash when the AWS_ACCESS_KEY env var is set but not AWS_SECRET_KEY (#1201)
+* Cleanup of check_md5 (Riccardo Magliocchetti)
+* Removed legacy code for dreamhost that should be necessary anymore
+* Migrated CI tests to use github actions (Arnaud Jaffre)
+* Improved README with a link to INSTALL.md (Sia Karamalegos)
+* Improved help content (Dmitrii Korostelev, Roland Van Laar)
+* Improvements for setup and build configurations
+* Many other bug fixes
+
+
 s3cmd-2.1.0      - 2020-04-07
 ===============
 * Changed size reporting using k instead of K as it a multiple of 1024 (#956)
