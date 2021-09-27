@@ -273,6 +273,11 @@ class Config(object):
                 env_secret_key = os.getenv('AWS_SECRET_KEY') or os.getenv('AWS_SECRET_ACCESS_KEY')
                 env_access_token = os.getenv('AWS_SESSION_TOKEN') or os.getenv('AWS_SECURITY_TOKEN')
                 if env_access_key:
+                    if not env_secret_key:
+                        raise ValueError(
+                            "AWS_ACCESS_KEY environment variable is used but"
+                            " AWS_SECRET_KEY variable is missing"
+                        )
                     # py3 getenv returns unicode and py2 returns bytes.
                     self.access_key = base_unicodise(env_access_key)
                     self.secret_key = base_unicodise(env_secret_key)
