@@ -8,9 +8,7 @@
 
 from __future__ import absolute_import, division
 
-import base64
 import errno
-import hashlib
 import io
 import mimetypes
 import os
@@ -29,10 +27,11 @@ except ImportError:
     from urllib.parse import urlparse
 try:
     # Python 2 support
-    from base64 import encodestring
+    from base64 import encodestring, b64encode
 except ImportError:
     # Python 3.9.0+ support
     from base64 import encodebytes as encodestring
+    from base64 import b64encode
 
 import select
 
@@ -706,13 +705,13 @@ class S3(object):
             headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
 
         if self.config.sse_customer_key:
-            md5 = hashlib.md5()
+            md5s = md5()
             sse_customer_key = self.config.sse_customer_key.encode()
-            md5.update(sse_customer_key)
-            md5_encoded = base64.b64encode(md5.digest())
-            encoded = base64.b64encode(sse_customer_key)
+            md5s.update(sse_customer_key)
+            md5_encoded = b64encode(md5s.digest())
+            key_encoded = b64encode(sse_customer_key)
             headers["x-amz-server-side-encryption-customer-algorithm"] = "AES256"
-            headers["x-amz-server-side-encryption-customer-key"] = encoded.decode()
+            headers["x-amz-server-side-encryption-customer-key"] = key_encoded.decode()
             headers["x-amz-server-side-encryption-customer-key-md5"] = md5_encoded.decode()
 
         ## MIME-type handling
@@ -785,13 +784,13 @@ class S3(object):
             headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
 
         if self.config.sse_customer_key:
-            md5 = hashlib.md5()
+            md5s = md5()
             sse_customer_key = self.config.sse_customer_key.encode()
-            md5.update(sse_customer_key)
-            md5_encoded = base64.b64encode(md5.digest())
-            encoded = base64.b64encode(sse_customer_key)
+            md5s.update(sse_customer_key)
+            md5_encoded = b64encode(md5s.digest())
+            key_encoded = b64encode(sse_customer_key)
             headers["x-amz-server-side-encryption-customer-algorithm"] = "AES256"
-            headers["x-amz-server-side-encryption-customer-key"] = encoded.decode()
+            headers["x-amz-server-side-encryption-customer-key"] = key_encoded.decode()
             headers["x-amz-server-side-encryption-customer-key-md5"] = md5_encoded.decode()
 
         request = self.create_request("OBJECT_GET", uri = uri, headers=headers)
@@ -991,13 +990,13 @@ class S3(object):
                 self.config.kms_key
 
         if self.config.sse_copy_source_customer_key:
-            md5 = hashlib.md5()
+            md5s = md5()
             sse_copy_source_customer_key = self.config.sse_copy_source_customer_key.encode()
-            md5.update(sse_copy_source_customer_key)
-            md5_encoded = base64.b64encode(md5.digest())
-            encoded = base64.b64encode(sse_copy_source_customer_key)
+            md5s.update(sse_copy_source_customer_key)
+            md5_encoded = b64encode(md5s.digest())
+            key_encoded = b64encode(sse_copy_source_customer_key)
             headers["x-amz-copy-source-server-side-encryption-customer-algorithm"] = "AES256"
-            headers["x-amz-copy-source-server-side-encryption-customer-key"] = encoded.decode()
+            headers["x-amz-copy-source-server-side-encryption-customer-key"] = key_encoded.decode()
             headers["x-amz-copy-source-server-side-encryption-customer-key-md5"] = md5_encoded.decode()
 
         # Following meta data are not updated in simple COPY by aws.

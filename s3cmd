@@ -3097,6 +3097,12 @@ def main():
     if options.content_type:
         cfg.content_type = options.content_type
 
+    if options.sse_customer_key:
+        cfg.sse_customer_key = options.sse_customer_key
+
+    if options.sse_copy_source_customer_key:
+        cfg.sse_copy_source_customer_key = options.sse_copy_source_customer_key
+
     if len(args) < 1:
         optparser.print_help()
         sys.exit(EX_USAGE)
