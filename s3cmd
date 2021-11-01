@@ -1929,7 +1929,7 @@ def cmd_sync_local2remote(args):
             cfg.sync_checks.remove("md5")
         except Exception:
             pass
-        if cfg.sync_checks.count("mtime") == 0:
+        if "mtime" not in cfg.sync_checks:
             cfg.sync_checks.append("mtime")
 
     for arg in args[:-1]:
