@@ -148,7 +148,18 @@ if not os.path.isdir('testsuite/crappy-file-name'):
     # TODO: also unpack if the tarball is newer than the directory timestamp
     #       for instance when a new version was pulled from SVN.
 
-def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = [], stdin = None):
+def validate_default_mutable_arg(argument):
+    if argument:
+        return argument
+    else:
+        return []
+
+def test(label, cmd_args = None, retcode = 0, must_find = None, must_not_find = None, must_find_re = None, must_not_find_re = None, stdin = None):
+    cmd_args = validate_default_mutable_arg(cmd_args)
+    must_find = validate_default_mutable_arg(must_find)
+    must_not_find = validate_default_mutable_arg(must_not_find)
+    must_find_re = validate_default_mutable_arg(must_find_re)
+    must_not_find_re = validate_default_mutable_arg(must_not_find_re)
     def command_output():
         print("----")
         print(" ".join([" " in arg and "'%s'" % arg or arg for arg in cmd_args]))
