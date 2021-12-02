@@ -686,6 +686,14 @@ test_s3cmd("Sync remote2remote", ['sync', '%s/xyz/' % pbucket(1), '%s/copy/' % p
                   "delete: '%s/copy/etc/logo.png'" % pbucket(2) ],
     must_not_find = [ "blah.txt" ])
 
+## ====== Exclude directory
+test_s3cmd("Exclude directory", ['put', '-r', 'testsuite/demo/', pbucket(1) + '/xyz/demo/', '--exclude', 'dir1/', '-d'],
+           must_find = ["'testsuite/demo/dir2/file2-1.bin' -> '%s/xyz/demo/dir2/file2-1.bin'" % pbucket(1),
+                        "DEBUG: EXCLUDE: 'testsuite/demo/dir1/'"],  # whole directory is excluded
+           must_not_find = ["'testsuite/demo/dir1/file1-1.txt' -> '%s/xyz/demo/dir1/file1-1.txt'" % pbucket(1),
+                            "DEBUG: EXCLUDE: dir1/file1-1.txt"  # file is not synced, but also single file is not excluded
+                           ])
+
 ## ====== Don't Put symbolic link
 test_s3cmd("Don't put symbolic links", ['put', 'testsuite/etc/linked1.png', 's3://%s/xyz/' % bucket(1),],
            retcode = EX_USAGE,
