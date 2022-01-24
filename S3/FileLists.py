@@ -60,15 +60,19 @@ def handle_exclude_include_walk_dir(root, dirname):
     Should this root/dirname directory be excluded? (otherwise included by default)
     Exclude dir matches in the current directory
     This prevents us from recursing down trees we know we want to ignore
-    return True for including, and False for excluding
+    return True for excluding, and False for including
     '''
     cfg = Config()
+    # python versions end their patterns (from globs) differently, test for different styles; check python3.6+ styles first
+    directory_patterns = (u'/)$', u'/)\\Z', u'\\/$', u'\\/\\Z(?ms)')
+
     d = os.path.join(root, dirname, '')
     debug(u"CHECK: %r" % d)
     excluded = False
     for r in cfg.exclude:
-        # python versions end their patterns (from globs) differently, test for both styles.
-        if not (r.pattern.endswith(u'\\/$') or r.pattern.endswith(u'\\/\\Z(?ms)')): continue # we only check for directory patterns here
+        if not any(r.pattern.endswith(dp) for dp in directory_patterns):
+            # we only check for directory patterns here
+            continue
         if r.search(d):
             excluded = True
             debug(u"EXCL-MATCH: '%s'" % (cfg.debug_exclude[r]))
@@ -76,8 +80,9 @@ def handle_exclude_include_walk_dir(root, dirname):
     if excluded:
         ## No need to check for --include if not excluded
         for r in cfg.include:
-            # python versions end their patterns (from globs) differently, test for both styles.
-            if not (r.pattern.endswith(u'\\/$') or r.pattern.endswith(u'\\/\\Z(?ms)')): continue # we only check for directory patterns here
+            if not any(r.pattern.endswith(dp) for dp in directory_patterns):
+                # we only check for directory patterns here
+                continue
             debug(u"INCL-TEST: %s ~ %s" % (d, r.pattern))
             if r.search(d):
                 excluded = False
