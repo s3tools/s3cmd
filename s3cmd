@@ -1383,7 +1383,7 @@ def cmd_sync_remote2local(args):
                                 time.sleep(min(throttle, s3.config.throttle_max))
                             try:
                                 response = s3.object_get(uri, dst_stream, dst_file, extra_label = seq_label)
-                                retries = 0
+                                break
                             except S3Error as e:
                                 if e.status == 503:
                                     # SlowDown error
@@ -1392,8 +1392,8 @@ def cmd_sync_remote2local(args):
                                     warning("Waiting %d sec..." % s3._fail_wait(retries))
                                     time.sleep(s3._fail_wait(retries))
                                     retries = retries - 1
-                                else:
-                                    raise
+                                    continue
+                                raise
 
                     # download completed, rename the file to destination
                     if os.name == "nt":
