@@ -1344,6 +1344,7 @@ def cmd_sync_remote2local(args):
         file_list = remote_list.keys()
         file_list.sort()
         ret = EX_OK
+        throttle = 0
         for file in file_list:
             seq += 1
             item = remote_list[file]
@@ -1351,6 +1352,7 @@ def cmd_sync_remote2local(args):
             dst_file = item['local_filename']
             is_empty_directory = dst_file.endswith('/')
             seq_label = "[%d of %d]" % (seq, total)
+            retries = s3._max_retries
 
             dst_dir = unicodise(os.path.dirname(deunicodise(dst_file)))
             if not dst_dir in dir_cache:
@@ -1375,7 +1377,23 @@ def cmd_sync_remote2local(args):
                     with io.open(chkptfd, mode='wb') as dst_stream:
                         dst_stream.stream_name = unicodise(chkptfname_b)
                         debug(u"created chkptfname=%s" % dst_stream.stream_name)
-                        response = s3.object_get(uri, dst_stream, dst_file, extra_label = seq_label)
+
+                        while retries > 0:
+                            if throttle:
+                                time.sleep(min(throttle, s3.config.throttle_max))
+                            try:
+                                response = s3.object_get(uri, dst_stream, dst_file, extra_label = seq_label)
+                                retries = 0
+                            except S3Error as e:
+                                if e.status == 503:
+                                    # SlowDown error
+                                    throttle = throttle and throttle * 5 or 0.01
+                                    warning("Retrying on lower speed (throttle=%0.2f)" % throttle)
+                                    warning("Waiting %d sec..." % s3._fail_wait(retries))
+                                    time.sleep(s3._fail_wait(retries))
+                                    retries = retries - 1
+                                else:
+                                    raise
 
                     # download completed, rename the file to destination
                     if os.name == "nt":
