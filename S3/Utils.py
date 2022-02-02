@@ -102,7 +102,10 @@ __all__.append("mktmpfile")
 
 
 def hash_file_md5(filename):
-    h = md5()
+    try:
+      h = md5()
+    except Exception:
+      h = md5(usedforsecurity=False)
     with open(deunicodise(filename), "rb") as fp:
         while True:
             # Hash 32kB chunks
@@ -310,7 +313,10 @@ __all__.append("getHostnameFromBucket")
 
 
 def calculateChecksum(buffer, mfile, offset, chunk_size, send_chunk):
-    md5_hash = md5()
+    try:
+      md5_hash = md5()
+    except Exception:
+      md5_hash = md5(usedforsecurity=False)
     size_left = chunk_size
     if buffer == '':
         mfile.seek(offset)

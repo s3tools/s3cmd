@@ -1647,7 +1647,10 @@ class S3(object):
                 raise S3UploadError("Upload failed for: %s" % resource['uri'])
         if buffer == '':
             stream.seek(offset)
-        md5_hash = md5()
+        try:
+          md5_hash = md5()
+        except Exception:
+          md5_hash = md5(usedforsecurity=False)
 
         try:
             http_response = None
@@ -1950,7 +1953,10 @@ class S3(object):
         if start_position == 0:
             # Only compute MD5 on the fly if we're downloading from beginning
             # Otherwise we'd get a nonsense.
-            md5_hash = md5()
+            try:
+              md5_hash = md5()
+            except Exception:
+              md5_hash = md5(usedforsecurity=False)
         size_left = int(response["headers"]["content-length"])
         size_total = start_position + size_left
         current_position = start_position
@@ -2069,7 +2075,10 @@ def parse_attrs_header(attrs_header):
     return attrs
 
 def compute_content_md5(body):
-    m = md5(encode_to_s3(body))
+    try:
+      m = md5(encode_to_s3(body))
+    except Exception:
+      m = md5(encode_to_s3(body), usedforsecurity=False)
     base64md5 = encodestring(m.digest())
     base64md5 = decode_from_s3(base64md5)
     if base64md5[-1] == '\n':
