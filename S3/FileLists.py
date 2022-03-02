@@ -329,10 +329,10 @@ def fetch_local_list(args, is_src = False, recursive = None):
     cfg = Config()
 
     cache = HashCache()
-    if cfg.cache_file and os.path.exists(deunicodise_s(cfg.cache_file)):
+    if cfg.cache_file and os.path.isfile(deunicodise_s(cfg.cache_file)) and os.path.getsize(deunicodise_s(cfg.cache_file)) > 0:
         cache.load(cfg.cache_file)
     else:
-        info(u"No cache file found, creating it.")
+        info(u"Cache file not found or empty, creating/populating it.")
 
     local_uris = []
     local_list = FileDict(ignore_case = False)
