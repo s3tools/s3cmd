@@ -8,6 +8,8 @@
 
 from __future__ import absolute_import, division
 
+import functools
+import hashlib
 import re
 import sys
 
@@ -48,6 +50,19 @@ except NameError:
     # python 3 support
     # In python 3, unicode -> str, and str -> bytes
     unicode = str
+
+
+try:
+   md5 = hashlib.md5()
+except Exception as exc:
+  try:
+    # md5 is disabled for FIPS-compliant Python builds.
+    # Since s3cmd does not use md5 in a security context,
+    # it is safe to allow the use of it by setting useforsecurity to False.
+    hashlib.md5(usedforsecurity=False)
+    md5 = functools.partial(hashlib.md5, usedforsecurity=False)
+  except:
+      raise exc
 
 
 __all__ = []

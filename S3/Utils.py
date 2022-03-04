@@ -14,7 +14,6 @@ import re
 import string as string_mod
 import random
 import errno
-from hashlib import md5
 from logging import debug
 
 
@@ -30,7 +29,7 @@ import S3.Config
 import S3.Exceptions
 
 from S3.BaseUtils import (base_urlencode_string, base_replace_nonprintables,
-                          base_unicodise, base_deunicodise)
+                          base_unicodise, base_deunicodise, md5)
 
 
 __all__ = []
@@ -102,10 +101,7 @@ __all__.append("mktmpfile")
 
 
 def hash_file_md5(filename):
-    try:
-      h = md5()
-    except Exception:
-      h = md5(usedforsecurity=False)
+    h = md5()
     with open(deunicodise(filename), "rb") as fp:
         while True:
             # Hash 32kB chunks
@@ -313,10 +309,7 @@ __all__.append("getHostnameFromBucket")
 
 
 def calculateChecksum(buffer, mfile, offset, chunk_size, send_chunk):
-    try:
-      md5_hash = md5()
-    except Exception:
-      md5_hash = md5(usedforsecurity=False)
+    md5_hash = md5()
     size_left = chunk_size
     if buffer == '':
         mfile.seek(offset)

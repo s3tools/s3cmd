@@ -33,13 +33,8 @@ except ImportError:
 
 import select
 
-try:
-    from hashlib import md5
-except ImportError:
-    from md5 import md5
-
 from .BaseUtils import (getListFromXml, getTextFromXml, getRootTagName,
-                        decode_from_s3, encode_to_s3, s3_quote)
+                        decode_from_s3, encode_to_s3, md5, s3_quote)
 from .Utils import (convertHeaderTupleListToDict, hash_file_md5, unicodise,
                     deunicodise, check_bucket_name,
                     check_bucket_name_dns_support, getHostnameFromBucket,
@@ -1647,10 +1642,7 @@ class S3(object):
                 raise S3UploadError("Upload failed for: %s" % resource['uri'])
         if buffer == '':
             stream.seek(offset)
-        try:
-          md5_hash = md5()
-        except Exception:
-          md5_hash = md5(usedforsecurity=False)
+        md5_hash = md5()
 
         try:
             http_response = None
@@ -1953,10 +1945,7 @@ class S3(object):
         if start_position == 0:
             # Only compute MD5 on the fly if we're downloading from beginning
             # Otherwise we'd get a nonsense.
-            try:
-              md5_hash = md5()
-            except Exception:
-              md5_hash = md5(usedforsecurity=False)
+            md5_hash = md5()
         size_left = int(response["headers"]["content-length"])
         size_total = start_position + size_left
         current_position = start_position
@@ -2075,10 +2064,7 @@ def parse_attrs_header(attrs_header):
     return attrs
 
 def compute_content_md5(body):
-    try:
-      m = md5(encode_to_s3(body))
-    except Exception:
-      m = md5(encode_to_s3(body), usedforsecurity=False)
+    m = md5(encode_to_s3(body))
     base64md5 = encodestring(m.digest())
     base64md5 = decode_from_s3(base64md5)
     if base64md5[-1] == '\n':
