@@ -1144,6 +1144,27 @@ class S3(object):
         response = self.send_request(request)
         return response
 
+    def set_notification_policy(self, uri, policy):
+        request = self.create_request("BUCKET_CREATE", uri = uri,
+                                      body = policy,
+                                      uri_params = {'notification': None})
+        debug(u"set_notification_policy(%s): policy-xml: %s" % (uri, policy))
+        response = self.send_request(request)
+        return response
+
+    def get_notification_policy(self, uri):
+        request = self.create_request("BUCKET_LIST", bucket = uri.bucket(),
+                                      uri_params = {'notification': None})
+        debug(u"get_notification_policy(%s)" % uri)
+        response = self.send_request(request)
+
+        debug(u"%s: Got notification Policy" % response['status'])
+        return response
+
+    def delete_notification_policy(self, uri):
+        empty_config = '<NotificationConfiguration></NotificationConfiguration>'
+        return self.set_notification_policy(uri, empty_config)
+
     def get_multipart(self, uri, uri_params=None, limit=-1):
         upload_list = []
         for truncated, uploads in self.get_multipart_streaming(uri,
