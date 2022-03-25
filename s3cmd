@@ -2013,6 +2013,44 @@ def cmd_setacl(args):
         update_acl(s3, uri, seq_label)
     return EX_OK
 
+def cmd_setobjectlegalhold(args):
+    cfg = Config()
+    s3 = S3(cfg)
+    uri = S3Uri(args[1])
+    legal_hold_file = args[0]
+
+    with open(deunicodise(legal_hold_file), 'r') as fp:
+        legal_hold = fp.read()
+
+    if cfg.dry_run:
+        return EX_OK
+
+    response = s3.set_object_legal_hold(uri, legal_hold)
+
+    debug(u"response - %s" % response['status'])
+    if response['status'] == 204:
+        output(u"%s: Legal Hold updated" % uri)
+    return EX_OK
+
+def cmd_setobjectretention(args):
+    cfg = Config()
+    s3 = S3(cfg)
+    uri = S3Uri(args[1])
+    retention_file = args[0]
+
+    with open(deunicodise(retention_file), 'r') as fp:
+        retention = fp.read()
+
+    if cfg.dry_run:
+        return EX_OK
+
+    response = s3.set_object_retention(uri, retention)
+
+    debug(u"response - %s" % response['status'])
+    if response['status'] == 204:
+        output(u"%s: Retention updated" % uri)
+    return EX_OK
+
 def cmd_setpolicy(args):
     cfg = Config()
     s3 = S3(cfg)
@@ -2580,6 +2618,9 @@ def get_commands_list():
     {"cmd":"modify", "label":"Modify object metadata", "param":"s3://BUCKET1/OBJECT", "func":cmd_modify, "argc":1},
     {"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
     {"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
+
+    {"cmd":"setobjectlegalhold", "label":"Modify Object Legal Hold", "param":"FILE VERSION_ID s3://BUCKET/OBJECT", "func":cmd_setobjectlegalhold, "argc":2},
+    {"cmd":"setobjectretention", "label":"Modify Object Retention", "param":"FILE VERSION_ID s3://BUCKET/OBJECT", "func":cmd_setobjectretention, "argc":2},
 
     {"cmd":"setpolicy", "label":"Modify Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_setpolicy, "argc":2},
     {"cmd":"delpolicy", "label":"Delete Bucket Policy", "param":"s3://BUCKET", "func":cmd_delpolicy, "argc":1},
