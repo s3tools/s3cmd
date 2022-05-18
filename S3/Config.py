@@ -363,13 +363,22 @@ class Config(object):
                 # 60 seconds is arbitrary, but since we're just pulling small bits of data from the
                 # local instance, it should be plenty of time.
                 #
-                imds_ttl = {"X-aws-ec2-metadata-token-ttl-seconds": "60"}
-                conn.request('PUT', "/latest/api/token", headers=imds_ttl)
-                resp = conn.getresponse()
-                if resp.status != 200:
-                    raise IOError
-                imds_token = resp.read().decode('utf-8')
-                imds_auth = {"X-aws-ec2-metadata-token": imds_token}
+                # There's a chance that there are "mostly AWS compatible" systems that might offer
+                # only IMDSv1 emulation, so we make this optional -- if we can't get the token, we
+                # just proceed without.
+                #
+                # More discussion at https://github.com/Hyperbase/hyperbase/pull/22259
+                #
+                imds_auth = {}
+                try:
+                    imds_ttl = {"X-aws-ec2-metadata-token-ttl-seconds": "60"}
+                    conn.request('PUT', "/latest/api/token", headers=imds_ttl)
+                    resp = conn.getresponse()
+                    if resp.status == 200:
+                        imds_token = resp.read().decode('utf-8')
+                        imds_auth = {"X-aws-ec2-metadata-token": imds_token}
+                except:
+                    pass
 
                 conn.request('GET', "/latest/meta-data/iam/security-credentials/", headers=imds_auth)
                 resp = conn.getresponse()
