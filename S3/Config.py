@@ -354,11 +354,30 @@ class Config(object):
             else:
                 conn = httplib.HTTPConnection(host='169.254.169.254',
                                               timeout=2)
-                conn.request('GET', "/latest/meta-data/iam/security-credentials/")
+
+                # To use Instance Metadata Service (IMDSv2), we first need to obtain a token, then
+                # supply it with every IMDS HTTP call. More info:
+                #
+                #   https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html
+                #
+                # 60 seconds is arbitrary, but since we're just pulling small bits of data from the
+                # local instance, it should be plenty of time.
+                #
+                imds_ttl = {"X-aws-ec2-metadata-token-ttl-seconds": "60"}
+                conn.request('PUT', "/latest/api/token", headers=imds_ttl)
+                resp = conn.getresponse()
+                if resp.status != 200:
+                    raise IOError
+                imds_token = resp.read().decode('utf-8')
+                imds_auth = {"X-aws-ec2-metadata-token": imds_token}
+
+                conn.request('GET', "/latest/meta-data/iam/security-credentials/", headers=imds_auth)
                 resp = conn.getresponse()
                 files = resp.read()
                 if resp.status == 200 and len(files) > 1:
-                    conn.request('GET', "/latest/meta-data/iam/security-credentials/%s" % files.decode('utf-8'))
+                    conn.request('GET',
+                                 "/latest/meta-data/iam/security-credentials/%s" % files.decode('utf-8'),
+                                 headers=imds_auth)
                     resp=conn.getresponse()
                     if resp.status == 200:
                         resp_content = base_unicodise(resp.read())
