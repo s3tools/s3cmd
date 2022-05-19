@@ -3241,6 +3241,12 @@ if __name__ == '__main__':
         error("SSL certificate verification failure: %s" % e)
         sys.exit(EX_ACCESSDENIED)
 
+    except ConnectionRefusedError as e:
+        error(e)
+        sys.exit(EX_CONNECTIONREFUSED)
+        # typically encountered error is:
+        # ERROR: [Errno 111] Connection refused
+
     except socket.gaierror as e:
         # gaierror is a subset of IOError
         # typically encountered error is:
