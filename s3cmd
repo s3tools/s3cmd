@@ -87,6 +87,17 @@ def check_args_type(args, type, verbose_type):
         if S3Uri(arg).type != type:
             raise ParameterError("Expecting %s instead of '%s'" % (verbose_type, arg))
 
+def cmd_bi(args):
+    s3 = S3(Config())
+    uri = S3Uri(args[0])
+    if uri.type == "s3" and uri.has_bucket():
+        bucket = uri.bucket()
+        prefix = uri.object()
+        for _, _, objects in s3.bucket_list_streaming(bucket, prefix=prefix, recursive=True):
+            for obj in objects:
+                print(obj["Key"] + "," + obj["Size"] + "," + obj["LastModified"])
+    return EX_OK
+
 def cmd_du(args):
     s3 = S3(Config())
     if len(args) > 0:
@@ -2575,6 +2586,7 @@ def get_commands_list():
     {"cmd":"restore", "label":"Restore file from Glacier storage", "param":"s3://BUCKET/OBJECT", "func":cmd_object_restore, "argc":1},
     {"cmd":"sync", "label":"Synchronize a directory tree to S3 (checks files freshness using size and md5 checksum, unless overridden by options, see below)", "param":"LOCAL_DIR s3://BUCKET[/PREFIX] or s3://BUCKET[/PREFIX] LOCAL_DIR or s3://BUCKET[/PREFIX] s3://BUCKET[/PREFIX]", "func":cmd_sync, "argc":2},
     {"cmd":"du", "label":"Disk usage by buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_du, "argc":0},
+    {"cmd":"bi", "label":"Buckets insight", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_bi, "argc":1},
     {"cmd":"info", "label":"Get various information about Buckets or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_info, "argc":1},
     {"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
     {"cmd":"modify", "label":"Modify object metadata", "param":"s3://BUCKET1/OBJECT", "func":cmd_modify, "argc":1},
