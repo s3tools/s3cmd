@@ -95,7 +95,7 @@ def cmd_bi(args):
         prefix = uri.object()
         for _, _, objects in s3.bucket_list_streaming(bucket, prefix=prefix, recursive=True):
             for obj in objects:
-                print(obj["Key"] + "," + obj["Size"] + "," + obj["LastModified"])
+                print(obj["Key"] + "," + obj["Size"] + "," + obj["LastModified"] + "," + obj["ETag"])
     return EX_OK
 
 def cmd_du(args):
