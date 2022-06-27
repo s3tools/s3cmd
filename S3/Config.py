@@ -374,8 +374,9 @@ class Config(object):
                     imds_ttl = {"X-aws-ec2-metadata-token-ttl-seconds": "60"}
                     conn.request('PUT', "/latest/api/token", headers=imds_ttl)
                     resp = conn.getresponse()
+                    resp_content = conn.read()
                     if resp.status == 200:
-                        imds_token = resp.read().decode('utf-8')
+                        imds_token = base_unicodise(resp_content)
                         imds_auth = {"X-aws-ec2-metadata-token": imds_token}
                 except:
                     pass
