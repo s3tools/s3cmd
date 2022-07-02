@@ -2270,7 +2270,8 @@ def cmd_fixbucket(args):
             raise ParameterError("Expecting S3Uri instead of: %s" % arg)
         response = s3.bucket_list_noparse(culprit.bucket(), culprit.object(), recursive = True)
         r_xent = re.compile(r"&#x[\da-fA-F]+;")
-        keys = re.findall("<Key>(.*?)</Key>", response['data'], re.MULTILINE | re.UNICODE)
+        data = decode_from_s3(response['data'])
+        keys = re.findall("<Key>(.*?)</Key>", data, re.MULTILINE | re.UNICODE)
         debug("Keys: %r" % keys)
         for key in keys:
             if r_xent.search(key):
