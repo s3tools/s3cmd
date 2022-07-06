@@ -319,13 +319,13 @@ class Config(object):
                     for k, v in params.items()
                 ])
                 sts_endpoint = "sts.amazonaws.com"
-                if os.environ.get("AWS_STS_REGIONAL_ENDPOINTS") == "regional": 
-                    # Check if the AWS_REGION variable is available to use as a region. 
+                if os.environ.get("AWS_STS_REGIONAL_ENDPOINTS") == "regional":
+                    # Check if the AWS_REGION variable is available to use as a region.
                     region = os.environ.get("AWS_REGION")
-                    if not region: 
+                    if not region:
                         # Otherwise use the bucket location
                         region = self.bucket_location
-                    sts_endpoint = "sts.%s.amazonaws.com" % region 
+                    sts_endpoint = "sts.%s.amazonaws.com" % region
                 conn = httplib.HTTPSConnection(host=sts_endpoint,
                                                timeout=2)
                 conn.request('POST', '/?' + encoded_params)
@@ -374,7 +374,7 @@ class Config(object):
                     imds_ttl = {"X-aws-ec2-metadata-token-ttl-seconds": "60"}
                     conn.request('PUT', "/latest/api/token", headers=imds_ttl)
                     resp = conn.getresponse()
-                    resp_content = conn.read()
+                    resp_content = resp.read()
                     if resp.status == 200:
                         imds_token = base_unicodise(resp_content)
                         imds_auth = {"X-aws-ec2-metadata-token": imds_token}
@@ -391,7 +391,7 @@ class Config(object):
                     resp=conn.getresponse()
                     if resp.status == 200:
                         resp_content = base_unicodise(resp.read())
-                        creds=json.loads(resp_content)
+                        creds = json.loads(resp_content)
                         Config().update_option('access_key', base_unicodise(creds['AccessKeyId']))
                         Config().update_option('secret_key', base_unicodise(creds['SecretAccessKey']))
                         Config().update_option('access_token', base_unicodise(creds['Token']))
