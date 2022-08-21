@@ -95,8 +95,8 @@ class S3Error (S3Exception):
 
     def __unicode__(self):
         retval = u"%d " % (self.status)
-        retval += (u"(%s)" % ("Code" in self.info and self.info["Code"] or self.reason))
-        error_msg = self.info.get("Message")
+        retval += (u"(%s)" % (self.code or self.reason))
+        error_msg = self.message
         if error_msg:
             retval += (u": %s" % error_msg)
         return retval

@@ -1025,7 +1025,17 @@ class S3(object):
 
     def object_info(self, uri):
         request = self.create_request("OBJECT_HEAD", uri=uri)
-        response = self.send_request(request)
+        try:
+            response = self.send_request(request)
+        except S3Error as exc:
+            # A HEAD request will not have body, even in the case of an error
+            # so we can't get the usual XML error content.
+            # Add fake similar content in such a case
+            if exc.status == 404 and not exc.code:
+                exc.code = 'NoSuchKey'
+                exc.message = 'The specified key does not exist.'
+                exc.resource = uri
+            raise exc
         return response
 
     def get_acl(self, uri):
