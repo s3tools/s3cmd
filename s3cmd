@@ -527,7 +527,13 @@ def cmd_object_get(args):
     if len(args) == 0:
         raise ParameterError("Nothing to download. Expecting S3 URI.")
 
-    remote_list, exclude_list, remote_total_size = fetch_remote_list(args, require_attribs = False)
+    try:
+        remote_list, exclude_list, remote_total_size = fetch_remote_list(
+            args, require_attribs = True)
+    except S3Error as exc:
+        if exc.code == 'NoSuchKey':
+            raise ParameterError("Source object '%s' does not exist." % exc.resource)
+        raise
 
     remote_count = len(remote_list)
 
@@ -586,27 +592,48 @@ def cmd_object_get(args):
                     dst_stream = io.open(deunicodise(destination), mode='ab')
                     dst_stream.stream_name = destination
                 except IOError as e:
-                    if e.errno == errno.ENOENT:
-                        basename = destination[:destination.rindex(os.path.sep)]
-                        info(u"Creating directory: %s" % basename)
-                        os.makedirs(deunicodise(basename))
-                        dst_stream = io.open(deunicodise(destination), mode='ab')
-                        dst_stream.stream_name = destination
-                    else:
+                    if e.errno != errno.ENOENT:
                         raise
+                    basename = destination[:destination.rindex(os.path.sep)]
+                    info(u"Creating directory: %s" % basename)
+                    os.makedirs(deunicodise(basename))
+                    dst_stream = io.open(deunicodise(destination), mode='ab')
+                    dst_stream.stream_name = destination
+
                 if file_exists:
+                    force = False
+                    skip = False
                     if Config().get_continue:
                         start_position = dst_stream.tell()
+                        item_size = item['size']
+                        if start_position == item_size:
+                            skip = True
+                        elif start_position > item_size:
+                            info(u"Download forced for '%s' as source is "
+                                 "smaller than local file" % destination)
+                            force = True
                     elif Config().force:
+                        force = True
+                    elif Config().skip_existing:
+                        skip = True
+                    else:
+                        dst_stream.close()
+                        raise ParameterError(
+                            u"File '%s' already exists. Use either of --force /"
+                            " --continue / --skip-existing or give it a new"
+                            " name." % destination
+                        )
+
+                    if skip:
+                        dst_stream.close()
+                        info(u"Skipping over existing file: '%s'" % destination)
+                        continue
+
+                    if force:
                         start_position = 0
                         dst_stream.seek(0)
                         dst_stream.truncate()
-                    elif Config().skip_existing:
-                        info(u"Skipping over existing file: %s" % (destination))
-                        continue
-                    else:
-                        dst_stream.close()
-                        raise ParameterError(u"File %s already exists. Use either of --force / --continue / --skip-existing or give it a new name." % destination)
+
             except IOError as e:
                 error(u"Creation of file '%s' failed (Reason: %s)"
                       % (destination, e.strerror))
