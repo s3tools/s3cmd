@@ -2841,6 +2841,9 @@ def main():
     optparser.add_option(      "--multipart-chunk-size-mb", dest="multipart_chunk_size_mb", type="int", action="store", metavar="SIZE", help="Size of each chunk of a multipart upload. Files bigger than SIZE are automatically uploaded as multithreaded-multipart, smaller files are uploaded using the traditional method. SIZE is in Mega-Bytes, default chunk size is 15MB, minimum allowed chunk size is 5MB, maximum is 5GB.")
 
     optparser.add_option(      "--list-md5", dest="list_md5", action="store_true", help="Include MD5 sums in bucket listings (only for 'ls' command).")
+
+    optparser.add_option(      "--list-allow-unordered", dest="list_allow_unordered", action="store_true", help="Not an AWS standard. Allow the listing results to be returned in unsorted order. This may be faster when listing very large buckets.")
+
     optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form (eg 1kB instead of 1234).")
 
     optparser.add_option(      "--ws-index", dest="website_index", action="store", help="Name of index-document (only for [ws-create] command)")
