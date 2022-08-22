@@ -2162,6 +2162,40 @@ def cmd_dellifecycle(args):
     output(u"%s: Lifecycle Policy deleted" % uri)
     return EX_OK
 
+def cmd_setnotification(args):
+    s3 = S3(Config())
+    uri = S3Uri(args[1])
+    notification_policy_file = args[0]
+
+    with open(deunicodise(notification_policy_file), 'r') as fp:
+        notification_policy = fp.read()
+
+    response = s3.set_notification_policy(uri, notification_policy)
+
+    debug(u"response - %s" % response['status'])
+    if response['status'] == 200:
+        output(u"%s: Notification Policy updated" % uri)
+    return EX_OK
+
+def cmd_getnotification(args):
+    s3 = S3(Config())
+    uri = S3Uri(args[0])
+
+    response = s3.get_notification_policy(uri)
+
+    output(getPrettyFromXml(response['data']))
+    return EX_OK
+
+def cmd_delnotification(args):
+    s3 = S3(Config())
+    uri = S3Uri(args[0])
+
+    response = s3.delete_notification_policy(uri)
+
+    debug(u"response - %s" % response['status'])
+    output(u"%s: Notification Policy deleted" % uri)
+    return EX_OK
+
 def cmd_multipart(args):
     cfg = Config()
     s3 = S3(cfg)
@@ -2635,6 +2669,11 @@ def get_commands_list():
     {"cmd":"setlifecycle", "label":"Upload a lifecycle policy for the bucket", "param":"FILE s3://BUCKET", "func":cmd_setlifecycle, "argc":2},
     {"cmd":"getlifecycle", "label":"Get a lifecycle policy for the bucket",    "param":"s3://BUCKET", "func":cmd_getlifecycle, "argc":1},
     {"cmd":"dellifecycle", "label":"Remove a lifecycle policy for the bucket", "param":"s3://BUCKET", "func":cmd_dellifecycle, "argc":1},
+
+    ## Notification commands
+    {"cmd":"setnotification", "label":"Upload a notification policy for the bucket", "param":"FILE s3://BUCKET", "func":cmd_setnotification, "argc":2},
+    {"cmd":"getnotification", "label":"Get a notification policy for the bucket",    "param":"s3://BUCKET", "func":cmd_getnotification, "argc":1},
+    {"cmd":"delnotification", "label":"Remove a notification policy for the bucket", "param":"s3://BUCKET", "func":cmd_delnotification, "argc":1},
 
     ## CloudFront commands
     {"cmd":"cflist", "label":"List CloudFront distribution points", "param":"", "func":CfCmd.info, "argc":0},
