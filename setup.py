@@ -68,6 +68,7 @@ setup(
     packages=['S3'],
     scripts=['s3cmd'],
     data_files=data_files,
+    test_suite='S3.PkgInfo',
 
     ## Packaging details
     author="Michal Ludvig",
