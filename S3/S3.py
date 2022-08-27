@@ -401,6 +401,8 @@ class S3(object):
             uri_params['delimiter'] = "/"
         if max_keys != -1:
             uri_params['max-keys'] = str(max_keys)
+        if self.config.list_allow_unordered:
+            uri_params['allow-unordered'] = "true"
         request = self.create_request("BUCKET_LIST", bucket = bucket, uri_params = uri_params)
         response = self.send_request(request)
         #debug(response)

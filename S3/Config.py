@@ -244,6 +244,10 @@ class Config(object):
     # seconds or more, but in real life, undocumented, it closes https conns
     # after around 6s of inactivity.
     connection_max_age = 5
+    # Not an AWS standard
+    # allow the listing results to be returned in unsorted order.
+    # This may be faster when listing very large buckets.
+    list_allow_unordered = False
 
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None, access_token=None):
