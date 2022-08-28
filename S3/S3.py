@@ -592,14 +592,16 @@ class S3(object):
         debug("put bucket lifecycle")
         body = '<LifecycleConfiguration>'
         body += '  <Rule>'
-        body += ('    <Prefix>%s</Prefix>' % self.config.expiry_prefix)
-        body += ('    <Status>Enabled</Status>')
-        body += ('    <Expiration>')
+        body += '    <Filter>'
+        body += '      <Prefix>%s</Prefix>' % self.config.expiry_prefix
+        body += '    </Filter>'
+        body += '    <Status>Enabled</Status>'
+        body += '    <Expiration>'
         if self.config.expiry_date:
-            body += ('    <Date>%s</Date>' % self.config.expiry_date)
+            body += '      <Date>%s</Date>' % self.config.expiry_date
         elif self.config.expiry_days:
-            body += ('    <Days>%s</Days>' % self.config.expiry_days)
-        body += ('    </Expiration>')
+            body += '      <Days>%s</Days>' % self.config.expiry_days
+        body += '    </Expiration>'
         body += '  </Rule>'
         body += '</LifecycleConfiguration>'
 
