@@ -15,6 +15,7 @@ delete_after = False
 delete_after_fetch = False
 delete_removed = False
 dry_run = False
+enable_list_objects_v2 = False
 enable_multipart = True
 encoding = UTF-8
 encrypt = False
