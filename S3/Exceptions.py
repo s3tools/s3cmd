@@ -136,6 +136,20 @@ class S3Error (S3Exception):
             raise S3ResponseError("Malformed error XML returned from remote server.")
         return info
 
+class S3AccessDenied(S3Error):
+    def __init__(self, resource, response):
+        super(S3AccessDenied, self).__init__(response)
+        self.resource = resource
+        debug("S3AccessDenied: %s (%s): %s" % (self.status, self.reason, self.resource))
+
+    def __unicode__(self):
+        retval = u"%d " % (self.status)
+        retval += (u"(%s)" % (self.code or self.reason))
+        error_msg = self.message
+        if error_msg:
+            retval += (u": %s" % error_msg)
+        retval += (u": %s" % (self.resource))
+        return retval
 
 class CloudFrontError(S3Error):
     pass
