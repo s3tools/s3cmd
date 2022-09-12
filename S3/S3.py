@@ -1159,8 +1159,11 @@ class S3(object):
         return response
 
     def set_notification_policy(self, uri, policy):
+        headers = SortedDict(ignore_case = True)
+        if self.config.skip_destination_validation:
+            headers["x-amz-skip-destination-validation"] = "True"
         request = self.create_request("BUCKET_CREATE", uri = uri,
-                                      body = policy,
+                                      headers = headers, body = policy,
                                       uri_params = {'notification': None})
         debug(u"set_notification_policy(%s): policy-xml: %s" % (uri, policy))
         response = self.send_request(request)

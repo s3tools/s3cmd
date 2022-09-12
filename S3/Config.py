@@ -223,6 +223,7 @@ class Config(object):
     expiry_days = u""
     expiry_date = u""
     expiry_prefix = u""
+    skip_destination_validation = False
     signature_v2 = False
     limitrate = 0
     requester_pays = False
