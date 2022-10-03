@@ -382,8 +382,11 @@ class Config(object):
                     if resp.status == 200:
                         imds_token = base_unicodise(resp_content)
                         imds_auth = {"X-aws-ec2-metadata-token": imds_token}
-                except:
-                    pass
+                except Exception:
+                    # Ensure to close the connection in case of timeout or
+                    # anything. This will avoid CannotSendRequest errors for
+                    # the next request.
+                    conn.close()
 
                 conn.request('GET', "/latest/meta-data/iam/security-credentials/", headers=imds_auth)
                 resp = conn.getresponse()
@@ -408,7 +411,7 @@ class Config(object):
                         raise IOError
                 else:
                     raise IOError
-        except:
+        except Exception:
             raise
 
     def role_refresh(self):
