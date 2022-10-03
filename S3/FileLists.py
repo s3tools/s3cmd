@@ -67,7 +67,7 @@ def handle_exclude_include_walk_dir(root, dirname):
     directory_patterns = (u'/)$', u'/)\\Z', u'\\/$', u'\\/\\Z(?ms)')
 
     d = os.path.join(root, dirname, '')
-    debug(u"CHECK: %r" % d)
+    debug(u"CHECK: %s" % d)
     excluded = False
     for r in cfg.exclude:
         if not any(r.pattern.endswith(dp) for dp in directory_patterns):
@@ -75,7 +75,7 @@ def handle_exclude_include_walk_dir(root, dirname):
             continue
         if r.search(d):
             excluded = True
-            debug(u"EXCL-MATCH: '%s'" % (cfg.debug_exclude[r]))
+            debug(u"EXCL-MATCH: '%s'" % cfg.debug_exclude[r])
             break
     if excluded:
         ## No need to check for --include if not excluded
@@ -90,9 +90,9 @@ def handle_exclude_include_walk_dir(root, dirname):
                 break
     if excluded:
         ## Still excluded - ok, action it
-        debug(u"EXCLUDE: %r" % d)
+        debug(u"EXCLUDE: %s" % d)
     else:
-        debug(u"PASS: %r" % d)
+        debug(u"PASS: %s" % d)
     return excluded
 
 def _fswalk_follow_symlinks(path):
@@ -138,14 +138,14 @@ def filter_exclude_include(src_list):
         for r in cfg.exclude:
             if r.search(file):
                 excluded = True
-                debug(u"EXCL-MATCH: '%s'" % (cfg.debug_exclude[r]))
+                debug(u"EXCL-MATCH: '%s'" % cfg.debug_exclude[r])
                 break
         if excluded:
             ## No need to check for --include if not excluded
             for r in cfg.include:
                 if r.search(file):
                     excluded = False
-                    debug(u"INCL-MATCH: '%s'" % (cfg.debug_include[r]))
+                    debug(u"INCL-MATCH: '%s'" % cfg.debug_include[r])
                     break
         if excluded:
             ## Still excluded - ok, action it
@@ -154,7 +154,7 @@ def filter_exclude_include(src_list):
             del(src_list[file])
             continue
         else:
-            debug(u"PASS: %r" % (file))
+            debug(u"PASS: %s" % file)
     return src_list, exclude_list
 
 
