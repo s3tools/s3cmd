@@ -76,6 +76,13 @@ except ImportError:
     # python2 fallback code
     from distutils.spawn import find_executable as which
 
+if not PY3:
+    # ConnectionRefusedError does not exist in python2
+    class ConnectionError(OSError):
+        pass
+    class ConnectionRefusedError(ConnectionError):
+        pass
+
 
 def output(message):
     sys.stdout.write(message + "\n")
@@ -3327,6 +3334,11 @@ if __name__ == '__main__':
         sys.exit(EX_IOERR)
 
     except IOError as e:
+        if e.errno == errno.ECONNREFUSED:
+            # Python2 does not have ConnectionRefusedError
+            error(e)
+            sys.exit(EX_CONNECTIONREFUSED)
+
         if e.errno == errno.EPIPE:
             # Fail silently on SIGPIPE. This likely means we wrote to a closed
             # pipe and user does not care for any more output.
