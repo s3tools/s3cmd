@@ -117,6 +117,15 @@ Get a lifecycle policy for the bucket
 .TP
 s3cmd \fBdellifecycle\fR \fIs3://BUCKET\fR
 Remove a lifecycle policy for the bucket
+.TP
+s3cmd \fBsetnotification\fR \fIFILE s3://BUCKET\fR
+Upload a notification policy for the bucket
+.TP
+s3cmd \fBgetnotification\fR \fIs3://BUCKET\fR
+Get a notification policy for the bucket
+.TP
+s3cmd \fBdelnotification\fR \fIs3://BUCKET\fR
+Remove a notification policy for the bucket
 
 
 .PP
@@ -445,6 +454,11 @@ maximum is 5GB.
 Include MD5 sums in bucket listings (only for 'ls'
 command).
 .TP
+\fB\-\-list\-allow\-unordered\fR
+Not an AWS standard. Allow the listing results to be
+returned in unsorted order. This may be faster when
+listing very large buckets.
+.TP
 \fB\-H\fR, \fB\-\-human\-readable\-sizes\fR
 Print sizes in human readable form (eg 1kB instead of
 1234).
@@ -524,7 +538,7 @@ Enable verbose output.
 Enable debug output.
 .TP
 \fB\-\-version\fR
-Show s3cmd version (2.2.0) and exit.
+Show s3cmd version (2.3.0) and exit.
 .TP
 \fB\-F\fR, \fB\-\-follow\-symlinks\fR
 Follow symbolic links as if they are regular files

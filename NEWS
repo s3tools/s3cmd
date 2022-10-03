@@ -1,3 +1,24 @@
+s3cmd-2.3.0      - 2022-10-03
+===============
+* Added "getnotification", "setnotification", and "delnotification" commands for notification policies (hrchu)
+* Added support for AWS_STS_REGIONAL_ENDPOINTS (#1218, #1228) (Johan Lanzrein)
+* Added ConnectionRefused [111] exit code to handle connection errors (Salar Nosrati-Ershad)
+* Added support for IMDSv2. Should work automatically on ec2 (Anthony Foiani)
+* Added --list-allow-unordered to list objects unordered. Only supported by Ceph based s3-compatible services (#1269) (Salar Nosrati-Ershad)
+* Fixed --exclude dir behavior for python >= 3.6 (Daniil Tararukhin)
+* Fixed Cloudfront invalidate retry issue (Yuan-Hsiang Lee)
+* Fixed 0 byte cache files crashing s3cmd (#1234) (Carlos Laviola)
+* Fixed --continue behavior for the "get" command (#1009) (Anton Ustyugov)
+* Fixed unicode issue with fixbucket (#1259)
+* Fixed CannotSendRequest and ConnectionRefusedError errors at startup (#1261)
+* Fixed error reporting for object info when the object does not exist
+* Fixed "setup.py test" to do nothing to avoid failure that could be problematic for distribution packaging (#996)
+* Improved expire command to use Rule/Filter/Prefix for LifecycleConfiguration (#1247)
+* Improved PASS/CHECK/INCLUDE/EXCLUDE debug log messages
+* Improved setup.py with python 3.9 and 3.10 support info(Ori Avtalion)
+* Many other bug fixes
+
+
 s3cmd-2.2.0      - 2021-09-27
 ===============
 * Added support for metadata modification of files bigger than 5 GiB
