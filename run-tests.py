@@ -691,7 +691,7 @@ test_s3cmd("Exclude directory", ['put', '-r', 'testsuite/demo/', pbucket(1) + '/
            must_find = ["'testsuite/demo/dir2/file2-1.bin' -> '%s/xyz/demo/dir2/file2-1.bin'" % pbucket(1),
                         "DEBUG: EXCLUDE: 'testsuite/demo/dir1/'"],  # whole directory is excluded
            must_not_find = ["'testsuite/demo/dir1/file1-1.txt' -> '%s/xyz/demo/dir1/file1-1.txt'" % pbucket(1),
-                            "DEBUG: EXCLUDE: dir1/file1-1.txt"  # file is not synced, but also single file is not excluded
+                            "DEBUG: EXCLUDE: 'dir1/file1-1.txt'"  # file is not synced, but also single file is not excluded
                            ])
 
 ## ====== Don't Put symbolic link
