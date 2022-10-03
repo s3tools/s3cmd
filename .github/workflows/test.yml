@@ -28,17 +28,33 @@ jobs:
         with:
           path: ~/cache
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.cache-revision }}
+      - name: Cache certgen
+        id: cache-certgen
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-certgen
+        with:
+          path: ~/.minio/certs
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.cache-revision }}
       - name: Download minio on cache miss
         if: steps.cache-minio.outputs.cache-hit != 'true'
         run: |
           mkdir -p ~/cache
           test ! -e ~/cache/minio && wget -O ~/cache/minio https://dl.minio.io/server/minio/release/linux-amd64/minio || echo "Minio already in cache"
+      - name: Download certgen on cache miss
+        if: steps.cache-certgen.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/.minio/certs
+          test ! -e ~/.minio/certs/certgen && wget -O ~/.minio/certs/certgen https://github.com/minio/certgen/releases/download/v0.0.2/certgen-linux-amd64 || echo "Certgen already in cache"
+          chmod +x ~/.minio/certs/certgen
+          cd ~/.minio/certs
+          ~/.minio/certs/certgen -ca -host "localhost"
       - name: Start a local instance of minio
         run: |
           export AWS_ACCESS_KEY_ID=Q3AM3UQ867SPQQA43P2F
           export AWS_SECRET_ACCESS_KEY=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
-          export MINIO_ACCESS_KEY=Q3AM3UQ867SPQQA43P2F
-          export MINIO_SECRET_KEY=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
+          export MINIO_ROOT_USER=Q3AM3UQ867SPQQA43P2F
+          export MINIO_ROOT_PASSWORD=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
           chmod +x ~/cache/minio
           mkdir -p ~/minio_tmp
           ~/cache/minio server ~/minio_tmp &

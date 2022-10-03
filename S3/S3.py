@@ -8,17 +8,18 @@
 
 from __future__ import absolute_import, division
 
-import sys
-import os
-import time
 import errno
-import mimetypes
 import io
+import mimetypes
+import os
 import pprint
-from xml.sax import saxutils
+import sys
+import time
+from logging import debug, error, info, warning
 from socket import timeout as SocketTimeoutException
-from logging import debug, info, warning, error
 from stat import ST_SIZE
+from xml.sax import saxutils
+
 try:
     # python 3 support
     from urlparse import urlparse
@@ -26,10 +27,11 @@ except ImportError:
     from urllib.parse import urlparse
 try:
     # Python 2 support
-    from base64 import encodestring
+    from base64 import encodestring, b64encode
 except ImportError:
     # Python 3.9.0+ support
     from base64 import encodebytes as encodestring
+    from base64 import b64encode
 
 import select
 
@@ -38,26 +40,27 @@ try:
 except ImportError:
     from md5 import md5
 
-from .BaseUtils import (getListFromXml, getTextFromXml, getRootTagName,
-                        decode_from_s3, encode_to_s3, s3_quote)
-from .Utils import (convertHeaderTupleListToDict, hash_file_md5, unicodise,
-                    deunicodise, check_bucket_name,
-                    check_bucket_name_dns_support, getHostnameFromBucket,
-                    calculateChecksum)
-from .SortedDict import SortedDict
 from .AccessLog import AccessLog
 from .ACL import ACL, GranteeLogDelivery
+from .BaseUtils import (decode_from_s3, encode_to_s3, getListFromXml,
+                        getRootTagName, getTextFromXml, s3_quote)
 from .BidirMap import BidirMap
 from .Config import Config
+from .ConnMan import ConnMan
+from .Crypto import (checksum_sha256_buffer, checksum_sha256_file,
+                     format_param_str, sign_request_v2, sign_request_v4)
 from .Exceptions import *
 from .MultiPart import MultiPartUpload
 from .S3Uri import S3Uri
-from .ConnMan import ConnMan
-from .Crypto import (sign_request_v2, sign_request_v4, checksum_sha256_file,
-                     checksum_sha256_buffer, format_param_str)
+from .SortedDict import SortedDict
+from .Utils import (calculateChecksum, check_bucket_name,
+                    check_bucket_name_dns_support,
+                    convertHeaderTupleListToDict, deunicodise,
+                    getHostnameFromBucket, hash_file_md5, unicodise)
 
 try:
     from ctypes import ArgumentError
+
     import magic
     try:
         ## https://github.com/ahupp/python-magic
@@ -705,6 +708,14 @@ class S3(object):
             headers['x-amz-server-side-encryption'] = 'aws:kms'
             headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
 
+        if self.config.sse_customer_key:
+            sse_customer_key = encode_to_s3(self.config.sse_customer_key)
+            key_encoded = b64encode(sse_customer_key)
+            md5_encoded = b64encode(md5(sse_customer_key).digest())
+            headers["x-amz-server-side-encryption-customer-algorithm"] = "AES256"
+            headers["x-amz-server-side-encryption-customer-key"] = decode_from_s3(key_encoded)
+            headers["x-amz-server-side-encryption-customer-key-md5"] = decode_from_s3(md5_encoded)
+
         ## MIME-type handling
         headers["content-type"] = self.content_type(filename=filename)
 
@@ -759,10 +770,30 @@ class S3(object):
         response = self.send_file(request, src_stream, labels)
         return response
 
-    def object_get(self, uri, stream, dest_name, start_position = 0, extra_label = ""):
+    def object_get(self, uri, stream, dest_name, extra_headers, start_position = 0, extra_label = ""):
         if uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
-        request = self.create_request("OBJECT_GET", uri = uri)
+        headers = SortedDict(ignore_case=True)
+        if extra_headers:
+            headers.update(extra_headers)
+        ## Set server side encryption
+        if self.config.server_side_encryption:
+            headers["x-amz-server-side-encryption"] = "AES256"
+
+        ## Set kms headers
+        if self.config.kms_key:
+            headers['x-amz-server-side-encryption'] = 'aws:kms'
+            headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
+
+        if self.config.sse_customer_key:
+            sse_customer_key = encode_to_s3(self.config.sse_customer_key)
+            key_encoded = b64encode(sse_customer_key)
+            md5_encoded = b64encode(md5(sse_customer_key).digest())
+            headers["x-amz-server-side-encryption-customer-algorithm"] = "AES256"
+            headers["x-amz-server-side-encryption-customer-key"] = decode_from_s3(key_encoded)
+            headers["x-amz-server-side-encryption-customer-key-md5"] = decode_from_s3(md5_encoded)
+
+        request = self.create_request("OBJECT_GET", uri = uri, headers=headers)
         labels = { 'source' : uri.uri(), 'destination' : dest_name, 'extra' : extra_label }
         response = self.recv_file(request, stream, labels, start_position)
         return response
@@ -957,6 +988,14 @@ class S3(object):
             headers['x-amz-server-side-encryption'] = 'aws:kms'
             headers['x-amz-server-side-encryption-aws-kms-key-id'] = \
                 self.config.kms_key
+
+        if self.config.sse_copy_source_customer_key:
+            sse_copy_source_customer_key = encode_to_s3(self.config.sse_copy_source_customer_key)
+            key_encoded = b64encode(sse_copy_source_customer_key)
+            md5_encoded = b64encode(md5(sse_copy_source_customer_key).digest())
+            headers["x-amz-copy-source-server-side-encryption-customer-algorithm"] = "AES256"
+            headers["x-amz-copy-source-server-side-encryption-customer-key"] = decode_from_s3(key_encoded)
+            headers["x-amz-copy-source-server-side-encryption-customer-key-md5"] = decode_from_s3(md5_encoded)
 
         # Following meta data are not updated in simple COPY by aws.
         if extra_headers:
@@ -1863,19 +1902,32 @@ class S3(object):
             ## Non-recoverable error
             raise S3Error(response)
 
-        debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"].get('etag', '').strip('"\'')))
-        ## when using KMS encryption, MD5 etag value will not match
-        md5_from_s3 = response["headers"].get("etag", "").strip('"\'')
-        if ('-' not in md5_from_s3) and (md5_from_s3 != md5_hash.hexdigest()) and response["headers"].get("x-amz-server-side-encryption") != 'aws:kms':
-            warning("MD5 Sums don't match!")
-            if retries:
-                warning("Retrying upload of %s" % (filename))
-                return self.send_file(request, stream, labels, buffer, throttle,
-                                      retries - 1, offset, chunk_size, use_expect_continue)
+        if self.config.sse_customer_key:
+            if response["headers"]["x-amz-server-side-encryption-customer-key-md5"] != \
+                request.headers["x-amz-server-side-encryption-customer-key-md5"]:
+                warning("MD5 of customer key don't match!")
+                if retries:
+                    warning("Retrying upload of %s" % (filename))
+                    return self.send_file(request, stream, labels, buffer, throttle, retries - 1, offset, chunk_size)
+                else:
+                    warning("Too many failures. Giving up on '%s'" % (filename))
+                    raise S3UploadError
             else:
-                warning("Too many failures. Giving up on '%s'" % (filename))
-                raise S3UploadError("Too many failures. Giving up on '%s'"
-                                    % filename)
+                debug("Match of x-amz-server-side-encryption-customer-key-md5")
+        else:
+            debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"].get('etag', '').strip('"\'')))
+            ## when using KMS encryption, MD5 etag value will not match
+            md5_from_s3 = response["headers"].get("etag", "").strip('"\'')
+            if ('-' not in md5_from_s3) and (md5_from_s3 != md5_hash.hexdigest()) and response["headers"].get("x-amz-server-side-encryption") != 'aws:kms':
+                warning("MD5 Sums don't match!")
+                if retries:
+                    warning("Retrying upload of %s" % (filename))
+                    return self.send_file(request, stream, labels, buffer, throttle,
+                                        retries - 1, offset, chunk_size, use_expect_continue)
+                else:
+                    warning("Too many failures. Giving up on '%s'" % (filename))
+                    raise S3UploadError("Too many failures. Giving up on '%s'"
+                                        % filename)
 
         return response
 
