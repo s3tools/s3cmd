@@ -348,8 +348,8 @@ class S3(object):
         def _get_common_prefixes(data):
             return getListFromXml(data, "CommonPrefixes")
 
-        def _get_next_marker(data, current_list):
-            return getTextFromXml(response["data"], "NextMarker") or current_list[-1]["Key"]
+        def _get_next_marker(data, current_elts, key):
+            return getTextFromXml(response["data"], "NextMarker") or current_elts[-1][key]
 
         uri_params = uri_params and uri_params.copy() or {}
         truncated = True
@@ -372,9 +372,10 @@ class S3(object):
                 if limit == -1 or num_objects + num_prefixes < limit:
                     if current_list:
                         uri_params['marker'] = \
-                            _get_next_marker(response["data"], current_list)
+                            _get_next_marker(response["data"], current_list, "Key")
                     elif current_prefixes:
-                        uri_params['marker'] = current_prefixes[-1]["Prefix"]
+                        uri_params['marker'] = \
+                            _get_next_marker(response["data"], current_prefixes, "Prefix")
                     else:
                         # Unexpectedly, the server lied, and so the previous
                         # response was not truncated. So, no new key to get.
