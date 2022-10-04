@@ -3321,7 +3321,7 @@ if __name__ == '__main__':
         sys.exit(EX_ACCESSDENIED)
 
     except ConnectionRefusedError as e:
-        error(e)
+        error("Could not connect to server: %s" % e)
         sys.exit(EX_CONNECTIONREFUSED)
         # typically encountered error is:
         # ERROR: [Errno 111] Connection refused
@@ -3336,9 +3336,9 @@ if __name__ == '__main__':
         sys.exit(EX_IOERR)
 
     except IOError as e:
-        if e.errno == errno.ECONNREFUSED:
+        if e.errno in (errno.ECONNREFUSED, errno.EHOSTUNREACH):
             # Python2 does not have ConnectionRefusedError
-            error(e)
+            error("Could not connect to server: %s" % e)
             sys.exit(EX_CONNECTIONREFUSED)
 
         if e.errno == errno.EPIPE:
