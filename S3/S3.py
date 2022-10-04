@@ -1872,7 +1872,7 @@ class S3(object):
                 return self.send_file(request, stream, labels, buffer, throttle,
                                       retries - 1, offset, chunk_size, use_expect_continue)
             else:
-                warning("Too many failures. Giving up on '%s'" % (filename))
+                warning("Too many failures. Giving up on '%s'" % filename)
                 raise S3UploadError("Too many failures. Giving up on '%s'"
                                     % filename)
 
@@ -1899,7 +1899,7 @@ class S3(object):
         return self.send_file_multipart(src_uri, headers, dst_uri, size,
                                         extra_label)
 
-    def recv_file(self, request, stream, labels, start_position = 0, retries = _max_retries):
+    def recv_file(self, request, stream, labels, start_position=0, retries=_max_retries):
         self.update_region_inner_request(request)
 
         method_string, resource, headers = request.get_triplet()
@@ -1949,19 +1949,23 @@ class S3(object):
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 # Connection error -> same throttle value
-                return self.recv_file(request, stream, labels, start_position, retries - 1)
+                return self.recv_file(request, stream, labels, start_position,
+                                      retries=retries - 1)
             else:
                 raise S3DownloadError("Download failed for: %s" % resource['uri'])
 
+        if response["status"] < 200 or response["status"] > 299:
+            # In case of error, we still need to flush the read buffer to be able to re-use
+            # the connection
+            response['data'] = http_response.read()
+
         if response["status"] in [301, 307]:
             ## RedirectPermanent or RedirectTemporary
-            response['data'] = http_response.read()
             return self._http_redirection_handler(request, response,
                                                   self.recv_file, request,
                                                   stream, labels, start_position)
 
         if response["status"] == 400:
-            response['data'] = http_response.read()
             handler_fn = self._http_400_handler(request, response, self.recv_file,
                                                 request, stream, labels, start_position)
             if handler_fn:
@@ -1969,16 +1973,35 @@ class S3(object):
             raise S3Error(response)
 
         if response["status"] == 403:
-            response['data'] = http_response.read()
             return self._http_403_handler(request, response, self.recv_file,
                                           request, stream, labels, start_position)
 
-        if response["status"] == 405: # Method Not Allowed.  Don't retry.
-            response['data'] = http_response.read()
-            raise S3Error(response)
-
         if response["status"] < 200 or response["status"] > 299:
-            response['data'] = http_response.read()
+            try_retry = False
+            if response["status"] == 429:
+                # Not an AWS error, but s3 compatible server possible error:
+                # TooManyRequests/Busy/slowdown
+                try_retry = True
+
+            elif response["status"] == 503:
+                # SlowDown error
+                try_retry = True
+
+            if try_retry:
+                resource_uri = resource['uri']
+                if retries:
+                    retry_delay = self._fail_wait(retries)
+                    warning("Retrying failed request: %s (%s)"
+                            % (resource_uri, S3Error(response)))
+                    warning("Waiting %d sec..." % retry_delay)
+                    time.sleep(retry_delay)
+                    return self.recv_file(request, stream, labels, start_position,
+                                          retries=retries - 1)
+                else:
+                    warning("Too many failures. Giving up on '%s'" % resource_uri)
+                    raise S3DownloadError("Download failed for: %s" % resource_uri)
+
+            # Non-recoverable error
             raise S3Error(response)
 
         if start_position == 0:
@@ -2043,7 +2066,8 @@ class S3(object):
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 # Connection error -> same throttle value
-                return self.recv_file(request, stream, labels, current_position, retries - 1)
+                return self.recv_file(request, stream, labels, current_position,
+                                      retries=retries - 1)
             else:
                 raise S3DownloadError("Download failed for: %s" % resource['uri'])
 
