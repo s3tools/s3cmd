@@ -2899,6 +2899,8 @@ def main():
     optparser.add_option(      "--expiry-days", dest="expiry_days", action="store", help="Indicates the number of days after object creation the expiration rule takes effect. (only for [expire] command)")
     optparser.add_option(      "--expiry-prefix", dest="expiry_prefix", action="store", help="Identifying one or more objects with the prefix to which the expiration rule applies. (only for [expire] command)")
 
+    optparser.add_option(      "--skip-destination-validation", dest="skip_destination_validation", action="store_true", help="Skips validation of Amazon SQS, Amazon SNS, and AWS Lambda destinations when applying notification configuration. (only for [setnotification] command)")
+
     optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default on TTY).")
     optparser.add_option(      "--no-progress", dest="progress_meter", action="store_false", help="Don't display progress meter (default on non-TTY).")
     optparser.add_option(      "--stats", dest="stats", action="store_true", help="Give some file-transfer stats.")
