@@ -33,13 +33,8 @@ except ImportError:
 
 import select
 
-try:
-    from hashlib import md5
-except ImportError:
-    from md5 import md5
-
 from .BaseUtils import (getListFromXml, getTextFromXml, getRootTagName,
-                        decode_from_s3, encode_to_s3, s3_quote)
+                        decode_from_s3, encode_to_s3, md5, s3_quote)
 from .Utils import (convertHeaderTupleListToDict, hash_file_md5, unicodise,
                     deunicodise, check_bucket_name,
                     check_bucket_name_dns_support, getHostnameFromBucket,

@@ -14,7 +14,6 @@ import re
 import string as string_mod
 import random
 import errno
-from hashlib import md5
 from logging import debug
 
 
@@ -30,7 +29,7 @@ import S3.Config
 import S3.Exceptions
 
 from S3.BaseUtils import (base_urlencode_string, base_replace_nonprintables,
-                          base_unicodise, base_deunicodise)
+                          base_unicodise, base_deunicodise, md5)
 
 
 __all__ = []
