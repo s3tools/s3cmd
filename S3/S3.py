@@ -1835,6 +1835,10 @@ class S3(object):
                 if response["status"] == 503:
                     ## SlowDown error
                     throttle = throttle and throttle * 5 or 0.01
+                elif response["status"] == 507:
+                    # Not an AWS error, but s3 compatible server possible error:
+                    # InsufficientStorage
+                    try_retry = False
             elif response["status"] == 429:
                 # Not an AWS error, but s3 compatible server possible error:
                 # TooManyRequests/Busy/slowdown
