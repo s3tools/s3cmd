@@ -1850,9 +1850,10 @@ class S3(object):
                 if err.code in ['BadDigest', 'OperationAborted', 'TokenRefreshRequired', 'RequestTimeout']:
                     try_retry = True
 
+            err = S3Error(response)
             if try_retry:
                 if retries:
-                    warning("Upload failed: %s (%s)" % (resource['uri'], S3Error(response)))
+                    warning("Upload failed: %s (%s)" % (resource['uri'], err))
                     if throttle:
                         warning("Retrying on lower speed (throttle=%0.2f)" % throttle)
                     warning("Waiting %d sec..." % self._fail_wait(retries))
@@ -1861,11 +1862,10 @@ class S3(object):
                                           retries - 1, offset, chunk_size, use_expect_continue)
                 else:
                     warning("Too many failures. Giving up on '%s'" % filename)
-                    raise S3UploadError("Too many failures. Giving up on '%s'"
-                                        % filename)
+                    raise S3UploadError("%s" % err)
 
             ## Non-recoverable error
-            raise S3Error(response)
+            raise err
 
         debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"].get('etag', '').strip('"\'')))
         ## when using KMS encryption, MD5 etag value will not match
@@ -1878,8 +1878,7 @@ class S3(object):
                                       retries - 1, offset, chunk_size, use_expect_continue)
             else:
                 warning("Too many failures. Giving up on '%s'" % filename)
-                raise S3UploadError("Too many failures. Giving up on '%s'"
-                                    % filename)
+                raise S3UploadError("MD5 sums of sent and received files don't match!")
 
         return response
 
