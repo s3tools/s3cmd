@@ -249,6 +249,8 @@ class Config(object):
     # allow the listing results to be returned in unsorted order.
     # This may be faster when listing very large buckets.
     list_allow_unordered = False
+    # Maximum attempts of re-issuing failed requests
+    max_retries = 5
 
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None, access_token=None):

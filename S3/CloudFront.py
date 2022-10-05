@@ -334,8 +334,6 @@ class CloudFront(object):
         "GetInvalInfo" : { 'method' : "GET", 'resource' : "/%(dist_id)s/invalidation/%(request_id)s" },
     }
 
-    ## Maximum attempts of re-issuing failed requests
-    _max_retries = 5
     dist_list = None
 
     def __init__(self, config):
@@ -523,7 +521,9 @@ class CloudFront(object):
     ## Low-level methods for handling CloudFront requests
     ## --------------------------------------------------
 
-    def send_request(self, op_name, dist_id = None, request_id = None, body = None, headers = None, retries = _max_retries):
+    def send_request(self, op_name, dist_id = None, request_id = None, body = None, headers = None, retries = None):
+        if retries is None:
+            retries = self.config.max_retries
         if headers is None:
             headers = SortedDict(ignore_case = True)
         operation = self.operations[op_name]
@@ -600,7 +600,7 @@ class CloudFront(object):
 
     def _fail_wait(self, retries):
         # Wait a few seconds. The more it fails the more we wait.
-        return (self._max_retries - retries + 1) * 3
+        return (self.config.max_retries - retries + 1) * 3
 
     def get_dist_name_for_bucket(self, uri):
         if uri.type == "cf":

@@ -252,9 +252,6 @@ class S3(object):
         "BucketAlreadyExists" : "Bucket '%s' already exists",
     }
 
-    ## Maximum attempts of re-issuing failed requests
-    _max_retries = 5
-
     def __init__(self, config):
         self.config = config
         self.fallback_to_signature_v2 = False
@@ -1375,7 +1372,7 @@ class S3(object):
 
     def _fail_wait(self, retries):
         # Wait a few seconds. The more it fails the more we wait.
-        return (self._max_retries - retries + 1) * 3
+        return (self.config.max_retries - retries + 1) * 3
 
     def _http_redirection_handler(self, request, response, fn, *args, **kwargs):
         # Region info might already be available through the x-amz-bucket-region header
@@ -1499,7 +1496,9 @@ class S3(object):
                 debug("===== FAILED Inner request to determine the bucket "
                       "region =====")
 
-    def send_request(self, request, retries = _max_retries):
+    def send_request(self, request, retries=None):
+        if retries is None:
+            retries = self.config.max_retries
         self.update_region_inner_request(request)
 
         request.body = encode_to_s3(request.body)
@@ -1626,8 +1625,10 @@ class S3(object):
         return response
 
     def send_file(self, request, stream, labels, buffer = '', throttle = 0,
-                  retries = _max_retries, offset = 0, chunk_size = -1,
+                  retries = None, offset = 0, chunk_size = -1,
                   use_expect_continue = None):
+        if retries is None:
+            retries = self.config.max_retries
         self.update_region_inner_request(request)
 
         if use_expect_continue is None:
@@ -1899,7 +1900,9 @@ class S3(object):
         return self.send_file_multipart(src_uri, headers, dst_uri, size,
                                         extra_label)
 
-    def recv_file(self, request, stream, labels, start_position=0, retries=_max_retries):
+    def recv_file(self, request, stream, labels, start_position=0, retries=None):
+        if retries is None:
+            retries = self.config.max_retries
         self.update_region_inner_request(request)
 
         method_string, resource, headers = request.get_triplet()
