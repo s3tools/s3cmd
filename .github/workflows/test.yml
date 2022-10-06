@@ -44,8 +44,7 @@ jobs:
           ~/cache/minio server ~/minio_tmp &
           sleep 4 # give minio some time to start
       - name: Run tests
-        ## Tests stopped at test 23 because minio doesn't support "quote_plus" used in signatures.
-        run: python ./run-tests-minio.py -c .ci.s3cfg -p baseauto
+        run: python ./run-tests.py -c .ci.s3cfg -p baseauto -s minio
       - name: Terminate
         if: always()
         continue-on-error: true

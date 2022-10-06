@@ -27,6 +27,8 @@ except NameError:
     # In python 3, unicode -> str, and str -> bytes
     unicode = str
 
+ALLOWED_SERVER_PROFILES = ['aws', 'minio']
+
 count_pass = 0
 count_fail = 0
 count_skip = 0
@@ -148,7 +150,9 @@ if not os.path.isdir('testsuite/crappy-file-name'):
     # TODO: also unpack if the tarball is newer than the directory timestamp
     #       for instance when a new version was pulled from SVN.
 
-def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], must_find_re = [], must_not_find_re = [], stdin = None):
+def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [],
+         must_find_re = [], must_not_find_re = [], stdin = None,
+         skip_if_profile = None, skip_if_not_profile = None):
     def command_output():
         print("----")
         print(" ".join([" " in arg and "'%s'" % arg or arg for arg in cmd_args]))
@@ -196,6 +200,12 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [], 
         return skip()
 
     if not cmd_args:
+        return skip()
+
+    if skip_if_profile and server_profile in skip_if_profile:
+        return skip()
+
+    if skip_if_not_profile and server_profile not in skip_if_not_profile:
         return skip()
 
     p = Popen(cmd_args, stdin = stdin, stdout = PIPE, stderr = STDOUT, universal_newlines = True, close_fds = True)
@@ -290,6 +300,7 @@ def test_curl_HEAD(label, src_file, **kwargs):
     return test(label, cmd, **kwargs)
 
 bucket_prefix = u"%s-" % getpass.getuser().lower()
+server_profile = None
 
 argv = sys.argv[1:]
 while argv:
@@ -318,6 +329,17 @@ while argv:
             print("Bucket prefix option must explicitly supply a bucket name prefix")
             sys.exit(0)
         continue
+    if arg in ("-s", "--server-profile"):
+        try:
+            server_profile = argv.pop(0)
+            server_profile = server_profile.lower()
+        except IndexError:
+            print("Server profile option must explicitly supply a server profile name")
+            sys.exit(0)
+        if server_profile not in ALLOWED_SERVER_PROFILES:
+            print("Server profile value must be one of %r" % ALLOWED_SERVER_PROFILES)
+            sys.exit(0)
+        continue
     if ".." in arg:
         range_idx = arg.find("..")
         range_start = arg[:range_idx] or 0
@@ -331,6 +353,12 @@ while argv:
 print("Using bucket prefix: '%s'" % bucket_prefix)
 
 cfg = S3.Config.Config(config_file)
+
+# Autodetect server profile if not set:
+if server_profile is None:
+    if 's3.amazonaws.com' in cfg.host_base:
+        server_profile = 'aws'
+print("Using server profile: '%s'" % server_profile)
 
 if not run_tests:
     run_tests = range(0, 999)
@@ -521,29 +549,33 @@ test_s3cmd("Put public, guess MIME", ['put', '--guess-mime-type', '--acl-public'
 ## ====== Retrieve from URL
 if have_curl:
     test_curl_HEAD("Retrieve from URL", 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base),
-                   must_find_re = ['Content-Length: 22059'])
+                   must_find_re = ['Content-Length: 22059'],
+                   skip_if_profile = ['minio'])
 
 ## ====== Change ACL to Private
 test_s3cmd("Change ACL to Private", ['setacl', '--acl-private', '%s/xyz/etc/l*.png' % pbucket(1)],
-    must_find = [ "logo.png: ACL set to Private" ])
+           must_find = [ "logo.png: ACL set to Private" ],
+           skip_if_profile = ['minio'])
 
 
 ## ====== Verify Private ACL
 if have_curl:
     test_curl_HEAD("Verify Private ACL", 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base),
-                   must_find_re = [ '403 Forbidden' ])
+                   must_find_re = [ '403 Forbidden' ],
+                   skip_if_profile = ['minio'])
 
 
 ## ====== Change ACL to Public
 test_s3cmd("Change ACL to Public", ['setacl', '--acl-public', '--recursive', '%s/xyz/etc/' % pbucket(1) , '-v'],
-    must_find = [ "logo.png: ACL set to Public" ])
+           must_find = [ "logo.png: ACL set to Public" ],
+           skip_if_profile = ['minio'])
 
 
 ## ====== Verify Public ACL
 if have_curl:
     test_curl_HEAD("Verify Public ACL", 'http://%s.%s/xyz/etc/logo.png' % (bucket(1), cfg.host_base),
-                   must_find_re = [ '200 OK',
-                                    'Content-Length: 22059'])
+                   must_find_re = [ '200 OK', 'Content-Length: 22059'],
+                   skip_if_profile = ['minio'])
 
 
 ## ====== Sync more to S3
@@ -639,7 +671,13 @@ test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % p
 test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "MIME type:.*image/png",
                      "ACL:.*\*anon\*: READ",
-                     "URL:.*https?://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+                     "URL:.*https?://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ],
+           skip_if_profile = ['minio'])
+
+# Minio does not support ACL checks
+test_s3cmd("Verify MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+           must_find_re = ["MIME type:.*image/png"],
+           skip_if_not_profile = ['minio'])
 
 ## ====== modify MIME type
 test_s3cmd("Modify MIME type", ['modify', '--mime-type=binary/octet-stream', '%s/copy/etc2/Logo.PNG' % pbucket(2) ])
@@ -647,28 +685,44 @@ test_s3cmd("Modify MIME type", ['modify', '--mime-type=binary/octet-stream', '%s
 test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "MIME type:.*binary/octet-stream",
                      "ACL:.*\*anon\*: READ",
-                     "URL:.*https?://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+                     "URL:.*https?://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ],
+           skip_if_profile = ['minio'])
+
+# Minio does not support ACL checks
+test_s3cmd("Verify MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+           must_find_re = ["MIME type:.*binary/octet-stream"],
+           skip_if_not_profile = ['minio'])
+
+## ====== reset MIME type
 
 test_s3cmd("Modify MIME type back", ['modify', '--mime-type=image/png', '%s/copy/etc2/Logo.PNG' % pbucket(2) ])
 
 test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "MIME type:.*image/png",
                      "ACL:.*\*anon\*: READ",
-                     "URL:.*https?://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ])
+                     "URL:.*https?://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ],
+           skip_if_profile = ['minio'])
+
+# Minio does not support ACL checks
+test_s3cmd("Verify MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
+           must_find_re = ["MIME type:.*image/png"],
+           skip_if_not_profile = ['minio'])
 
 test_s3cmd("Add cache-control header", ['modify', '--add-header=cache-control: max-age=3600, public', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "modify: .*" ])
 
 if have_curl:
     test_curl_HEAD("HEAD check Cache-Control present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
-                   must_find_re = [ "Cache-Control: max-age=3600" ])
+                   must_find_re = [ "Cache-Control: max-age=3600" ],
+                   skip_if_profile = ['minio'])
 
 test_s3cmd("Remove cache-control header", ['modify', '--remove-header=cache-control', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
            must_find_re = [ "modify: .*" ])
 
 if have_curl:
     test_curl_HEAD("HEAD check Cache-Control not present", 'http://%s.%s/copy/etc2/Logo.PNG' % (bucket(2), cfg.host_base),
-                   must_not_find_re = [ "Cache-Control: max-age=3600" ])
+                   must_not_find_re = [ "Cache-Control: max-age=3600" ],
+                   skip_if_profile = ['minio'])
 
 ## ====== sign
 test_s3cmd("sign string", ['sign', 's3cmd'], must_find_re = ["Signature:"])
@@ -760,28 +814,33 @@ test_s3cmd("Create expiration rule with date only", ['expire', pbucket(1), '--ex
 
 ## ====== Get current expiration setting
 test_s3cmd("Get current expiration setting", ['info', pbucket(1)],
-    must_find = [ "Expiration Rule: all objects in this bucket will expire in '2020-12-31T00:00:00.000Z'"])
+    must_find_re = [ "Expiration Rule: all objects in this bucket will expire in '2020-12-31T00:00:00(?:.000)?Z'"])
 
 ## ====== Delete expiration rule
 test_s3cmd("Delete expiration rule", ['expire', pbucket(1)],
     must_find = [ "Bucket '%s/': expiration configuration is deleted." % pbucket(1)])
 
 ## ====== set Requester Pays flag
-test_s3cmd("Set requester pays", ['payer', '--requester-pays', pbucket(2)])
+test_s3cmd("Set requester pays", ['payer', '--requester-pays', pbucket(2)],
+           skip_if_profile=['minio'])
 
 ## ====== get Requester Pays flag
 test_s3cmd("Get requester pays flag", ['info', pbucket(2)],
-    must_find = [ "Payer:     Requester"])
+    must_find = [ "Payer:     Requester"],
+           skip_if_profile=['minio'])
 
 ## ====== ls using Requester Pays flag
-test_s3cmd("ls using requester pays flag", ['ls', '--requester-pays', pbucket(2)])
+test_s3cmd("ls using requester pays flag", ['ls', '--requester-pays', pbucket(2)],
+           skip_if_profile=['minio'])
 
 ## ====== clear Requester Pays flag
-test_s3cmd("Clear requester pays", ['payer', pbucket(2)])
+test_s3cmd("Clear requester pays", ['payer', pbucket(2)],
+           skip_if_profile=['minio'])
 
 ## ====== get Requester Pays flag
 test_s3cmd("Get requester pays flag", ['info', pbucket(2)],
-    must_find = [ "Payer:     BucketOwner"])
+    must_find = [ "Payer:     BucketOwner"],
+           skip_if_profile=['minio'])
 
 ## ====== Recursive delete maximum exceeed
 test_s3cmd("Recursive delete maximum exceeded", ['del', '--recursive', '--max-delete=1', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],
