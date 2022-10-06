@@ -407,17 +407,21 @@ class S3(object):
             headers.update(extra_headers)
 
         body = ""
-        if bucket_location and bucket_location.strip().upper() != "US" and bucket_location.strip().lower() != "us-east-1":
-            bucket_location = bucket_location.strip()
-            if bucket_location.upper() == "EU":
-                bucket_location = bucket_location.upper()
-            body  = "<CreateBucketConfiguration><LocationConstraint>"
-            body += bucket_location
-            body += "</LocationConstraint></CreateBucketConfiguration>"
-            debug("bucket_location: " + body)
-            check_bucket_name(bucket, dns_strict = True)
+        if self.config.bucket_name_quirks:
+            # We are explicitly not AWS
+            check_bucket_name(bucket, dns_strict = False, name_quirks = True)
         else:
-            check_bucket_name(bucket, dns_strict = False)
+            if bucket_location:
+                # We follow AWS rules
+                bucket_location = bucket_location.strip()
+                if bucket_location.upper() == "EU":
+                    bucket_location = bucket_location.upper()
+                body  = "<CreateBucketConfiguration><LocationConstraint>"
+                body += bucket_location
+                body += "</LocationConstraint></CreateBucketConfiguration>"
+                debug("bucket_location: " + body)
+            check_bucket_name(bucket, dns_strict = True, name_quirks = False)
+
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
 

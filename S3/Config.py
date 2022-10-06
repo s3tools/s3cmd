@@ -133,6 +133,8 @@ class Config(object):
     force = False
     server_side_encryption = False
     enable = None
+    # Used to allow colons in bucket names for Ceph compatibility
+    bucket_name_quirks = False
     get_continue = False
     put_continue = False
     upload_id = u""
