@@ -7,9 +7,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['2.7', '3.5', '3.6', '3.7', '3.8', '3.9', '3.10-dev']
+        python-version: ['2.7', '3.5', '3.6', '3.7', '3.8', '3.9', '3.10']
     env:
-      cache-revision: 1
+      cache-revision: 2
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -35,10 +35,9 @@ jobs:
           test ! -e ~/cache/minio && wget -O ~/cache/minio https://dl.minio.io/server/minio/release/linux-amd64/minio || echo "Minio already in cache"
       - name: Start a local instance of minio
         run: |
-          export AWS_ACCESS_KEY_ID=Q3AM3UQ867SPQQA43P2F
-          export AWS_SECRET_ACCESS_KEY=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
-          export MINIO_ACCESS_KEY=Q3AM3UQ867SPQQA43P2F
-          export MINIO_SECRET_KEY=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
+          export MINIO_ROOT_USER=Q3AM3UQ867SPQQA43P2F
+          export MINIO_ROOT_PASSWORD=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
+          export export MINIO_BROWSER=off
           chmod +x ~/cache/minio
           mkdir -p ~/minio_tmp
           ~/cache/minio server ~/minio_tmp &
