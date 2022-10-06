@@ -390,8 +390,9 @@ test_s3cmd("Sync to S3", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude
 
 ## ====== Create new file and sync with caching enabled
 test_mkdir("Create cache dir", "testsuite/cachetest/content")
-with open("testsuite/cachetest/content/testfile", "w"):
-    pass
+if os.path.exists("testsuite/cachetest"):
+    with open("testsuite/cachetest/content/testfile", "w"):
+        pass
 
 test_s3cmd("Sync to S3 with caching", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude', 'demo/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings', '--exclude', 'cachetest/.s3cmdcache', '--cache-file', 'testsuite/cachetest/.s3cmdcache' ],
           must_find = "upload: 'testsuite/cachetest/content/testfile' -> '%s/xyz/cachetest/content/testfile'" % pbucket(1),
