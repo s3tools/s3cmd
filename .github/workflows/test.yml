@@ -11,9 +11,9 @@ jobs:
     env:
       cache-revision: 2
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -22,7 +22,7 @@ jobs:
           pip install .
       - name: Cache minio
         id: cache-minio
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         env:
           cache-name: cache-minio
         with:
