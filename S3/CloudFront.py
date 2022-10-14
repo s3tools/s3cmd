@@ -11,6 +11,7 @@ from __future__ import absolute_import
 import sys
 import time
 import random
+from collections import defaultdict
 from datetime import datetime
 from logging import debug, info, warning, error
 
@@ -22,6 +23,7 @@ except ImportError:
 from .S3 import S3
 from .Config import Config
 from .Exceptions import CloudFrontError, ParameterError
+from .ExitCodes import EX_OK, EX_GENERAL, EX_PARTIAL
 from .BaseUtils import (getTreeFromXml, appendXmlTextNode, getDictFromTree,
                         dateS3toPython, encode_to_s3, decode_from_s3)
 from .Utils import (getBucketFromHostname, getHostnameFromBucket, deunicodise, convertHeaderTupleListToDict)
@@ -815,5 +817,91 @@ class Cmd(object):
             pretty_output("Nr of paths", nr_of_paths)
             pretty_output("Reference", st['InvalidationBatch']['CallerReference'])
             output("")
+
+    @staticmethod
+    def invalidate(args):
+        cfg = Config()
+        cf = CloudFront(cfg)
+        s3 = S3(cfg)
+
+        bucket_paths = defaultdict(list)
+        for arg in args:
+            uri = S3Uri(arg)
+            uobject = uri.object()
+            if not uobject:
+                # If object is not defined, we want to invalidate the whole bucket
+                uobject = '*'
+            elif uobject[-1] == '/':
+                # If object is folder (ie prefix), we want to invalidate the whole content
+                uobject += '*'
+            bucket_paths[uri.bucket()].append(uobject)
+
+        ret = EX_OK
+
+        params = []
+        for bucket, paths in bucket_paths.items():
+            base_uri = S3Uri(u's3://%s' % bucket)
+            cfuri = next(iter(cf.get_dist_name_for_bucket(base_uri)))
+
+            default_index_file = None
+            if cfg.invalidate_default_index_on_cf or cfg.invalidate_default_index_root_on_cf:
+                info_response = s3.website_info(base_uri, cfg.bucket_location)
+                if info_response:
+                    default_index_file = info_response['index_document']
+                    if not default_index_file:
+                        default_index_file = None
+
+            if cfg.dry_run:
+                fulluri_paths = [S3UriS3.compose_uri(bucket, path) for path in paths]
+                output(u"[--dry-run] Would invalidate %r" % fulluri_paths)
+                continue
+            params.append((bucket, paths, base_uri, cfuri, default_index_file))
+
+        if cfg.dry_run:
+            warning(u"Exiting now because of --dry-run")
+            return EX_OK
+
+        nb_success = 0
+        first = True
+        for bucket, paths, base_uri, cfuri, default_index_file in params:
+            if not first:
+                output("")
+            else:
+                first = False
+
+            results = cf.InvalidateObjects(
+                cfuri, paths, default_index_file,
+                cfg.invalidate_default_index_on_cf, cfg.invalidate_default_index_root_on_cf
+            )
+
+            dist_id = cfuri.dist_id()
+            pretty_output("URI", str(base_uri))
+            pretty_output("DistId", dist_id)
+            pretty_output("Nr of paths", len(paths))
+
+            for result in results:
+                result_code = result['status']
+
+                if result_code != 201:
+                    pretty_output("Status", "Failed: %d" % result_code)
+                    ret = EX_GENERAL
+                    continue
+
+                request_id = result['request_id']
+                nb_success += 1
+
+                pretty_output("Status", "Created")
+                pretty_output("RequestId", request_id)
+                pretty_output("Info", u"Check progress with: s3cmd cfinvalinfo %s/%s"
+                              % (dist_id, request_id))
+
+            if ret != EX_OK and cfg.stop_on_error:
+                error(u"Exiting now because of --stop-on-error")
+                break
+
+        if ret != EX_OK and nb_success:
+            ret = EX_PARTIAL
+
+        return ret
 
 # vim:et:ts=4:sts=4:ai
