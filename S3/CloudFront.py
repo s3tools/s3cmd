@@ -545,8 +545,7 @@ class CloudFront(object):
         if response["status"] >= 500:
             e = CloudFrontError(response)
             if retries:
-                warning(u"Retrying failed request: %s" % op_name)
-                warning(unicode(e))
+                warning(u"Retrying failed request: %s (%s)" % (op_name, e))
                 warning("Waiting %d sec..." % self._fail_wait(retries))
                 time.sleep(self._fail_wait(retries))
                 return self.send_request(op_name, dist_id, body = body, retries = retries - 1)
