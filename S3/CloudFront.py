@@ -21,7 +21,7 @@ except ImportError:
 
 from .S3 import S3
 from .Config import Config
-from .Exceptions import *
+from .Exceptions import CloudFrontError, ParameterError
 from .BaseUtils import (getTreeFromXml, appendXmlTextNode, getDictFromTree,
                         dateS3toPython, encode_to_s3, decode_from_s3)
 from .Utils import (getBucketFromHostname, getHostnameFromBucket, deunicodise,

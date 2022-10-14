@@ -65,7 +65,7 @@ class S3Exception(Exception):
     message = property(_get_message, _set_message)
 
 
-class S3Error (S3Exception):
+class S3Error(S3Exception):
     def __init__(self, response):
         self.status = response["status"]
         self.reason = response["reason"]
