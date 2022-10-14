@@ -24,8 +24,7 @@ from .Config import Config
 from .Exceptions import CloudFrontError, ParameterError
 from .BaseUtils import (getTreeFromXml, appendXmlTextNode, getDictFromTree,
                         dateS3toPython, encode_to_s3, decode_from_s3)
-from .Utils import (getBucketFromHostname, getHostnameFromBucket, deunicodise,
-                    urlencode_string, convertHeaderTupleListToDict)
+from .Utils import (getBucketFromHostname, getHostnameFromBucket, deunicodise, convertHeaderTupleListToDict)
 from .Crypto import sign_string_v2
 from .S3Uri import S3Uri, S3UriS3
 from .ConnMan import ConnMan
@@ -306,7 +305,7 @@ class InvalidationBatch(object):
         for path in self.paths:
             if len(path) < 1 or path[0] != "/":
                 path = "/" + path
-            appendXmlTextNode("Path", urlencode_string(path), tree)
+            appendXmlTextNode("Path", path, tree)
         appendXmlTextNode("CallerReference", self.reference, tree)
         return tree
 
