@@ -24,21 +24,14 @@ try:
     from urlparse import urlparse
 except ImportError:
     from urllib.parse import urlparse
-try:
-    # Python 2 support
-    from base64 import encodestring
-except ImportError:
-    # Python 3.9.0+ support
-    from base64 import encodebytes as encodestring
 
 import select
 
 from .BaseUtils import (getListFromXml, getTextFromXml, getRootTagName,
                         decode_from_s3, encode_to_s3, md5, s3_quote)
-from .Utils import (convertHeaderTupleListToDict, hash_file_md5, unicodise,
+from .Utils import (convertHeaderTupleListToDict, unicodise,
                     deunicodise, check_bucket_name,
-                    check_bucket_name_dns_support, getHostnameFromBucket,
-                    calculateChecksum)
+                    check_bucket_name_dns_support, getHostnameFromBucket)
 from .SortedDict import SortedDict
 from .AccessLog import AccessLog
 from .ACL import ACL, GranteeLogDelivery
@@ -49,7 +42,8 @@ from .MultiPart import MultiPartUpload
 from .S3Uri import S3Uri
 from .ConnMan import ConnMan
 from .Crypto import (sign_request_v2, sign_request_v4, checksum_sha256_file,
-                     checksum_sha256_buffer, format_param_str)
+                     checksum_sha256_buffer, generate_content_md5,
+                     hash_file_md5, calculateChecksum, format_param_str)
 
 try:
     from ctypes import ArgumentError
@@ -599,7 +593,7 @@ class S3(object):
         body += '</LifecycleConfiguration>'
 
         headers = SortedDict(ignore_case = True)
-        headers['content-md5'] = compute_content_md5(body)
+        headers['content-md5'] = generate_content_md5(body)
         bucket = uri.bucket()
         request =  self.create_request("BUCKET_CREATE", bucket = bucket,
                                        headers = headers, body = body,
@@ -788,7 +782,7 @@ class S3(object):
             raise ValueError("Key list is empty")
         bucket = S3Uri(batch[0]).bucket()
         request_body = compose_batch_del_xml(bucket, batch)
-        headers = SortedDict({'content-md5': compute_content_md5(request_body),
+        headers = SortedDict({'content-md5': generate_content_md5(request_body),
                    'content-type': 'application/xml'}, ignore_case=True)
         request = self.create_request("BATCH_DELETE", bucket = bucket,
                                       headers = headers, body = request_body,
@@ -1097,7 +1091,7 @@ class S3(object):
         headers = SortedDict(ignore_case = True)
         # TODO check cors is proper json string
         headers['content-type'] = 'application/xml'
-        headers['content-md5'] = compute_content_md5(cors)
+        headers['content-md5'] = generate_content_md5(cors)
         request = self.create_request("BUCKET_CREATE", uri = uri,
                                       headers=headers, body = cors,
                                       uri_params = {'cors': None})
@@ -1113,7 +1107,7 @@ class S3(object):
 
     def set_lifecycle_policy(self, uri, policy):
         headers = SortedDict(ignore_case = True)
-        headers['content-md5'] = compute_content_md5(policy)
+        headers['content-md5'] = generate_content_md5(policy)
         request = self.create_request("BUCKET_CREATE", uri = uri,
                                       headers=headers, body = policy,
                                       uri_params = {'lifecycle': None})
@@ -2132,11 +2126,4 @@ def parse_attrs_header(attrs_header):
         attrs[key] = val
     return attrs
 
-def compute_content_md5(body):
-    m = md5(encode_to_s3(body))
-    base64md5 = encodestring(m.digest())
-    base64md5 = decode_from_s3(base64md5)
-    if base64md5[-1] == '\n':
-        base64md5 = base64md5[0:-1]
-    return decode_from_s3(base64md5)
 # vim:et:ts=4:sts=4:ai

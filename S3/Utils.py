@@ -100,19 +100,6 @@ def mktmpfile(prefix = os.getenv('TMP','/tmp') + "/tmpfile-", randchars = 20):
 __all__.append("mktmpfile")
 
 
-def hash_file_md5(filename):
-    h = md5()
-    with open(deunicodise(filename), "rb") as fp:
-        while True:
-            # Hash 32kB chunks
-            data = fp.read(32*1024)
-            if not data:
-                break
-            h.update(data)
-    return h.hexdigest()
-__all__.append("hash_file_md5")
-
-
 def mkdir_with_parents(dir_name):
     """
     mkdir_with_parents(dst_dir)
@@ -306,24 +293,6 @@ __all__.append("getBucketFromHostname")
 def getHostnameFromBucket(bucket):
     return S3.Config.Config().host_bucket.lower() % { 'bucket' : bucket }
 __all__.append("getHostnameFromBucket")
-
-
-def calculateChecksum(buffer, mfile, offset, chunk_size, send_chunk):
-    md5_hash = md5()
-    size_left = chunk_size
-    if buffer == '':
-        mfile.seek(offset)
-        while size_left > 0:
-            data = mfile.read(min(send_chunk, size_left))
-            if not data:
-                break
-            md5_hash.update(data)
-            size_left -= len(data)
-    else:
-        md5_hash.update(buffer)
-
-    return md5_hash.hexdigest()
-__all__.append("calculateChecksum")
 
 
 # Deal with the fact that pwd and grp modules don't exist for Windows

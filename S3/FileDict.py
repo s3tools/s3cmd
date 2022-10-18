@@ -10,6 +10,7 @@ from __future__ import absolute_import
 
 import logging
 from .SortedDict import SortedDict
+from .Crypto import hash_file_md5
 from . import Utils
 from . import Config
 
@@ -45,7 +46,7 @@ class FileDict(SortedDict):
         md5 = self.get_hardlink_md5(relative_file)
         if md5 is None and 'md5' in cfg.sync_checks:
             logging.debug(u"doing file I/O to read md5 of %s" % relative_file)
-            md5 = Utils.hash_file_md5(self[relative_file]['full_name'])
+            md5 = hash_file_md5(self[relative_file]['full_name'])
         self.record_md5(relative_file, md5)
         self[relative_file]['md5'] = md5
         return md5

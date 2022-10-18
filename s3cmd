@@ -2281,7 +2281,7 @@ def cmd_accesslog(args):
 def cmd_sign(args):
     string_to_sign = args.pop()
     debug(u"string-to-sign: %r" % string_to_sign)
-    signature = Crypto.sign_string_v2(encode_to_s3(string_to_sign))
+    signature = sign_string_v2(encode_to_s3(string_to_sign))
     output(u"Signature: %s" % decode_from_s3(signature))
     return EX_OK
 
@@ -2291,7 +2291,7 @@ def cmd_signurl(args):
     if url_to_sign.type != 's3':
         raise ParameterError("Must be S3Uri. Got: %s" % url_to_sign)
     debug("url to sign: %r" % url_to_sign)
-    signed_url = Crypto.sign_url_v2(url_to_sign, expiry)
+    signed_url = sign_url_v2(url_to_sign, expiry)
     output(signed_url)
     return EX_OK
 
@@ -2527,9 +2527,9 @@ def run_configure(config_file, args):
                         ret_enc = gpg_encrypt(filename)
                         ret_dec = gpg_decrypt(ret_enc[1], ret_enc[2], False)
                         hash = [
-                            Utils.hash_file_md5(filename),
-                            Utils.hash_file_md5(ret_enc[1]),
-                            Utils.hash_file_md5(ret_dec[1]),
+                            hash_file_md5(filename),
+                            hash_file_md5(ret_enc[1]),
+                            hash_file_md5(ret_dec[1]),
                         ]
                         os.unlink(deunicodise(filename))
                         os.unlink(deunicodise(ret_enc[1]))
@@ -3270,9 +3270,9 @@ if __name__ == '__main__':
         from S3.FileDict import FileDict
         from S3.S3Uri import S3Uri
         from S3 import Utils
-        from S3 import Crypto
         from S3.BaseUtils import (formatDateTime, getPrettyFromXml,
                                   encode_to_s3, decode_from_s3)
+        from S3.Crypto import hash_file_md5, sign_string_v2, sign_url_v2
         from S3.Utils import (formatSize, unicodise_safe, unicodise_s,
                               unicodise, deunicodise, replace_nonprintables)
         from S3.Progress import Progress, StatsInfo
