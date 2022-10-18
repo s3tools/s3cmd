@@ -251,12 +251,9 @@ def sign_request_v4(method='GET', host='', canonical_uri='/', params=None,
     return new_headers
 __all__.append("sign_request_v4")
 
+
 def checksum_sha256_file(filename, offset=0, size=None):
-    try:
-        hash = sha256()
-    except Exception:
-        # fallback to Crypto SHA256 module
-        hash = sha256.new()
+    hash = sha256()
     with open(deunicodise(filename),'rb') as f:
         if size is None:
             for chunk in iter(lambda: f.read(8192), b''):
@@ -272,15 +269,15 @@ def checksum_sha256_file(filename, offset=0, size=None):
                 hash.update(chunk)
 
     return hash
+__all__.append("checksum_sha256_file")
+
 
 def checksum_sha256_buffer(buffer, offset=0, size=None):
-    try:
-        hash = sha256()
-    except Exception:
-        # fallback to Crypto SHA256 module
-        hash = sha256.new()
+    hash = sha256()
     if size is None:
         hash.update(buffer)
     else:
         hash.update(buffer[offset:offset+size])
     return hash
+__all__.append("checksum_sha256_buffer")
+
