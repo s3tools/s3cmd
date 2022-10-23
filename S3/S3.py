@@ -319,10 +319,10 @@ class S3(object):
         response["list"] = getListFromXml(response["data"], "Bucket")
         return response
 
-    def bucket_list(self, bucket, prefix = None, recursive = None, uri_params = None, limit = -1):
+    def bucket_list(self, bucket, prefix = None, recursive = None, uri_params = None, marker=None, limit = -1):
         item_list = []
         prefixes = []
-        for truncated, dirs, objects in self.bucket_list_streaming(bucket, prefix, recursive, uri_params, limit):
+        for truncated, dirs, objects in self.bucket_list_streaming(bucket, prefix, recursive, uri_params, marker, limit):
             item_list.extend(objects)
             prefixes.extend(dirs)
 
@@ -332,7 +332,7 @@ class S3(object):
         response['truncated'] = truncated
         return response
 
-    def bucket_list_streaming(self, bucket, prefix = None, recursive = None, uri_params = None, limit = -1):
+    def bucket_list_streaming(self, bucket, prefix = None, recursive = None, uri_params = None, marker=None, limit = -1):
         """ Generator that produces <dir_list>, <object_list> pairs of groups of content of a specified bucket. """
         def _list_truncated(data):
             ## <IsTruncated> can either be "true" or "false" or be missing completely
@@ -355,6 +355,10 @@ class S3(object):
         num_objects = 0
         num_prefixes = 0
         max_keys = limit
+
+        if marker:
+            uri_params['marker']=marker
+
         while truncated:
             response = self.bucket_list_noparse(bucket, prefix, recursive,
                                                 uri_params, max_keys)
