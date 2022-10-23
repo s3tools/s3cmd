@@ -211,9 +211,11 @@ def subcmd_bucket_list(s3, uri, limit):
         # %(size)5s%(coeff)1s
         format_size = u"%5d%1s"
         dir_str = u"DIR".rjust(6)
+        dirobj_str = u"DIROBJ".rjust(6)
     else:
         format_size = u"%12d%s"
         dir_str = u"DIR".rjust(12)
+        dirobj_str = u"DIROBJ".rjust(12)
     if cfg.long_listing:
         format_string = u"%(timestamp)16s %(size)s  %(md5)-35s  %(storageclass)-11s  %(uri)s"
     elif cfg.list_md5:
@@ -232,24 +234,29 @@ def subcmd_bucket_list(s3, uri, limit):
     for object in response["list"]:
         md5 = object.get('ETag', '').strip('"\'')
         storageclass = object.get('StorageClass','')
+        object_key = object['Key']
 
         if cfg.list_md5:
             if '-' in md5: # need to get md5 from the object
-                object_uri = uri.compose_uri(bucket, object["Key"])
+                object_uri = uri.compose_uri(bucket, object_key)
                 info_response = s3.object_info(S3Uri(object_uri))
                 try:
                     md5 = info_response['s3cmd-attrs']['md5']
                 except KeyError:
                     pass
 
-        size_and_coeff = formatSize(object["Size"],
-                                    Config().human_readable_sizes)
+        if object_key[-1] == '/':
+            size_str = dirobj_str
+        else:
+            size_and_coeff = formatSize(object["Size"], Config().human_readable_sizes)
+            size_str = format_size % size_and_coeff
+
         output(format_string % {
             "timestamp": formatDateTime(object["LastModified"]),
-            "size" : format_size % size_and_coeff,
+            "size" : size_str,
             "md5" : md5,
             "storageclass" : storageclass,
-            "uri": uri.compose_uri(bucket, object["Key"]),
+            "uri": uri.compose_uri(bucket, object_key),
             })
 
     if response["truncated"]:
