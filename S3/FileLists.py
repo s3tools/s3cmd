@@ -403,7 +403,6 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
         ## { 'xyz/blah.txt' : {} }
 
         info(u"Retrieving list of remote files for %s ..." % remote_uri)
-        empty_fname_re = re.compile(r'\A\s*\Z')
 
         total_size = 0
 
@@ -429,7 +428,8 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
             else:
                 key = object['Key'][rem_base_len:]      ## Beware - this may be '' if object['Key']==rem_base !!
                 object_uri_str = remote_uri.uri() + key
-            if empty_fname_re.match(key):
+
+            if not key:
                 # Objects may exist on S3 with empty names (''), which don't map so well to common filesystems.
                 warning(u"Empty object name on S3 found, ignoring.")
                 continue
