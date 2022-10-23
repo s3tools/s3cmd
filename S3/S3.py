@@ -18,7 +18,7 @@ import pprint
 from xml.sax import saxutils
 from socket import timeout as SocketTimeoutException
 from logging import debug, info, warning, error
-from stat import ST_SIZE
+from stat import ST_SIZE, ST_MODE, S_ISDIR, S_ISREG
 try:
     # python 3 support
     from urlparse import urlparse
@@ -665,21 +665,34 @@ class S3(object):
         if uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 
-        if filename != "-" and not os.path.isfile(deunicodise(filename)):
-            raise InvalidFileError(u"Not a regular file")
         try:
+            size = 0
             if filename == "-":
+                is_stream = True
                 src_stream = io.open(sys.stdin.fileno(), mode='rb', closefd=False)
                 src_stream.stream_name = u'<stdin>'
-                size = 0
+
             else:
-                src_stream = io.open(deunicodise(filename), mode='rb')
+                is_stream = False
+                filename_bytes = deunicodise(filename)
+
+                stat = os.stat(filename_bytes)
+                mode = stat[ST_MODE]
+
+                if S_ISDIR(mode):
+                    # Dirs are represented as empty objects on S3
+                    src_stream = io.BytesIO(b'')
+                elif not S_ISREG(mode):
+                    raise InvalidFileError(u"Not a regular file")
+                else:
+                    # Standard normal file
+                    src_stream = io.open(filename_bytes, mode='rb')
+                    size = stat[ST_SIZE]
                 src_stream.stream_name = filename
-                size = os.stat(deunicodise(filename))[ST_SIZE]
         except (IOError, OSError) as e:
             raise InvalidFileError(u"%s" % e.strerror)
 
-        headers = SortedDict(ignore_case = True)
+        headers = SortedDict(ignore_case=True)
         if extra_headers:
             headers.update(extra_headers)
 
@@ -702,10 +715,10 @@ class S3(object):
 
         ## Multipart decision
         multipart = False
-        if not self.config.enable_multipart and filename == "-":
+        if not self.config.enable_multipart and is_stream:
             raise ParameterError("Multi-part upload is required to upload from stdin")
         if self.config.enable_multipart:
-            if size > self.config.multipart_chunk_size_mb * SIZE_1MB or filename == "-":
+            if size > self.config.multipart_chunk_size_mb * SIZE_1MB or is_stream:
                 multipart = True
                 if size > self.config.multipart_max_chunks * self.config.multipart_chunk_size_mb * SIZE_1MB:
                     raise ParameterError("Chunk size %d MB results in more than %d chunks. Please increase --multipart-chunk-size-mb" % \
@@ -1645,7 +1658,7 @@ class S3(object):
         if buffer:
             sha256_hash = checksum_sha256_buffer(buffer, offset, size_total)
         else:
-            sha256_hash = checksum_sha256_file(filename, offset, size_total)
+            sha256_hash = checksum_sha256_file(stream, offset, size_total)
         request.body = sha256_hash
 
         if use_expect_continue:

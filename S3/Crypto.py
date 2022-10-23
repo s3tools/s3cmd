@@ -18,7 +18,7 @@ except ImportError:
 
 from . import Config
 from logging import debug
-from .BaseUtils import encode_to_s3, decode_from_s3, s3_quote, md5
+from .BaseUtils import encode_to_s3, decode_from_s3, s3_quote, md5, unicode
 from .Utils import time_to_epoch, deunicodise, check_bucket_name_dns_support
 from .SortedDict import SortedDict
 
@@ -261,23 +261,35 @@ def sign_request_v4(method='GET', host='', canonical_uri='/', params=None,
 __all__.append("sign_request_v4")
 
 
-def checksum_sha256_file(filename, offset=0, size=None):
-    hash = sha256()
-    with open(deunicodise(filename),'rb') as f:
-        if size is None:
-            for chunk in iter(lambda: f.read(8192), b''):
-                hash.update(chunk)
-        else:
-            f.seek(offset)
-            size_left = size
-            while size_left > 0:
-                chunk = f.read(min(8192, size_left))
-                if not chunk:
-                    break
-                size_left -= len(chunk)
-                hash.update(chunk)
+def checksum_file_descriptor(file_desc, offset=0, size=None, hash_func=sha256):
+    hash = hash_func()
+
+    if size is None:
+        for chunk in iter(lambda: file_desc.read(8192), b''):
+            hash.update(chunk)
+    else:
+        file_desc.seek(offset)
+        size_left = size
+        while size_left > 0:
+            chunk = file_desc.read(min(8192, size_left))
+            if not chunk:
+                break
+            size_left -= len(chunk)
+            hash.update(chunk)
 
     return hash
+__all__.append("checksum_file_stream")
+
+
+def checksum_sha256_file(file, offset=0, size=None):
+    if not isinstance(file, unicode):
+        # file is directly a file descriptor
+        return checksum_file_descriptor(file, offset, size, sha256)
+
+    # Otherwise, we expect file to be a filename
+    with open(deunicodise(file),'rb') as fp:
+        return checksum_file_descriptor(fp, offset, size, sha256)
+
 __all__.append("checksum_sha256_file")
 
 

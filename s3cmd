@@ -403,7 +403,8 @@ def cmd_object_put(args):
     if len(args) == 0:
         raise ParameterError("Nothing to upload. Expecting a local file or directory.")
 
-    local_list, single_file_local, exclude_list, total_size_local = fetch_local_list(args, is_src = True)
+    local_list, single_file_local, exclude_list, total_size_local = fetch_local_list(
+        args, is_src=True, with_dirs=cfg.keep_dirs)
 
     local_count = len(local_list)
 
@@ -570,7 +571,8 @@ def cmd_object_get(args):
                 local_filename = destination_base + key
                 if os.path.sep != "/":
                     local_filename = os.path.sep.join(local_filename.split("/"))
-                remote_list[key]['local_filename'] = local_filename
+                remote_obj = remote_list[key]
+                remote_obj['local_filename'] = local_filename
 
     if cfg.dry_run:
         for key in exclude_list:
@@ -589,8 +591,14 @@ def cmd_object_get(args):
         uri = S3Uri(item['object_uri_str'])
         ## Encode / Decode destination with "replace" to make sure it's compatible with current encoding
         destination = unicodise_safe(item['local_filename'])
+        destination_bytes = deunicodise(destination)
+        last_modified_ts = item['timestamp']
+
         seq_label = "[%d of %d]" % (seq, remote_count)
 
+        is_dir_obj = item['is_dir']
+
+        response = None
         start_position = 0
 
         if destination == "-":
@@ -598,26 +606,47 @@ def cmd_object_get(args):
             dst_stream = io.open(sys.__stdout__.fileno(), mode='wb', closefd=False)
             dst_stream.stream_name = u'<stdout>'
             file_exists = True
+        elif is_dir_obj:
+            ## Folder
+            try:
+                file_exists = os.path.exists(destination_bytes)
+                if not file_exists:
+                    info(u"Creating directory: %s" % destination)
+                    os.makedirs(destination_bytes)
+            except IOError as e:
+                # If dir was created at the same time by a race condition, it is ok.
+                if e.errno != errno.EEXIST:
+                    error(u"Creation of directory '%s' failed (Reason: %s)"
+                        % (destination, e.strerror))
+                    if cfg.stop_on_error:
+                        error(u"Exiting now because of --stop-on-error")
+                        raise
+                    ret = EX_PARTIAL
+                    continue
+            if file_exists and not cfg.force:
+                # Directory already exists and we don't want to update metadata
+                continue
+            dst_stream = None
         else:
             ## File
             try:
-                file_exists = os.path.exists(deunicodise(destination))
+                file_exists = os.path.exists(destination_bytes)
                 try:
-                    dst_stream = io.open(deunicodise(destination), mode='ab')
+                    dst_stream = io.open(destination_bytes, mode='ab')
                     dst_stream.stream_name = destination
                 except IOError as e:
                     if e.errno != errno.ENOENT:
                         raise
-                    basename = destination[:destination.rindex(os.path.sep)]
-                    info(u"Creating directory: %s" % basename)
-                    os.makedirs(deunicodise(basename))
-                    dst_stream = io.open(deunicodise(destination), mode='ab')
+                    dst_dir_bytes = os.path.dirname(destination)
+                    info(u"Creating directory: %s" % unicodise(dst_dir_bytes))
+                    os.makedirs(dst_dir_bytes)
+                    dst_stream = io.open(destination_bytes, mode='ab')
                     dst_stream.stream_name = destination
 
                 if file_exists:
                     force = False
                     skip = False
-                    if Config().get_continue:
+                    if cfg.get_continue:
                         start_position = dst_stream.tell()
                         item_size = item['size']
                         if start_position == item_size:
@@ -626,9 +655,9 @@ def cmd_object_get(args):
                             info(u"Download forced for '%s' as source is "
                                  "smaller than local file" % destination)
                             force = True
-                    elif Config().force:
+                    elif cfg.force:
                         force = True
-                    elif Config().skip_existing:
+                    elif cfg.skip_existing:
                         skip = True
                     else:
                         dst_stream.close()
@@ -658,16 +687,20 @@ def cmd_object_get(args):
                 continue
 
         try:
-            try:
-                response = s3.object_get(uri, dst_stream, destination, start_position = start_position, extra_label = seq_label)
-            finally:
-                dst_stream.close()
+            # Retrieve the file content
+            if dst_stream:
+                try:
+                    response = s3.object_get(uri, dst_stream, destination,
+                                             start_position=start_position,
+                                             extra_label=seq_label)
+                finally:
+                    dst_stream.close()
         except S3DownloadError as e:
             error(u"Download of '%s' failed (Reason: %s)" % (destination, e))
             # Delete, only if file didn't exist before!
             if not file_exists:
                 debug(u"object_get failed for '%s', deleting..." % (destination,))
-                os.unlink(deunicodise(destination))
+                os.unlink(destination_bytes)
             if cfg.stop_on_error:
                 error(u"Exiting now because of --stop-on-error")
                 raise
@@ -677,17 +710,36 @@ def cmd_object_get(args):
             error(u"Download of '%s' failed (Reason: %s)" % (destination, e))
             if not file_exists: # Delete, only if file didn't exist before!
                 debug(u"object_get failed for '%s', deleting..." % (destination,))
-                os.unlink(deunicodise(destination))
+                os.unlink(destination_bytes)
             raise
 
-        if "x-amz-meta-s3tools-gpgenc" in response["headers"]:
-            gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
-            response["size"] = os.stat(deunicodise(destination))[6]
-        if "last-modified" in response["headers"] and destination != "-":
-            last_modified = time.mktime(time.strptime(response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"))
-            os.utime(deunicodise(destination), (last_modified, last_modified))
-            debug("set mtime to %s" % last_modified)
-        if not Config().progress_meter and destination != "-":
+        """
+        # TODO Enable once we add restoring s3cmd-attrs in get command
+        if is_dir_obj and cfg.preserve_attrs:
+            # Retrieve directory info to restore s3cmd-attrs metadata
+            try:
+                response = s3.object_info(uri)
+            except S3Error as exc:
+                error(u"Retrieving directory metadata for '%s' failed (Reason: %s)"
+                      % (destination, exc))
+                if cfg.stop_on_error:
+                    error(u"Exiting now because of --stop-on-error")
+                    raise
+                ret = EX_PARTIAL
+                continue
+        """
+
+        if response:
+            if "x-amz-meta-s3tools-gpgenc" in response["headers"]:
+                gpg_decrypt(destination, response["headers"]["x-amz-meta-s3tools-gpgenc"])
+                response["size"] = os.stat(destination_bytes)[6]
+            if "last-modified" in response["headers"]:
+                last_modified_ts = time.mktime(time.strptime(response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"))
+
+        if last_modified_ts and destination != "-":
+            os.utime(destination_bytes, (last_modified_ts, last_modified_ts))
+            debug("set mtime to %s" % last_modified_ts)
+        if not Config().progress_meter and destination != "-" and not is_dir_obj:
             speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
             output(u"download: '%s' -> '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s)" %
                 (uri, destination, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1]))
@@ -1305,24 +1357,22 @@ def cmd_sync_remote2local(args):
         else:
             destbase_with_source_list.add(os.path.join(destination_base,
                                                       os.path.basename(source_arg)))
-    local_list, single_file_local, dst_exclude_list, local_total_size = fetch_local_list(destbase_with_source_list, is_src = False, recursive = True)
+    # with_dirs is True, as we always want to compare source with the actual full local content
+    local_list, single_file_local, dst_exclude_list, local_total_size = fetch_local_list(
+        destbase_with_source_list, is_src=False, recursive=True, with_dirs=True
+    )
 
     local_count = len(local_list)
     remote_count = len(remote_list)
     orig_remote_count = remote_count
 
-    info(u"Found %d remote files, %d local files" % (remote_count, local_count))
+    info(u"Found %d remote file objects, %d local files and directories" % (remote_count, local_count))
 
     remote_list, local_list, update_list, copy_pairs = compare_filelists(remote_list, local_list, src_remote = True, dst_remote = False)
 
-    local_count = len(local_list)
-    remote_count = len(remote_list)
-    update_count = len(update_list)
-    copy_pairs_count = len(copy_pairs)
+    dir_cache = {}
 
-    info(u"Summary: %d remote files to download, %d local files to delete, %d local files to hardlink" % (remote_count + update_count, local_count, copy_pairs_count))
-
-    def _set_local_filename(remote_list, destination_base, source_args):
+    def _set_local_filename(remote_list, destination_base, source_args, dir_cache, local_list):
         if len(remote_list) == 0:
             return
 
@@ -1341,14 +1391,52 @@ def cmd_sync_remote2local(args):
 
         if destination_base[-1] != os.path.sep:
             destination_base += os.path.sep
+
         for key in remote_list:
             local_filename = destination_base + key
             if os.path.sep != "/":
                 local_filename = os.path.sep.join(local_filename.split("/"))
-            remote_list[key]['local_filename'] = local_filename
 
-    _set_local_filename(remote_list, destination_base, source_args)
-    _set_local_filename(update_list, destination_base, source_args)
+            item = remote_list[key]
+            item['local_filename'] = local_filename
+
+            # dirname
+            key_dir_path = key.rsplit('/', 1)[0]
+            dst_dir = None
+            if key_dir_path not in dir_cache:
+                if cfg.dry_run:
+                    mkdir_ret = True
+                else:
+                    dst_dir = unicodise(os.path.dirname(deunicodise(local_filename)))
+                    mkdir_ret = Utils.mkdir_with_parents(dst_dir)
+                # Also add to cache, all the parent dirs
+                path = key_dir_path
+                while path and path not in dir_cache:
+                    dir_cache[path] = mkdir_ret
+                    last_slash_idx = path.rfind('/')
+                    if last_slash_idx in [-1, 0]:
+                        break
+                    path = path[:last_slash_idx]
+            if dir_cache[key_dir_path] == False:
+                if not dst_dir:
+                    dst_dir = unicodise(os.path.dirname(deunicodise(local_filename)))
+                if cfg.stop_on_error:
+                    error(u"Exiting now because of --stop-on-error")
+                    raise OSError("Download of '%s' failed (Reason: %s destination directory is not writable)" % (key, dst_dir))
+                error(u"Download of '%s' failed (Reason: %s destination directory is not writable)" % (key, dst_dir))
+                item['mark_failed'] = True
+                ret = EX_PARTIAL
+                continue
+
+    _set_local_filename(remote_list, destination_base, source_args, dir_cache, local_list)
+    _set_local_filename(update_list, destination_base, source_args, dir_cache, local_list)
+
+    local_count = len(local_list)
+    remote_count = len(remote_list)
+    update_count = len(update_list)
+    copy_pairs_count = len(copy_pairs)
+
+    info(u"Summary: %d remote files to download, %d local files to delete, %d local files to hardlink" % (remote_count + update_count, local_count, copy_pairs_count))
 
     if cfg.dry_run:
         keys = filedicts_to_keys(src_exclude_list, dst_exclude_list)
@@ -1390,23 +1478,20 @@ def cmd_sync_remote2local(args):
             item = remote_list[file]
             uri = S3Uri(item['object_uri_str'])
             dst_file = item['local_filename']
-            is_empty_directory = dst_file.endswith('/')
+            last_modified_ts = item['timestamp']
+            is_dir = item['is_dir']
             seq_label = "[%d of %d]" % (seq, total)
 
-            dst_dir = unicodise(os.path.dirname(deunicodise(dst_file)))
-            if not dst_dir in dir_cache:
-                dir_cache[dst_dir] = Utils.mkdir_with_parents(dst_dir)
-            if dir_cache[dst_dir] == False:
-                if cfg.stop_on_error:
-                    error(u"Exiting now because of --stop-on-error")
-                    raise OSError("Download of '%s' failed (Reason: %s destination directory is not writable)" % (file, dst_dir))
-                error(u"Download of '%s' failed (Reason: %s destination directory is not writable)" % (file, dst_dir))
-                ret = EX_PARTIAL
+            if item.get('mark_failed', False):
+                # Item is skipped because there was previously an issue with
+                # its destination directory.
                 continue
 
+            response = None
             try:
                 chkptfname_b = ''
-                if not is_empty_directory: # ignore empty directory at S3:
+                # ignore empty directory at S3:
+                if not is_dir:
                     debug(u"dst_file=%s" % dst_file)
                     # create temporary files (of type .s3cmd.XXXX.tmp) in the same directory
                     # for downloading and then rename once downloaded
@@ -1496,7 +1581,7 @@ def cmd_sync_remote2local(args):
 
             try:
                 # set permissions on destination file
-                if not is_empty_directory: # a normal file
+                if not is_dir: # a normal file
                     mode = 0o777 - original_umask
                 else:
                     # an empty directory, make them readable/executable
@@ -1506,14 +1591,22 @@ def cmd_sync_remote2local(args):
             except:
                 raise
 
-            # because we don't upload empty directories,
-            # we can continue the loop here, we won't be setting stat info.
-            # if we do start to upload empty directories, we'll have to reconsider this.
-            if is_empty_directory:
-                continue
+            # We can't get metadata for directories from an object_get, so we have to
+            # request them explicitly
+            if is_dir and cfg.preserve_attrs:
+                try:
+                    response = s3.object_info(uri)
+                except S3Error as exc:
+                    error(u"Retrieving directory metadata for '%s' failed (Reason: %s)"
+                        % (dst_file, exc))
+                    if cfg.stop_on_error:
+                        error(u"Exiting now because of --stop-on-error")
+                        raise
+                    ret = EX_PARTIAL
+                    continue
 
             try:
-                if 's3cmd-attrs' in response and cfg.preserve_attrs:
+                if response and 's3cmd-attrs' in response and cfg.preserve_attrs:
                     attrs = response['s3cmd-attrs']
                     if 'mode' in attrs:
                         os.chmod(deunicodise(dst_file), int(attrs['mode']))
@@ -1525,10 +1618,14 @@ def cmd_sync_remote2local(args):
                         uid = int(attrs['uid'])
                         gid = int(attrs['gid'])
                         os.lchown(deunicodise(dst_file),uid,gid)
-                elif 'last-modified' in response['headers']:
-                    last_modified = time.mktime(time.strptime(response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"))
-                    os.utime(deunicodise(dst_file), (last_modified, last_modified))
-                    debug("set mtime to %s" % last_modified)
+                else:
+                    if response and 'last-modified' in response['headers']:
+                        last_modified_ts = time.mktime(time.strptime(
+                            response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"
+                        ))
+                    if last_modified_ts:
+                        os.utime(deunicodise(dst_file), (last_modified_ts, last_modified_ts))
+                        debug("set mtime to %s" % last_modified_ts)
             except OSError as e:
                 ret = EX_PARTIAL
                 if e.errno == errno.EEXIST:
@@ -1555,12 +1652,15 @@ def cmd_sync_remote2local(args):
                 except Exception:
                     pass
 
-            speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
-            if not Config().progress_meter:
-                output(u"download: '%s' -> '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
-                    (uri, dst_file, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
-                    seq_label))
-            total_size += response["size"]
+            if is_dir:
+                output(u"make dir: '%s' -> '%s' %s" % (uri, dst_file, seq_label))
+            else:
+                speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
+                if not Config().progress_meter:
+                    output(u"download: '%s' -> '%s' (%d bytes in %0.1f seconds, %0.2f %sB/s) %s" %
+                        (uri, dst_file, response["size"], response["elapsed"], speed_fmt[0], speed_fmt[1],
+                        seq_label))
+                total_size += response["size"]
             if Config().delete_after_fetch:
                 s3.object_delete(uri)
                 output(u"File '%s' removed after syncing" % (uri))
@@ -1577,7 +1677,7 @@ def cmd_sync_remote2local(args):
         ret = status
 
     n_copies, size_copies, failed_copy_list = local_copy(copy_pairs, destination_base)
-    _set_local_filename(failed_copy_list, destination_base, source_args)
+    _set_local_filename(failed_copy_list, destination_base, source_args, dir_cache, local_list)
     status, seq, size_transferred = _download(failed_copy_list, seq, len(failed_copy_list) + remote_count + update_count, size_transferred, dir_cache)
     if ret == EX_OK:
         ret = status
@@ -1810,7 +1910,9 @@ def cmd_sync_local2remote(args):
 
         stats_info = StatsInfo()
 
-        local_list, single_file_local, src_exclude_list, local_total_size = fetch_local_list(args[:-1], is_src = True, recursive = True)
+        local_list, single_file_local, src_exclude_list, local_total_size = fetch_local_list(
+            args[:-1], is_src=True, recursive=True, with_dirs=cfg.keep_dirs
+        )
 
         # - The source path is either like "/myPath/my_src_folder" and
         # the user want to upload this single folder and optionally only delete
@@ -2855,6 +2957,7 @@ def main():
     optparser.add_option(      "--delete-after-fetch", dest="delete_after_fetch", action="store_true", help="Delete remote objects after fetching to local file (only for [get] and [sync] commands).")
     optparser.add_option("-p", "--preserve", dest="preserve_attrs", action="store_true", help="Preserve filesystem attributes (mode, ownership, timestamps). Default for [sync] command.")
     optparser.add_option(      "--no-preserve", dest="preserve_attrs", action="store_false", help="Don't store FS attributes")
+    optparser.add_option(      "--keep-dirs", dest="keep_dirs", action="store_true", help="Preserve all local directories as remote objects including empty directories. Experimental feature.")
     optparser.add_option(      "--exclude", dest="exclude", action="append", metavar="GLOB", help="Filenames and paths matching GLOB will be excluded from sync")
     optparser.add_option(      "--exclude-from", dest="exclude_from", action="append", metavar="FILE", help="Read --exclude GLOBs from FILE")
     optparser.add_option(      "--rexclude", dest="rexclude", action="append", metavar="REGEXP", help="Filenames and paths matching REGEXP (regular expression) will be excluded from sync")
