@@ -199,12 +199,6 @@ def subcmd_bucket_list(s3, uri, limit):
     debug(u"Bucket 's3://%s':" % bucket)
     if prefix.endswith('*'):
         prefix = prefix[:-1]
-    try:
-        response = s3.bucket_list(bucket, prefix = prefix, limit = limit)
-    except S3Error as e:
-        if e.info["Code"] in S3.codes:
-            error(S3.codes[e.info["Code"]] % bucket)
-        raise
 
     # md5 are 32 char long, but for multipart there could be a suffix
     if Config().human_readable_sizes:
@@ -221,38 +215,51 @@ def subcmd_bucket_list(s3, uri, limit):
     else:
         format_string = u"%(timestamp)16s %(size)s  %(uri)s"
 
-    for prefix in response['common_prefixes']:
-        output(format_string % {
-            "timestamp": "",
-            "size": dir_str,
-            "md5": "",
-            "storageclass": "",
-            "uri": uri.compose_uri(bucket, prefix["Prefix"])})
+    truncated = False
+    common_prefixes = []
 
-    for object in response["list"]:
-        md5 = object.get('ETag', '').strip('"\'')
-        storageclass = object.get('StorageClass','')
+    try:
+        for _trunkated, _common_prefixes, _objects in s3.bucket_list_streaming(bucket, prefix = prefix, limit = limit):
+            truncated = _trunkated
 
-        if cfg.list_md5:
-            if '-' in md5: # need to get md5 from the object
-                object_uri = uri.compose_uri(bucket, object["Key"])
-                info_response = s3.object_info(S3Uri(object_uri))
-                try:
-                    md5 = info_response['s3cmd-attrs']['md5']
-                except KeyError:
-                    pass
+            if common_prefixes != _common_prefixes:
+                common_prefixes = _common_prefixes
+                for prefix in common_prefixes:
+                    output(format_string % {
+                        "timestamp": "",
+                        "size": dir_str,
+                        "md5": "",
+                        "storageclass": "",
+                        "uri": uri.compose_uri(bucket, prefix["Prefix"])})
 
-        size_and_coeff = formatSize(object["Size"],
-                                    Config().human_readable_sizes)
-        output(format_string % {
-            "timestamp": formatDateTime(object["LastModified"]),
-            "size" : format_size % size_and_coeff,
-            "md5" : md5,
-            "storageclass" : storageclass,
-            "uri": uri.compose_uri(bucket, object["Key"]),
-            })
+            for object in _objects:
+                md5 = object.get('ETag', '').strip('"\'')
+                storageclass = object.get('StorageClass','')
 
-    if response["truncated"]:
+                if cfg.list_md5:
+                    if '-' in md5: # need to get md5 from the object
+                        object_uri = uri.compose_uri(bucket, object["Key"])
+                        info_response = s3.object_info(S3Uri(object_uri))
+                        try:
+                            md5 = info_response['s3cmd-attrs']['md5']
+                        except KeyError:
+                            pass
+
+                size_and_coeff = formatSize(object["Size"],
+                                            Config().human_readable_sizes)
+                output(format_string % {
+                    "timestamp": formatDateTime(object["LastModified"]),
+                    "size" : format_size % size_and_coeff,
+                    "md5" : md5,
+                    "storageclass" : storageclass,
+                    "uri": uri.compose_uri(bucket, object["Key"]),
+                    })
+    except S3Error as e:
+        if e.info["Code"] in S3.codes:
+            error(S3.codes[e.info["Code"]] % bucket)
+        raise
+
+    if truncated:
         warning(u"The list is truncated because the settings limit was reached.")
 
 def cmd_bucket_create(args):
