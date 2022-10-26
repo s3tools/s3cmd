@@ -251,6 +251,7 @@ class Config(object):
     list_allow_unordered = False
     # Maximum attempts of re-issuing failed requests
     max_retries = 5
+    versioning_suspended = False
 
     ## Creating a singleton
     def __new__(self, configfile = None, access_key=None, secret_key=None, access_token=None):
