@@ -1321,10 +1321,13 @@ def cmd_sync_remote2local(args):
         if cfg.max_delete > 0 and len(local_list) > cfg.max_delete:
             warning(u"delete: maximum requested number of deletes would be exceeded, none performed.")
             return total_size
-        for key in local_list:
-            os.unlink(deunicodise(local_list[key]['full_name']))
-            output(u"delete: '%s'" % local_list[key]['full_name'])
-            total_size += local_list[key].get(u'size', 0)
+
+        # Reverse used to delete children before parent folders
+        for key in reversed(local_list):
+            item = local_list[key]
+            os.unlink(deunicodise(item['full_name']))
+            output(u"delete: '%s'" % item['full_name'])
+            total_size += item.get(u'size', 0)
         return len(local_list), total_size
 
     destination_base = args[-1]
