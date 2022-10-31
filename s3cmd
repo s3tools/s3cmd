@@ -1325,8 +1325,12 @@ def cmd_sync_remote2local(args):
         # Reverse used to delete children before parent folders
         for key in reversed(local_list):
             item = local_list[key]
-            os.unlink(deunicodise(item['full_name']))
-            output(u"delete: '%s'" % item['full_name'])
+            full_path = item['full_name']
+            if item.get('is_dir', True):
+                os.rmdir(deunicodise(full_path))
+            else:
+                os.unlink(deunicodise(full_path))
+            output(u"delete: '%s'" % full_path)
             total_size += item.get(u'size', 0)
         return len(local_list), total_size
 
