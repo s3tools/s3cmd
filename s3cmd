@@ -1379,7 +1379,7 @@ def cmd_sync_remote2local(args):
 
     dir_cache = {}
 
-    def _set_local_filename(remote_list, destination_base, source_args, dir_cache, local_list):
+    def _set_local_filename(remote_list, destination_base, source_args, dir_cache):
         if len(remote_list) == 0:
             return
 
@@ -1407,7 +1407,8 @@ def cmd_sync_remote2local(args):
             item = remote_list[key]
             item['local_filename'] = local_filename
 
-            # dirname
+            # Create parent folders if needed
+            # Extract key dirname
             key_dir_path = key.rsplit('/', 1)[0]
             dst_dir = None
             if key_dir_path not in dir_cache:
@@ -1435,8 +1436,8 @@ def cmd_sync_remote2local(args):
                 ret = EX_PARTIAL
                 continue
 
-    _set_local_filename(remote_list, destination_base, source_args, dir_cache, local_list)
-    _set_local_filename(update_list, destination_base, source_args, dir_cache, local_list)
+    _set_local_filename(remote_list, destination_base, source_args, dir_cache)
+    _set_local_filename(update_list, destination_base, source_args, dir_cache)
 
     local_count = len(local_list)
     remote_count = len(remote_list)
@@ -1474,7 +1475,7 @@ def cmd_sync_remote2local(args):
     else:
         deleted_count, deleted_size = (0, 0)
 
-    def _download(remote_list, seq, total, total_size, dir_cache):
+    def _download(remote_list, seq, total, total_size):
         original_umask = os.umask(0)
         os.umask(original_umask)
         file_list = remote_list.keys()
@@ -1676,16 +1677,22 @@ def cmd_sync_remote2local(args):
     size_transferred = 0
     total_elapsed = 0.0
     timestamp_start = time.time()
-    dir_cache = {}
     seq = 0
-    ret, seq, size_transferred = _download(remote_list, seq, remote_count + update_count, size_transferred, dir_cache)
-    status, seq, size_transferred = _download(update_list, seq, remote_count + update_count, size_transferred, dir_cache)
+    ret, seq, size_transferred = _download(remote_list, seq, remote_count + update_count, size_transferred)
+    remote_list = None
+
+    status, seq, size_transferred = _download(update_list, seq, remote_count + update_count, size_transferred)
     if ret == EX_OK:
         ret = status
+    update_list = None
 
+    _set_local_filename(copy_pairs, destination_base, source_args, dir_cache)
     n_copies, size_copies, failed_copy_list = local_copy(copy_pairs, destination_base)
-    _set_local_filename(failed_copy_list, destination_base, source_args, dir_cache, local_list)
-    status, seq, size_transferred = _download(failed_copy_list, seq, len(failed_copy_list) + remote_count + update_count, size_transferred, dir_cache)
+    copy_pairs = None
+    dir_cache = None
+
+    # Download files that failed during local_copy
+    status, seq, size_transferred = _download(failed_copy_list, seq, len(failed_copy_list) + remote_count + update_count, size_transferred)
     if ret == EX_OK:
         ret = status
 
@@ -1722,19 +1729,23 @@ def local_copy(copy_pairs, destination_base):
     # For instance all empty files would become hardlinked together!
     saved_bytes = 0
     failed_copy_list = FileDict()
-    for (src_obj, dst1, relative_file, md5) in copy_pairs:
-        src_file = os.path.join(destination_base, dst1)
-        dst_file = os.path.join(destination_base, relative_file)
-        dst_dir = os.path.dirname(deunicodise(dst_file))
+
+    if destination_base[-1] != os.path.sep:
+        destination_base += os.path.sep
+
+    for relative_file, src_obj in copy_pairs.items():
+        src_file = destination_base + src_obj['copy_src']
+        if os.path.sep != "/":
+            src_file = os.path.sep.join(src_file.split("/"))
+
+        dst_file = src_obj['local_filename']
         try:
-            if not os.path.isdir(deunicodise(dst_dir)):
-                debug("MKDIR %s" % dst_dir)
-                os.makedirs(deunicodise(dst_dir))
             debug(u"Copying %s to %s" % (src_file, dst_file))
             shutil.copy2(deunicodise(src_file), deunicodise(dst_file))
             saved_bytes += src_obj.get(u'size', 0)
         except (IOError, OSError) as e:
-            warning(u'Unable to copy or hardlink files %s -> %s (Reason: %s)' % (src_file, dst_file, e))
+            warning(u'Unable to copy or hardlink files %s -> %s (Reason: %s)'
+                    % (src_file, dst_file, e))
             failed_copy_list[relative_file] = src_obj
     return len(copy_pairs), saved_bytes, failed_copy_list
 
@@ -1745,32 +1756,36 @@ def remote_copy(s3, copy_pairs, destination_base, uploaded_objects_list=None,
     failed_copy_list = FileDict()
     seq = 0
     src_count = len(copy_pairs)
-    for (src_obj, dst1, dst2, src_md5) in copy_pairs:
+    for relative_file, src_obj in copy_pairs.items():
+        copy_src_file = src_obj['copy_src']
+        src_md5 = src_obj['md5']
+
         seq += 1
-        debug(u"Remote Copying from %s to %s" % (dst1, dst2))
-        dst1_uri = S3Uri(destination_base + dst1)
-        dst2_uri = S3Uri(destination_base + dst2)
+        debug(u"Remote Copying from %s to %s" % (copy_src_file, relative_file))
+        src_uri = S3Uri(destination_base + copy_src_file)
+        dst_uri = S3Uri(destination_base + relative_file)
         src_obj_size = src_obj.get(u'size', 0)
         seq_label = "[%d of %d]" % (seq, src_count)
         extra_headers = copy(cfg.extra_headers)
         if metadata_update:
             # source is a real local file with its own personal metadata
-            attr_header = _build_attr_header(src_obj, dst2, src_md5)
+            attr_header = _build_attr_header(src_obj, relative_file, src_md5)
             debug(u"attr_header: %s" % attr_header)
             extra_headers.update(attr_header)
             extra_headers['content-type'] = \
                 s3.content_type(filename=src_obj['full_name'])
         try:
-            s3.object_copy(dst1_uri, dst2_uri, extra_headers,
+            s3.object_copy(src_uri, dst_uri, extra_headers,
                            src_size=src_obj_size,
                            extra_label=seq_label)
-            output(u"remote copy: '%s' -> '%s'  %s" % (dst1, dst2, seq_label))
+            output(u"remote copy: '%s' -> '%s'  %s"
+                   % (copy_src_file, relative_file, seq_label))
             saved_bytes += src_obj_size
             if uploaded_objects_list is not None:
-                uploaded_objects_list.append(dst2)
+                uploaded_objects_list.append(relative_file)
         except Exception:
-            warning(u"Unable to remote copy files '%s' -> '%s'" % (dst1_uri, dst2_uri))
-            failed_copy_list[dst2] = src_obj
+            warning(u"Unable to remote copy files '%s' -> '%s'" % (src_uri, dst_uri))
+            failed_copy_list[relative_file] = src_obj
     return (len(copy_pairs), saved_bytes, failed_copy_list)
 
 def _build_attr_header(src_obj, src_relative_name, md5=None):
@@ -1974,8 +1989,8 @@ def cmd_sync_local2remote(args):
                 output(u"upload: '%s' -> '%s'" % (local_list[key]['full_name'], local_list[key]['remote_uri']))
             for key in update_list:
                 output(u"upload: '%s' -> '%s'" % (update_list[key]['full_name'], update_list[key]['remote_uri']))
-            for (src_obj, dst1, dst2, md5) in copy_pairs:
-                output(u"remote copy: '%s' -> '%s'" % (dst1, dst2))
+            for relative_file, item in copy_pairs.items():
+                output(u"remote copy: '%s' -> '%s'" % (relative_file['copy_src'], relative_file))
             if cfg.delete_removed:
                 for key in remote_list:
                     output(u"delete: '%s'" % remote_list[key]['object_uri_str'])

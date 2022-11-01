@@ -616,7 +616,7 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
     ## Items left on copy_pairs will be copied from dst1 to dst2
     update_list = FileDict(ignore_case = False)
     ## Items left on dst_list will be deleted
-    copy_pairs = []
+    copy_pairs = {}
 
     debug("Comparing filelists (direction: %s -> %s)" % (__direction_str(src_remote), __direction_str(dst_remote)))
 
@@ -670,9 +670,12 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
                     md5 = None
                 if md5 is not None and md5 in dst_list.by_md5:
                     # Found one, we want to copy
-                    dst1 = dst_list.find_md5_one(md5)
-                    debug(u"DST COPY src: '%s' -> '%s'" % (dst1, relative_file))
-                    copy_pairs.append((src_list[relative_file], dst1, relative_file, md5))
+                    copy_src_file = dst_list.find_md5_one(md5)
+                    debug(u"DST COPY src: '%s' -> '%s'" % (copy_src_file, relative_file))
+                    src_item = src_list[relative_file]
+                    src_item["md5"] = md5
+                    src_item["copy_src"] = copy_src_file
+                    copy_pairs[relative_file] = src_item
                     del(src_list[relative_file])
                     del(dst_list[relative_file])
                 else:
@@ -690,12 +693,14 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
                 md5 = src_list.get_md5(relative_file)
             except IOError:
                 md5 = None
-            dst1 = dst_list.find_md5_one(md5)
-            if dst1 is not None:
+            copy_src_file = dst_list.find_md5_one(md5)
+            if copy_src_file is not None:
                 # Found one, we want to copy
-                debug(u"DST COPY dst: '%s' -> '%s'" % (dst1, relative_file))
-                copy_pairs.append((src_list[relative_file], dst1,
-                                   relative_file, md5))
+                debug(u"DST COPY dst: '%s' -> '%s'" % (copy_src_file, relative_file))
+                src_item = src_list[relative_file]
+                src_item["md5"] = md5
+                src_item["copy_src"] = copy_src_file
+                copy_pairs[relative_file] = src_item
                 del(src_list[relative_file])
             else:
                 # we don't have this file, and we don't have a copy of this file elsewhere.  Get it.
