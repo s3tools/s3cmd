@@ -210,7 +210,8 @@ def test(label, cmd_args = [], retcode = 0, must_find = [], must_not_find = [],
 
     p = Popen(cmd_args, stdin = stdin, stdout = PIPE, stderr = STDOUT, universal_newlines = True, close_fds = True)
     stdout, stderr = p.communicate()
-    if type(retcode) not in [list, tuple]: retcode = [retcode]
+    if type(retcode) not in [list, tuple]:
+        retcode = [retcode]
     if p.returncode not in retcode:
         return failure("retcode: %d, expected one of: %s" % (p.returncode, retcode))
 
@@ -438,6 +439,22 @@ test_s3cmd("Sync to S3 and delete removed with caching", ['sync', 'testsuite/', 
 ## ====== Remove cache directory and file
 test_rmdir("Remove cache dir", "testsuite/cachetest")
 
+
+## ====== Test empty directories
+test_mkdir("Create empty dir", "testsuite/blahBlah/dirtest/emptydir")
+
+test_s3cmd("Sync to S3 empty dir without keep dir", ['sync', 'testsuite/blahBlah', pbucket(1) + '/withoutdirs/', '--exclude', 'demo/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings'],
+          #must_find = "upload: 'testsuite/cachetest/content/testfile' -> '%s/xyz/cachetest/content/testfile'" % pbucket(1),
+          must_not_find = "upload: 'testsuite/blahBlah/dirtest/emptydir'")
+
+test_s3cmd("Sync to S3 empty dir with keep dir", ['sync', 'testsuite/blahBlah', pbucket(1) + '/withdirs/', '--exclude', 'demo/*', '--exclude', '*.png', '--no-encrypt', '--exclude-from', 'testsuite/exclude.encodings', '--keep-dirs'],
+          #must_find = "upload: 'testsuite/cachetest/content/testfile' -> '%s/xyz/cachetest/content/testfile'" % pbucket(1),
+          must_find = "upload: 'testsuite/blahBlah/dirtest/emptydir'")
+
+## ====== Remove cache directory and file
+test_rmdir("Remove cache dir", "testsuite/blahBlah/dirtest")
+
+
 if have_encoding:
     ## ====== Sync UTF-8 / GBK / ... to S3
     test_s3cmd(u"Sync %s to S3" % encoding, ['sync', 'testsuite/encodings/' + encoding, '%s/xyz/encodings/' % pbucket(1), '--exclude', 'demo/*', '--no-encrypt' ],
@@ -522,6 +539,21 @@ if have_encoding:
     must_find.append(u"'%(pbucket)s/xyz/encodings/%(encoding)s/%(pattern)s' -> 'testsuite-out/xyz/encodings/%(encoding)s/%(pattern)s' " % { 'encoding' : encoding, 'pattern' : enc_pattern, 'pbucket' : pbucket(1) })
 test_s3cmd("Sync from S3", ['sync', '%s/xyz' % pbucket(1), 'testsuite-out'],
     must_find = must_find)
+
+
+## ====== Create 'emptydirtests' test directories
+test_rmdir("Create 'emptytests/withoutdirs'", "testsuite-out/emptytests/withoutdirs/")
+test_rmdir("Create 'emptytests/withdirs/'", "testsuite-out/emptytests/withdirs/")
+
+test_s3cmd("Sync from S3 no empty dir", ['sync', '%s/withoutdirs/' % pbucket(1), 'testsuite-out/emptytests/withoutdirs/'],
+    must_not_find = ["make dir: '%s/withoutdirs/blahBlah/dirtest/emptydir/'" % pbucket(1)])
+
+test_s3cmd("Sync from S3 with empty dir", ['sync', '%s/withdirs/' % pbucket(1), 'testsuite-out/emptytests/withdirs/'],
+    must_find = ["make dir: '%s/withdirs/blahBlah/dirtest/emptydir/'" % pbucket(1)])
+
+## ====== Remove 'emptydirtests' directory
+test_rmdir("Remove 'emptytests/'", "testsuite-out/emptytests/")
+
 
 ## ====== Remove 'demo' directory
 test_rmdir("Remove 'dir-test/'", "testsuite-out/xyz/dir-test/")
