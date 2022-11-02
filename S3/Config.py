@@ -161,6 +161,7 @@ class Config(object):
         u'md5',      # File MD5 (if known)
         #u'acl',     # Full ACL (not yet supported)
     ]
+    keep_dirs = False
     delete_removed = False
     delete_after = False
     delete_after_fetch = False

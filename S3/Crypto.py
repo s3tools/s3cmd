@@ -18,7 +18,7 @@ except ImportError:
 
 from . import Config
 from logging import debug
-from .BaseUtils import encode_to_s3, decode_from_s3, s3_quote
+from .BaseUtils import encode_to_s3, decode_from_s3, s3_quote, md5, unicode
 from .Utils import time_to_epoch, deunicodise, check_bucket_name_dns_support
 from .SortedDict import SortedDict
 
@@ -28,6 +28,7 @@ import datetime
 from hashlib import sha1, sha256
 
 __all__ = []
+
 
 def format_param_str(params, always_have_equal=False, limited_keys=None):
     """
@@ -56,6 +57,7 @@ def format_param_str(params, always_have_equal=False, limited_keys=None):
     return param_str and "?" + param_str[1:]
 __all__.append("format_param_str")
 
+
 ### AWS Version 2 signing
 def sign_string_v2(string_to_sign):
     """Sign a string with the secret key, returning base64 encoded results.
@@ -70,6 +72,7 @@ def sign_string_v2(string_to_sign):
     signature = encodestring(hmac.new(encode_to_s3(secret_key), string_to_sign, sha1).digest()).strip()
     return signature
 __all__.append("sign_string_v2")
+
 
 def sign_request_v2(method='GET', canonical_uri='/', params=None, cur_headers=None):
     """Sign a string with the secret key, returning base64 encoded results.
@@ -122,6 +125,7 @@ def sign_request_v2(method='GET', canonical_uri='/', params=None, cur_headers=No
     return new_headers
 __all__.append("sign_request_v2")
 
+
 def sign_url_v2(url_to_sign, expiry):
     """Sign a URL in s3://bucket/object form with the given expiry
     time. The object will be accessible via the signed URL until the
@@ -136,6 +140,7 @@ def sign_url_v2(url_to_sign, expiry):
         expiry = expiry
     )
 __all__.append("sign_url_v2")
+
 
 def sign_url_base_v2(**parms):
     """Shared implementation of sign_url methods. Takes a hash of 'bucket', 'object' and 'expiry' as args."""
@@ -171,9 +176,12 @@ def sign_url_base_v2(**parms):
     if content_type:
         url += "&response-content-type=" + s3_quote(content_type, unicode_output=True)
     return url
+__all__.append("sign_url_base_v2")
+
 
 def sign(key, msg):
     return hmac.new(key, encode_to_s3(msg), sha256).digest()
+
 
 def getSignatureKey(key, dateStamp, regionName, serviceName):
     """
@@ -185,6 +193,7 @@ def getSignatureKey(key, dateStamp, regionName, serviceName):
     kService = sign(kRegion, serviceName)
     kSigning = sign(kService, 'aws4_request')
     return kSigning
+
 
 def sign_request_v4(method='GET', host='', canonical_uri='/', params=None,
                     region='us-east-1', cur_headers=None, body=b''):
@@ -251,36 +260,85 @@ def sign_request_v4(method='GET', host='', canonical_uri='/', params=None,
     return new_headers
 __all__.append("sign_request_v4")
 
-def checksum_sha256_file(filename, offset=0, size=None):
-    try:
-        hash = sha256()
-    except Exception:
-        # fallback to Crypto SHA256 module
-        hash = sha256.new()
-    with open(deunicodise(filename),'rb') as f:
-        if size is None:
-            for chunk in iter(lambda: f.read(8192), b''):
-                hash.update(chunk)
-        else:
-            f.seek(offset)
-            size_left = size
-            while size_left > 0:
-                chunk = f.read(min(8192, size_left))
-                if not chunk:
-                    break
-                size_left -= len(chunk)
-                hash.update(chunk)
+
+def checksum_file_descriptor(file_desc, offset=0, size=None, hash_func=sha256):
+    hash = hash_func()
+
+    if size is None:
+        for chunk in iter(lambda: file_desc.read(8192), b''):
+            hash.update(chunk)
+    else:
+        file_desc.seek(offset)
+        size_left = size
+        while size_left > 0:
+            chunk = file_desc.read(min(8192, size_left))
+            if not chunk:
+                break
+            size_left -= len(chunk)
+            hash.update(chunk)
 
     return hash
+__all__.append("checksum_file_stream")
+
+
+def checksum_sha256_file(file, offset=0, size=None):
+    if not isinstance(file, unicode):
+        # file is directly a file descriptor
+        return checksum_file_descriptor(file, offset, size, sha256)
+
+    # Otherwise, we expect file to be a filename
+    with open(deunicodise(file),'rb') as fp:
+        return checksum_file_descriptor(fp, offset, size, sha256)
+
+__all__.append("checksum_sha256_file")
+
 
 def checksum_sha256_buffer(buffer, offset=0, size=None):
-    try:
-        hash = sha256()
-    except Exception:
-        # fallback to Crypto SHA256 module
-        hash = sha256.new()
+    hash = sha256()
     if size is None:
         hash.update(buffer)
     else:
         hash.update(buffer[offset:offset+size])
     return hash
+__all__.append("checksum_sha256_buffer")
+
+
+def generate_content_md5(body):
+    m = md5(encode_to_s3(body))
+    base64md5 = encodestring(m.digest())
+    base64md5 = decode_from_s3(base64md5)
+    if base64md5[-1] == '\n':
+        base64md5 = base64md5[0:-1]
+    return decode_from_s3(base64md5)
+__all__.append("generate_content_md5")
+
+
+def hash_file_md5(filename):
+    h = md5()
+    with open(deunicodise(filename), "rb") as fp:
+        while True:
+            # Hash 32kB chunks
+            data = fp.read(32*1024)
+            if not data:
+                break
+            h.update(data)
+    return h.hexdigest()
+__all__.append("hash_file_md5")
+
+
+def calculateChecksum(buffer, mfile, offset, chunk_size, send_chunk):
+    md5_hash = md5()
+    size_left = chunk_size
+    if buffer == '':
+        mfile.seek(offset)
+        while size_left > 0:
+            data = mfile.read(min(send_chunk, size_left))
+            if not data:
+                break
+            md5_hash.update(data)
+            size_left -= len(data)
+    else:
+        md5_hash.update(buffer)
+
+    return md5_hash.hexdigest()
+__all__.append("calculateChecksum")

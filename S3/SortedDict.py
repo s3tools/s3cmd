@@ -11,13 +11,20 @@ from __future__ import absolute_import, print_function
 from .BidirMap import BidirMap
 
 class SortedDictIterator(object):
-    def __init__(self, sorted_dict, keys):
+    def __init__(self, sorted_dict, keys, reverse=False):
         self.sorted_dict = sorted_dict
         self.keys = keys
+        if reverse:
+            self.pop_index = -1
+        else:
+            self.pop_index = 0
+
+    def __iter__(self):
+        return self
 
     def __next__(self):
         try:
-            return self.keys.pop(0)
+            return self.keys.pop(self.pop_index)
         except IndexError:
             raise StopIteration
 
@@ -53,6 +60,9 @@ class SortedDict(dict):
 
     def __iter__(self):
         return SortedDictIterator(self, self.keys())
+
+    def __reversed__(self):
+        return SortedDictIterator(self, self.keys(), reverse=True)
 
     def __getitem__(self, index):
         """Override to support the "get_slice" for python3 """

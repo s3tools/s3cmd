@@ -45,7 +45,7 @@ except ImportError:
     from urllib.parse import quote
 
 try:
-    unicode
+    unicode = unicode
 except NameError:
     # python 3 support
     # In python 3, unicode -> str, and str -> bytes

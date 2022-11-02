@@ -26,6 +26,8 @@ import re
 import errno
 import io
 
+from stat import S_ISDIR
+
 PY3 = (sys.version_info >= (3, 0))
 
 __all__ = ["fetch_local_list", "fetch_remote_list", "compare_filelists"]
@@ -196,7 +198,7 @@ def _get_filelist_from_file(cfg, local_path):
         result.append((key, [], values))
     return result
 
-def fetch_local_list(args, is_src = False, recursive = None):
+def fetch_local_list(args, is_src = False, recursive = None, with_dirs=False):
 
     def _fetch_local_list_info(loc_list):
         len_loc_list = len(loc_list)
@@ -211,7 +213,9 @@ def fetch_local_list(args, is_src = False, recursive = None):
             if relative_file == '-':
                 continue
 
-            full_name = loc_list[relative_file]['full_name']
+            loc_list_item = loc_list[relative_file]
+            full_name = loc_list_item['full_name']
+            is_dir = loc_list_item['is_dir']
             try:
                 sr = os.stat_result(os.stat(deunicodise(full_name)))
             except OSError as e:
@@ -220,22 +224,34 @@ def fetch_local_list(args, is_src = False, recursive = None):
                     continue
                 else:
                     raise
+
+            if is_dir:
+                size = 0
+            else:
+                size = sr.st_size
+
             loc_list[relative_file].update({
-                'size' : sr.st_size,
+                'size' : size,
                 'mtime' : sr.st_mtime,
                 'dev'   : sr.st_dev,
                 'inode' : sr.st_ino,
                 'uid' : sr.st_uid,
                 'gid' : sr.st_gid,
-                'sr': sr # save it all, may need it in preserve_attrs_list
+                'sr': sr, # save it all, may need it in preserve_attrs_list
                 ## TODO: Possibly more to save here...
             })
             total_size += sr.st_size
+
+            if is_dir:
+                # A md5 can't be calculated with a directory path
+                continue
+
             if 'md5' in cfg.sync_checks:
                 md5 = cache.md5(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size)
                 if md5 is None:
                         try:
-                            md5 = loc_list.get_md5(relative_file) # this does the file I/O
+                            # this does the file I/O
+                            md5 = loc_list.get_md5(relative_file)
                         except IOError:
                             continue
                         cache.add(sr.st_dev, sr.st_ino, sr.st_mtime, sr.st_size, md5)
@@ -243,7 +259,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
         return total_size
 
 
-    def _get_filelist_local(loc_list, local_uri, cache):
+    def _get_filelist_local(loc_list, local_uri, cache, with_dirs):
         info(u"Compiling list of local files...")
 
         if local_uri.basename() == "-":
@@ -261,8 +277,10 @@ def fetch_local_list(args, is_src = False, recursive = None):
                 'gid' : gid,
                 'dev' : 0,
                 'inode': 0,
+                'is_dir': False,
             }
             return loc_list, True
+
         if local_uri.isdir():
             local_base = local_uri.basename()
             local_path = local_uri.path()
@@ -280,29 +298,39 @@ def fetch_local_list(args, is_src = False, recursive = None):
             local_path = local_uri.dirname()
             filelist = [( local_path, [], [local_uri.basename()] )]
             single_file = True
+
         for root, dirs, files in filelist:
             rel_root = root.replace(local_path, local_base, 1)
-            for f in files:
-                full_name = os.path.join(root, f)
-                if not os.path.isfile(deunicodise(full_name)):
-                    if os.path.exists(deunicodise(full_name)):
-                        warning(u"Skipping over non regular file: %s" % full_name)
-                    continue
-                if os.path.islink(deunicodise(full_name)):
-                    if not cfg.follow_symlinks:
-                        warning(u"Skipping over symbolic link: %s" % full_name)
+            if not with_dirs:
+                iter_elements = ((files, False),)
+            else:
+                iter_elements = ((dirs, True), (files, False))
+            for elements, is_dir in iter_elements:
+                for f in elements:
+                    full_name = os.path.join(root, f)
+                    if not is_dir and not os.path.isfile(deunicodise(full_name)):
+                        if os.path.exists(deunicodise(full_name)):
+                            warning(u"Skipping over non regular file: %s" % full_name)
                         continue
-                relative_file = os.path.join(rel_root, f)
-                if os.path.sep != "/":
-                    # Convert non-unix dir separators to '/'
-                    relative_file = "/".join(relative_file.split(os.path.sep))
-                if cfg.urlencoding_mode == "normal":
-                    relative_file = replace_nonprintables(relative_file)
-                if relative_file.startswith('./'):
-                    relative_file = relative_file[2:]
-                loc_list[relative_file] = {
-                    'full_name' : full_name,
-                }
+                    if os.path.islink(deunicodise(full_name)):
+                        if not cfg.follow_symlinks:
+                            warning(u"Skipping over symbolic link: %s" % full_name)
+                            continue
+                    relative_file = os.path.join(rel_root, f)
+                    if os.path.sep != "/":
+                        # Convert non-unix dir separators to '/'
+                        relative_file = "/".join(relative_file.split(os.path.sep))
+                    if cfg.urlencoding_mode == "normal":
+                        relative_file = replace_nonprintables(relative_file)
+                    if relative_file.startswith('./'):
+                        relative_file = relative_file[2:]
+                    if is_dir and relative_file and relative_file[-1] != '/':
+                        relative_file += '/'
+
+                    loc_list[relative_file] = {
+                        'full_name' : full_name,
+                        'is_dir': is_dir,
+                    }
 
         return loc_list, single_file
 
@@ -353,7 +381,7 @@ def fetch_local_list(args, is_src = False, recursive = None):
         local_uris.append(uri)
 
     for uri in local_uris:
-        list_for_uri, single_file = _get_filelist_local(local_list, uri, cache)
+        list_for_uri, single_file = _get_filelist_local(local_list, uri, cache, with_dirs)
 
     ## Single file is True if and only if the user
     ## specified one local URI and that URI represents
@@ -375,9 +403,9 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
             return
 
         remote_item.update({
-        'size': int(response['headers']['content-length']),
-        'md5': response['headers']['etag'].strip('"\''),
-        'timestamp': dateRFC822toUnix(response['headers']['last-modified'])
+            'size': int(response['headers']['content-length']),
+            'md5': response['headers']['etag'].strip('"\''),
+            'timestamp': dateRFC822toUnix(response['headers']['last-modified'])
         })
         try:
             md5 = response['s3cmd-attrs']['md5']
@@ -403,7 +431,6 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
         ## { 'xyz/blah.txt' : {} }
 
         info(u"Retrieving list of remote files for %s ..." % remote_uri)
-        empty_fname_re = re.compile(r'\A\s*\Z')
 
         total_size = 0
 
@@ -420,34 +447,43 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
         rem_list = FileDict(ignore_case = False)
         break_now = False
         for object in response['list']:
-            if object['Key'] == rem_base_original and object['Key'][-1] != "/":
+            object_key = object['Key']
+            object_size = int(object['Size'])
+            is_dir = (object_key[-1] == '/')
+
+            if object_key == rem_base_original and not is_dir:
                 ## We asked for one file and we got that file :-)
-                key = unicodise(os.path.basename(deunicodise(object['Key'])))
+                key = unicodise(os.path.basename(deunicodise(object_key)))
                 object_uri_str = remote_uri_original.uri()
                 break_now = True
-                rem_list = FileDict(ignore_case = False)   ## Remove whatever has already been put to rem_list
+                # Remove whatever has already been put to rem_list
+                rem_list = FileDict(ignore_case = False)
             else:
-                key = object['Key'][rem_base_len:]      ## Beware - this may be '' if object['Key']==rem_base !!
+                # Beware - this may be '' if object_key==rem_base !!
+                key = object_key[rem_base_len:]
                 object_uri_str = remote_uri.uri() + key
-            if empty_fname_re.match(key):
+
+            if not key:
                 # Objects may exist on S3 with empty names (''), which don't map so well to common filesystems.
-                warning(u"Empty object name on S3 found, ignoring.")
+                warning(u"Found empty root object name on S3, ignoring.")
                 continue
+
             rem_list[key] = {
-                'size' : int(object['Size']),
+                'size' : object_size,
                 'timestamp' : dateS3toUnix(object['LastModified']), ## Sadly it's upload time, not our lastmod time :-(
                 'md5' : object['ETag'].strip('"\''),
-                'object_key' : object['Key'],
+                'object_key' : object_key,
                 'object_uri_str' : object_uri_str,
                 'base_uri' : remote_uri,
                 'dev' : None,
                 'inode' : None,
+                'is_dir': is_dir,
             }
             if '-' in rem_list[key]['md5']: # always get it for multipart uploads
                 _get_remote_attribs(S3Uri(object_uri_str), rem_list[key])
             md5 = rem_list[key]['md5']
             rem_list.record_md5(key, md5)
-            total_size += int(object['Size'])
+            total_size += object_size
             if break_now:
                 break
         return rem_list, total_size
@@ -499,10 +535,12 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
                 key = unicodise(os.path.basename(deunicodise(uri.object())))
                 if not key:
                     raise ParameterError(u"Expecting S3 URI with a filename or --recursive: %s" % uri.uri())
+                is_dir = (key and key[-1] == '/')
                 remote_item = {
                     'base_uri': uri,
                     'object_uri_str': uri.uri(),
-                    'object_key': uri.object()
+                    'object_key': uri.object(),
+                    'is_dir': is_dir,
                 }
                 if require_attribs:
                     _get_remote_attribs(uri, remote_item)
@@ -524,24 +562,33 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
     def _compare(src_list, dst_lst, src_remote, dst_remote, file):
         """Return True if src_list[file] matches dst_list[file], else False"""
         attribs_match = True
-        if not (file in src_list and file in dst_list):
-            info(u"%s: does not exist in one side or the other: src_list=%s, dst_list=%s" % (file, file in src_list, file in dst_list))
+        src_file = src_list.get(file)
+        dst_file = dst_list.get(file)
+        if not src_file or not dst_file:
+            info(u"%s: does not exist in one side or the other: src_list=%s, dst_list=%s"
+                 % (file, bool(src_file), bool(dst_file)))
             return False
 
         ## check size first
         if 'size' in cfg.sync_checks:
-            if 'size' in dst_list[file] and 'size' in src_list[file]:
-                if dst_list[file]['size'] != src_list[file]['size']:
-                    debug(u"xfer: %s (size mismatch: src=%s dst=%s)" % (file, src_list[file]['size'], dst_list[file]['size']))
-                    attribs_match = False
+            src_size = src_file.get('size')
+            dst_size = dst_file.get('size')
+            if dst_size is not None and src_size is not None and dst_size != src_size:
+                debug(u"xfer: %s (size mismatch: src=%s dst=%s)" % (file, src_size, dst_size))
+                attribs_match = False
 
         ## check md5
         compare_md5 = 'md5' in cfg.sync_checks
         # Multipart-uploaded files don't have a valid md5 sum - it ends with "...-nn"
         if compare_md5:
-            if (src_remote == True and '-' in src_list[file]['md5']) or (dst_remote == True and '-' in dst_list[file]['md5']):
+            if (src_remote == True and '-' in src_file['md5']) or (dst_remote == True and '-' in dst_file['md5']):
                 compare_md5 = False
                 info(u"disabled md5 check for %s" % file)
+
+        if compare_md5 and src_file['is_dir'] == True:
+            # For directories, nothing to do if they already exist
+            compare_md5 = False
+
         if attribs_match and compare_md5:
             try:
                 src_md5 = src_list.get_md5(file)
@@ -569,12 +616,29 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
     ## Items left on copy_pairs will be copied from dst1 to dst2
     update_list = FileDict(ignore_case = False)
     ## Items left on dst_list will be deleted
-    copy_pairs = []
+    copy_pairs = {}
 
     debug("Comparing filelists (direction: %s -> %s)" % (__direction_str(src_remote), __direction_str(dst_remote)))
 
+    src_dir_cache = set()
+
     for relative_file in src_list.keys():
         debug(u"CHECK: '%s'" % relative_file)
+
+        if src_remote:
+            # Most of the time, there will not be dir objects on the remote side
+            # we still need to have a "virtual" list of them to not think that there
+            # are unmatched dirs with the local side.
+            dir_idx = relative_file.rfind('/')
+            if dir_idx > 0:
+                path = relative_file[:dir_idx+1]
+                while path and path not in src_dir_cache:
+                    src_dir_cache.add(path)
+                    # Also add to cache, all the parent dirs
+                    try:
+                        path = path[:path.rindex('/', 0, -1)+1]
+                    except ValueError:
+                        continue
 
         if relative_file in dst_list:
             ## Was --skip-existing requested?
@@ -606,9 +670,12 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
                     md5 = None
                 if md5 is not None and md5 in dst_list.by_md5:
                     # Found one, we want to copy
-                    dst1 = dst_list.find_md5_one(md5)
-                    debug(u"DST COPY src: '%s' -> '%s'" % (dst1, relative_file))
-                    copy_pairs.append((src_list[relative_file], dst1, relative_file, md5))
+                    copy_src_file = dst_list.find_md5_one(md5)
+                    debug(u"DST COPY src: '%s' -> '%s'" % (copy_src_file, relative_file))
+                    src_item = src_list[relative_file]
+                    src_item["md5"] = md5
+                    src_item["copy_src"] = copy_src_file
+                    copy_pairs[relative_file] = src_item
                     del(src_list[relative_file])
                     del(dst_list[relative_file])
                 else:
@@ -626,12 +693,14 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
                 md5 = src_list.get_md5(relative_file)
             except IOError:
                 md5 = None
-            dst1 = dst_list.find_md5_one(md5)
-            if dst1 is not None:
+            copy_src_file = dst_list.find_md5_one(md5)
+            if copy_src_file is not None:
                 # Found one, we want to copy
-                debug(u"DST COPY dst: '%s' -> '%s'" % (dst1, relative_file))
-                copy_pairs.append((src_list[relative_file], dst1,
-                                   relative_file, md5))
+                debug(u"DST COPY dst: '%s' -> '%s'" % (copy_src_file, relative_file))
+                src_item = src_list[relative_file]
+                src_item["md5"] = md5
+                src_item["copy_src"] = copy_src_file
+                copy_pairs[relative_file] = src_item
                 del(src_list[relative_file])
             else:
                 # we don't have this file, and we don't have a copy of this file elsewhere.  Get it.
@@ -640,8 +709,8 @@ def compare_filelists(src_list, dst_list, src_remote, dst_remote):
                 dst_list.record_md5(relative_file, md5)
 
     for f in dst_list.keys():
-        if f in src_list or f in update_list:
-            # leave only those not on src_list + update_list
+        if f in src_list or f in update_list or f in src_dir_cache:
+            # leave only those not on src_list + update_list + src_dir_cache
             del dst_list[f]
 
     return src_list, dst_list, update_list, copy_pairs

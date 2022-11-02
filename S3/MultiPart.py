@@ -8,10 +8,11 @@ from __future__ import absolute_import
 
 import sys
 from logging import debug, info, warning, error
+from .Crypto import calculateChecksum
 from .Exceptions import ParameterError
 from .S3Uri import S3UriS3
 from .BaseUtils import getTextFromXml, getTreeFromXml, s3_quote, parseNodes
-from .Utils import formatSize, calculateChecksum
+from .Utils import formatSize
 
 SIZE_1MB = 1024 * 1024
 

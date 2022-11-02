@@ -18,27 +18,20 @@ import pprint
 from xml.sax import saxutils
 from socket import timeout as SocketTimeoutException
 from logging import debug, info, warning, error
-from stat import ST_SIZE
+from stat import ST_SIZE, ST_MODE, S_ISDIR, S_ISREG
 try:
     # python 3 support
     from urlparse import urlparse
 except ImportError:
     from urllib.parse import urlparse
-try:
-    # Python 2 support
-    from base64 import encodestring
-except ImportError:
-    # Python 3.9.0+ support
-    from base64 import encodebytes as encodestring
 
 import select
 
 from .BaseUtils import (getListFromXml, getTextFromXml, getRootTagName,
                         decode_from_s3, encode_to_s3, md5, s3_quote)
-from .Utils import (convertHeaderTupleListToDict, hash_file_md5, unicodise,
+from .Utils import (convertHeaderTupleListToDict, unicodise,
                     deunicodise, check_bucket_name,
-                    check_bucket_name_dns_support, getHostnameFromBucket,
-                    calculateChecksum)
+                    check_bucket_name_dns_support, getHostnameFromBucket)
 from .SortedDict import SortedDict
 from .AccessLog import AccessLog
 from .ACL import ACL, GranteeLogDelivery
@@ -49,7 +42,8 @@ from .MultiPart import MultiPartUpload
 from .S3Uri import S3Uri
 from .ConnMan import ConnMan
 from .Crypto import (sign_request_v2, sign_request_v4, checksum_sha256_file,
-                     checksum_sha256_buffer, format_param_str)
+                     checksum_sha256_buffer, generate_content_md5,
+                     hash_file_md5, calculateChecksum, format_param_str)
 
 try:
     from ctypes import ArgumentError
@@ -599,7 +593,7 @@ class S3(object):
         body += '</LifecycleConfiguration>'
 
         headers = SortedDict(ignore_case = True)
-        headers['content-md5'] = compute_content_md5(body)
+        headers['content-md5'] = generate_content_md5(body)
         bucket = uri.bucket()
         request =  self.create_request("BUCKET_CREATE", bucket = bucket,
                                        headers = headers, body = body,
@@ -620,6 +614,7 @@ class S3(object):
                 (content_type, content_charset) = mime_magic(filename)
             else:
                 (content_type, content_charset) = mimetypes.guess_type(filename)
+
         if not content_type:
             content_type = self.config.default_mime_type
         return (content_type, content_charset)
@@ -632,14 +627,17 @@ class S3(object):
         content_type += "; charset=" + self.config.encoding.upper()
         return content_type
 
-    def content_type(self, filename=None):
+    def content_type(self, filename=None, is_dir=False):
         # explicit command line argument always wins
         content_type = self.config.mime_type
         content_charset = None
 
         if filename == u'-':
             return self.stdin_content_type()
-        if not content_type:
+
+        if is_dir:
+            content_type = 'application/x-directory'
+        elif not content_type:
             (content_type, content_charset) = self._guess_content_type(filename)
 
         ## add charset to content type
@@ -671,21 +669,36 @@ class S3(object):
         if uri.type != "s3":
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 
-        if filename != "-" and not os.path.isfile(deunicodise(filename)):
-            raise InvalidFileError(u"Not a regular file")
         try:
+            is_dir = False
+            size = 0
             if filename == "-":
+                is_stream = True
                 src_stream = io.open(sys.stdin.fileno(), mode='rb', closefd=False)
                 src_stream.stream_name = u'<stdin>'
-                size = 0
+
             else:
-                src_stream = io.open(deunicodise(filename), mode='rb')
+                is_stream = False
+                filename_bytes = deunicodise(filename)
+
+                stat = os.stat(filename_bytes)
+                mode = stat[ST_MODE]
+
+                if S_ISDIR(mode):
+                    is_dir = True
+                    # Dirs are represented as empty objects on S3
+                    src_stream = io.BytesIO(b'')
+                elif not S_ISREG(mode):
+                    raise InvalidFileError(u"Not a regular file")
+                else:
+                    # Standard normal file
+                    src_stream = io.open(filename_bytes, mode='rb')
+                    size = stat[ST_SIZE]
                 src_stream.stream_name = filename
-                size = os.stat(deunicodise(filename))[ST_SIZE]
         except (IOError, OSError) as e:
             raise InvalidFileError(u"%s" % e.strerror)
 
-        headers = SortedDict(ignore_case = True)
+        headers = SortedDict(ignore_case=True)
         if extra_headers:
             headers.update(extra_headers)
 
@@ -699,7 +712,7 @@ class S3(object):
             headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
 
         ## MIME-type handling
-        headers["content-type"] = self.content_type(filename=filename)
+        headers["content-type"] = self.content_type(filename=filename, is_dir=is_dir)
 
         ## Other Amazon S3 attributes
         if self.config.acl_public:
@@ -708,10 +721,10 @@ class S3(object):
 
         ## Multipart decision
         multipart = False
-        if not self.config.enable_multipart and filename == "-":
+        if not self.config.enable_multipart and is_stream:
             raise ParameterError("Multi-part upload is required to upload from stdin")
         if self.config.enable_multipart:
-            if size > self.config.multipart_chunk_size_mb * SIZE_1MB or filename == "-":
+            if size > self.config.multipart_chunk_size_mb * SIZE_1MB or is_stream:
                 multipart = True
                 if size > self.config.multipart_max_chunks * self.config.multipart_chunk_size_mb * SIZE_1MB:
                     raise ParameterError("Chunk size %d MB results in more than %d chunks. Please increase --multipart-chunk-size-mb" % \
@@ -788,7 +801,7 @@ class S3(object):
             raise ValueError("Key list is empty")
         bucket = S3Uri(batch[0]).bucket()
         request_body = compose_batch_del_xml(bucket, batch)
-        headers = SortedDict({'content-md5': compute_content_md5(request_body),
+        headers = SortedDict({'content-md5': generate_content_md5(request_body),
                    'content-type': 'application/xml'}, ignore_case=True)
         request = self.create_request("BATCH_DELETE", bucket = bucket,
                                       headers = headers, body = request_body,
@@ -1097,7 +1110,7 @@ class S3(object):
         headers = SortedDict(ignore_case = True)
         # TODO check cors is proper json string
         headers['content-type'] = 'application/xml'
-        headers['content-md5'] = compute_content_md5(cors)
+        headers['content-md5'] = generate_content_md5(cors)
         request = self.create_request("BUCKET_CREATE", uri = uri,
                                       headers=headers, body = cors,
                                       uri_params = {'cors': None})
@@ -1113,7 +1126,7 @@ class S3(object):
 
     def set_lifecycle_policy(self, uri, policy):
         headers = SortedDict(ignore_case = True)
-        headers['content-md5'] = compute_content_md5(policy)
+        headers['content-md5'] = generate_content_md5(policy)
         request = self.create_request("BUCKET_CREATE", uri = uri,
                                       headers=headers, body = policy,
                                       uri_params = {'lifecycle': None})
@@ -1651,7 +1664,7 @@ class S3(object):
         if buffer:
             sha256_hash = checksum_sha256_buffer(buffer, offset, size_total)
         else:
-            sha256_hash = checksum_sha256_file(filename, offset, size_total)
+            sha256_hash = checksum_sha256_file(stream, offset, size_total)
         request.body = sha256_hash
 
         if use_expect_continue:
@@ -2132,11 +2145,4 @@ def parse_attrs_header(attrs_header):
         attrs[key] = val
     return attrs
 
-def compute_content_md5(body):
-    m = md5(encode_to_s3(body))
-    base64md5 = encodestring(m.digest())
-    base64md5 = decode_from_s3(base64md5)
-    if base64md5[-1] == '\n':
-        base64md5 = base64md5[0:-1]
-    return decode_from_s3(base64md5)
 # vim:et:ts=4:sts=4:ai
