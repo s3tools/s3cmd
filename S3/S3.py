@@ -614,6 +614,7 @@ class S3(object):
                 (content_type, content_charset) = mime_magic(filename)
             else:
                 (content_type, content_charset) = mimetypes.guess_type(filename)
+
         if not content_type:
             content_type = self.config.default_mime_type
         return (content_type, content_charset)
@@ -626,14 +627,17 @@ class S3(object):
         content_type += "; charset=" + self.config.encoding.upper()
         return content_type
 
-    def content_type(self, filename=None):
+    def content_type(self, filename=None, is_dir=False):
         # explicit command line argument always wins
         content_type = self.config.mime_type
         content_charset = None
 
         if filename == u'-':
             return self.stdin_content_type()
-        if not content_type:
+
+        if is_dir:
+            content_type = 'application/x-directory'
+        elif not content_type:
             (content_type, content_charset) = self._guess_content_type(filename)
 
         ## add charset to content type
@@ -666,6 +670,7 @@ class S3(object):
             raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
 
         try:
+            is_dir = False
             size = 0
             if filename == "-":
                 is_stream = True
@@ -680,6 +685,7 @@ class S3(object):
                 mode = stat[ST_MODE]
 
                 if S_ISDIR(mode):
+                    is_dir = True
                     # Dirs are represented as empty objects on S3
                     src_stream = io.BytesIO(b'')
                 elif not S_ISREG(mode):
@@ -706,7 +712,7 @@ class S3(object):
             headers['x-amz-server-side-encryption-aws-kms-key-id'] = self.config.kms_key
 
         ## MIME-type handling
-        headers["content-type"] = self.content_type(filename=filename)
+        headers["content-type"] = self.content_type(filename=filename, is_dir=is_dir)
 
         ## Other Amazon S3 attributes
         if self.config.acl_public:
