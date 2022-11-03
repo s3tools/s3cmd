@@ -1661,7 +1661,7 @@ def cmd_sync_remote2local(args):
                     pass
 
             if is_dir:
-                output(u"make dir: '%s' -> '%s' %s" % (uri, dst_file, seq_label))
+                output(u"mkdir: '%s' -> '%s' %s" % (uri, dst_file, seq_label))
             else:
                 speed_fmt = formatSize(response["speed"], human_readable = True, floating_point = True)
                 if not Config().progress_meter:

@@ -546,10 +546,10 @@ test_rmdir("Create 'emptytests/withoutdirs'", "testsuite-out/emptytests/withoutd
 test_rmdir("Create 'emptytests/withdirs/'", "testsuite-out/emptytests/withdirs/")
 
 test_s3cmd("Sync from S3 no empty dir", ['sync', '%s/withoutdirs/' % pbucket(1), 'testsuite-out/emptytests/withoutdirs/'],
-    must_not_find = ["make dir: '%s/withoutdirs/blahBlah/dirtest/emptydir/'" % pbucket(1)])
+    must_not_find = ["mkdir: '%s/withoutdirs/blahBlah/dirtest/emptydir/'" % pbucket(1)])
 
 test_s3cmd("Sync from S3 with empty dir", ['sync', '%s/withdirs/' % pbucket(1), 'testsuite-out/emptytests/withdirs/'],
-    must_find = ["make dir: '%s/withdirs/blahBlah/dirtest/emptydir/'" % pbucket(1)])
+    must_find = ["mkdir: '%s/withdirs/blahBlah/dirtest/emptydir/'" % pbucket(1)])
 
 ## ====== Remove 'emptydirtests' directory
 test_rmdir("Remove 'emptytests/'", "testsuite-out/emptytests/")
