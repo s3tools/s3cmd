@@ -2362,7 +2362,7 @@ def cmd_abort_multipart(args):
     s3 = S3(cfg)
     uri = S3Uri(args[0])
     if not uri.object():
-        raise ParameterError("S3Uri must include an object. Got: %s" % uri)
+        raise ParameterError(u"Expecting S3 URI with a filename: %s" % uri.uri())
     id = args[1]
     response = s3.abort_multipart(uri, id)
     debug(u"response - %s" % response['status'])
