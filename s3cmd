@@ -2357,10 +2357,12 @@ def cmd_multipart(args):
     return EX_OK
 
 def cmd_abort_multipart(args):
-    '''{"cmd":"abortmp",   "label":"abort a multipart upload", "param":"s3://BUCKET Id", "func":cmd_abort_multipart, "argc":2},'''
+    '''{"cmd":"abortmp",   "label":"abort a multipart upload", "param":"s3://BUCKET/OBJECT Id", "func":cmd_abort_multipart, "argc":2},'''
     cfg = Config()
     s3 = S3(cfg)
     uri = S3Uri(args[0])
+    if not uri.object():
+        raise ParameterError(u"Expecting S3 URI with a filename: %s" % uri.uri())
     id = args[1]
     response = s3.abort_multipart(uri, id)
     debug(u"response - %s" % response['status'])
