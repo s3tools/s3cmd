@@ -9,11 +9,12 @@
 from __future__ import absolute_import, division
 
 import functools
-from hashlib import md5
 import re
+import posixpath
 import sys
 
 from calendar import timegm
+from hashlib import md5
 from logging import debug, warning, error
 
 import xml.dom.minidom
@@ -54,6 +55,8 @@ except NameError:
 
 __all__ = []
 
+s3path = posixpath
+__all__.append("s3path")
 
 try:
     md5()

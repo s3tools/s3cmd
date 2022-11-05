@@ -12,7 +12,7 @@ from .S3 import S3
 from .Config import Config
 from .S3Uri import S3Uri
 from .FileDict import FileDict
-from .BaseUtils import dateS3toUnix, dateRFC822toUnix
+from .BaseUtils import dateS3toUnix, dateRFC822toUnix, s3path
 from .Utils import unicodise, deunicodise, deunicodise_s, replace_nonprintables
 from .Exceptions import ParameterError
 from .HashCache import HashCache
@@ -453,7 +453,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
 
             if object_key == rem_base_original and not is_dir:
                 ## We asked for one file and we got that file :-)
-                key = unicodise(os.path.basename(deunicodise(object_key)))
+                key = s3path.basename(object_key)
                 object_uri_str = remote_uri_original.uri()
                 break_now = True
                 # Remove whatever has already been put to rem_list
@@ -519,7 +519,9 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
             ## Wildcards used in remote URI?
             ## If yes we'll need a bucket listing...
             wildcard_split_result = re.split("\*|\?", uri_str, maxsplit=1)
-            if len(wildcard_split_result) == 2: # wildcards found
+
+            if len(wildcard_split_result) == 2:
+                ## If wildcards found
                 prefix, rest = wildcard_split_result
                 ## Only request recursive listing if the 'rest' of the URI,
                 ## i.e. the part after first wildcard, contains '/'
@@ -532,7 +534,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
                         remote_list[key] = objectlist[key]
             else:
                 ## No wildcards - simply append the given URI to the list
-                key = unicodise(os.path.basename(deunicodise(uri.object())))
+                key = s3path.basename(uri.object())
                 if not key:
                     raise ParameterError(u"Expecting S3 URI with a filename or --recursive: %s" % uri.uri())
                 is_dir = (key and key[-1] == '/')

@@ -1174,8 +1174,9 @@ def cmd_sync_remote2remote(args):
         if source_arg.endswith('/'):
             destbase_with_source_list.add(destination_base)
         else:
-            destbase_with_source_list.add(os.path.join(destination_base,
-                                                  os.path.basename(source_arg)))
+            destbase_with_source_list.add(s3path.join(
+                destination_base, s3path.basename(source_arg)
+            ))
 
     stats_info = StatsInfo()
 
@@ -1963,8 +1964,9 @@ def cmd_sync_local2remote(args):
         for source_arg in source_args:
             if not source_arg.endswith('/') and os.path.basename(source_arg) != '.' \
                and not single_file_local:
-                destbase_with_source_list.add(os.path.join(destination_base,
-                                                    os.path.basename(source_arg)))
+                destbase_with_source_list.add(s3path.join(
+                    destination_base, os.path.basename(source_arg)
+                ))
             else:
                 destbase_with_source_list.add(destination_base)
 
@@ -3420,7 +3422,7 @@ if __name__ == '__main__':
         from S3.S3Uri import S3Uri
         from S3 import Utils
         from S3.BaseUtils import (formatDateTime, getPrettyFromXml,
-                                  encode_to_s3, decode_from_s3)
+                                  encode_to_s3, decode_from_s3, s3path)
         from S3.Crypto import hash_file_md5, sign_string_v2, sign_url_v2
         from S3.Utils import (formatSize, unicodise_safe, unicodise_s,
                               unicodise, deunicodise, replace_nonprintables)
