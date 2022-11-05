@@ -1496,6 +1496,7 @@ def cmd_sync_remote2local(args):
                 continue
 
             response = None
+            dst_files_b = deunicodise(dst_file)
             try:
                 chkptfname_b = ''
                 # ignore empty directory at S3:
@@ -1504,8 +1505,9 @@ def cmd_sync_remote2local(args):
                     # create temporary files (of type .s3cmd.XXXX.tmp) in the same directory
                     # for downloading and then rename once downloaded
                     # unicode provided to mkstemp argument
-                    chkptfd, chkptfname_b = tempfile.mkstemp(u".tmp", u".s3cmd.",
-                                                           os.path.dirname(dst_file))
+                    chkptfd, chkptfname_b = tempfile.mkstemp(
+                        u".tmp", u".s3cmd.", os.path.dirname(dst_file)
+                    )
                     with io.open(chkptfd, mode='wb') as dst_stream:
                         dst_stream.stream_name = unicodise(chkptfname_b)
                         debug(u"created chkptfname=%s" % dst_stream.stream_name)
@@ -1515,20 +1517,24 @@ def cmd_sync_remote2local(args):
                     if os.name == "nt":
                         # Windows is really a bad OS. Rename can't overwrite an existing file
                         try:
-                            os.unlink(deunicodise(dst_file))
+                            os.unlink(dst_files_b)
                         except OSError:
                             pass
-                    os.rename(chkptfname_b, deunicodise(dst_file))
-                    debug(u"renamed chkptfname=%s to dst_file=%s" % (dst_stream.stream_name, dst_file))
+                    os.rename(chkptfname_b, dst_files_b)
+                    debug(u"renamed chkptfname=%s to dst_file=%s"
+                          % (dst_stream.stream_name, dst_file))
             except OSError as exc:
                 allow_partial = True
 
                 if exc.errno == errno.EISDIR:
-                    error(u"Download of '%s' failed (Reason: %s is a directory)" % (file, dst_file))
+                    error(u"Download of '%s' failed (Reason: %s is a directory)"
+                          % (file, dst_file))
                 elif os.name != "nt" and exc.errno == errno.ETXTBSY:
-                    error(u"Download of '%s' failed (Reason: %s is currently open for execute, cannot be overwritten)" % (file, dst_file))
+                    error(u"Download of '%s' failed (Reason: %s is currently open for execute, cannot be overwritten)"
+                          % (file, dst_file))
                 elif exc.errno == errno.EPERM or exc.errno == errno.EACCES:
-                    error(u"Download of '%s' failed (Reason: %s permission denied)" % (file, dst_file))
+                    error(u"Download of '%s' failed (Reason: %s permission denied)"
+                          % (file, dst_file))
                 elif exc.errno == errno.EBUSY:
                     error(u"Download of '%s' failed (Reason: %s is busy)" % (file, dst_file))
                 elif exc.errno == errno.EFBIG:
@@ -1595,7 +1601,7 @@ def cmd_sync_remote2local(args):
                     # an empty directory, make them readable/executable
                     mode = 0o775
                 debug(u"mode=%s" % oct(mode))
-                os.chmod(deunicodise(dst_file), mode)
+                os.chmod(dst_files_b, mode)
             except:
                 raise
 
@@ -1616,27 +1622,34 @@ def cmd_sync_remote2local(args):
             try:
                 if response and 's3cmd-attrs' in response and cfg.preserve_attrs:
                     attrs = response['s3cmd-attrs']
-                    if 'mode' in attrs:
-                        os.chmod(deunicodise(dst_file), int(attrs['mode']))
-                    if 'mtime' in attrs or 'atime' in attrs:
-                        mtime = ('mtime' in attrs) and int(attrs['mtime']) or int(time.time())
-                        atime = ('atime' in attrs) and int(attrs['atime']) or int(time.time())
-                        os.utime(deunicodise(dst_file), (atime, mtime))
-                    if 'uid' in attrs and 'gid' in attrs:
-                        uid = int(attrs['uid'])
-                        gid = int(attrs['gid'])
+                    attr_mode = attrs.get('mode')
+                    attr_mtime = attrs.get('mtime')
+                    attr_atime = attrs.get('atime')
+                    attr_uid = attrs.get('uid')
+                    attr_gid = attrs.get('gid')
+                    if attr_mode is not None:
+                        os.chmod(dst_files_b, int(attr_mode))
+                    if attr_mtime is not None or attr_atime is not None:
+                        default_time = int(time.time())
+                        mtime = attr_mtime is not None and int(attr_mtime) or default_time
+                        atime = attr_atime is not None and int(attr_atime) or default_time
+                        os.utime(dst_files_b, (atime, mtime))
+                    if attr_uid is not None and attr_gid is not None:
+                        uid = int(attr_uid)
+                        gid = int(attr_gid)
                         try:
-                            os.lchown(deunicodise(dst_file),uid,gid)
+                            os.lchown(dst_files_b, uid, gid)
                         except Exception as exc:
                             exc.failed_step = 'lchown'
                             raise
                 else:
                     if response and 'last-modified' in response['headers']:
                         last_modified_ts = time.mktime(time.strptime(
-                            response["headers"]["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"
+                            response["headers"]["last-modified"],
+                            "%a, %d %b %Y %H:%M:%S GMT"
                         ))
                     if last_modified_ts:
-                        os.utime(deunicodise(dst_file), (last_modified_ts, last_modified_ts))
+                        os.utime(dst_files_b, (last_modified_ts, last_modified_ts))
                         debug("set mtime to %s" % last_modified_ts)
             except OSError as e:
                 ret = EX_PARTIAL
@@ -1661,11 +1674,6 @@ def cmd_sync_remote2local(args):
                 if cfg.stop_on_error:
                     raise OSError(e)
                 continue
-            finally:
-                try:
-                    os.remove(chkptfname_b)
-                except Exception:
-                    pass
 
             if is_dir:
                 output(u"mkdir: '%s' -> '%s' %s" % (uri, dst_file, seq_label))
