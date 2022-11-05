@@ -1625,7 +1625,11 @@ def cmd_sync_remote2local(args):
                     if 'uid' in attrs and 'gid' in attrs:
                         uid = int(attrs['uid'])
                         gid = int(attrs['gid'])
-                        os.lchown(deunicodise(dst_file),uid,gid)
+                        try:
+                            os.lchown(deunicodise(dst_file),uid,gid)
+                        except Exception as exc:
+                            exc.failed_step = 'lchown'
+                            raise
                 else:
                     if response and 'last-modified' in response['headers']:
                         last_modified_ts = time.mktime(time.strptime(
@@ -1637,10 +1641,13 @@ def cmd_sync_remote2local(args):
             except OSError as e:
                 ret = EX_PARTIAL
                 if e.errno == errno.EEXIST:
-                    warning(u"%s exists - not overwriting" % dst_file)
+                    warning(u"'%s' exists - not overwriting" % dst_file)
                     continue
                 if e.errno in (errno.EPERM, errno.EACCES):
-                    warning(u"%s not writable: %s" % (dst_file, e.strerror))
+                    if getattr(e, 'failed_step') == 'lchown':
+                        warning(u"Can't set owner/group: '%s' (%s)" % (dst_file, e.strerror))
+                    else:
+                        warning(u"Attrs not writable: '%s' (%s)" % (dst_file, e.strerror))
                     if cfg.stop_on_error:
                         raise e
                     continue
