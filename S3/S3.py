@@ -481,7 +481,10 @@ class S3(object):
             response['requester-pays'] = self.get_bucket_requester_pays(uri)
         except S3Error as e:
             response['requester-pays'] = None
-        response['versioning'] = self.get_versioning(uri)
+        try:
+            response['versioning'] = self.get_versioning(uri)
+        except S3Error as e:
+            response['versioning'] = None
         return response
 
     def website_info(self, uri, bucket_location = None):
@@ -1065,12 +1068,12 @@ class S3(object):
         response = self.send_request(request)
         return response
 
-    def set_versioning(self, uri, status):
+    def set_versioning(self, uri, enabled):
         headers = SortedDict(ignore_case = True)
-        headers['content-type'] = 'application/xml'
-        body = '<VersioningConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">\n'
-        body += '<Status>%s</Status>\n' % status
-        body += '</VersioningConfiguration>\n'
+        status = "Enabled" if enabled is True else "Suspended"
+        body = '<VersioningConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
+        body += '<Status>%s</Status>' % status
+        body += '</VersioningConfiguration>'
         debug(u"set_versioning(%s)" % body)
         headers['content-md5'] = compute_content_md5(body)
         request = self.create_request("BUCKET_CREATE", uri = uri,

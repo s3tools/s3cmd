@@ -2052,15 +2052,19 @@ def cmd_setacl(args):
 def cmd_setversioning(args):
     cfg = Config()
     s3 = S3(cfg)
-    uri = S3Uri(args[0])
+    bucket_uri = S3Uri(args[0])
+    if bucket_uri.object():
+        raise ParameterError("Only bucket name is required for [setversioning] command")
+    status = args[1]
+    if status not in ["enable", "disable"]:
+        raise ParameterError("Must be 'enable' or 'disable'. Got: %s" % status)
 
-    status = cfg.versioning_suspended and "Suspended" or "Enabled"
-
-    response = s3.set_versioning(uri, status)
+    enabled = True if status == "enable" else False
+    response = s3.set_versioning(bucket_uri, enabled)
 
     debug(u"response - %s" % response['status'])
     if response['status'] == 200:
-        output(u"%s: Versioning status updated" % uri)
+        output(u"%s: Versioning status updated" % bucket_uri)
     return EX_OK
 
 def cmd_setpolicy(args):
@@ -2665,7 +2669,7 @@ def get_commands_list():
     {"cmd":"modify", "label":"Modify object metadata", "param":"s3://BUCKET1/OBJECT", "func":cmd_modify, "argc":1},
     {"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
     {"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
-    {"cmd":"setversioning", "label":"Modify Bucket Versioning", "param":"s3://BUCKET", "func":cmd_setversioning, "argc":1},
+    {"cmd":"setversioning", "label":"Modify Bucket Versioning", "param":"s3://BUCKET enable|disable", "func":cmd_setversioning, "argc":2},
 
     {"cmd":"setpolicy", "label":"Modify Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_setpolicy, "argc":2},
     {"cmd":"delpolicy", "label":"Delete Bucket Policy", "param":"s3://BUCKET", "func":cmd_delpolicy, "argc":1},
@@ -2954,7 +2958,6 @@ def main():
     optparser.add_option(      "--max-retries", dest="max_retries", action="store", help="Maximum number of times to retry a failed request before giving up. Default is 5", metavar="NUM")
     optparser.add_option(      "--content-disposition", dest="content_disposition", action="store", help="Provide a Content-Disposition for signed URLs, e.g., \"inline; filename=myvideo.mp4\"")
     optparser.add_option(      "--content-type", dest="content_type", action="store", help="Provide a Content-Type for signed URLs, e.g., \"video/mp4\"")
-    optparser.add_option(      "--versioning-suspended", dest="versioning_suspended", action="store_true", help="Set bucket versioning status. (only for [setversioning] command)")
 
     optparser.set_usage(optparser.usage + " COMMAND [parameters]")
     optparser.set_description('S3cmd is a tool for managing objects in '+
