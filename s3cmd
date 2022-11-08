@@ -1082,6 +1082,8 @@ def cmd_info(args):
                                               or 'none'))
                 output(u"   Payer:     %s" % (info['requester-pays']
                                               or 'none'))
+                output(u"   Versioning:%s" % (info['versioning']
+                                              or 'none'))
                 expiration = s3.expiration_info(uri, cfg.bucket_location)
                 if expiration and expiration['prefix'] is not None:
                     expiration_desc = "Expiration Rule: "
@@ -2195,6 +2197,24 @@ def cmd_setacl(args):
         update_acl(s3, uri, seq_label)
     return EX_OK
 
+def cmd_setversioning(args):
+    cfg = Config()
+    s3 = S3(cfg)
+    bucket_uri = S3Uri(args[0])
+    if bucket_uri.object():
+        raise ParameterError("Only bucket name is required for [setversioning] command")
+    status = args[1]
+    if status not in ["enable", "disable"]:
+        raise ParameterError("Must be 'enable' or 'disable'. Got: %s" % status)
+
+    enabled = True if status == "enable" else False
+    response = s3.set_versioning(bucket_uri, enabled)
+
+    debug(u"response - %s" % response['status'])
+    if response['status'] == 200:
+        output(u"%s: Versioning status updated" % bucket_uri)
+    return EX_OK
+
 def cmd_setpolicy(args):
     cfg = Config()
     s3 = S3(cfg)
@@ -2799,6 +2819,7 @@ def get_commands_list():
     {"cmd":"modify", "label":"Modify object metadata", "param":"s3://BUCKET1/OBJECT", "func":cmd_modify, "argc":1},
     {"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
     {"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
+    {"cmd":"setversioning", "label":"Modify Bucket Versioning", "param":"s3://BUCKET enable|disable", "func":cmd_setversioning, "argc":2},
 
     {"cmd":"setpolicy", "label":"Modify Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_setpolicy, "argc":2},
     {"cmd":"delpolicy", "label":"Delete Bucket Policy", "param":"s3://BUCKET", "func":cmd_delpolicy, "argc":1},
