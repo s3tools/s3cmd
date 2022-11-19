@@ -109,26 +109,37 @@ class S3UriS3(S3Uri):
 
     @staticmethod
     def httpurl_to_s3uri(http_url):
-        m=re.match("(https?://)?([^/]+)/?(.*)", http_url, re.IGNORECASE | re.UNICODE)
+        m = re.match("(https?://)?([^/]+)/?(.*)", http_url, re.IGNORECASE | re.UNICODE)
         hostname, object = m.groups()[1:]
         hostname = hostname.lower()
-        if hostname == "s3.amazonaws.com":
+
+        # Worst case scenario, we would like to be able to match something like
+        # my.website.com.s3-fips.dualstack.us-west-1.amazonaws.com.cn
+        m = re.match("(.*\.)?s3(?:\-[^\.]*)?(?:\.dualstack)?(?:\.[^\.]*)?\.amazonaws\.com(?:\.cn)?$",
+                     hostname, re.IGNORECASE | re.UNICODE)
+        if not m:
+            raise ValueError("Unable to parse URL: %s" % http_url)
+
+        bucket = m.groups()[0]
+        if not bucket:
             ## old-style url: http://s3.amazonaws.com/bucket/object
-            if object.count("/") == 0:
+            if "/" not in object:
                 ## no object given
                 bucket = object
                 object = ""
             else:
                 ## bucket/object
                 bucket, object = object.split("/", 1)
-        elif hostname.endswith(".s3.amazonaws.com"):
-            ## new-style url: http://bucket.s3.amazonaws.com/object
-            bucket = hostname[:-(len(".s3.amazonaws.com"))]
         else:
-            raise ValueError("Unable to parse URL: %s" % http_url)
-        return S3Uri(u"s3://%(bucket)s/%(object)s" % {
-            'bucket' : bucket,
-            'object' : object })
+            ## new-style url: http://bucket.s3.amazonaws.com/object
+            bucket = bucket.rstrip('.')
+
+        return S3Uri(
+            u"s3://%(bucket)s/%(object)s" % {
+                'bucket' : bucket,
+                'object' : object
+            }
+        )
 
 class S3UriS3FS(S3Uri):
     type = "s3fs"
