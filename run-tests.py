@@ -296,7 +296,7 @@ def test_copy(label, src_file, dst_file):
     return test(label, cmd)
 
 def test_curl_HEAD(label, src_file, **kwargs):
-    cmd = ['curl', '--silent', '--head', '-include', '--location']
+    cmd = ['curl', '--silent', '--head', '--include', '--location']
     cmd.append(src_file)
     return test(label, cmd, **kwargs)
 
