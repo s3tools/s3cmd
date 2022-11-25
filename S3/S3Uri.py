@@ -115,7 +115,7 @@ class S3UriS3(S3Uri):
 
         # Worst case scenario, we would like to be able to match something like
         # my.website.com.s3-fips.dualstack.us-west-1.amazonaws.com.cn
-        m = re.match("(.*\.)?s3(?:\-[^\.]*)?(?:\.dualstack)?(?:\.[^\.]*)?\.amazonaws\.com(?:\.cn)?$",
+        m = re.match(r"(.*\.)?s3(?:-[^.]*)?(?:\.dualstack)?(?:\.[^.]*)?\.amazonaws\.com(?:\.cn)?$",
                      hostname, re.IGNORECASE | re.UNICODE)
         if not m:
             raise ValueError("Unable to parse URL: %s" % http_url)
@@ -163,7 +163,7 @@ class S3UriS3FS(S3Uri):
 
 class S3UriFile(S3Uri):
     type = "file"
-    _re = re.compile("^(\w+://)?(.*)", re.UNICODE)
+    _re = re.compile(r"^(\w+://)?(.*)", re.UNICODE)
     def __init__(self, string):
         match = self._re.match(string)
         groups = match.groups()

@@ -414,7 +414,7 @@ test_s3cmd("Sync to S3", ['sync', 'testsuite/', pbucket(1) + '/xyz/', '--exclude
            must_find = ["ERROR: Upload of 'testsuite/permission-tests/permission-denied.txt' is not possible (Reason: Permission denied)",
                         "WARNING: 32 non-printable characters replaced in: crappy-file-name/non-printables",
            ],
-           must_not_find_re = ["demo/", "^(?!WARNING: Skipping).*\.png$", "permission-denied-dir"],
+           must_not_find_re = ["demo/", r"^(?!WARNING: Skipping).*\.png$", "permission-denied-dir"],
            retcode = EX_PARTIAL)
 
 ## ====== Create new file and sync with caching enabled
@@ -702,7 +702,7 @@ test_s3cmd("Recursive copy, set ACL", ['cp', '-r', '--acl-public', '%s/xyz/' % p
 ## ====== Verify ACL and MIME type
 test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "MIME type:.*image/png",
-                     "ACL:.*\*anon\*: READ",
+                     r"ACL:.*\*anon\*: READ",
                      "URL:.*https?://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ],
            skip_if_profile = ['minio'])
 
@@ -716,7 +716,7 @@ test_s3cmd("Modify MIME type", ['modify', '--mime-type=binary/octet-stream', '%s
 
 test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "MIME type:.*binary/octet-stream",
-                     "ACL:.*\*anon\*: READ",
+                     r"ACL:.*\*anon\*: READ",
                      "URL:.*https?://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ],
            skip_if_profile = ['minio'])
 
@@ -731,7 +731,7 @@ test_s3cmd("Modify MIME type back", ['modify', '--mime-type=image/png', '%s/copy
 
 test_s3cmd("Verify ACL and MIME type", ['info', '%s/copy/etc2/Logo.PNG' % pbucket(2) ],
     must_find_re = [ "MIME type:.*image/png",
-                     "ACL:.*\*anon\*: READ",
+                     r"ACL:.*\*anon\*: READ",
                      "URL:.*https?://%s.%s/copy/etc2/Logo.PNG" % (bucket(2), cfg.host_base) ],
            skip_if_profile = ['minio'])
 

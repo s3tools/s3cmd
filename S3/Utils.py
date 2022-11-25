@@ -223,11 +223,11 @@ def time_to_epoch(t):
 
 def check_bucket_name(bucket, dns_strict=True):
     if dns_strict:
-        invalid = re.search("([^a-z0-9\.-])", bucket, re.UNICODE)
+        invalid = re.search("([^a-z0-9.-])", bucket, re.UNICODE)
         if invalid:
             raise S3.Exceptions.ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: lowercase us-ascii letters (a-z), digits (0-9), dot (.) and hyphen (-)." % (bucket, invalid.groups()[0]))
     else:
-        invalid = re.search("([^A-Za-z0-9\._-])", bucket, re.UNICODE)
+        invalid = re.search("([^A-Za-z0-9._-])", bucket, re.UNICODE)
         if invalid:
             raise S3.Exceptions.ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: us-ascii letters (a-z, A-Z), digits (0-9), dot (.), hyphen (-) and underscore (_)." % (bucket, invalid.groups()[0]))
 
@@ -238,9 +238,9 @@ def check_bucket_name(bucket, dns_strict=True):
     if dns_strict:
         if len(bucket) > 63:
             raise S3.Exceptions.ParameterError("Bucket name '%s' is too long (max 63 characters)" % bucket)
-        if re.search("-\.", bucket, re.UNICODE):
+        if re.search(r"-\.", bucket, re.UNICODE):
             raise S3.Exceptions.ParameterError("Bucket name '%s' must not contain sequence '-.' for DNS compatibility" % bucket)
-        if re.search("\.\.", bucket, re.UNICODE):
+        if re.search(r"\.\.", bucket, re.UNICODE):
             raise S3.Exceptions.ParameterError("Bucket name '%s' must not contain sequence '..' for DNS compatibility" % bucket)
         if not re.search("^[0-9a-z]", bucket, re.UNICODE):
             raise S3.Exceptions.ParameterError("Bucket name '%s' must start with a letter or a digit" % bucket)

@@ -518,7 +518,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
             uri_str = uri.uri()
             ## Wildcards used in remote URI?
             ## If yes we'll need a bucket listing...
-            wildcard_split_result = re.split("\*|\?", uri_str, maxsplit=1)
+            wildcard_split_result = re.split(r"\*|\?", uri_str, maxsplit=1)
 
             if len(wildcard_split_result) == 2:
                 ## If wildcards found
