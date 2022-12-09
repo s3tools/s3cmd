@@ -42,6 +42,7 @@ import shutil
 import socket
 import subprocess
 import tempfile
+import datetime
 import time
 import traceback
 
@@ -2197,6 +2198,49 @@ def cmd_setacl(args):
         update_acl(s3, uri, seq_label)
     return EX_OK
 
+def cmd_setobjectlegalhold(args):
+    cfg = Config()
+    s3 = S3(cfg)
+    legal_hold_status = args[0]
+    uri = S3Uri(args[1])
+
+    if legal_hold_status not in ["ON", "OFF"]:
+        raise ParameterError("Incorrect status")
+
+    if cfg.dry_run:
+        return EX_OK
+
+    response = s3.set_object_legal_hold(uri, legal_hold_status)
+
+    debug(u"response - %s" % response['status'])
+    if response['status'] == 204:
+        output(u"%s: Legal Hold updated" % uri)
+    return EX_OK
+
+def cmd_setobjectretention(args):
+    cfg = Config()
+    s3 = S3(cfg)
+    mode = args[0]
+    retain_until_date = args[1]
+    uri = S3Uri(args[2])
+
+    if mode not in ["COMPLIANCE", "GOVERNANCE"]:
+        raise ParameterError("Incorrect mode")
+
+    try:
+        datetime.datetime.strptime(retain_until_date, '%Y-%m-%dT%H:%M:%SZ')
+    except ValueError:
+        raise ParameterError("Incorrect data format, should be YYYY-MM-DDTHH:MM:SSZ")
+
+    if cfg.dry_run:
+        return EX_OK
+
+    response = s3.set_object_retention(uri, mode, retain_until_date)
+
+    debug(u"response - %s" % response['status'])
+    if response['status'] == 204:
+        output(u"%s: Retention updated" % uri)
+
 def cmd_setversioning(args):
     cfg = Config()
     s3 = S3(cfg)
@@ -2820,6 +2864,9 @@ def get_commands_list():
     {"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
     {"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
     {"cmd":"setversioning", "label":"Modify Bucket Versioning", "param":"s3://BUCKET enable|disable", "func":cmd_setversioning, "argc":2},
+
+    {"cmd":"setobjectlegalhold", "label":"Modify Object Legal Hold", "param":"STATUS s3://BUCKET/OBJECT", "func":cmd_setobjectlegalhold, "argc":2},
+    {"cmd":"setobjectretention", "label":"Modify Object Retention", "param":"MODE RETAIN_UNTIL_DATE s3://BUCKET/OBJECT", "func":cmd_setobjectretention, "argc":3},
 
     {"cmd":"setpolicy", "label":"Modify Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_setpolicy, "argc":2},
     {"cmd":"delpolicy", "label":"Delete Bucket Policy", "param":"s3://BUCKET", "func":cmd_delpolicy, "argc":1},

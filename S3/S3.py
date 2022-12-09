@@ -1108,6 +1108,33 @@ class S3(object):
         response = self.send_request(request)
         return decode_from_s3(response['data'])
 
+    def set_object_legal_hold(self, uri, legal_hold_status):
+        body = '<LegalHold xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
+        body += '<Status>%s</Status>' % legal_hold_status
+        body += '</LegalHold>'
+        headers = SortedDict(ignore_case = True)
+        headers['content-type'] = 'application/xml'
+        headers['content-md5'] = generate_content_md5(body)
+        request = self.create_request("OBJECT_PUT", uri = uri,
+                                      headers = headers, body = body,
+                                      uri_params = {'legal-hold': None})
+        response = self.send_request(request)
+        return response
+
+    def set_object_retention(self, uri, mode, retain_until_date):
+        body = '<Retention xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
+        body += '<Mode>%s</Mode>' % mode
+        body += '<RetainUntilDate>%s</RetainUntilDate>' % retain_until_date
+        body += '</Retention>'
+        headers = SortedDict(ignore_case = True)
+        headers['content-type'] = 'application/xml'
+        headers['content-md5'] = generate_content_md5(body)
+        request = self.create_request("OBJECT_PUT", uri = uri,
+                                      headers = headers, body = body,
+                                      uri_params = {'retention': None})
+        response = self.send_request(request)
+        return response
+
     def set_policy(self, uri, policy):
         headers = SortedDict(ignore_case = True)
         # TODO check policy is proper json string
