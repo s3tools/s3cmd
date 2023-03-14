@@ -221,8 +221,30 @@ def time_to_epoch(t):
     raise S3.Exceptions.ParameterError('Unable to convert %r to an epoch time. Pass an epoch time. Try `date -d \'now + 1 year\' +%%s` (shell) or time.mktime (Python).' % t)
 
 
-def check_bucket_name(bucket, dns_strict=True):
-    if dns_strict:
+def check_bucket_name(bucket, dns_strict=True, name_quirks=False):
+    """Check that the bucket name is valid for our situation.
+
+    Check against the rules from: https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
+
+    dns_strict: True means follow above rules exactly.   False allows
+    for relaxed naming conventions that existed in use-east-1 prior to
+    March 1 2018.
+
+    name_quirks: If true allow compatibility with services implimenting
+    the S3 API but are not fully bound by the S3 rules.
+
+    """
+
+    # name_quirks has priority over dns_strict.  So instead of a 4-way
+    # comparison we can get away with a 3 way one.
+    max_length = 255
+    if name_quirks:
+        invalid = re.search("([^A-Za-z0-9\._:-])", bucket, re.UNICODE)
+        if invalid:
+            raise S3.Exceptions.ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: us-ascii letters (a-z, A-Z), digits (0-9), dot (.), hyphen (-), colon (:), and underscore (_)." % (bucket, invalid.groups()[0]))
+    elif dns_strict:
+        # This is the default
+        max_length = 63
         invalid = re.search("([^a-z0-9\.-])", bucket, re.UNICODE)
         if invalid:
             raise S3.Exceptions.ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: lowercase us-ascii letters (a-z), digits (0-9), dot (.) and hyphen (-)." % (bucket, invalid.groups()[0]))
@@ -231,27 +253,29 @@ def check_bucket_name(bucket, dns_strict=True):
         if invalid:
             raise S3.Exceptions.ParameterError("Bucket name '%s' contains disallowed character '%s'. The only supported ones are: us-ascii letters (a-z, A-Z), digits (0-9), dot (.), hyphen (-) and underscore (_)." % (bucket, invalid.groups()[0]))
 
+    # The above block pre-filters some things.   But the lower stuff has to
+    # be more permissive to allow for what's allowed in the least restrictive
+    # filters above.
+
     if len(bucket) < 3:
         raise S3.Exceptions.ParameterError("Bucket name '%s' is too short (min 3 characters)" % bucket)
-    if len(bucket) > 255:
-        raise S3.Exceptions.ParameterError("Bucket name '%s' is too long (max 255 characters)" % bucket)
-    if dns_strict:
-        if len(bucket) > 63:
-            raise S3.Exceptions.ParameterError("Bucket name '%s' is too long (max 63 characters)" % bucket)
-        if re.search("-\.", bucket, re.UNICODE):
-            raise S3.Exceptions.ParameterError("Bucket name '%s' must not contain sequence '-.' for DNS compatibility" % bucket)
-        if re.search("\.\.", bucket, re.UNICODE):
-            raise S3.Exceptions.ParameterError("Bucket name '%s' must not contain sequence '..' for DNS compatibility" % bucket)
-        if not re.search("^[0-9a-z]", bucket, re.UNICODE):
-            raise S3.Exceptions.ParameterError("Bucket name '%s' must start with a letter or a digit" % bucket)
-        if not re.search("[0-9a-z]$", bucket, re.UNICODE):
-            raise S3.Exceptions.ParameterError("Bucket name '%s' must end with a letter or a digit" % bucket)
+    if len(bucket) > max_length:
+        raise S3.Exceptions.ParameterError("Bucket name '%s' is too long (max %d characters)" % (bucket, max_length))
+    if re.search("-\.", bucket, re.UNICODE):
+        raise S3.Exceptions.ParameterError("Bucket name '%s' must not contain sequence '-.' for DNS compatibility" % bucket)
+    if re.search("\.\.", bucket, re.UNICODE):
+        raise S3.Exceptions.ParameterError("Bucket name '%s' must not contain sequence '..' for DNS compatibility" % bucket)
+    if not re.search("^[0-9a-zA-Z]", bucket, re.UNICODE):
+        raise S3.Exceptions.ParameterError("Bucket name '%s' must start with a letter or a digit" % bucket)
+    if not re.search("[0-9a-zA-Z]$", bucket, re.UNICODE):
+        raise S3.Exceptions.ParameterError("Bucket name '%s' must end with a letter or a digit" % bucket)
     return True
 __all__.append("check_bucket_name")
 
+
 def check_bucket_name_dns_conformity(bucket):
     try:
-        return check_bucket_name(bucket, dns_strict = True)
+        return check_bucket_name(bucket, dns_strict = True, name_quirks = False)
     except S3.Exceptions.ParameterError:
         return False
 __all__.append("check_bucket_name_dns_conformity")
