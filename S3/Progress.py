@@ -14,11 +14,11 @@ import time
 import S3.Utils
 
 class Progress(object):
-    _stdout = sys.stdout
+    _stderr = sys.stderr
     _last_display = 0
 
     def __init__(self, labels, total_size):
-        self._stdout = sys.stdout
+        self._stderr = sys.stderr
         self.new_file(labels, total_size)
 
     def new_file(self, labels, total_size):
@@ -52,8 +52,8 @@ class Progress(object):
         self.display(done_message = message)
 
     def output_labels(self):
-        self._stdout.write(u"%(action)s: '%(source)s' -> '%(destination)s'  %(extra)s\n" % self.labels)
-        self._stdout.flush()
+        self._stderr.write(u"%(action)s: '%(source)s' -> '%(destination)s'  %(extra)s\n" % self.labels)
+        self._stderr.flush()
 
     def _display_needed(self):
         # We only need to update the display every so often.
@@ -79,9 +79,9 @@ class Progress(object):
             timedelta = self.time_current - self.time_start
             sec_elapsed = timedelta.days * 86400 + timedelta.seconds + float(timedelta.microseconds) / 1000000.0
             print_speed = S3.Utils.formatSize((self.current_position - self.initial_position) / sec_elapsed, True, True)
-            self._stdout.write("100%%  %s%s in %.2fs (%.2f %sB/s)\n" %
+            self._stderr.write("100%%  %s%s in %.2fs (%.2f %sB/s)\n" %
                 (print_size[0], print_size[1], sec_elapsed, print_speed[0], print_speed[1]))
-            self._stdout.flush()
+            self._stderr.flush()
             return
 
         rel_position = (self.current_position * 100) // self.total_size
@@ -89,8 +89,8 @@ class Progress(object):
             # Move by increments of 5.
             # NOTE: to check: Looks like to not do what is looks like to be designed to do
             self.last_milestone = (rel_position // 5) * 5
-            self._stdout.write("%d%% ", self.last_milestone)
-            self._stdout.flush()
+            self._stderr.write("%d%% ", self.last_milestone)
+            self._stderr.flush()
             return
 
 class ProgressANSI(Progress):
@@ -110,8 +110,8 @@ class ProgressANSI(Progress):
         """
         if new_file:
             self.output_labels()
-            self._stdout.write(self.ANSI_save_cursor_pos)
-            self._stdout.flush()
+            self._stderr.write(self.ANSI_save_cursor_pos)
+            self._stderr.flush()
             return
 
         # Only display progress every so often
@@ -124,9 +124,9 @@ class ProgressANSI(Progress):
             print_speed = S3.Utils.formatSize((self.current_position - self.initial_position) / sec_elapsed, True, True)
         else:
             print_speed = (0, "")
-        self._stdout.write(self.ANSI_restore_cursor_pos)
-        self._stdout.write(self.ANSI_erase_to_eol)
-        self._stdout.write("%(current)s of %(total)s   %(percent)3d%% in %(elapsed)ds  %(speed).2f %(speed_coeff)sB/s" % {
+        self._stderr.write(self.ANSI_restore_cursor_pos)
+        self._stderr.write(self.ANSI_erase_to_eol)
+        self._stderr.write("%(current)s of %(total)s   %(percent)3d%% in %(elapsed)ds  %(speed).2f %(speed_coeff)sB/s" % {
             "current" : str(self.current_position).rjust(len(str(self.total_size))),
             "total" : self.total_size,
             "percent" : self.total_size and ((self.current_position * 100) // self.total_size) or 0,
@@ -136,9 +136,9 @@ class ProgressANSI(Progress):
         })
 
         if done_message:
-            self._stdout.write("  %s\n" % done_message)
+            self._stderr.write("  %s\n" % done_message)
 
-        self._stdout.flush()
+        self._stderr.flush()
 
 class ProgressCR(Progress):
     ## Uses CR char (Carriage Return) just like other progress bars do.
@@ -162,7 +162,7 @@ class ProgressCR(Progress):
             print_speed = S3.Utils.formatSize((self.current_position - self.initial_position) / sec_elapsed, True, True)
         else:
             print_speed = (0, "")
-        self._stdout.write(self.CR_char)
+        self._stderr.write(self.CR_char)
         output = " %(current)s of %(total)s   %(percent)3d%% in %(elapsed)4ds  %(speed)7.2f %(speed_coeff)sB/s" % {
             "current" : str(self.current_position).rjust(len(str(self.total_size))),
             "total" : self.total_size,
@@ -171,11 +171,11 @@ class ProgressCR(Progress):
             "speed" : print_speed[0],
             "speed_coeff" : print_speed[1]
         }
-        self._stdout.write(output)
+        self._stderr.write(output)
         if done_message:
-            self._stdout.write("  %s\n" % done_message)
+            self._stderr.write("  %s\n" % done_message)
 
-        self._stdout.flush()
+        self._stderr.flush()
 
 class StatsInfo(object):
     """Holding info for stats totals"""
