@@ -57,7 +57,7 @@ No longer keeping ChangeLog up to date, use git log instead!
 	* s3cmd, s3cmd.1, format-manpage.pl: Improved --help text
 	  and manpage.
 	* s3cmd: Removed explicit processing of --follow-symlinks
-	  (is cought by the default / main loop).
+	  (is caught by the default / main loop).
 
 2010-12-24  Michal Ludvig  <mludvig@logix.net.nz>
 
