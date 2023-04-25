@@ -192,7 +192,7 @@ No longer keeping ChangeLog up to date, use git log instead!
 
 	* S3/S3.py: Fix bucket listing for buckets with
 	  over 1000 prefixes. (contributed by Timothee Groleau)
-	* S3/S3.py: Fixed code formating.
+	* S3/S3.py: Fixed code formatting.
 
 2010-05-21  Michal Ludvig  <mludvig@logix.net.nz>
 
@@ -696,7 +696,7 @@ No longer keeping ChangeLog up to date, use git log instead!
 2008-11-24  Michal Ludvig  <michal@logix.cz>
 
 	* S3/Utils.py: Common XML parser.
-	* s3cmd, S3/Exeptions.py: Print info message on Error.
+	* s3cmd, S3/Exceptions.py: Print info message on Error.
 
 2008-11-21  Michal Ludvig  <michal@logix.cz>
 
@@ -733,7 +733,7 @@ No longer keeping ChangeLog up to date, use git log instead!
 	* s3cmd: Re-raise the right exception.
 	Merge from 0.9.8.x branch, rel 246:
 	* s3cmd, S3/S3.py, S3/Exceptions.py: Don't abort 'sync' or 'put' on files
-	  that can't be open (e.g. Permision denied). Print a warning and skip over
+	  that can't be open (e.g. Permission denied). Print a warning and skip over
 	  instead.
 	Merge from 0.9.8.x branch, rel 245:
 	* S3/S3.py: Escape parameters in strings. Fixes sync to and 
@@ -754,7 +754,7 @@ No longer keeping ChangeLog up to date, use git log instead!
 2008-09-15  Michal Ludvig  <michal@logix.cz>
 
 	* s3cmd, S3/S3.py, S3/Utils.py, S3/S3Uri.py, S3/Exceptions.py:
-	  Yet anoter Unicode round. Unicodised all command line arguments 
+	  Yet another Unicode round. Unicodised all command line arguments 
 	  before processing.
 
 2008-09-15  Michal Ludvig  <michal@logix.cz>
@@ -1242,7 +1242,7 @@ No longer keeping ChangeLog up to date, use git log instead!
 
 2007-01-26  Michal Ludvig  <michal@logix.cz>
 
-	* S3/S3fs.py: Added support for stroing/loading inodes.
+	* S3/S3fs.py: Added support for storing/loading inodes.
 	  No data yet however.
 
 2007-01-26  Michal Ludvig  <michal@logix.cz>

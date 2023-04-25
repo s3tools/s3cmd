@@ -227,7 +227,7 @@ class S3(object):
     )
 
     operations = BidirMap(
-        UNDFINED = 0x0000,
+        UNDEFINED = 0x0000,
         LIST_ALL_BUCKETS = targets["SERVICE"] | http_methods["GET"],
         BUCKET_CREATE = targets["BUCKET"] | http_methods["PUT"],
         BUCKET_LIST = targets["BUCKET"] | http_methods["GET"],

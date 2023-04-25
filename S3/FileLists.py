@@ -410,7 +410,7 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
         try:
             md5 = response['s3cmd-attrs']['md5']
             remote_item.update({'md5': md5})
-            debug(u"retreived md5=%s from headers" % md5)
+            debug(u"retrieved md5=%s from headers" % md5)
         except KeyError:
             pass
 

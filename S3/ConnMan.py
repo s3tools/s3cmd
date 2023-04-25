@@ -160,7 +160,7 @@ class http_connection(object):
     def _https_connection(hostname, port=None):
         try:
             context = http_connection._ssl_context()
-            # Wilcard certificates do not work with DNS-style named buckets.
+            # Wildcard certificates do not work with DNS-style named buckets.
             bucket_name, success = getBucketFromHostname(hostname)
             if success and '.' in bucket_name:
                 # this merely delays running the hostname check until

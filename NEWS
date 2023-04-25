@@ -48,7 +48,7 @@ s3cmd-2.2.0      - 2021-09-27
 * Fixed getbucketinfo that was broken when the bucket lifecycle uses the filter element (Liu Lan)
 * Fixed RestoreRequest XML namespace URL (#1203) (Akete)
 * Fixed PARTIAL exit code that was not properly set when needed for object_get (#1190)
-* Fixed a possible inifinite loop when a file is truncated during hashsum or upload (#1125) (Matthew Krokosz, Florent Viard)
+* Fixed a possible infinite loop when a file is truncated during hashsum or upload (#1125) (Matthew Krokosz, Florent Viard)
 * Fixed report_exception wrong error when LANG env var was not set (#1113)
 * Fixed wrong wiki url in error messages (Alec Barrett)
 * Py3: Fixed an AttributeError when using the "files-from" option

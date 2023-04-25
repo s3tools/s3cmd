@@ -110,7 +110,7 @@ if not os.path.isdir('testsuite'):
 
 os.system("tar -xf testsuite/checksum.tar -C testsuite")
 if not os.path.isfile('testsuite/checksum/cksum33.txt'):
-    print("Something went wrong while unpacking testsuite/checkum.tar")
+    print("Something went wrong while unpacking testsuite/checksum.tar")
     sys.exit(1)
 
 ## Fix up permissions for permission-denied tests
@@ -874,7 +874,7 @@ test_s3cmd("Get requester pays flag", ['info', pbucket(2)],
     must_find = [ "Payer:     BucketOwner"],
            skip_if_profile=['minio'])
 
-## ====== Recursive delete maximum exceeed
+## ====== Recursive delete maximum exceed
 test_s3cmd("Recursive delete maximum exceeded", ['del', '--recursive', '--max-delete=1', '--exclude', 'Atomic*', '%s/xyz/etc' % pbucket(1)],
     must_not_find = [ "delete: '%s/xyz/etc/TypeRa.ttf'" % pbucket(1) ])
 
