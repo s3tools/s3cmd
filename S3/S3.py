@@ -855,6 +855,8 @@ class S3(object):
             'server',
             'x-amz-id-2',
             'x-amz-request-id',
+            # Cloudflare's R2 header we don't want to send
+            'cf-ray',
             # Other headers that are not copying by a direct copy
             'x-amz-storage-class',
             ## We should probably also add server-side encryption headers
