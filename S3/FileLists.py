@@ -404,15 +404,8 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
 
         remote_item.update({
             'size': int(response['headers']['content-length']),
-            'md5': response['headers']['etag'].strip('"\''),
             'timestamp': dateRFC822toUnix(response['headers']['last-modified'])
         })
-        try:
-            md5 = response['s3cmd-attrs']['md5']
-            remote_item.update({'md5': md5})
-            debug(u"retreived md5=%s from headers" % md5)
-        except KeyError:
-            pass
 
     def _get_filelist_remote(remote_uri, recursive = True):
         ## If remote_uri ends with '/' then all remote files will have

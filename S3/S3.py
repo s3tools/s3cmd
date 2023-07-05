@@ -2157,9 +2157,6 @@ class S3(object):
                 start_position + int(response["headers"]["content-length"]), response["size"]))
         debug("ReceiveFile: Computed MD5 = %s" % response.get("md5"))
         # avoid ETags from multipart uploads that aren't the real md5
-        if ('-' not in md5_from_s3 and not response["md5match"]) and (response["headers"].get("x-amz-server-side-encryption") != 'aws:kms'):
-            warning("MD5 signatures do not match: computed=%s, received=%s" % (
-                response.get("md5"), md5_from_s3))
         return response
 __all__.append("S3")
 
