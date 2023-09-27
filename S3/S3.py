@@ -24,6 +24,12 @@ try:
     from urlparse import urlparse
 except ImportError:
     from urllib.parse import urlparse
+try:
+    # Python 2 support
+    from base64 import encodestring
+except ImportError:
+    # Python 3.9.0+ support
+    from base64 import encodebytes as encodestring
 
 import select
 
