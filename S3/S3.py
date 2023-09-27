@@ -1089,7 +1089,6 @@ class S3(object):
         body += '</VersioningConfiguration>'
         debug(u"set_versioning(%s)" % body)
         headers['content-md5'] = generate_content_md5(body)
-        
         request = self.create_request("BUCKET_CREATE", uri = uri,
                                       headers = headers, body = body,
                                       uri_params = {'versioning': None})
