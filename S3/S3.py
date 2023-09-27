@@ -1088,7 +1088,13 @@ class S3(object):
         body += '<Status>%s</Status>' % status
         body += '</VersioningConfiguration>'
         debug(u"set_versioning(%s)" % body)
-        headers['content-md5'] = compute_content_md5(body)
+        m = md5(encode_to_s3(body))
+        base64md5 = encodestring(m.digest())
+        base64md5 = decode_from_s3(base64md5)
+        if base64md5[-1] == '\n':
+            base64md5 = base64md5[0:-1]
+        headers['content-md5'] = decode_from_s3(base64md5)
+        
         request = self.create_request("BUCKET_CREATE", uri = uri,
                                       headers = headers, body = body,
                                       uri_params = {'versioning': None})
