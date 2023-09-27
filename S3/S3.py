@@ -24,12 +24,6 @@ try:
     from urlparse import urlparse
 except ImportError:
     from urllib.parse import urlparse
-try:
-    # Python 2 support
-    from base64 import encodestring
-except ImportError:
-    # Python 3.9.0+ support
-    from base64 import encodebytes as encodestring
 
 import select
 
@@ -1094,12 +1088,7 @@ class S3(object):
         body += '<Status>%s</Status>' % status
         body += '</VersioningConfiguration>'
         debug(u"set_versioning(%s)" % body)
-        m = md5(encode_to_s3(body))
-        base64md5 = encodestring(m.digest())
-        base64md5 = decode_from_s3(base64md5)
-        if base64md5[-1] == '\n':
-            base64md5 = base64md5[0:-1]
-        headers['content-md5'] = decode_from_s3(base64md5)
+        headers['content-md5'] = generate_content_md5(body)
         
         request = self.create_request("BUCKET_CREATE", uri = uri,
                                       headers = headers, body = body,
