@@ -700,7 +700,7 @@ class S3(object):
                     size = stat[ST_SIZE]
                 src_stream.stream_name = filename
         except (IOError, OSError) as e:
-            raise InvalidFileError(u"%s" % e.strerror)
+            raise InvalidFileError(u"failed to open the file for reading (%s)" % e.strerror)
 
         headers = SortedDict(ignore_case=True)
         if extra_headers:
