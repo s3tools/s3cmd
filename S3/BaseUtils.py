@@ -74,8 +74,8 @@ __all__.append("md5")
 
 
 
-RE_S3_DATESTRING = re.compile('\.[0-9]*(?:[Z\\-\\+]*?)')
-RE_XML_NAMESPACE = re.compile(b'^(<?[^>]+?>\s*|\s*)(<\w+) xmlns=[\'"](https?://[^\'"]+)[\'"]', re.MULTILINE)
+RE_S3_DATESTRING = re.compile('\\.[0-9]*(?:[Z\\-\\+]*?)')
+RE_XML_NAMESPACE = re.compile(b'^(<?[^>]+?>\\s*|\\s*)(<\\w+) xmlns=[\'"](https?://[^\'"]+)[\'"]', re.MULTILINE)
 
 
 # Date and time helpers
