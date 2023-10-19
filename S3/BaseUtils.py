@@ -273,7 +273,7 @@ def stripNameSpace(xml):
     xmlns_match = RE_XML_NAMESPACE.match(xml)
     if xmlns_match:
         xmlns = xmlns_match.group(3)
-        xml = RE_XML_NAMESPACE.sub("\\1\\2", xml, 1)
+        xml = RE_XML_NAMESPACE.sub(b"\\1\\2", xml, 1)
     else:
         xmlns = None
     return xml, xmlns
