@@ -206,7 +206,7 @@ class Config(object):
     reduced_redundancy = False
     storage_class = u""
     follow_symlinks = False
-    # If too big, this value can be overriden by the OS socket timeouts max values.
+    # If too big, this value can be overridden by the OS socket timeouts max values.
     # For example, on Linux, a connection attempt will automatically timeout after 120s.
     socket_timeout = 300
     invalidate_on_cf = False
@@ -236,7 +236,7 @@ class Config(object):
     # expected for every send file requests.
     use_http_expect = False
     signurl_use_https = False
-    # Maximum sleep duration for throtte / limitrate.
+    # Maximum sleep duration for throttle / limitrate.
     # s3 will timeout if a request/transfer is stuck for more than a short time
     throttle_max = 100
     public_url_use_https = False
@@ -491,7 +491,7 @@ class Config(object):
                             profile = "default"
                             result = config.get(profile, key)
                             warning(
-                                "Legacy configuratin key '%s' used, please use"
+                                "Legacy configuration key '%s' used, please use"
                                 " the standardized config format as described "
                                 "here: https://aws.amazon.com/blogs/security/a-new-and-standardized-way-to-manage-credentials-in-the-aws-sdks/",
                                 key)

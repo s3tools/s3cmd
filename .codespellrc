@@ -1,0 +1,5 @@
+[codespell]
+skip = .git,*.pdf,*.svg
+# OptionAll,parms -- variable names used
+# bu -- used in bu.ck.et, decided to just skip
+ignore-words-list = optionall,parms,bu

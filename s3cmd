@@ -2037,7 +2037,7 @@ def cmd_sync_local2remote(args):
         if ret == EX_OK:
             ret = status
         # uploaded_objects_list reference is passed so it can be filled with
-        # destination object of succcessful copies so that they can be
+        # destination object of successful copies so that they can be
         # invalidated by cf
         n_copies, saved_bytes, failed_copy_files  = remote_copy(
             s3, copy_pairs, destination_base, uploaded_objects_list, True)
@@ -2881,7 +2881,7 @@ def update_acl(s3, uri, seq_label=""):
         else:
             acl.grantAnonRead()
             something_changed = True
-    elif cfg.acl_public == False:  # we explicitely check for False, because it could be None
+    elif cfg.acl_public == False:  # we explicitly check for False, because it could be None
         if not acl.isAnonRead() and not acl.isAnonWrite():
             info(u"%s: already Private, skipping %s" % (uri, seq_label))
         else:

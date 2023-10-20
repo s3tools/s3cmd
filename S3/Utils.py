@@ -299,7 +299,7 @@ __all__.append("getHostnameFromBucket")
 try:
     import pwd
     def getpwuid_username(uid):
-        """returns a username from the password databse for the given uid"""
+        """returns a username from the password database for the given uid"""
         return unicodise_s(pwd.getpwuid(uid).pw_name)
 except ImportError:
     import getpass
@@ -310,7 +310,7 @@ __all__.append("getpwuid_username")
 try:
     import grp
     def getgrgid_grpname(gid):
-        """returns a groupname from the group databse for the given gid"""
+        """returns a groupname from the group database for the given gid"""
         return unicodise_s(grp.getgrgid(gid).gr_name)
 except ImportError:
     def getgrgid_grpname(gid):

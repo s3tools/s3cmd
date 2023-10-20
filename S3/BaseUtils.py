@@ -96,7 +96,7 @@ __all__.append("dateS3toUnix")
 
 def dateRFC822toPython(date):
     """
-    Convert a string formated like '2020-06-27T15:56:34Z' into a python datetime
+    Convert a string formatted like '2020-06-27T15:56:34Z' into a python datetime
     """
     return dateutil.parser.parse(date, fuzzy=True)
 __all__.append("dateRFC822toPython")
