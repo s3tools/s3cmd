@@ -1999,7 +1999,7 @@ class S3(object):
                 raise S3DownloadError("Download failed for: %s" % resource['uri'])
 
         if response["status"] < 200 or response["status"] > 299:
-            # In case of error, we still need to flush the read buffer to be able to re-use
+            # In case of error, we still need to flush the read buffer to be able to reuse
             # the connection
             response['data'] = http_response.read()
 
