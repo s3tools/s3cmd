@@ -74,7 +74,7 @@ s3cmd \\- tool for managing Amazon S3 storage space and Amazon CloudFront conten
 .SH DESCRIPTION
 .PP
 .B s3cmd
-is a command line client for copying files to/from 
+is a command line client for copying files to/from
 Amazon S3 (Simple Storage Service) and performing other
 related tasks, for instance creating and removing buckets,
 listing objects, etc.
@@ -95,17 +95,17 @@ $cfcommands
 
 .SH OPTIONS
 .PP
-Some of the below specified options can have their default 
-values set in 
+Some of the below specified options can have their default
+values set in
 .B s3cmd
-config file (by default \$HOME/.s3cmd). As it's a simple text file 
+config file (by default \$HOME/.s3cmd). As it's a simple text file
 feel free to open it with your favorite text editor and do any
-changes you like. 
+changes you like.
 $options
 
 .SH EXAMPLES
-One of the most powerful commands of \\fIs3cmd\\fR is \\fBs3cmd sync\\fR used for 
-synchronising complete directory trees to or from remote S3 storage. To some extent 
+One of the most powerful commands of \\fIs3cmd\\fR is \\fBs3cmd sync\\fR used for
+synchronising complete directory trees to or from remote S3 storage. To some extent
 \\fBs3cmd put\\fR and \\fBs3cmd get\\fR share a similar behaviour with \\fBsync\\fR.
 .PP
 Basic usage common in backup scenarios is as simple as:
@@ -113,7 +113,7 @@ Basic usage common in backup scenarios is as simple as:
 	s3cmd sync /local/path/ s3://test\\-bucket/backup/
 .fi
 .PP
-This command will find all files under /local/path directory and copy them 
+This command will find all files under /local/path directory and copy them
 to corresponding paths under s3://test\\-bucket/backup on the remote side.
 For example:
 .nf
@@ -142,7 +142,7 @@ that will download files:
 	s3://bucket/backup/\\fBdir123/file2.bin\\fR  \\->  ~/restore/\\fBdir123/file2.bin\\fR
 .fi
 .PP
-Without the trailing slash on source the behaviour is similar to 
+Without the trailing slash on source the behaviour is similar to
 what has been demonstrated with upload:
 .nf
 	s3cmd sync s3://test\\-bucket/backup ~/restore/
@@ -153,25 +153,25 @@ will download the files as:
 	s3://bucket/\\fBbackup/dir123/file2.bin\\fR  \\->  ~/restore/\\fBbackup/dir123/file2.bin\\fR
 .fi
 .PP
-All source file names, the bold ones above, are matched against \\fBexclude\\fR 
+All source file names, the bold ones above, are matched against \\fBexclude\\fR
 rules and those that match are then re\\-checked against \\fBinclude\\fR rules to see
 whether they should be excluded or kept in the source list.
 .PP
-For the purpose of \\fB\\-\\-exclude\\fR and \\fB\\-\\-include\\fR matching only the 
+For the purpose of \\fB\\-\\-exclude\\fR and \\fB\\-\\-include\\fR matching only the
 bold file names above are used. For instance only \\fBpath/file1.ext\\fR is tested
 against the patterns, not \\fI/local/\\fBpath/file1.ext\\fR
 .PP
 Both \\fB\\-\\-exclude\\fR and \\fB\\-\\-include\\fR work with shell\\-style wildcards (a.k.a. GLOB).
-For a greater flexibility s3cmd provides Regular\\-expression versions of the two exclude options 
-named \\fB\\-\\-rexclude\\fR and \\fB\\-\\-rinclude\\fR. 
+For a greater flexibility s3cmd provides Regular\\-expression versions of the two exclude options
+named \\fB\\-\\-rexclude\\fR and \\fB\\-\\-rinclude\\fR.
 The options with ...\\fB\\-from\\fR suffix (eg \\-\\-rinclude\\-from) expect a filename as
 an argument. Each line of such a file is treated as one pattern.
 .PP
 There is only one set of patterns built from all \\fB\\-\\-(r)exclude(\\-from)\\fR options
-and similarly for include variant. Any file excluded with eg \\-\\-exclude can 
+and similarly for include variant. Any file excluded with eg \\-\\-exclude can
 be put back with a pattern found in \\-\\-rinclude\\-from list.
 .PP
-Run s3cmd with \\fB\\-\\-dry\\-run\\fR to verify that your rules work as expected. 
+Run s3cmd with \\fB\\-\\-dry\\-run\\fR to verify that your rules work as expected.
 Use together with \\fB\\-\\-debug\\fR get detailed information
 about matching file names against exclude and include rules.
 .PP
@@ -189,13 +189,13 @@ To exclude local directory 'somedir', be sure to use a trailing forward slash, a
 .PP
 
 .SH SEE ALSO
-For the most up to date list of options run: 
+For the most up to date list of options run:
 .B s3cmd \\-\\-help
 .br
 For more info about usage, examples and other related info visit project homepage at:
-.B http://s3tools.org
+.B https://s3tools.org
 .SH AUTHOR
-Written by Michal Ludvig and contributors
+Written by Michal Ludvig, Florent Viard and contributors
 .SH CONTACT, SUPPORT
 Preferred way to get support is our mailing list:
 .br
@@ -203,12 +203,12 @@ Preferred way to get support is our mailing list:
 .br
 or visit the project homepage:
 .br
-.B http://s3tools.org
+.B https://s3tools.org
 .SH REPORTING BUGS
-Report bugs to 
+Report bugs to
 .I s3tools\\-bugs\@lists.sourceforge.net
 .SH COPYRIGHT
-Copyright \\(co 2007\\-2015 TGRMN Software \\- http://www.tgrmn.com \\- and contributors
+Copyright \\(co 2007\\-2023 TGRMN Software (https://www.tgrmn.com), Sodria SAS (https://www.sodria.com) and contributors
 .br
 .SH LICENSE
 This program is free software; you can redistribute it and/or modify

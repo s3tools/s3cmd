@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+## --------------------------------------------------------------------
 ## Amazon S3cmd - testsuite
-## Author: Michal Ludvig <michal@logix.cz>
-##         http://www.logix.cz/michal
-## License: GPL Version 2
-## Copyright: TGRMN Software and contributors
+##
+## Authors   : Michal Ludvig <michal@logix.cz> (https://www.logix.cz/michal)
+##             Florent Viard <florent@sodria.com> (https://www.sodria.com)
+## Copyright : TGRMN Software, Sodria SAS and contributors
+## License   : GPL Version 2
+## Website   : https://s3tools.org
+## --------------------------------------------------------------------
 
 from __future__ import absolute_import, print_function
 
@@ -833,7 +837,7 @@ test_s3cmd("Create expiration rule with days and prefix", ['expire', pbucket(1),
     must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
 
 ## ====== Create expiration rule with date and prefix
-test_s3cmd("Create expiration rule with date and prefix", ['expire', pbucket(1), '--expiry-date=2020-12-31T00:00:00.000Z', '--expiry-prefix=log/'],
+test_s3cmd("Create expiration rule with date and prefix", ['expire', pbucket(1), '--expiry-date=2030-12-31T00:00:00.000Z', '--expiry-prefix=log/'],
     must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
 
 ## ====== Create expiration rule with days only
@@ -841,12 +845,12 @@ test_s3cmd("Create expiration rule with days only", ['expire', pbucket(1), '--ex
     must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
 
 ## ====== Create expiration rule with date only
-test_s3cmd("Create expiration rule with date only", ['expire', pbucket(1), '--expiry-date=2020-12-31T00:00:00.000Z'],
+test_s3cmd("Create expiration rule with date only", ['expire', pbucket(1), '--expiry-date=2030-12-31T00:00:00.000Z'],
     must_find = [ "Bucket '%s/': expiration configuration is set." % pbucket(1)])
 
 ## ====== Get current expiration setting
 test_s3cmd("Get current expiration setting", ['info', pbucket(1)],
-    must_find_re = [ "Expiration Rule: all objects in this bucket will expire in '2020-12-31T00:00:00(?:.000)?Z'"])
+    must_find_re = [ "Expiration Rule: all objects in this bucket will expire in '2030-12-31T00:00:00(?:.000)?Z'"])
 
 ## ====== Delete expiration rule
 test_s3cmd("Delete expiration rule", ['expire', pbucket(1)],

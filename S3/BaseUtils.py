@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 
+## --------------------------------------------------------------------
 ## Amazon S3 manager
-## Author: Michal Ludvig <michal@logix.cz>
-##         http://www.logix.cz/michal
-## License: GPL Version 2
-## Copyright: TGRMN Software and contributors
+##
+## Authors   : Michal Ludvig <michal@logix.cz> (https://www.logix.cz/michal)
+##             Florent Viard <florent@sodria.com> (https://www.sodria.com)
+## Copyright : TGRMN Software, Sodria SAS and contributors
+## License   : GPL Version 2
+## Website   : https://s3tools.org
+## --------------------------------------------------------------------
 
 from __future__ import absolute_import, division
 

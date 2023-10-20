@@ -4,10 +4,11 @@
 ## --------------------------------------------------------------------
 ## s3cmd - S3 client
 ##
-## Authors   : Michal Ludvig and contributors
-## Copyright : TGRMN Software - http://www.tgrmn.com - and contributors
-## Website   : http://s3tools.org
+## Authors   : Michal Ludvig <michal@logix.cz> (https://www.logix.cz/michal)
+##             Florent Viard <florent@sodria.com> (https://www.sodria.com)
+## Copyright : TGRMN Software, Sodria SAS and contributors
 ## License   : GPL Version 2
+## Website   : https://s3tools.org
 ## --------------------------------------------------------------------
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
