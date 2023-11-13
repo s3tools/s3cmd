@@ -11,6 +11,7 @@
 ## --------------------------------------------------------------------
 
 from __future__ import absolute_import, division
+import base64
 
 import sys
 import os
@@ -1724,6 +1725,10 @@ class S3(object):
         else:
             sha256_hash = checksum_sha256_file(stream, offset, size_total)
         request.body = sha256_hash
+
+        # Provide the checksum with teh request. This is important for buckets that have 
+        # Object Lock enabled.
+        headers['x-amz-checksum-sha256'] = base64.b64encode(sha256_hash.digest()).decode()
 
         if use_expect_continue:
             if not size_total:
