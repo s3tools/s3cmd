@@ -78,8 +78,8 @@ __all__.append("md5")
 
 
 
-RE_S3_DATESTRING = re.compile('\\.[0-9]*(?:[Z\\-\\+]*?)')
-RE_XML_NAMESPACE = re.compile(b'^(<?[^>]+?>\\s*|\\s*)(<\\w+) xmlns=[\'"](https?://[^\'"]+)[\'"]', re.MULTILINE)
+RE_S3_DATESTRING = re.compile(r'\.[0-9]*(?:[Z\-\+]*?)')
+RE_XML_NAMESPACE = re.compile(r'^(<?[^>]+?>\s*|\s*)(<\w+) xmlns=[\'"](https?://[^\'"]+)[\'"]', re.MULTILINE)
 
 
 # Date and time helpers
@@ -274,10 +274,11 @@ def stripNameSpace(xml):
     removeNameSpace(xml) -- remove top-level AWS namespace
     Operate on raw byte(utf-8) xml string. (Not unicode)
     """
-    xmlns_match = RE_XML_NAMESPACE.match(xml)
+    xml_str = xml.decode('utf-8')
+    xmlns_match = RE_XML_NAMESPACE.match(xml_str)
     if xmlns_match:
         xmlns = xmlns_match.group(3)
-        xml = RE_XML_NAMESPACE.sub(b"\\1\\2", xml, 1)
+        xml = RE_XML_NAMESPACE.sub("\\1\\2", xml_str, 1)
     else:
         xmlns = None
     return xml, xmlns
