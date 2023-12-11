@@ -405,7 +405,7 @@ test_s3cmd("Invalid bucket name", ["mb", "--bucket-location=EU", pbucket('EU')],
     must_not_find_re = "Bucket.*created")
 
 
-## ====== Enalbe ACLs and public access to buckets
+## ====== Enable ACLs and public access to buckets
 for idx, bpath in enumerate((pbucket(1), pbucket(2), pbucket(3))):
     test_s3cmd("Enable ACLs for bucket %d" % idx, ['setownership', bpath, 'ObjectWriter'],
                must_find = "%s/: Bucket Object Ownership updated" % bpath,
