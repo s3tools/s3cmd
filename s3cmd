@@ -1084,8 +1084,11 @@ def cmd_info(args):
                                               or 'none'))
                 output(u"   Payer:     %s" % (info['requester-pays']
                                               or 'none'))
+                output(u"   Ownership: %s" % (info['ownership']
+                                              or 'none'))
                 output(u"   Versioning:%s" % (info['versioning']
                                               or 'none'))
+
                 expiration = s3.expiration_info(uri, cfg.bucket_location)
                 if expiration and expiration['prefix'] is not None:
                     expiration_desc = "Expiration Rule: "
@@ -1100,7 +1103,14 @@ def cmd_info(args):
                         expiration_desc += expiration['date'] + "' "
                     output(u"   %s" % expiration_desc)
                 else:
-                    output(u"   Expiration Rule: none")
+                    output(u"   Expiration rule: none")
+
+                public_access_block = ','.join([
+                    key for key, val in info['public-access-block'].items()
+                    if val
+                ])
+                output(u"   Block Public Access: %s" % (public_access_block
+                                                        or 'none'))
 
             try:
                 policy = s3.get_policy(uri)
@@ -2260,6 +2270,56 @@ def cmd_setversioning(args):
         output(u"%s: Versioning status updated" % bucket_uri)
     return EX_OK
 
+def cmd_setownership(args):
+    cfg = Config()
+    s3 = S3(cfg)
+    bucket_uri = S3Uri(args[0])
+    if bucket_uri.object():
+        raise ParameterError("Only bucket name is required for [setownership] command")
+
+    valid_values = {x.lower():x for x in [
+        'BucketOwnerPreferred', 'BucketOwnerEnforced', 'ObjectWriter'
+    ]}
+    value = valid_values.get(args[1].lower())
+    if not value:
+        choices = " or ".join(['%s' % x for x in valid_values.keys()])
+        raise ParameterError("Must be %s. Got: %s" % (choices, args[1]))
+
+    response = s3.set_bucket_ownership(bucket_uri, value)
+
+    debug(u"response - %s" % response['status'])
+    if response['status'] == 200:
+        output(u"%s: Bucket Object Ownership updated" % bucket_uri)
+    return EX_OK
+
+def cmd_setblockpublicaccess(args):
+    cfg = Config()
+    s3 = S3(cfg)
+    bucket_uri = S3Uri(args[0])
+    if bucket_uri.object():
+        raise ParameterError("Only bucket name is required for [setblockpublicaccess] command")
+
+    valid_values = {x.lower():x for x in [
+        'BlockPublicAcls', 'IgnorePublicAcls', 'BlockPublicPolicy', 'RestrictPublicBuckets'
+    ]}
+    flags = {}
+    raw_flags = args[1].split(',')
+    for raw_value in raw_flags:
+        if not raw_value:
+            continue
+        value = valid_values.get(raw_value.lower())
+        if not value:
+            choices = " or ".join(['%s' % x for x in valid_values.keys()])
+            raise ParameterError("Must be %s. Got: %s" % (choices, raw_value))
+        flags[value] = True
+
+    response = s3.set_bucket_public_access_block(bucket_uri, flags)
+
+    debug(u"response - %s" % response['status'])
+    if response['status'] == 200:
+        output(u"%s: Block Public Access updated" % bucket_uri)
+    return EX_OK
+
 def cmd_setpolicy(args):
     cfg = Config()
     s3 = S3(cfg)
@@ -2865,6 +2925,8 @@ def get_commands_list():
     {"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
     {"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
     {"cmd":"setversioning", "label":"Modify Bucket Versioning", "param":"s3://BUCKET enable|disable", "func":cmd_setversioning, "argc":2},
+    {"cmd":"setownership", "label":"Modify Bucket Object Ownership", "param":"s3://BUCKET BucketOwnerPreferred|BucketOwnerEnforced|ObjectWriter", "func":cmd_setownership, "argc":2},
+    {"cmd":"setblockpublicaccess", "label":"Modify Block Public Access rules", "param":"s3://BUCKET BlockPublicAcls,IgnorePublicAcls,BlockPublicPolicy,RestrictPublicBuckets", "func":cmd_setblockpublicaccess, "argc":2},
 
     {"cmd":"setobjectlegalhold", "label":"Modify Object Legal Hold", "param":"STATUS s3://BUCKET/OBJECT", "func":cmd_setobjectlegalhold, "argc":2},
     {"cmd":"setobjectretention", "label":"Modify Object Retention", "param":"MODE RETAIN_UNTIL_DATE s3://BUCKET/OBJECT", "func":cmd_setobjectretention, "argc":3},

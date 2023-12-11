@@ -393,7 +393,6 @@ test_s3cmd("Create one bucket (EU)", ['mb', '--bucket-location=EU', pbucket(1)],
     must_find = "Bucket '%s/' created" % pbucket(1))
 
 
-
 ## ====== Create multiple buckets
 test_s3cmd("Create multiple buckets", ['mb', pbucket(2), pbucket(3)],
     must_find = [ "Bucket '%s/' created" % pbucket(2), "Bucket '%s/' created" % pbucket(3)])
@@ -404,6 +403,17 @@ test_s3cmd("Invalid bucket name", ["mb", "--bucket-location=EU", pbucket('EU')],
     retcode = EX_USAGE,
     must_find = "ERROR: Parameter problem: Bucket name '%s' contains disallowed character" % bucket('EU'),
     must_not_find_re = "Bucket.*created")
+
+
+## ====== Enalbe ACLs and public access to buckets
+for idx, bpath in enumerate((pbucket(1), pbucket(2), pbucket(3))):
+    test_s3cmd("Enable ACLs for bucket %d" % idx, ['setownership', bpath, 'ObjectWriter'],
+               must_find = "%s/: Bucket Object Ownership updated" % bpath,
+               skip_if_profile = ['minio'])
+
+    test_s3cmd("Disable Block Public Access for bucket %d" % idx, ['setblockpublicaccess', bpath, ''],
+               must_find = "%s/: Block Public Access updated" % bpath,
+               skip_if_profile = ['minio'])
 
 
 ## ====== Buckets list

@@ -418,6 +418,11 @@ class S3(object):
             check_bucket_name(bucket, dns_strict = False)
         if self.config.acl_public:
             headers["x-amz-acl"] = "public-read"
+            # AWS suddenly changed the default "ownership" control value mid 2023.
+            # ACL are disabled by default, so obviously the bucket can't be public.
+            # See: https://aws.amazon.com/fr/blogs/aws/heads-up-amazon-s3-security-changes-are-coming-in-april-of-2023/
+            # To be noted: "Block Public Access" flags should also be disabled after the bucket creation to be able to set a "public" acl for an object.
+            headers["x-amz-object-ownership"] = 'ObjectWriter'
 
         request = self.create_request("BUCKET_CREATE", bucket = bucket, headers = headers, body = body)
         response = self.send_request(request)
@@ -467,22 +472,88 @@ class S3(object):
         response = self.send_request(request)
         resp_data = response.get('data', '')
         if resp_data:
-            payer = getTextFromXml(response['data'], "Payer")
+            payer = getTextFromXml(resp_data, "Payer")
         else:
             payer = None
         return payer
 
+    def set_bucket_ownership(self, uri, ownership):
+        headers = SortedDict(ignore_case=True)
+        body = '<OwnershipControls xmlns="http://s3.amazonaws.com/doc/2006-03-01/">' \
+                    '<Rule>' \
+                        '<ObjectOwnership>%s</ObjectOwnership>' \
+                    '</Rule>' \
+                '</OwnershipControls>'
+        body = body % ownership
+        debug(u"set_bucket_ownership(%s)" % body)
+        headers['content-md5'] = generate_content_md5(body)
+        request = self.create_request("BUCKET_CREATE", uri = uri,
+                                      headers = headers, body = body,
+                                      uri_params = {'ownershipControls': None})
+        response = self.send_request(request)
+        return response
+
+    def get_bucket_ownership(self, uri):
+        request = self.create_request("BUCKET_LIST", bucket=uri.bucket(),
+                                      uri_params={'ownershipControls': None})
+        response = self.send_request(request)
+        resp_data = response.get('data', '')
+        if resp_data:
+            ownership = getTextFromXml(resp_data, ".//Rule//ObjectOwnership")
+        else:
+            ownership = None
+        return ownership
+
+    def set_bucket_public_access_block(self, uri, flags):
+        headers = SortedDict(ignore_case=True)
+
+        body = '<PublicAccessBlockConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
+        for tag in ('BlockPublicAcls', 'IgnorePublicAcls', 'BlockPublicPolicy', 'RestrictPublicBuckets'):
+            val = flags.get(tag, False) and "true" or "false"
+            body += '<%s>%s</%s>' % (tag, val, tag)
+        body += '</PublicAccessBlockConfiguration>'
+
+        debug(u"set_bucket_public_access_block(%s)" % body)
+        headers['content-md5'] = generate_content_md5(body)
+        request = self.create_request("BUCKET_CREATE", uri = uri,
+                                      headers = headers, body = body,
+                                      uri_params = {'publicAccessBlock': None})
+        response = self.send_request(request)
+        return response
+
+    def get_bucket_public_access_block(self, uri):
+        request = self.create_request("BUCKET_LIST", bucket=uri.bucket(),
+                                      uri_params={'publicAccessBlock': None})
+        response = self.send_request(request)
+        resp_data = response.get('data', '')
+        if resp_data:
+            flags = {
+                "BlockPublicAcls": getTextFromXml(resp_data, "BlockPublicAcls") == "true",
+                "IgnorePublicAcls": getTextFromXml(resp_data, "IgnorePublicAcls") == "true",
+                "BlockPublicPolicy": getTextFromXml(resp_data, "BlockPublicPolicy") == "true",
+                "RestrictPublicBuckets": getTextFromXml(resp_data, "RestrictPublicBuckets") == "true",
+            }
+        else:
+            flags = {}
+        return flags
+
     def bucket_info(self, uri):
         response = {}
         response['bucket-location'] = self.get_bucket_location(uri)
+
+        for key, func in (('requester-pays', self.get_bucket_requester_pays),
+                          ('versioning', self.get_versioning),
+                          ('ownership', self.get_bucket_ownership)):
+            try:
+                response[key] = func(uri)
+            except S3Error as e:
+                response[key] = None
+
         try:
-            response['requester-pays'] = self.get_bucket_requester_pays(uri)
+            response['public-access-block'] = self.get_bucket_public_access_block(uri)
         except S3Error as e:
-            response['requester-pays'] = None
-        try:
-            response['versioning'] = self.get_versioning(uri)
-        except S3Error as e:
-            response['versioning'] = None
+            response['public-access-block'] = {}
+
         return response
 
     def website_info(self, uri, bucket_location = None):
