@@ -2481,10 +2481,15 @@ def cmd_settagging(args):
     uri = S3Uri(args[0])
     tag_set_string = args[1]
 
-    tagsets = [
-        tuple(tagset.split("="))
-        for tagset in tag_set_string.split("&")
-    ]
+    tagsets = []
+    for tagset in tag_set_string.split("&"):
+        keyval = tagset.split("=", 1)
+        key = keyval[0]
+        if not key:
+            raise ParameterError("Tag key should not be empty")
+        value = len(keyval) > 1 and keyval[1] or ""
+        tagsets.append((key, value))
+
     debug(tagsets)
     response = s3.set_tagging(uri, tagsets)
 
