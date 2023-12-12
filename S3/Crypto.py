@@ -89,9 +89,9 @@ def sign_request_v2(method='GET', canonical_uri='/', params=None, cur_headers=No
     # valid sub-resources to be included in sign v2:
     SUBRESOURCES_TO_INCLUDE = ['acl', 'lifecycle', 'location', 'logging',
                                'notification', 'partNumber', 'policy',
-                               'requestPayment', 'torrent', 'uploadId',
-                               'uploads', 'versionId', 'versioning',
-                               'versions', 'website',
+                               'requestPayment', 'tagging', 'torrent',
+                               'uploadId', 'uploads', 'versionId',
+                               'versioning', 'versions', 'website',
                                # Missing of aws s3 doc but needed
                                'delete', 'cors', 'restore']
 

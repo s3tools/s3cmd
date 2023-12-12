@@ -2476,6 +2476,52 @@ def cmd_delnotification(args):
     output(u"%s: Notification Policy deleted" % uri)
     return EX_OK
 
+def cmd_settagging(args):
+    s3 = S3(Config())
+    uri = S3Uri(args[0])
+    tag_set_string = args[1]
+
+    tagsets = [
+        tuple(tagset.split("="))
+        for tagset in tag_set_string.split("&")
+    ]
+    debug(tagsets)
+    response = s3.set_tagging(uri, tagsets)
+
+    debug(u"response - %s" % response['status'])
+    if response['status'] in [200, 204]:
+        output(u"%s: Tagging updated" % uri)
+    return EX_OK
+
+def cmd_gettagging(args):
+    s3 = S3(Config())
+    uri = S3Uri(args[0])
+
+    tagsets = s3.get_tagging(uri)
+    if uri.has_object():
+        output(u"%s (object):" % uri)
+    else:
+        output(u"%s (bucket):" % uri)
+    debug(tagsets)
+    for tag in tagsets:
+        try:
+            output(u"\t%s:\t%s" % (
+                tag['Key'],
+                tag['Value']))
+        except KeyError:
+            pass
+    return EX_OK
+
+def cmd_deltagging(args):
+    s3 = S3(Config())
+    uri = S3Uri(args[0])
+
+    response = s3.delete_tagging(uri)
+
+    debug(u"response - %s" % response['status'])
+    output(u"%s: Tagging deleted" % uri)
+    return EX_OK
+
 def cmd_multipart(args):
     cfg = Config()
     s3 = S3(cfg)
@@ -2946,6 +2992,11 @@ def get_commands_list():
     {"cmd":"sign", "label":"Sign arbitrary string using the secret key", "param":"STRING-TO-SIGN", "func":cmd_sign, "argc":1},
     {"cmd":"signurl", "label":"Sign an S3 URL to provide limited public access with expiry", "param":"s3://BUCKET/OBJECT <expiry_epoch|+expiry_offset>", "func":cmd_signurl, "argc":2},
     {"cmd":"fixbucket", "label":"Fix invalid file names in a bucket", "param":"s3://BUCKET[/PREFIX]", "func":cmd_fixbucket, "argc":1},
+
+    ## Tagging commands
+    {"cmd":"settagging", "label":"Modify tagging for Bucket or Files", "param":"s3://BUCKET[/OBJECT] \"KEY=VALUE[&KEY=VALUE ...]\"", "func":cmd_settagging, "argc":2},
+    {"cmd":"gettagging", "label":"Get tagging for Bucket or Files",    "param":"s3://BUCKET[/OBJECT]", "func":cmd_gettagging, "argc":1},
+    {"cmd":"deltagging", "label":"Delete tagging for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_deltagging, "argc":1},
 
     ## Website commands
     {"cmd":"ws-create", "label":"Create Website from bucket", "param":"s3://BUCKET", "func":cmd_website_create, "argc":1},

@@ -1317,6 +1317,58 @@ class S3(object):
         empty_config = '<NotificationConfiguration></NotificationConfiguration>'
         return self.set_notification_policy(uri, empty_config)
 
+    def set_tagging(self, uri, tagsets):
+        if uri.type != "s3":
+            raise ValueError("Expected URI type 's3', got '%s'" % uri.type)
+        body = '<Tagging xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
+        body += '<TagSet>'
+        for (key, val) in tagsets:
+            body += '<Tag>'
+            body += ('    <Key>%s</Key>' % key)
+            body += ('    <Value>%s</Value>' % val)
+            body += '</Tag>'
+        body += '</TagSet>'
+        body += '</Tagging>'
+        headers = SortedDict(ignore_case=True)
+        headers['content-md5'] = generate_content_md5(body)
+        if uri.has_object():
+            request = self.create_request("OBJECT_PUT", uri=uri,
+                                          headers=headers, body=body,
+                                          uri_params={'tagging': None})
+        else:
+            request = self.create_request("BUCKET_CREATE", bucket=uri.bucket(),
+                                          headers=headers, body=body,
+                                          uri_params={'tagging': None})
+        debug(u"set_tagging(%s): tagset-xml: %s" % (uri, body))
+        response = self.send_request(request)
+        return response
+
+    def get_tagging(self, uri):
+        if uri.has_object():
+            request = self.create_request("OBJECT_GET", uri=uri,
+                                          uri_params={'tagging': None})
+        else:
+            request = self.create_request("BUCKET_LIST", bucket=uri.bucket(),
+                                          uri_params={'tagging': None})
+        debug(u"get_tagging(%s)" % uri)
+        response = self.send_request(request)
+        xml_data = response["data"]
+        # extract list of tag sets
+        tagsets = getListFromXml(xml_data, "Tag")
+        debug(u"%s: Got object tagging" % response['status'])
+        return tagsets
+
+    def delete_tagging(self, uri):
+        if uri.has_object():
+            request = self.create_request("OBJECT_DELETE", uri=uri,
+                                          uri_params={'tagging': None})
+        else:
+            request = self.create_request("BUCKET_DELETE", bucket=uri.bucket(),
+                                          uri_params={'tagging': None})
+        debug(u"delete_tagging(%s)" % uri)
+        response = self.send_request(request)
+        return response
+
     def get_multipart(self, uri, uri_params=None, limit=-1):
         upload_list = []
         for truncated, uploads in self.get_multipart_streaming(uri,
