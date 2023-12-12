@@ -11,7 +11,7 @@
 ## --------------------------------------------------------------------
 
 package = "s3cmd"
-version = "2.3.0-dev"
+version = "2.4.0"
 url = "http://s3tools.org"
 license = "GNU GPL v2+"
 short_description = "Command line tool for managing Amazon S3 and CloudFront services"

@@ -73,6 +73,12 @@ Modify Access control list for Bucket or Files
 s3cmd \fBsetversioning\fR \fIs3://BUCKET enable|disable\fR
 Modify Bucket Versioning
 .TP
+s3cmd \fBsetownership\fR \fIs3://BUCKET BucketOwnerPreferred|BucketOwnerEnforced|ObjectWriter\fR
+Modify Bucket Object Ownership
+.TP
+s3cmd \fBsetblockpublicaccess\fR \fIs3://BUCKET BlockPublicAcls,IgnorePublicAcls,BlockPublicPolicy,RestrictPublicBuckets\fR
+Modify Block Public Access rules
+.TP
 s3cmd \fBsetobjectlegalhold\fR \fISTATUS s3://BUCKET/OBJECT\fR
 Modify Object Legal Hold
 .TP
@@ -114,6 +120,15 @@ Sign an S3 URL to provide limited public access with expiry
 .TP
 s3cmd \fBfixbucket\fR \fIs3://BUCKET[/PREFIX]\fR
 Fix invalid file names in a bucket
+.TP
+s3cmd \fBsettagging\fR \fIs3://BUCKET[/OBJECT] "KEY=VALUE[&KEY=VALUE ...]"\fR
+Modify tagging for Bucket or Files
+.TP
+s3cmd \fBgettagging\fR \fIs3://BUCKET[/OBJECT]\fR
+Get tagging for Bucket or Files
+.TP
+s3cmd \fBdeltagging\fR \fIs3://BUCKET[/OBJECT]\fR
+Delete tagging for Bucket or Files
 .TP
 s3cmd \fBexpire\fR \fIs3://BUCKET\fR
 Set or delete expiration rule for the bucket
@@ -559,7 +574,7 @@ Enable verbose output.
 Enable debug output.
 .TP
 \fB\-\-version\fR
-Show s3cmd version (2.3.0-dev) and exit.
+Show s3cmd version (2.4.0) and exit.
 .TP
 \fB\-F\fR, \fB\-\-follow\-symlinks\fR
 Follow symbolic links as if they are regular files

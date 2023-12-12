@@ -1,3 +1,48 @@
+s3cmd-2.4.0      - 2023-12-12
+===============
+* Added "setversioning" command for versioning configuration (Kuan-Chun Wang)
+* Added "settagging", "gettagging", and "deltagging" commands for bucket/object tagging (Kuan-Chun Wang)
+* Added "setobjectretention" and "setobjectlegalhold" commands (Etienne Adam/Withings SAS)
+* Added "setownership" and "setblockpublicaccess" commands
+* Added "cfinval" command to request Cloudfront to invalidate paths (#1256)
+* Added "--keep-dirs" option to have the folder structure preserved on remote side
+* Added --skip-destination-validation option for "setnotification" command (Kuan-Chun Wang)
+* Added "--max-retries" flag and "max_retries" config option (#914)
+* Added FIPS support (Michael Roth)
+* Added "object ownership" and block public access" values to "info" command output for buckets
+* Added to "ls" command a "DIROBJ" tag for directory objects in S3 remote
+* Added server profiles to run-tests.py to skip tests depending on the server type
+* Fixed "TypeError: sequence item 1: expected str instance, bytes found" error with Python 3.12 (#1343)
+* Fixed a missing return for "object_batch_delete" of S3.py  (James Hewitt)
+* Fixed "object is not callable" error because of md5 FIPS test (#1005)
+* Fixed "compute_content_md5 is not defined" error for "setversioning" (#1312) (Gavin John)
+* Fixed list objects to use NextMarker when only prefixes are returned (Albin Parou)
+* Fixed upload to not retry when an S3 compatible server is full
+* Fixed recursive delete of objects named with whitespace (#976)
+* Fixed the mime type when uploading directories to be "application/x-directory"
+* Fixed "string indices must be integers" error for sync when in dry-run mode (#1313) (Shohei Tanaka)
+* Fixed SignatureDoesNotMatch error when modifying an object on Cloudflare R2 (#1332) (Philip C Nilsson)
+* Fixed Cloudfront invalidation issue for paths with wildcard or special characters
+* Fixed Cloudfront crash because of error reporting for retries
+* Fixed Cloudfront "unable to parse URL" error (#1292)
+* Improved the handling of "empty" files on the remote side to sync with local folders
+* Improved "abortmp" command by requiring an object to avoid bad accidents when using Ceph (Joshua Haas)
+* Improved file download by retrying when encountering SlowDown or TooManyRequests errors (Robin Geiger)
+* Improved error messages in case of connection error or host unreachable
+* Improved error messages to be more explicit for upload errors after retries
+* Improved remote2local attributes setting code
+* Improved remote2local with more explicit error messages when setting attributes (#1288)
+* Improved remote2local output messages by using the "mkdir" prefix instead of "make dir"
+* Improved the SortedDict class
+* Improved run-test.py by using "--include" when calling Curl instead of "-include" (Matthew James Kraai)
+* Improved GitHub CI by enabling pip cache in actions/setup-python (Anton Yakutovich)
+* Improved GitHub CI by adding a "codespell" check on push and PRs (Yaroslav Halchenko)
+* Updated GitHub CI tests to use more recent versions of Minio and Python
+* Upgraded GitHub actions (Anton Yakutovich)
+* Cleanup and update of copyright headers, docs, comments and setup.py
+* Cleanup to fix "invalid escape sequence" syntax warnings
+* Many other bug fixes and cleanups
+
 s3cmd-2.3.0      - 2022-10-03
 ===============
 * Added "getnotification", "setnotification", and "delnotification" commands for notification policies (hrchu)
