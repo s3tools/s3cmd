@@ -1411,22 +1411,22 @@ class S3(object):
                         next_key = getTextFromXml(xml_data, "NextKeyMarker")
                         if not next_key:
                             next_key = upload_list[-1]["Key"]
-                        uri_params['KeyMarker'] = next_key
+                        uri_params['key-marker'] = next_key
 
                         upload_id_marker = getTextFromXml(
                             xml_data, "NextUploadIdMarker")
                         if upload_id_marker:
-                            uri_params['UploadIdMarker'] = upload_id_marker
-                        elif 'UploadIdMarker' in uri_params:
+                            uri_params['upload-id-marker'] = upload_id_marker
+                        elif 'upload-id-marker' in uri_params:
                             # Clear any pre-existing value
-                            del uri_params['UploadIdMarker']
+                            del uri_params['upload-id-marker']
                     else:
                         # Unexpectedly, the server lied, and so the previous
                         # response was not truncated. So, no new key to get.
                         yield False, upload_list
                         break
                     debug("Listing continues after '%s'" %
-                          uri_params['KeyMarker'])
+                          uri_params['key-marker'])
                 else:
                     yield truncated, upload_list
                     break
