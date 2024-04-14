@@ -923,6 +923,8 @@ def cmd_object_restore(args):
         warning(u"Exiting now because of --dry-run")
         return EX_OK
 
+    ret = EX_OK
+
     for key in remote_list:
         item = remote_list[key]
 
@@ -932,13 +934,17 @@ def cmd_object_restore(args):
                 response = s3.object_restore(S3Uri(item['object_uri_str']))
                 output(u"restore: '%s'" % item['object_uri_str'])
             except S3Error as e:
-                if e.code == "RestoreAlreadyInProgress":
+                if e.code in ("RestoreAlreadyInProgress", "InvalidObjectState"):
                     warning("%s: %s" % (e.message, item['object_uri_str']))
-                else:
+                elif cfg.stop_on_error:
                     raise e
+                else:
+                    error("restore failed for: '%s' (%s)", item['object_uri_str'], e)
+                    ret = EX_PARTIAL
+
         else:
             debug(u"Skipping directory since only files may be restored")
-    return EX_OK
+    return ret
 
 
 def subcmd_cp_mv(args, process_fce, action_str, message):
