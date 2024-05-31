@@ -438,9 +438,15 @@ def fetch_remote_list(args, require_attribs = False, recursive = None, uri_param
 
         total_size = 0
 
-        s3 = S3(Config())
-        response = s3.bucket_list(remote_uri.bucket(), prefix = remote_uri.object(),
-                                  recursive = recursive, uri_params = uri_params)
+        cfg = Config()
+        s3 = S3(cfg)
+        response = s3.bucket_list(
+            remote_uri.bucket(),
+            prefix=remote_uri.object(),
+            recursive=recursive,
+            uri_params=uri_params,
+            list_objects_v2=cfg.enable_list_objects_v2
+        )
 
         rem_base_original = rem_base = remote_uri.object()
         remote_uri_original = remote_uri
