@@ -114,6 +114,11 @@ def subcmd_bucket_usage_all(s3):
     cfg = Config()
     response = s3.list_all_buckets()
 
+    if not response["list"]:
+        output(u"".rjust(12, "-"))
+        output(u"%s Total" % ('0'.ljust(12)))
+        return 0
+
     buckets_size = 0
     for bucket in response["list"]:
         size = subcmd_bucket_usage(s3, S3Uri("s3://" + bucket["Name"]))
