@@ -47,7 +47,7 @@ from .S3Uri import S3Uri
 from .ConnMan import ConnMan
 from .Crypto import (sign_request_v2, sign_request_v4, checksum_sha256_file,
                      checksum_sha256_buffer, generate_content_md5,
-                     hash_file_md5, calculateChecksum, format_param_str)
+                     hash_file_md5, calculateChecksum, format_param_str, sha256_hash_to_base64)
 
 try:
     from ctypes import ArgumentError
@@ -1847,6 +1847,11 @@ class S3(object):
         else:
             sha256_hash = checksum_sha256_file(stream, offset, size_total)
         request.body = sha256_hash
+
+        # Provide the checksum with the request. This is important for buckets that have 
+        # Object Lock enabled.
+
+        headers['x-amz-checksum-sha256'] = sha256_hash_to_base64(sha256_hash)
 
         if use_expect_continue:
             if not size_total:
