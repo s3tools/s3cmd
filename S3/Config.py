@@ -255,6 +255,11 @@ class Config(object):
     # This may be faster when listing very large buckets.
     list_allow_unordered = False
     # Maximum attempts of re-issuing failed requests
+
+    # See https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
+    enable_list_objects_v2 = False
+
+
     max_retries = 5
 
     ## Creating a singleton

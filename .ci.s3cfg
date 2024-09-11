@@ -40,6 +40,7 @@ limit = -1
 limitrate = 0
 list_md5 = False
 list_allow_unordered = False
+enable_list_objects_v2 = False
 log_target_prefix = 
 long_listing = False
 max_delete = -1
