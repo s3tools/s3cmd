@@ -101,6 +101,7 @@ Authors:
         'Natural Language :: English',
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Microsoft :: Windows',
+        'Operating System :: OS Independent',
         'Operating System :: POSIX',
         'Operating System :: Unix',
         'Programming Language :: Python :: 2',
