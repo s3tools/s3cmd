@@ -123,7 +123,7 @@ def subcmd_bucket_usage_all(s3):
     total_size_str = str(total_size) + size_coeff
     output(u"".rjust(12, "-"))
     output(u"%s Total" % (total_size_str.ljust(12)))
-    return size
+    return buckets_size
 
 def subcmd_bucket_usage(s3, uri):
     """
