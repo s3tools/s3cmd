@@ -20,6 +20,8 @@ except ImportError:
     # Python 2 support
     from base64 import encodestring
 
+from base64 import b64encode
+
 from . import Config
 from logging import debug
 from .BaseUtils import encode_to_s3, decode_from_s3, s3_quote, md5, unicode
@@ -346,3 +348,11 @@ def calculateChecksum(buffer, mfile, offset, chunk_size, send_chunk):
 
     return md5_hash.hexdigest()
 __all__.append("calculateChecksum")
+
+def sha256_hash_to_base64(sha256_hash):
+    # Extract digest from sha256 hash
+    sha256_hash_digest = sha256_hash.digest()
+    # Then convert it to base64
+    sha256_hash_digest_b64 = b64encode(sha256_hash_digest).decode()
+    return sha256_hash_digest_b64
+__all__.append("sha256_hash_to_base64")
