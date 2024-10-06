@@ -388,7 +388,7 @@ class S3(object):
             uri_params = {}
         if prefix:
             uri_params['prefix'] = prefix
-        if not self.config.recursive and not recursive:
+        if not self.config.recursive and not recursive and not self.config.list_allow_unordered:
             uri_params['delimiter'] = "/"
         if max_keys != -1:
             uri_params['max-keys'] = str(max_keys)
