@@ -1621,7 +1621,7 @@ class S3(object):
                     info('Forwarding request to %s', region)
                     return fn(*args, **kwargs)
                 else:
-                    warning(u'Could not determine bucket the location. Please consider using the --region parameter.')
+                    warning(u'Could not determine the bucket location. Please consider using the --region parameter.')
 
             elif failureCode == 'InvalidRequest':
                 message = getTextFromXml(response['data'], 'Message')
