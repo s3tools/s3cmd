@@ -340,7 +340,6 @@ class Config(object):
                         # Otherwise use the bucket location
                         region = self.bucket_location
                     sts_endpoint = "sts.%s.amazonaws.com" % region
-                    sts_endpoint = 
                 conn = httplib.HTTPSConnection(host=sts_endpoint,
                                                timeout=2)
                 conn.request('POST', '/?' + encoded_params)
