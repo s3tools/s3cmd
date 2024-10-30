@@ -330,7 +330,9 @@ class Config(object):
                     '%s=%s' % (k, s3_quote(v, unicode_output=True))
                     for k, v in params.items()
                 ])
-                sts_endpoint = "sts.amazonaws.com"
+                sts_endpoint = os.environ.get("AWS_STS_ENDPOINT") 
+                if sts_endpoint == None:
+                    sts_endpoint = "sts.amazonaws.com"
                 if os.environ.get("AWS_STS_REGIONAL_ENDPOINTS") == "regional":
                     # Check if the AWS_REGION variable is available to use as a region.
                     region = os.environ.get("AWS_REGION")
@@ -338,6 +340,7 @@ class Config(object):
                         # Otherwise use the bucket location
                         region = self.bucket_location
                     sts_endpoint = "sts.%s.amazonaws.com" % region
+                    sts_endpoint = 
                 conn = httplib.HTTPSConnection(host=sts_endpoint,
                                                timeout=2)
                 conn.request('POST', '/?' + encoded_params)
