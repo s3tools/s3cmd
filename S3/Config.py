@@ -323,7 +323,7 @@ class Config(object):
                 web_identity_token_file = os.environ.get('AWS_WEB_IDENTITY_TOKEN_FILE')
                 if web_identity_token_file:
                     with open(web_identity_token_file) as f:
-                        web_identity_token = f.read()
+                        web_identity_token = f.read().rstrip()
                     params['Action'] = 'AssumeRoleWithWebIdentity'
                     params['WebIdentityToken'] = web_identity_token
                 encoded_params = '&'.join([
