@@ -728,15 +728,14 @@ class S3(object):
         return content_type
 
     def add_encoding(self, filename, content_type):
+        if not filename:
+            return False
         if 'charset=' in content_type:
            return False
         exts = self.config.add_encoding_exts.split(',')
         if exts[0]=='':
             return False
-        parts = filename.rsplit('.',2)
-        if len(parts) < 2:
-            return False
-        ext = parts[1]
+        ext = filename.rsplit('.', 1)[-1]
         if ext in exts:
             return True
         else:
