@@ -738,7 +738,7 @@ class S3(object):
         parts = filename.rsplit('.', 1)
         if len(parts) < 2:
             return False
-        ext = parts[-1]
+        ext = parts[1]
         if ext in exts:
             return True
         else:
