@@ -642,13 +642,16 @@ class ConfigParser(object):
 
     def parse_file(self, file, sections = []):
         debug("ConfigParser: Reading file '%s'" % file)
-        file_mode = os.stat(file).st_mode
-        is_group_readable = bool(file_mode & stat.S_IRGRP)
-        is_world_readable = bool(file_mode & stat.S_IROTH)
-        if is_group_readable:
-            warning(f"s3cmd configuration file is group-readable. This is insecure. Location: {file}")
-        if is_world_readable:
-            warning(f"s3cmd configuration file is world-readable. This is insecure. Location: {file}")
+        try:
+            file_mode = os.stat(file).st_mode
+            is_group_readable = bool(file_mode & stat.S_IRGRP)
+            is_world_readable = bool(file_mode & stat.S_IROTH)
+            if is_group_readable:
+                warning(f"s3cmd configuration file is group-readable. This is insecure. Location: {file}")
+            if is_world_readable:
+                warning(f"s3cmd configuration file is world-readable. This is insecure. Location: {file}")
+        except (FileNotFoundError, PermissionError):
+            pass
         if type(sections) != type([]):
             sections = [sections]
         in_our_section = True
