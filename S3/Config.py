@@ -121,6 +121,7 @@ class Config(object):
     _access_token_last_update = None
     host_base = u"s3.amazonaws.com"
     host_bucket = u"%(bucket)s.s3.amazonaws.com"
+    sts_endpoint = u""
     kms_key = u""    #can't set this and Server Side Encryption at the same time
     # simpledb_host looks useless, legacy? to remove?
     simpledb_host = u"sdb.amazonaws.com"
@@ -312,6 +313,7 @@ class Config(object):
         Get credentials from IAM authentication and STS AssumeRole
         """
         try:
+            sts_endpoint = self.sts_endpoint
             role_arn = os.environ.get('AWS_ROLE_ARN')
             if role_arn:
                 role_session_name = 'role-session-%s' % (int(time.time()))
@@ -331,9 +333,8 @@ class Config(object):
                     '%s=%s' % (k, s3_quote(v, unicode_output=True))
                     for k, v in params.items()
                 ])
-                sts_endpoint = os.environ.get("AWS_STS_ENDPOINT") 
-                if sts_endpoint == None:
-                    sts_endpoint = "sts.amazonaws.com"
+                if len(sts_endpoint) == 0:
+                    sts_endpoint = os.environ.get("AWS_STS_ENDPOINT", default="sts.amazonaws.com") 
                 if os.environ.get("AWS_STS_REGIONAL_ENDPOINTS") == "regional":
                     # Check if the AWS_REGION variable is available to use as a region.
                     region = os.environ.get("AWS_REGION")
