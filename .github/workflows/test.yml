@@ -8,10 +8,14 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
         include:
           - python-version: '3.7'
             os: ubuntu-22.04
+          - python-version: '3.12'
+            os: macos-latest
+          - python-version: '3.12'
+            os: windows-latest
       fail-fast: false
     runs-on: ${{ matrix.os }}
     env:
@@ -38,9 +42,16 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.cache-revision }}
       - name: Download minio on cache miss
         if: steps.cache-minio.outputs.cache-hit != 'true'
+        env:
+          minio-bin-url: |-
+            ${{
+               matrix.os == 'macos-latest'   && 'https://dl.min.io/server/minio/release/darwin-arm64/minio'
+            || matrix.os == 'windows-latest' && 'https://dl.min.io/server/minio/release/windows-amd64/minio.exe'
+            ||                                  'https://dl.minio.io/server/minio/release/linux-amd64/minio'
+            }}
         run: |
           mkdir -p ~/cache
-          test ! -e ~/cache/minio && wget -O ~/cache/minio https://dl.minio.io/server/minio/release/linux-amd64/minio || echo "Minio already in cache"
+          test ! -e ~/cache/minio && wget -O ~/cache/minio ${{ env.minio-bin-url }} || echo "Minio already in cache"
       - name: Start a local instance of minio
         run: |
           export MINIO_ROOT_USER=Q3AM3UQ867SPQQA43P2F
