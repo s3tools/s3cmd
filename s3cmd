@@ -123,7 +123,7 @@ def subcmd_bucket_usage_all(s3):
     total_size_str = str(total_size) + size_coeff
     output(u"".rjust(12, "-"))
     output(u"%s Total" % (total_size_str.ljust(12)))
-    return size
+    return buckets_size
 
 def subcmd_bucket_usage(s3, uri):
     """
@@ -923,6 +923,8 @@ def cmd_object_restore(args):
         warning(u"Exiting now because of --dry-run")
         return EX_OK
 
+    ret = EX_OK
+
     for key in remote_list:
         item = remote_list[key]
 
@@ -932,13 +934,17 @@ def cmd_object_restore(args):
                 response = s3.object_restore(S3Uri(item['object_uri_str']))
                 output(u"restore: '%s'" % item['object_uri_str'])
             except S3Error as e:
-                if e.code == "RestoreAlreadyInProgress":
+                if e.code in ("RestoreAlreadyInProgress", "InvalidObjectState"):
                     warning("%s: %s" % (e.message, item['object_uri_str']))
-                else:
+                elif cfg.stop_on_error:
                     raise e
+                else:
+                    error("restore failed for: '%s' (%s)", item['object_uri_str'], e)
+                    ret = EX_PARTIAL
+
         else:
             debug(u"Skipping directory since only files may be restored")
-    return EX_OK
+    return ret
 
 
 def subcmd_cp_mv(args, process_fce, action_str, message):
@@ -2961,7 +2967,7 @@ def get_commands_list():
     {"cmd":"mb", "label":"Make bucket", "param":"s3://BUCKET", "func":cmd_bucket_create, "argc":1},
     {"cmd":"rb", "label":"Remove bucket", "param":"s3://BUCKET", "func":cmd_bucket_delete, "argc":1},
     {"cmd":"ls", "label":"List objects or buckets", "param":"[s3://BUCKET[/PREFIX]]", "func":cmd_ls, "argc":0},
-    {"cmd":"la", "label":"List all object in all buckets", "param":"", "func":cmd_all_buckets_list_all_content, "argc":0},
+    {"cmd":"la", "label":"List all objects in all buckets", "param":"", "func":cmd_all_buckets_list_all_content, "argc":0},
     {"cmd":"put", "label":"Put file into bucket", "param":"FILE [FILE...] s3://BUCKET[/PREFIX]", "func":cmd_object_put, "argc":2},
     {"cmd":"get", "label":"Get file from bucket", "param":"s3://BUCKET/OBJECT LOCAL_FILE", "func":cmd_object_get, "argc":1},
     {"cmd":"del", "label":"Delete file from bucket", "param":"s3://BUCKET/OBJECT", "func":cmd_object_del, "argc":1},

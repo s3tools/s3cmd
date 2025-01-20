@@ -272,7 +272,8 @@ class Config(object):
                     self.aws_credential_file()
 
             # override these if passed on the command-line
-            if access_key and secret_key:
+            # Allow blank secret_key
+            if access_key and secret_key is not None:
                 self.access_key = access_key
                 self.secret_key = secret_key
             if access_token:

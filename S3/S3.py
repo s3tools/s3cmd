@@ -728,12 +728,14 @@ class S3(object):
         return content_type
 
     def add_encoding(self, filename, content_type):
+        if not filename:
+            return False
         if 'charset=' in content_type:
            return False
         exts = self.config.add_encoding_exts.split(',')
         if exts[0]=='':
             return False
-        parts = filename.rsplit('.',2)
+        parts = filename.rsplit('.', 1)
         if len(parts) < 2:
             return False
         ext = parts[1]
@@ -1621,7 +1623,7 @@ class S3(object):
                     info('Forwarding request to %s', region)
                     return fn(*args, **kwargs)
                 else:
-                    warning(u'Could not determine bucket the location. Please consider using the --region parameter.')
+                    warning(u'Could not determine the bucket location. Please consider using the --region parameter.')
 
             elif failureCode == 'InvalidRequest':
                 message = getTextFromXml(response['data'], 'Message')

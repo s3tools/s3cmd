@@ -4,11 +4,16 @@ on: [push, pull_request, workflow_dispatch]
 
 jobs:
   test:
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.7', '3.8', '3.9', '3.10', '3.11', '3.12']
+        os:
+          - ubuntu-latest
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+        include:
+          - python-version: '3.7'
+            os: ubuntu-22.04
       fail-fast: false
+    runs-on: ${{ matrix.os }}
     env:
       cache-revision: 2
     steps:
