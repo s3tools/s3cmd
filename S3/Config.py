@@ -73,7 +73,7 @@ except NameError:
     # In python 3, unicode -> str, and str -> bytes
     unicode = str
 
-PY32 = (sys.version_info >= (3, 2))
+PY3 = (sys.version_info >= (3, 0))
 
 
 def is_bool_true(value):
@@ -459,7 +459,7 @@ class Config(object):
             try:
                 try:
                     buf = io.StringIO(config_string)
-                    if PY32:
+                    if PY3:
                       config.read_file(buf)
                     else:
                       config.readfp(buf)
@@ -471,7 +471,7 @@ class Config(object):
                     # to be able to read the file with PyConfigParser()
                     config_string = u'[default]\n' + config_string
                     buf = io.StringIO(config_string)
-                    if PY32:
+                    if PY3:
                       config.read_file(buf)
                     else:
                       config.readfp(buf)
