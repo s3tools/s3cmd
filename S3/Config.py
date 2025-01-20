@@ -73,6 +73,8 @@ except NameError:
     # In python 3, unicode -> str, and str -> bytes
     unicode = str
 
+PY3 = (sys.version_info >= (3, 0))
+
 
 def is_bool_true(value):
     """Check to see if a string is true, yes, on, or 1
@@ -268,7 +270,7 @@ class Config(object):
             try:
                 self.read_config_file(configfile)
             except IOError:
-                if 'AWS_CREDENTIAL_FILE' in os.environ or 'AWS_PROFILE' in os.environ:
+                if 'AWS_SHARED_CREDENTIALS_FILE' in os.environ or 'AWS_CREDENTIAL_FILE' in os.environ or 'AWS_PROFILE' in os.environ:
                     self.aws_credential_file()
 
             # override these if passed on the command-line
@@ -440,7 +442,8 @@ class Config(object):
     def aws_credential_file(self):
         try:
             aws_credential_file = os.path.expanduser('~/.aws/credentials')
-            credential_file_from_env = os.environ.get('AWS_CREDENTIAL_FILE')
+            credential_file_from_env = os.environ.get('AWS_SHARED_CREDENTIALS_FILE') \
+                or os.environ.get('AWS_CREDENTIAL_FILE')
             if credential_file_from_env and \
                os.path.isfile(credential_file_from_env):
                 aws_credential_file = base_unicodise(credential_file_from_env)
@@ -455,9 +458,11 @@ class Config(object):
                 config_string = fp.read()
             try:
                 try:
-                    # readfp is replaced by read_file in python3,
-                    # but so far readfp it is still available.
-                    config.readfp(io.StringIO(config_string))
+                    buf = io.StringIO(config_string)
+                    if PY3:
+                      config.read_file(buf)
+                    else:
+                      config.readfp(buf)
                 except MissingSectionHeaderError:
                     # if header is missing, this could be deprecated
                     # credentials file format as described here:
@@ -465,7 +470,11 @@ class Config(object):
                     # then do the hacky-hack and add default header
                     # to be able to read the file with PyConfigParser()
                     config_string = u'[default]\n' + config_string
-                    config.readfp(io.StringIO(config_string))
+                    buf = io.StringIO(config_string)
+                    if PY3:
+                      config.read_file(buf)
+                    else:
+                      config.readfp(buf)
             except ParsingError as exc:
                 raise ValueError(
                     "Error reading aws_credential_file "
