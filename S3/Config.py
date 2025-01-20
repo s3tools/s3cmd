@@ -73,6 +73,8 @@ except NameError:
     # In python 3, unicode -> str, and str -> bytes
     unicode = str
 
+PY32 = (sys.version_info >= (3, 2))
+
 
 def is_bool_true(value):
     """Check to see if a string is true, yes, on, or 1
@@ -456,7 +458,11 @@ class Config(object):
                 config_string = fp.read()
             try:
                 try:
-                    config.read_file(io.StringIO(config_string))
+                    buf = io.StringIO(config_string)
+                    if PY32:
+                      config.read_file(buf)
+                    else:
+                      config.readfp(buf)
                 except MissingSectionHeaderError:
                     # if header is missing, this could be deprecated
                     # credentials file format as described here:
@@ -464,7 +470,11 @@ class Config(object):
                     # then do the hacky-hack and add default header
                     # to be able to read the file with PyConfigParser()
                     config_string = u'[default]\n' + config_string
-                    config.read_file(io.StringIO(config_string))
+                    buf = io.StringIO(config_string)
+                    if PY32:
+                      config.read_file(buf)
+                    else:
+                      config.readfp(buf)
             except ParsingError as exc:
                 raise ValueError(
                     "Error reading aws_credential_file "
