@@ -1411,10 +1411,10 @@ def cmd_sync_remote2local(args):
             if not os.path.isdir(deunicodise(destination_base)):
                 raise ParameterError("Destination is not an existing directory")
         elif len(remote_list) == 1 and \
-             source_args[0] == remote_list[remote_list.keys()[0]].get(u'object_uri_str', ''):
+             source_args[0] == remote_list[next(iter(remote_list.keys()))].get(u'object_uri_str', ''):
             if os.path.isdir(deunicodise(destination_base)):
                 raise ParameterError("Destination already exists and is a directory")
-            remote_list[remote_list.keys()[0]]['local_filename'] = destination_base
+            remote_list[next(iter(remote_list.keys()))]['local_filename'] = destination_base
             return
 
         if destination_base[-1] != os.path.sep:
