@@ -273,7 +273,7 @@ class ConnMan(object):
             cur_time = time()
             if cur_time < conn.last_used_time + cfg.connection_max_age \
                and cur_time >= conn.last_used_time:
-                debug("ConnMan.get(): re-using connection: %s#%d"
+                debug("ConnMan.get(): reusing connection: %s#%d"
                       % (conn.id, conn.counter))
                 break
             # Conn is too old or wall clock went back in the past

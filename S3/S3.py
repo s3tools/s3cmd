@@ -1016,7 +1016,7 @@ class S3(object):
             if src_size > threshold:
                 # Sadly, s3 has a bad logic as metadata will not be copied for
                 # multipart copy unlike what is done for direct copies.
-                # TODO: Optimize by re-using the object_info request done
+                # TODO: Optimize by reusing the object_info request done
                 # earlier earlier at fetch remote stage, and preserve headers.
                 if src_headers is None:
                     src_info = self.object_info(src_uri)
@@ -1668,7 +1668,7 @@ class S3(object):
 
         Signature v4 needs the region of the bucket or the request will fail
         with the indication of the correct region.
-        We are trying to avoid this failure by pre-emptively getting the
+        We are trying to avoid this failure by preemptively getting the
         correct region to use, if not provided by the user.
         """
         if request.resource.get('bucket') and not request.use_signature_v2() \
