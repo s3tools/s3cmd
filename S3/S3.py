@@ -317,17 +317,146 @@ class S3(object):
         response["list"] = getListFromXml(response["data"], "Bucket")
         return response
 
-    def bucket_list(self, bucket, prefix = None, recursive = None, uri_params = None, limit = -1):
+    def bucket_list(
+        self,
+        bucket,
+        prefix=None,
+        recursive=None,
+        uri_params=None,
+        limit=-1,
+        list_objects_v2=False
+    ):
+        if uri_params is None:
+            uri_params = {}
+        if uri_params.get("list_type") == "v2":
+            list_objects_v2 = True
+
         item_list = []
         prefixes = []
-        for truncated, dirs, objects in self.bucket_list_streaming(bucket, prefix, recursive, uri_params, limit):
-            item_list.extend(objects)
-            prefixes.extend(dirs)
+        if list_objects_v2:
+            uri_params.update({"list_type": "v2"})
+            for truncated, dirs, objects in self.bucket_list_v2_streaming(
+                bucket,
+                prefix,
+                recursive,
+                uri_params,
+                limit
+            ):
+                item_list.extend(objects)
+                prefixes.extend(dirs)
+        else:
+            for truncated, dirs, objects in self.bucket_list_streaming(
+                bucket,
+                prefix,
+                recursive,
+                uri_params,
+                limit
+            ):
+                item_list.extend(objects)
+                prefixes.extend(dirs)
 
         response = {}
         response['list'] = item_list
         response['common_prefixes'] = prefixes
         response['truncated'] = truncated
+        return response
+
+    def bucket_list_v2_streaming(
+        self,
+        bucket,
+        prefix=None,
+        recursive=None,
+        uri_params={},
+        limit=-1,
+    ):
+        def _list_truncated(data):
+            # <IsTruncated> can either be "true" or "false" or be missing completely
+            is_truncated = getTextFromXml(data, ".//IsTruncated") or "false"
+            return is_truncated.lower() != "false"
+
+        def _get_contents(data):
+            return getListFromXml(data, "Contents")
+
+        def _get_common_prefixes(data):
+            return getListFromXml(data, "CommonPrefixes")
+
+        def _get_next_continuation_token(data):
+            return getTextFromXml(data, "NextContinuationToken")
+
+        uri_params = uri_params and uri_params.copy() or {}
+        truncated = True
+
+        num_objects = 0
+        num_prefixes = 0
+        max_keys = limit
+        next_continuation_token = ""
+        while truncated:
+            if next_continuation_token:
+                response = self.bucket_list_v2_noparse(
+                    bucket,
+                    prefix,
+                    recursive,
+                    uri_params,
+                    max_keys,
+                    next_continuation_token
+                )
+            else:
+                response = self.bucket_list_v2_noparse(
+                    bucket,
+                    prefix,
+                    recursive,
+                    uri_params,
+                    max_keys
+                )
+            current_list = _get_contents(response["data"])
+            current_prefixes = _get_common_prefixes(response["data"])
+            num_objects += len(current_list)
+            num_prefixes += len(current_prefixes)
+            if limit > num_objects + num_prefixes:
+                max_keys = limit - (num_objects + num_prefixes)
+            truncated = _list_truncated(response["data"])
+            if truncated:
+                if limit == -1 or num_objects + num_prefixes < limit:
+                    if current_list or current_prefixes:
+                        next_continuation_token = _get_next_continuation_token(
+                            response["data"]
+                        )
+                    else:
+                        # Unexpectedly, the server lied, and so the previous
+                        # response was not truncated. So, no new key to get.
+                        yield False, current_prefixes, current_list
+                        break
+                else:
+                    yield truncated, current_prefixes, current_list
+                    break
+
+            yield truncated, current_prefixes, current_list
+
+    def bucket_list_v2_noparse(
+        self,
+        bucket,
+        prefix=None,
+        recursive=None,
+        uri_params={},
+        max_keys=-1,
+        continuation_token=None
+    ):
+        if prefix:
+            uri_params['prefix'] = prefix
+        if not self.config.recursive and not recursive:
+            uri_params['delimiter'] = "/"
+        if max_keys != -1:
+            uri_params['max-keys'] = str(max_keys)
+        if self.config.list_allow_unordered:
+            uri_params['allow-unordered'] = "true"
+        if continuation_token:
+            uri_params["continuation-token"] = continuation_token
+        request = self.create_request(
+            "BUCKET_LIST",
+            bucket=bucket,
+            uri_params=uri_params
+        )
+        response = self.send_request(request)
         return response
 
     def bucket_list_streaming(self, bucket, prefix = None, recursive = None, uri_params = None, limit = -1):
@@ -383,9 +512,7 @@ class S3(object):
 
             yield truncated, current_prefixes, current_list
 
-    def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = None, max_keys = -1):
-        if uri_params is None:
-            uri_params = {}
+    def bucket_list_noparse(self, bucket, prefix = None, recursive = None, uri_params = {}, max_keys = -1):
         if prefix:
             uri_params['prefix'] = prefix
         if not self.config.recursive and not recursive:
