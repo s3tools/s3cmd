@@ -19,6 +19,7 @@ import errno
 import mimetypes
 import io
 import pprint
+from copy import copy
 from xml.sax import saxutils
 from socket import timeout as SocketTimeoutException
 from logging import debug, info, warning, error
@@ -1561,7 +1562,13 @@ class S3(object):
 
         method_string = S3.http_methods.getkey(S3.operations[operation] & S3.http_methods["MASK"])
 
-        request = S3Request(self, method_string, resource, headers, body, uri_params)
+        _headers = copy(headers)
+        if not _headers and self.config.extra_headers is not None:
+            _headers = {}
+        if self.config.extra_headers is not None:
+            for k,v in self.config.extra_headers.iteritems():
+                _headers[k] = v
+        request = S3Request(self, method_string, resource, _headers, body, uri_params)
 
         debug("CreateRequest: resource[uri]=%s", resource['uri'])
         return request
