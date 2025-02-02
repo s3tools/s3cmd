@@ -9,3 +9,4 @@ s3cmd.egg-info
 s3cmd.spec
 .idea
 .s3cfg
+.python-version
