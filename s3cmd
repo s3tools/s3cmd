@@ -3158,6 +3158,7 @@ def main():
     optparser.add_option(      "--access_key", dest="access_key", help="AWS Access Key")
     optparser.add_option(      "--secret_key", dest="secret_key", help="AWS Secret Key")
     optparser.add_option(      "--access_token", dest="access_token", help="AWS Access Token")
+    optparser.add_option(      "--profile", dest="profile", metavar="PROFILE", help="Profile to use from .s3cfg file")
 
     optparser.add_option("-n", "--dry-run", dest="dry_run", action="store_true", help="Only show what should be uploaded or downloaded but don't actually do it. May still perform S3 requests to get bucket listings and other information though (only for file transfer commands)")
 
@@ -3316,7 +3317,7 @@ def main():
         sys.exit(EX_CONFIG)
 
     try:
-        cfg = Config(options.config, options.access_key, options.secret_key, options.access_token)
+        cfg = Config(options.config, options.access_key, options.secret_key, options.access_token, options.profile)
     except ValueError as exc:
         raise ParameterError(unicode(exc))
     except IOError as e:
