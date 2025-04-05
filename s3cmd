@@ -2364,6 +2364,13 @@ def cmd_listpolicy(args):
     s3 = S3(cfg)
     uri = S3Uri(args[0])
 
+    if len(args) != 1:
+        raise ParameterError("Too few parameters! Expected: <bucket>")
+    if not uri.has_bucket():
+        raise ParameterError("Invalid bucket name: '%s'" % args[0])
+    if uri.has_object():
+        raise ParameterError("No Object Names allowed: '%s'" % args[0])
+
     response = s3.list_policy(uri)
 
     debug(u"response - %s" % response['status'])
