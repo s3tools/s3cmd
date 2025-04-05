@@ -1224,6 +1224,14 @@ class S3(object):
         response = self.send_request(request)
         return response
 
+    def list_policy(self, uri):
+        headers = SortedDict(ignore_case = True)
+        headers['content-type'] = 'application/json'
+        request = self.create_request("BUCKET_LIST", uri = uri,
+                                        headers=headers, uri_params = {'policy': None})
+        response = self.send_request(request)
+        return response
+
     def delete_policy(self, uri):
         request = self.create_request("BUCKET_DELETE", uri = uri,
                                       uri_params = {'policy': None})
