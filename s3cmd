@@ -2178,8 +2178,6 @@ def cmd_listacl(args):
         raise ParameterError("Too few parameters! Expected: <bucket>")
     if not S3Uri(args[0]).has_bucket():
         raise ParameterError("Invalid bucket name: '%s'" % args[0])
-    if not S3Uri(args[0]).has_object():
-        raise ParameterError("Invalid object name: '%s'" % args[0])
     uri = S3Uri(args[0])
     acl = list_acl(s3, uri)
     return acl
