@@ -28,11 +28,15 @@ brew install s3cmd
 
 Installation of RPM package
 ---------------------------
-As user "root" run:
+The s3cmd-X.Y.Z.noarch.rpm is available via the epel repository. Run the following command as the root user:
+```
+dnf install s3cmd
+```
+
+If the package has been downloaded locally, run the following command as the root user, where X.Y.Z is the most recent s3cmd release version:
 ```
 rpm -ivh s3cmd-X.Y.Z.noarch.rpm
 ```
-where X.Y.Z is the most recent s3cmd release version.
 
 You may be informed about missing dependencies
 on Python or some libraries. Please consult your 
@@ -56,7 +60,7 @@ Installation from zip file
 There are three options to run s3cmd from source tarball:
 
 1) The S3cmd program, as distributed in s3cmd-X.Y.Z.tar.gz
-   on SourceForge or in master.zip on GitHub, can be run directly 
+   on [SourceForge](https://s3tools.org/download) or in master.zip on [GitHub](https://github.com/s3tools/s3cmd/archive/master.zip), can be run directly 
    from where you unzipped the package.
 
 2) Or you may want to move "s3cmd" file and "S3" subdirectory
