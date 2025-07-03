@@ -202,7 +202,12 @@ def subcmd_bucket_list(s3, uri, limit):
     if prefix.endswith('*'):
         prefix = prefix[:-1]
     try:
-        response = s3.bucket_list(bucket, prefix = prefix, limit = limit)
+        response = s3.bucket_list(
+            bucket,
+            prefix=prefix,
+            limit=limit,
+            list_objects_v2=cfg.enable_list_objects_v2
+        )
     except S3Error as e:
         if e.info["Code"] in S3.codes:
             error(S3.codes[e.info["Code"]] % bucket)
@@ -3233,6 +3238,8 @@ def main():
     optparser.add_option(      "--list-md5", dest="list_md5", action="store_true", help="Include MD5 sums in bucket listings (only for 'ls' command).")
 
     optparser.add_option(      "--list-allow-unordered", dest="list_allow_unordered", action="store_true", help="Not an AWS standard. Allow the listing results to be returned in unsorted order. This may be faster when listing very large buckets.")
+
+    optparser.add_option(      "--enable_list_objects_v2", dest="enable_list_objects_v2", action="store_true", help="Switches list API to ListObjectsV2")
 
     optparser.add_option("-H", "--human-readable-sizes", dest="human_readable_sizes", action="store_true", help="Print sizes in human readable form (eg 1kB instead of 1234).")
 
