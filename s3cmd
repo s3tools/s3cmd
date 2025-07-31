@@ -90,6 +90,10 @@ def output(message):
     sys.stdout.write(message + "\n")
     sys.stdout.flush()
 
+def output_stderr(message):
+    sys.stderr.write(message + "\n")
+    sys.stderr.flush()
+
 def check_args_type(args, type, verbose_type):
     """NOTE: This function looks like to not be used."""
     for arg in args:
@@ -807,7 +811,7 @@ def subcmd_batch_del_iterative(uri_str = None, bucket = None):
             stats_info = StatsInfo()
             stats_info.files_deleted = deleted_count
             stats_info.size_deleted = deleted_bytes
-            output(stats_info.format_output())
+            output_stderr(stats_info.format_output())
         else:
             total_size, size_coeff = formatSize(deleted_bytes, Config().human_readable_sizes)
             total_size_str = str(total_size) + size_coeff
@@ -1325,7 +1329,7 @@ def cmd_sync_remote2remote(args):
     outstr = "Done. Copied %d files in %0.1f seconds, %0.2f files/s." % (total_files_copied, total_elapsed, seq / total_elapsed)
     if cfg.stats:
         outstr += stats_info.format_output()
-        output(outstr)
+        output_stderr(outstr)
     elif seq > 0:
         output(outstr)
     else:
@@ -1752,7 +1756,7 @@ def cmd_sync_remote2local(args):
     outstr = "Done. Downloaded %d bytes in %0.1f seconds, %0.2f %sB/s." % (size_transferred, total_elapsed, speed_fmt[0], speed_fmt[1])
     if cfg.stats:
         outstr += stats_info.format_output()
-        output(outstr)
+        output_stderr(outstr)
     elif size_transferred > 0:
         output(outstr)
     else:
@@ -2089,7 +2093,7 @@ def cmd_sync_local2remote(args):
         outstr = "Done. Uploaded %d bytes in %0.1f seconds, %0.2f %sB/s." % (size_transferred, total_elapsed, speed_fmt[0], speed_fmt[1])
         if cfg.stats:
             outstr += stats_info.format_output()
-            output(outstr)
+            output_stderr(outstr)
         elif size_transferred + saved_bytes > 0:
             output(outstr)
         else:
@@ -3247,7 +3251,7 @@ def main():
 
     optparser.add_option(      "--progress", dest="progress_meter", action="store_true", help="Display progress meter (default on TTY).")
     optparser.add_option(      "--no-progress", dest="progress_meter", action="store_false", help="Don't display progress meter (default on non-TTY).")
-    optparser.add_option(      "--stats", dest="stats", action="store_true", help="Give some file-transfer stats.")
+    optparser.add_option(      "--stats", dest="stats", action="store_true", help="Give some file-transfer stats. These stats are sent to stderr for logging purposes.")
     optparser.add_option(      "--enable", dest="enable", action="store_true", help="Enable given CloudFront distribution (only for [cfmodify] command)")
     optparser.add_option(      "--disable", dest="enable", action="store_false", help="Disable given CloudFront distribution (only for [cfmodify] command)")
     optparser.add_option(      "--cf-invalidate", dest="invalidate_on_cf", action="store_true", help="Invalidate the uploaded filed in CloudFront. Also see [cfinval] command.")
