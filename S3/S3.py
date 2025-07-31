@@ -1661,7 +1661,7 @@ class S3(object):
                         self.fallback_to_signature_v2 = True
                         return fn(*args, **kwargs)
 
-        raise S3Error(response)
+        raise S3AccessDenied(request.resource, response)
 
     def update_region_inner_request(self, request):
         """Get and update region for the request if needed.
