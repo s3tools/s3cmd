@@ -176,10 +176,10 @@ def _get_filelist_from_file(cfg, local_path):
         try:
             f = None
             if fname == u'-':
-                f = io.open(sys.stdin.fileno(), mode='r', closefd=False)
+                f = io.open(sys.stdin.fileno(), mode='rb', closefd=False)
             else:
                 try:
-                    f = io.open(deunicodise(fname), mode='r')
+                    f = io.open(deunicodise(fname), mode='rb')
                 except IOError as e:
                     warning(u"--files-from input file %s could not be opened for reading (%s), skipping." % (fname, e.strerror))
                     continue
