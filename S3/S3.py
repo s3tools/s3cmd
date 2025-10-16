@@ -20,6 +20,7 @@ import mimetypes
 import io
 import pprint
 from xml.sax import saxutils
+import xml.dom.minidom
 from socket import timeout as SocketTimeoutException
 from logging import debug, info, warning, error
 from stat import ST_SIZE, ST_MODE, S_ISDIR, S_ISREG
@@ -1221,14 +1222,6 @@ class S3(object):
         request = self.create_request("BUCKET_CREATE", uri = uri,
                                       headers=headers, body = policy,
                                       uri_params = {'policy': None})
-        response = self.send_request(request)
-        return response
-
-    def list_policy(self, uri):
-        headers = SortedDict(ignore_case = True)
-        headers['content-type'] = 'application/json'
-        request = self.create_request("BUCKET_LIST", uri = uri,
-                                        headers=headers, uri_params = {'policy': None})
         response = self.send_request(request)
         return response
 
