@@ -20,7 +20,6 @@ import mimetypes
 import io
 import pprint
 from xml.sax import saxutils
-import xml.dom.minidom
 from socket import timeout as SocketTimeoutException
 from logging import debug, info, warning, error
 from stat import ST_SIZE, ST_MODE, S_ISDIR, S_ISREG
