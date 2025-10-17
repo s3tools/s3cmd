@@ -2174,11 +2174,11 @@ def cmd_sync(args):
 def cmd_getacl(args):
     cfg = Config()
     s3 = S3(cfg)
-    if len(args) != 1:
-        raise ParameterError("Too few parameters! Expected: <bucket>")
-    if not S3Uri(args[0]).has_bucket():
-        raise ParameterError("Invalid bucket name: '%s'" % args[0])
     uri = S3Uri(args[0])
+    
+    if uri.type != "s3" or not uri.has_bucket():
+        raise ParameterError("Expecting S3 URI instead of '%s'" % args[0])
+    
     try:
         acl = s3.get_acl(uri)
         acl_grant_list = acl.getGrantList()
