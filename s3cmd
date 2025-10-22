@@ -2179,23 +2179,22 @@ def cmd_getacl(args):
     if uri.type != "s3" or not uri.has_bucket():
         raise ParameterError("Expecting S3 URI instead of '%s'" % args[0])
     
-    try:
-        acl = s3.get_acl(uri)
-        acl_grant_list = acl.getGrantList()
-        owner = acl.getOwner()
-        output(u"%s (bucket):" % uri.uri())
-        if owner['nick'] is None or owner['nick'] == "":
-            output(u"   Owner:      %s" % (owner['id']))
-        else:
-            output(u"   Owner:      %s (Nick: %s)" % (owner['id'], owner['nick']))
-        for grant in acl_grant_list:
-            output(u"   ACL:       %s: %s" % (grant['grantee'], grant['permission']))
-        if acl.isAnonRead():
-            output(u"   URL:       %s" % uri.public_url())
-    except S3Error as exc:
-        # Ignore the exception and don't fail the info
-        # if the server doesn't support setting ACLs
-        output(u"   ACL:       none")
+    acl = s3.get_acl(uri)
+    acl_grant_list = acl.getGrantList()
+    owner = acl.getOwner()
+    if uri.has_object():
+        uri_type = "(object)"
+    else:
+        uri_type = "(bucket)"
+    output(u"%s %s:" % (uri, uri_type))
+    if not owner['nick']:
+        output(u"   Owner:     %s" % (owner['id']))
+    else:
+        output(u"   Owner:     %s (Nick: %s)" % (owner['id'], owner['nick']))
+    for grant in acl_grant_list:
+        output(u"   ACL:       %s: %s" % (grant['grantee'], grant['permission']))
+    if acl.isAnonRead():
+        output(u"   URL:       %s" % uri.public_url())
     return EX_OK
         
 def cmd_setacl(args):
@@ -2389,8 +2388,10 @@ def cmd_getpolicy(args):
         # if the server doesn't support setting ACLs
         if exc.status == 403:
             output(u"   Policy:    Not available: GetPolicy permission is needed to read the policy")
+            return EX_ACCESSDENIED
         elif exc.status == 405:
             output(u"   Policy:    Not available: Only the bucket owner can read the policy")
+            return EX_ACCESSDENIED
         elif exc.status not in [404, 501]:
             raise exc
         else:
