@@ -2171,6 +2171,32 @@ def cmd_sync(args):
         return cmd_sync_remote2remote(args)
     raise ParameterError("Invalid source/destination: '%s'" % "' '".join(args))
 
+def cmd_getacl(args):
+    cfg = Config()
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+    
+    if uri.type != "s3" or not uri.has_bucket():
+        raise ParameterError("Expecting S3 URI instead of '%s'" % args[0])
+    
+    acl = s3.get_acl(uri)
+    acl_grant_list = acl.getGrantList()
+    owner = acl.getOwner()
+    if uri.has_object():
+        uri_type = "(object)"
+    else:
+        uri_type = "(bucket)"
+    output(u"%s %s:" % (uri, uri_type))
+    if not owner['nick']:
+        output(u"   Owner:     %s" % (owner['id']))
+    else:
+        output(u"   Owner:     %s (Nick: %s)" % (owner['id'], owner['nick']))
+    for grant in acl_grant_list:
+        output(u"   ACL:       %s: %s" % (grant['grantee'], grant['permission']))
+    if acl.isAnonRead():
+        output(u"   URL:       %s" % uri.public_url())
+    return EX_OK
+        
 def cmd_setacl(args):
     cfg = Config()
     s3 = S3(cfg)
@@ -2344,6 +2370,32 @@ def cmd_setpolicy(args):
     debug(u"response - %s" % response['status'])
     if response['status'] == 204:
         output(u"%s: Policy updated" % uri)
+    return EX_OK
+
+def cmd_getpolicy(args):
+    cfg = Config()
+    s3 = S3(cfg)
+    uri = S3Uri(args[0])
+
+    if uri.type != "s3" or not uri.has_bucket():
+        raise ParameterError("Expecting S3 URI instead of '%s'" % args[0])
+
+    try:
+        policy = s3.get_policy(uri)
+        output(u"   Policy:    %s" % policy)
+    except S3Error as exc:
+        # Ignore the exception and don't fail the info
+        # if the server doesn't support setting ACLs
+        if exc.status == 403:
+            output(u"   Policy:    Not available: GetPolicy permission is needed to read the policy")
+            return EX_ACCESSDENIED
+        elif exc.status == 405:
+            output(u"   Policy:    Not available: Only the bucket owner can read the policy")
+            return EX_ACCESSDENIED
+        elif exc.status not in [404, 501]:
+            raise exc
+        else:
+            output(u"   Policy:    none")
     return EX_OK
 
 def cmd_delpolicy(args):
@@ -2980,6 +3032,7 @@ def get_commands_list():
     {"cmd":"cp", "label":"Copy object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_cp, "argc":2},
     {"cmd":"modify", "label":"Modify object metadata", "param":"s3://BUCKET1/OBJECT", "func":cmd_modify, "argc":1},
     {"cmd":"mv", "label":"Move object", "param":"s3://BUCKET1/OBJECT1 s3://BUCKET2[/OBJECT2]", "func":cmd_mv, "argc":2},
+    {"cmd":"getacl", "label":"List Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_getacl, "argc":1},
     {"cmd":"setacl", "label":"Modify Access control list for Bucket or Files", "param":"s3://BUCKET[/OBJECT]", "func":cmd_setacl, "argc":1},
     {"cmd":"setversioning", "label":"Modify Bucket Versioning", "param":"s3://BUCKET enable|disable", "func":cmd_setversioning, "argc":2},
     {"cmd":"setownership", "label":"Modify Bucket Object Ownership", "param":"s3://BUCKET BucketOwnerPreferred|BucketOwnerEnforced|ObjectWriter", "func":cmd_setownership, "argc":2},
@@ -2989,6 +3042,7 @@ def get_commands_list():
     {"cmd":"setobjectretention", "label":"Modify Object Retention", "param":"MODE RETAIN_UNTIL_DATE s3://BUCKET/OBJECT", "func":cmd_setobjectretention, "argc":3},
 
     {"cmd":"setpolicy", "label":"Modify Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_setpolicy, "argc":2},
+    {"cmd":"getpolicy", "label":"Get Bucket Policy", "param":"FILE s3://BUCKET", "func":cmd_getpolicy, "argc":1},
     {"cmd":"delpolicy", "label":"Delete Bucket Policy", "param":"s3://BUCKET", "func":cmd_delpolicy, "argc":1},
     {"cmd":"setcors", "label":"Modify Bucket CORS", "param":"FILE s3://BUCKET", "func":cmd_setcors, "argc":2},
     {"cmd":"delcors", "label":"Delete Bucket CORS", "param":"s3://BUCKET", "func":cmd_delcors, "argc":1},
@@ -3040,7 +3094,6 @@ def format_commands(progname, commands_list):
     for cmd in commands_list:
         help += "  %s\n      %s %s %s\n" % (cmd["label"], progname, cmd["cmd"], cmd["param"])
     return help
-
 
 def update_acl(s3, uri, seq_label=""):
     cfg = Config()
