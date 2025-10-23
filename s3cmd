@@ -402,6 +402,13 @@ def cmd_object_put(args):
         raise ParameterError("Destination must be S3Uri. Got: %s" % destination_base_uri)
     destination_base = destination_base_uri.uri()
 
+    check_uri = S3UriS3(destination_base)
+    check_bucket = check_uri.bucket()
+
+    if not any(bucket['Name'] == check_bucket for bucket in s3.list_all_buckets()['list']):
+        error(u"Bucket '%s' does not exist" % check_bucket)
+        return EX_NOTFOUND
+
     if len(args) == 0:
         raise ParameterError("Nothing to upload. Expecting a local file or directory.")
 
@@ -3665,7 +3672,7 @@ if __name__ == '__main__':
         from S3.Config import Config
         from S3.SortedDict import SortedDict
         from S3.FileDict import FileDict
-        from S3.S3Uri import S3Uri
+        from S3.S3Uri import S3Uri, S3UriS3
         from S3 import Utils
         from S3.BaseUtils import (formatDateTime, getPrettyFromXml,
                                   encode_to_s3, decode_from_s3, s3path)
