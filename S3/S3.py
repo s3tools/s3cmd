@@ -1583,7 +1583,7 @@ class S3(object):
                 S3Request.region_map[redir_bucket] = redir_region
                 info(u'Redirected to region: %s', redir_region)
             return fn(*args, **kwargs)
-        elif request.method_string == 'HEAD':
+        elif response['headers'].get('location'):
             # Head is a special case, redirection info usually are in the body
             # but there is no body for an HEAD request.
             location_url = response['headers'].get('location')
