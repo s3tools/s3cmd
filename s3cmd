@@ -24,6 +24,8 @@ from __future__ import absolute_import, print_function, division
 
 import sys
 
+output = lambda s: (sys.stdout.write(s + "\n"), sys.stdout.flush()) # to be reset in main()
+
 if sys.version_info < (2, 6):
     sys.stderr.write(u"ERROR: Python 2.6 or higher required, sorry.\n")
     # 72 == EX_OSFILE
@@ -85,10 +87,6 @@ if not PY3:
     class ConnectionRefusedError(ConnectionError):
         pass
 
-
-def output(message):
-    sys.stdout.write(message + "\n")
-    sys.stdout.flush()
 
 def check_args_type(args, type, verbose_type):
     """NOTE: This function looks like to not be used."""
@@ -3334,6 +3332,7 @@ def main():
     optparser.add_option(      "--max-retries", dest="max_retries", action="store", help="Maximum number of times to retry a failed request before giving up. Default is 5", metavar="NUM")
     optparser.add_option(      "--content-disposition", dest="content_disposition", action="store", help="Provide a Content-Disposition for signed URLs, e.g., \"inline; filename=myvideo.mp4\"")
     optparser.add_option(      "--content-type", dest="content_type", action="store", help="Provide a Content-Type for signed URLs, e.g., \"video/mp4\"")
+    optparser.add_option("-2", "--stderr-output", dest="stderr_output", action="store", help="Write all output to STDERR rather than STDOUT")
 
     optparser.set_usage(optparser.usage + " COMMAND [parameters]")
     optparser.set_description('S3cmd is a tool for managing objects in '+
@@ -3351,6 +3350,12 @@ def main():
                         format='%(levelname)s: %(message)s',
                         stream = sys.stderr)
 
+    def output(message):
+        pipe = sys.stderr if args.stderr_output else sys.stdout
+        pipe.write(message + "\n")
+        pipe.flush()
+
+
     if options.show_version:
         output(u"s3cmd version %s" % PkgInfo.version)
         sys.exit(EX_OK)
@@ -3360,6 +3365,7 @@ def main():
         try:
             f = open("/dev/null", "w")
             sys.stdout = f
+            sys.stderr = f
         except IOError:
             warning(u"Unable to open /dev/null: --quiet disabled.")
 
