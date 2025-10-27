@@ -921,6 +921,7 @@ class S3(object):
             # from http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMetadata.html
             'date',
             'content-length',
+            'content-encoding',
             'last-modified',
             'content-md5',
             'x-amz-version-id',
