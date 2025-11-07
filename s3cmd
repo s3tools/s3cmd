@@ -472,7 +472,7 @@ def cmd_object_put(args):
             ret = EX_PARTIAL
             continue
         except InvalidFileError as exc:
-            error(u"Upload of '%s' is not possible (Reason: %s)" % (full_name_orig, exc))
+            error(u"Upload of '%s' is not possible. Reason: %s." % (full_name_orig, exc))
             ret = EX_PARTIAL
             if cfg.stop_on_error:
                 ret = EX_OSFILE
